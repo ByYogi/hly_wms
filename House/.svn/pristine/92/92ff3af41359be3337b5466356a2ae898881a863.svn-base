@@ -1,0 +1,205 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.House
+{
+    public partial class StockSnap : BasePage
+    {
+        /// <summary>
+        /// 库存数据导出实体
+        /// </summary>
+        public List<CargoContainerShowEntity> StockData
+        {
+            get
+            {
+                if (Session["StockData"] == null)
+                {
+                    Session["StockData"] = new List<CargoContainerShowEntity>();
+                }
+                return (List<CargoContainerShowEntity>)(Session["StockData"]);
+            }
+            set
+            {
+                Session["StockData"] = value;
+            }
+        }
+        /// <summary>
+        /// 库存数据导出类型实体
+        /// </summary>
+        public string StockDataType
+        {
+            get
+            {
+                if (Session["StockDataType"] == null)
+                {
+                    Session["StockDataType"] = "";
+                }
+                return (string)(Session["StockDataType"]);
+            }
+            set
+            {
+                Session["StockDataType"] = value;
+            }
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (StockData.Count <= 0) { return; }
+            if (string.IsNullOrEmpty(StockDataType)) { return; }
+            if (StockDataType == "47")
+            {
+                string tname = string.Empty;
+                DataTable table = new DataTable();
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("产品名称", typeof(string));
+                table.Columns.Add("富添盛编码", typeof(string));
+                table.Columns.Add("祺航编码", typeof(string));
+                table.Columns.Add("商贸编码", typeof(string));
+                table.Columns.Add("长和编码", typeof(string));
+                table.Columns.Add("批次", typeof(string));
+                table.Columns.Add("库存数量", typeof(int));
+                table.Columns.Add("货位代码", typeof(string));
+                table.Columns.Add("所在区域", typeof(string));
+                table.Columns.Add("所在仓库", typeof(string));
+                table.Columns.Add("入库时间", typeof(string));
+                table.Columns.Add("快照时间", typeof(string));
+                int i = 0;
+                string house = string.Empty;
+                foreach (var it in StockData)
+                {
+                    i++;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["产品名称"] = it.ProductName.Trim();
+                    newRows["富添盛编码"] = it.GoodsCode.Trim();
+                    newRows["祺航编码"] = it.Specs.Trim();
+                    newRows["商贸编码"] = it.Model.Trim();
+                    newRows["长和编码"] = it.Figure;
+                    newRows["批次"] = it.Batch;
+                    newRows["库存数量"] = it.Piece;
+                    newRows["货位代码"] = it.ContainerCode;
+                    newRows["所在区域"] = it.AreaName;
+                    newRows["所在仓库"] = it.HouseName;
+                    newRows["入库时间"] = it.InHouseTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.InHouseTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.InHouseTime.ToString("yyyy-MM-dd HH:mm:ss");
+                    newRows["快照时间"] = it.OP_DATE.ToString("yyyy-MM-dd") == "0001-01-01" || it.OP_DATE.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.OP_DATE.ToString("yyyy-MM-dd HH:mm:ss");
+                    table.Rows.Add(newRows);
+                    house = it.HouseName;
+                }
+                ToExcel.DataTableToExcel(table, "", house + "库存快照表");
+            }
+            else
+            {
+                if (UserInfor.HouseName.Contains("西安仓库"))
+                {
+                    string tname = string.Empty;
+                    DataTable table = new DataTable();
+                    table.Columns.Add("序号", typeof(int));
+                    table.Columns.Add("货品代码", typeof(string));
+                    table.Columns.Add("产品名称", typeof(string));
+                    table.Columns.Add("产品ID", typeof(string));
+                    table.Columns.Add("产品类型", typeof(string));
+                    table.Columns.Add("批次", typeof(string));
+                    table.Columns.Add("库存数量", typeof(int));
+                    table.Columns.Add("货位代码", typeof(string));
+                    table.Columns.Add("所在区域", typeof(string));
+                    table.Columns.Add("所在仓库", typeof(string));
+                    int i = 0;
+                    foreach (var it in StockData)
+                    {
+                        i++;
+                        DataRow newRows = table.NewRow();
+                        newRows["序号"] = i;
+                        newRows["货品代码"] = it.GoodsCode.Trim();
+                        newRows["产品名称"] = it.ProductName.Trim() + " " + it.Figure.Trim() + " " + it.Model.Trim();
+                        newRows["产品ID"] = it.ProductID;
+                        newRows["产品类型"] = it.TypeName.Trim();
+                        //newRows["开单日期"] = it.CreateDate.ToString("yyyy-MM-dd") == "0001-01-01" || it.CreateDate.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.CreateDate.ToString("yyyy-MM-dd");
+                        //newRows["规格"] = it.Specs.Trim();
+                        //newRows["型号"] = it.Model.Trim();
+                        //newRows["花纹"] = it.Figure;
+                        //newRows["载重指数"] = it.LoadIndex;
+                        //newRows["速度级别"] = it.SpeedLevel;
+                        newRows["批次"] = it.Batch;
+                        newRows["库存数量"] = it.Piece;
+                        newRows["货位代码"] = it.ContainerCode;
+                        newRows["所在区域"] = it.AreaName;
+                        newRows["所在仓库"] = it.HouseName;
+                        table.Rows.Add(newRows);
+                    }
+                    ToExcel.DataTableToExcel(table, "", "西安仓库库存表");
+                }
+                else
+                {
+                    string tname = string.Empty;
+                    DataTable table = new DataTable();
+                    table.Columns.Add("序号", typeof(int));
+                    table.Columns.Add("产品名称", typeof(string));
+                    table.Columns.Add("产品ID", typeof(string));
+                    table.Columns.Add("产品类型", typeof(string));
+                    table.Columns.Add("货品代码", typeof(string));
+                    table.Columns.Add("规格", typeof(string));
+                    table.Columns.Add("型号", typeof(string));
+                    table.Columns.Add("花纹", typeof(string));
+                    table.Columns.Add("载重指数", typeof(string));
+                    table.Columns.Add("速度级别", typeof(string));
+                    table.Columns.Add("批次", typeof(string));
+                    table.Columns.Add("库存数量", typeof(int));
+                    //table.Columns.Add("单价", typeof(string));
+                    //table.Columns.Add("门店价", typeof(string));
+                    //table.Columns.Add("销售价", typeof(string));
+                    table.Columns.Add("货位代码", typeof(string));
+                    table.Columns.Add("所在区域", typeof(string));
+                    table.Columns.Add("所在仓库", typeof(string));
+                    table.Columns.Add("入库时间", typeof(string));
+                    table.Columns.Add("快照时间", typeof(string));
+                    int i = 0;
+                    string house = string.Empty;
+                    foreach (var it in StockData)
+                    {
+                        i++;
+                        DataRow newRows = table.NewRow();
+                        newRows["序号"] = i;
+                        newRows["产品名称"] = it.ProductName.Trim();
+                        newRows["产品ID"] = it.ProductID;
+                        newRows["产品类型"] = it.TypeName.Trim();
+                        newRows["货品代码"] = it.GoodsCode.Trim();
+                        //newRows["开单日期"] = it.CreateDate.ToString("yyyy-MM-dd") == "0001-01-01" || it.CreateDate.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.CreateDate.ToString("yyyy-MM-dd");
+                        newRows["规格"] = it.Specs.Trim();
+                        newRows["型号"] = it.Model.Trim();
+                        newRows["花纹"] = it.Figure;
+                        newRows["载重指数"] = it.LoadIndex;
+                        newRows["速度级别"] = it.SpeedLevel;
+                        newRows["批次"] = it.Batch;
+                        newRows["库存数量"] = it.Piece;
+                        //newRows["单价"] = it.UnitPrice;
+                        //newRows["门店价"] = it.TradePrice;
+                        //newRows["销售价"] = it.SalePrice;
+                        newRows["货位代码"] = it.ContainerCode;
+                        newRows["所在区域"] = it.AreaName;
+                        newRows["所在仓库"] = it.FirstAreaName;
+                        newRows["入库时间"] = it.InHouseTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.InHouseTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.InHouseTime.ToString("yyyy-MM-dd HH:mm:ss");
+                        newRows["快照时间"] = it.OP_DATE.ToString("yyyy-MM-dd") == "0001-01-01" || it.OP_DATE.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.OP_DATE.ToString("yyyy-MM-dd HH:mm:ss");
+                        table.Rows.Add(newRows);
+                        house = it.HouseName;
+                    }
+                    ToExcel.DataTableToExcel(table, "", house + "库存快照表");
+                }
+            }
+        }
+    }
+}

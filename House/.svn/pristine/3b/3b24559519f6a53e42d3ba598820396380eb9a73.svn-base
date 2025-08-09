@@ -1,0 +1,207 @@
+﻿using House.Entity.Cargo;
+using House.Entity.Cargo.House;
+using House.Entity.Cargo.Order;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.HuiCai
+{
+    public partial class huiCaiWarehouseStatistics : BasePage
+    {
+        /// <summary>
+        /// 慧采云仓数据统计
+        /// </summary>
+        public List<CargoOrderDayStatisticsEntity> OrderDayStatisticsDataExport
+        {
+            get
+            {
+                if (Session["OrderDayStatisticsDataExport"] == null)
+                {
+                    Session["OrderDayStatisticsDataExport"] = new List<CargoOrderDayStatisticsEntity>();
+                }
+                return (List<CargoOrderDayStatisticsEntity>)(Session["OrderDayStatisticsDataExport"]);
+            }
+            set
+            {
+                Session["OrderDayStatisticsDataExport"] = value;
+            }
+        }
+        public List<CargoHouseAimEntity> OrderDayStatisticsDataExportV2
+        {
+            get
+            {
+                if (Session["OrderDayStatisticsDataExportV2"] == null)
+                {
+                    Session["OrderDayStatisticsDataExportV2"] = new List<CargoHouseAimEntity>();
+                }
+                return (List<CargoHouseAimEntity>)(Session["OrderDayStatisticsDataExportV2"]);
+            }
+            set
+            {
+                Session["OrderDayStatisticsDataExportV2"] = value;
+            }
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        ///// <summary>
+        ///// 7日浏览数据导出
+        ///// </summary>
+        ///// <param name="sender"></param>
+        ///// <param name="e"></param>
+        //protected void btnDayAccessNumExport_Click(object sender, EventArgs e)
+        //{
+        //    if (HCYCReportDataExport.Count <= 0) { return; }
+        //    string tname = string.Empty;
+        //    DataTable table = new DataTable();
+        //    table.Columns.Add("序号", typeof(int));
+        //    table.Columns.Add("品牌", typeof(string));
+        //    table.Columns.Add("规格", typeof(string));
+        //    table.Columns.Add("花纹", typeof(string));
+        //    table.Columns.Add("载速", typeof(string));
+        //    table.Columns.Add("门店名称", typeof(string));
+        //    table.Columns.Add("联系人", typeof(string));
+        //    table.Columns.Add("手机号", typeof(string));
+        //    table.Columns.Add("浏览时间", typeof(string));
+
+
+        //    int i = 0;
+        //    foreach (var it in HCYCReportDataExport)
+        //    {
+        //        i++;
+        //        DataRow newRows = table.NewRow();
+        //        newRows["序号"] = i;
+        //        newRows["品牌"] = it.TypeName;
+        //        newRows["规格"] = it.Specs;
+        //        newRows["花纹"] = it.Figure;
+        //        newRows["载速"] = it.LoadIndex + it.SpeedLevel;
+        //        newRows["门店名称"] = it.CompanyName;
+        //        newRows["联系人"] = it.Name;
+        //        newRows["手机号"] = it.Cellphone;
+        //        newRows["浏览时间"] = it.AccessDate.ToString("yyyy-MM-dd HH:mm:ss");
+        //        table.Rows.Add(newRows);
+
+        //    }
+        //    ToExcel.DataTableToExcel(table, "", DateTime.Now.ToString("yyyyMM") + "月客户浏览数据统计表");
+
+        //}
+
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (OrderDayStatisticsDataExport.Count <= 0) { return; }
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("仓库", typeof(string));
+            table.Columns.Add("销量", typeof(int));
+            table.Columns.Add("销售SKU", typeof(int));
+            table.Columns.Add("目标SKU", typeof(int));
+            table.Columns.Add("在库SKU", typeof(int));
+            table.Columns.Add("库存", typeof(int));
+            table.Columns.Add("SKU满足率", typeof(string));
+            table.Columns.Add("动销率", typeof(string));
+            table.Columns.Add("库存周转数", typeof(int));
+            table.Columns.Add("点击转换率", typeof(string));
+
+
+            int i = 0;
+            foreach (var it in OrderDayStatisticsDataExport)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["品牌"] = it.TypeName;
+                newRows["仓库"] = it.HouseName;
+                newRows["销量"] = it.Piece;
+                newRows["销售SKU"] = it.DayStatisticsCount;
+                newRows["目标SKU"] = it.StockNum;
+                newRows["在库SKU"] = it.ProCount;
+                newRows["库存"] = it.ProPiece;
+                newRows["SKU满足率"] = it.SatisfactionRate + "%";
+                newRows["动销率"] = it.SalesRate + "%";
+                newRows["库存周转数"] = it.InventoryTurnover;
+                newRows["点击转换率"] = it.ClickConversionRate+"%";
+                table.Rows.Add(newRows);
+
+            }
+            ToExcel.DataTableToExcel(table, "", DateTime.Now.ToString("yyyyMMdd") + "品牌月销售排名统计数");
+        }
+
+        protected void btnDerived2_Click(object sender, EventArgs e)
+        {
+            if (OrderDayStatisticsDataExportV2.Count <= 0) { return; }
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("仓库名称", typeof(string));
+            table.Columns.Add("销售数量", typeof(int));
+            table.Columns.Add("年月", typeof(string));
+            table.Columns.Add("销售目标（月）", typeof(int));
+            table.Columns.Add("完成百分比", typeof(string));
+
+
+            int i = 0;
+            foreach (var it in OrderDayStatisticsDataExportV2)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["仓库名称"] = it.HouseName;
+                newRows["销售数量"] = it.Piece;
+                newRows["年月"] = it.AimYear+"-"+ it.AimMonth;
+                newRows["销售目标（月）"] = it.AimQuantity;
+                newRows["完成百分比"] = it.PercentComplete+"%";
+                table.Rows.Add(newRows);
+
+            }
+            ToExcel.DataTableToExcel(table, "", DateTime.Now.ToString("yyyyMMdd") + "仓库交易数据");
+        }
+        ///// <summary>
+        ///// 关键字查询数据导出
+        ///// </summary>
+        ///// <param name="sender"></param>
+        ///// <param name="e"></param>
+        //protected void btnKeyWordExport_Click(object sender, EventArgs e)
+        //{
+        //    if (HCYCReportDataExport.Count <= 0) { return; }
+        //    string tname = string.Empty;
+        //    DataTable table = new DataTable();
+        //    table.Columns.Add("序号", typeof(int));
+        //    table.Columns.Add("门店名称", typeof(string));
+        //    table.Columns.Add("联系人", typeof(string));
+        //    table.Columns.Add("手机号", typeof(string));
+        //    table.Columns.Add("搜索关键字", typeof(string));
+        //    table.Columns.Add("搜索品牌", typeof(string));
+        //    //table.Columns.Add("搜索结果", typeof(string));
+        //    table.Columns.Add("搜索时间", typeof(string));
+
+
+
+        //    int i = 0;
+        //    foreach (var it in HCYCReportDataExport)
+        //    {
+        //        i++;
+        //        DataRow newRows = table.NewRow();
+        //        newRows["序号"] = i;
+        //        newRows["门店名称"] = it.CompanyName;
+        //        newRows["联系人"] = it.Name;
+        //        newRows["手机号"] = it.Cellphone;
+        //        newRows["搜索关键字"] = it.Specs;
+        //        newRows["搜索品牌"] = it.TypeName;
+        //        //newRows["搜索结果"] = it.Figure.Equals("0") ? "无库存" : "有库存";
+        //        newRows["搜索时间"] = it.AccessDate.ToString("yyyy-MM-dd HH:mm:ss");
+        //        table.Rows.Add(newRows);
+
+        //    }
+        //    ToExcel.DataTableToExcel(table, "", "客户搜索关键字数据统计表");
+        //}
+    }
+}

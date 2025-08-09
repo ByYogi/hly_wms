@@ -1,0 +1,838 @@
+﻿<%@ Page Title="每月政策价格修改" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="priceModify.aspx.cs" Inherits="Cargo.Price.priceModify" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+
+            $.ajaxSetup({ async: true });
+            $.getJSON("../Product/productApi.aspx?method=QueryAllProductSource", function (data) {
+                ProductSource = data;
+            });
+            $.ajaxSetup({ async: true });
+            $.getJSON("../Client/clientApi.aspx?method=QueryAllUpClientDep", function (data) {
+                UpClientDep = data;
+            });
+            var url = '../Client/clientApi.aspx?method=QueryAllUpClientDep&type=1&houseID=<%=UserInfor.HouseID%>';
+            $('#BelongDepart').combobox('reload', url);
+            $('#BelongDepart').combobox('select', '-1');
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height - 5 });
+            $("#treeDiv").height(Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 5);
+        }
+        $(document).ready(function () {
+            var columns = [];
+            var HID = "<%=UserInfor.HouseID%>";
+            $('#HiddenHouseID').val(HID);
+            columns.push({
+                title: '', field: 'ProductID', checkbox: true, width: '30px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '产品名称', field: 'ProductName', width: '80px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '一级类型', field: 'ParentName', width: '60px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '二级类型', field: 'TypeName', width: '60px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '货位代码', field: 'ContainerCode', width: '80px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            if (HID == "47") {
+                $("#AGoodsCodeTd").html("富添盛编码:");
+                $('#AGoodsCode').textbox({ prompt: '请输入富添盛编码' });
+                $("#AModelTd").html("商贸编码:");
+                $('#AModel').textbox({ prompt: '请输入商贸编码' });
+                $("#AFigureTd").html("长和编码:");
+                $('#AFigure').textbox({ prompt: '请输入长和编码' });
+                columns.push({
+                    title: '富添盛编码', field: 'GoodsCode', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '商贸编码', field: 'Model', width: '60px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '长和编码', field: 'Figure', width: '100px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+            } else {
+                columns.push({
+                    title: '货品代码', field: 'GoodsCode', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '型号', field: 'Model', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '花纹', field: 'Figure', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '速度', field: 'SpeedLevel', width: '60px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+            }
+            columns.push({
+                title: '在库数量', field: 'PackageNum', width: '60px', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '单价', field: 'UnitPrice', width: '60px', align: 'right', editor: { type: 'numberbox', options: { precision: 2 } }, formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            //columns.push({
+            //    title: '成本价', field: 'CostPrice', width: '60px', align: 'right', formatter: function (value) {
+            //        return "<span title='" + value + "'>" + value + "</span>";
+            //    }
+            //});
+            columns.push({
+                title: '门店价', field: 'TradePrice', width: '60px', align: 'right', editor: { type: 'numberbox', options: { precision: 2 } }, formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '小程序价', field: 'SalePrice', width: '60px', align: 'right', editor: { type: 'numberbox', options: { precision: 2 } }, formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '批次', field: 'Batch', width: '60px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '来源', field: 'Source', width: '60px', formatter: function (value) {
+                    return "<span title='" + GetSourceName(value) + "'>" + GetSourceName(value) + "</span>";
+                }
+            });
+            columns.push({
+                title: '归属部门', field: 'BelongDepart', width: '90px', formatter: function (value) {
+                    return "<span title='" + GetUpClientDepName(value) + "'>" + GetUpClientDepName(value) + "</span>";
+                }
+            });
+            columns.push({
+                title: '工厂订单号', field: 'SourceOrderNo', width: '80px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '尺寸', field: 'Size', width: '60px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '所属仓库', field: 'FirstAreaName', width: '60px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '区域大仓', field: 'HouseName', width: '60px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+
+            columns.push({
+                title: '订单归属月', field: 'BelongMonth', width: '60px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({ title: '入库时间', field: 'InHouseTime', width: '130px', formatter: DateTimeFormatter });
+
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ProductID',
+                url: null,
+                toolbar: '',
+                columns: [columns],
+                onClickCell: onClickCell
+            });
+            //所在仓库
+            $('#HID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    $('#PID').combobox('clear');
+                    var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    $('#PID').combobox('reload', url);
+                }
+            });
+            $('#HID').combobox('textbox').bind('focus', function () { $('#HID').combobox('showPanel'); });
+            $('#HID').combobox('setValue', '<%=UserInfor.HouseID%>');
+            $('#PID').combobox('clear');
+            var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=<%=UserInfor.HouseID%>';
+            $('#PID').combobox('reload', url);
+            //一级产品
+            $('#APID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLOneProductType', valueField: 'TypeID', textField: 'TypeName',
+                onSelect: function (rec) {
+                    $('#ASID').combobox('clear');
+                    $('#ASID').combobox({
+                        url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + rec.TypeID, valueField: 'TypeID', textField: 'TypeName', AddField: 'PinyinName',
+                        filter: function (q, row) {
+                            var opts = $(this).combobox('options');
+                            return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                        },
+                    });
+                }
+            });
+            $('#APID').combobox('textbox').bind('focus', function () { $('#APID').combobox('showPanel'); });
+            $('#ASID').combobox('textbox').bind('focus', function () { $('#ASID').combobox('showPanel'); });
+            var datenow = new Date();
+            $('#StartDate').datebox('setValue', getLastDayFormatDate(datenow));
+            $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
+        })
+        $.extend($.fn.datagrid.methods, {
+            editCell: function (jq, param) {
+                return jq.each(function () {
+                    var fields = $(this).datagrid('getColumnFields');
+                    for (var i = 0; i < fields.length; i++) {
+                        var col = $(this).datagrid('getColumnOption', fields[i]);
+                        col.editor1 = col.editor;
+                        if (fields[i] != param.field) {
+                            col.editor = null;
+                        }
+                    }
+                    $(this).datagrid('beginEdit', param.index);
+                    for (var i = 0; i < fields.length; i++) {
+                        var col = $(this).datagrid('getColumnOption', fields[i]);
+                        col.editor = col.editor1;
+                    }
+                });
+            }
+        });
+
+        var editIndex = undefined;
+        function endEditing() {
+            if (editIndex == undefined) { return true }
+            if ($('#dg').datagrid('validateRow', editIndex)) {
+                var rows = $("#dg").datagrid('getData').rows[editIndex];
+                var ed = $('#dg').datagrid('getEditors', editIndex);
+                var cg = ed[0];
+                var sum = 0;
+                if (cg.field == "UnitPrice") { }
+                if (cg.field == "TradePrice") { }
+                if (cg.field == "SalePrice") { }
+
+                $('#dg').datagrid('endEdit', editIndex);
+                editIndex = undefined;
+                return true;
+            } else {
+                return false;
+            }
+        }
+        function onClickCell(index, field) {
+            if (field == "UnitPrice" || field == "TradePrice" || field == "SalePrice") {
+                if (endEditing()) {
+                    $('#dg').datagrid('selectRow', index).datagrid('editCell', { index: index, field: field });
+                    editIndex = index;
+                }
+            }
+            else {
+                if (editIndex == undefined) { return true }
+                var rows = $("#dg").datagrid('getData').rows[editIndex];
+                var ed = $('#dg').datagrid('getEditors', editIndex);
+                var cg = ed[0];
+                var sum = 0;
+                if (cg.field == "UnitPrice") {
+                    //修改产品单价
+                    $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定修改产品单价？', function (r) {
+                        if (r) {
+                            rows.UnitPrice = cg.target.val();
+                            rows.SalePrice = Number(cg.oldHtml);
+                            var json = JSON.stringify([rows])
+                            $.ajax({
+                                url: 'priceApi.aspx?method=UpdateProductUnitPrice',
+                                type: 'post', dataType: 'json', data: { data: json },
+                                success: function (text) {
+                                    //var result = eval('(' + msg + ')');
+                                    if (text.Result == true) {
+                                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
+                                    }
+                                    else {
+                                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                    }
+                                }
+                            });
+                        }
+                        $('#dg').datagrid('reload');
+                    });
+                }
+                if (cg.field == "TradePrice") {
+                    //修改门店价
+                    $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定修改产品门店价？', function (r) {
+                        if (r) {
+                            rows.TradePrice = cg.target.val();
+                            rows.UnitPrice = Number(cg.oldHtml);
+                            var json = JSON.stringify([rows])
+                            $.ajax({
+                                url: 'priceApi.aspx?method=UpdateProductTradePrice',
+                                type: 'post', dataType: 'json', data: { data: json },
+                                success: function (text) {
+                                    //var result = eval('(' + msg + ')');
+                                    if (text.Result == true) {
+                                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
+                                    }
+                                    else {
+                                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                    }
+                                }
+                            });
+                        }
+                        $('#dg').datagrid('reload');
+                    });
+                }
+                if (cg.field == "SalePrice") {
+                    //修改销售价
+                    $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定修改产品销售价？', function (r) {
+                        if (r) {
+                            rows.SalePrice = cg.target.val();
+                            rows.UnitPrice = Number(cg.oldHtml);
+                            var json = JSON.stringify([rows])
+                            $.ajax({
+                                url: 'priceApi.aspx?method=UpdateWebProductSalePrice',
+                                type: 'post', dataType: 'json', data: { data: json },
+                                success: function (text) {
+                                    //var result = eval('(' + msg + ')');
+                                    if (text.Result == true) {
+                                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
+                                      }
+                                      else {
+                                          $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                      }
+                                  }
+                              });
+                        }
+                        $('#dg').datagrid('reload');
+                    });
+                }
+                $('#dg').datagrid('endEdit', editIndex);
+                editIndex = undefined;
+            }
+        }
+        //查询
+        function dosearch() {
+            var columns = [];
+            var type = 0;
+            if ($('#HID').combobox('getValue') != $('#HiddenHouseID').val()) {
+                $('#HiddenHouseID').val($('#HID').combobox('getValue'));
+                columns.push({
+                    title: '', field: 'ProductID', checkbox: true, width: '30px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '产品名称', field: 'ProductName', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '一级类型', field: 'ParentName', width: '60px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '二级类型', field: 'TypeName', width: '60px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '货位代码', field: 'ContainerCode', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                if ($('#HID').combobox('getValue') == "47") {
+                    $("#AGoodsCodeTd").html("富添盛编码:");
+                    $('#AGoodsCode').textbox({ prompt: '请输入富添盛编码' });
+                    $("#AModelTd").html("商贸编码:");
+                    $('#AModel').textbox({ prompt: '请输入商贸编码' });
+                    $("#AFigureTd").html("长和编码:");
+                    $('#AFigure').textbox({ prompt: '请输入长和编码' });
+                    columns.push({
+                        title: '富添盛编码', field: 'GoodsCode', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    });
+                    columns.push({
+                        title: '商贸编码', field: 'Model', width: '60px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    });
+                    columns.push({
+                        title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    });
+                    columns.push({
+                        title: '长和编码', field: 'Figure', width: '100px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    });
+                } else {
+                    $("#AGoodsCodeTd").html("货品代码:");
+                    $('#AGoodsCode').textbox({ prompt: '请输入货品代码' });
+                    $("#AModelTd").html("型号:");
+                    $('#AModel').textbox({ prompt: '请输入型号' });
+                    $("#AFigureTd").html("花纹:");
+                    $('#AFigure').textbox({ prompt: '请输入花纹' });
+                    columns.push({
+                        title: '货品代码', field: 'GoodsCode', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    });
+                    columns.push({
+                        title: '型号', field: 'Model', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    });
+                    columns.push({
+                        title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    });
+                    columns.push({
+                        title: '花纹', field: 'Figure', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    });
+                    columns.push({
+                        title: '速度', field: 'SpeedLevel', width: '60px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    });
+                }
+                columns.push({
+                    title: '在库数量', field: 'PackageNum', width: '60px', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '单价', field: 'UnitPrice', width: '60px', align: 'right', editor: { type: 'numberbox', options: { precision: 2 } }, formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                //columns.push({
+                //    title: '成本价', field: 'CostPrice', width: '60px', align: 'right', formatter: function (value) {
+                //        return "<span title='" + value + "'>" + value + "</span>";
+                //    }
+                //});
+                columns.push({
+                    title: '门店价', field: 'TradePrice', width: '60px', align: 'right', editor: { type: 'numberbox', options: { precision: 2 } }, formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '小程序价', field: 'SalePrice', width: '60px', align: 'right', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '批次', field: 'Batch', width: '60px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '来源', field: 'Source', width: '60px', formatter: function (value) {
+                        return "<span title='" + GetSourceName(value) + "'>" + GetSourceName(value) + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '归属部门', field: 'BelongDepart', width: '90px', formatter: function (value) {
+                        return "<span title='" + GetUpClientDepName(value) + "'>" + GetUpClientDepName(value) + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '工厂订单号', field: 'SourceOrderNo', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '尺寸', field: 'Size', width: '60px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '所属仓库', field: 'FirstAreaName', width: '60px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '区域大仓', field: 'HouseName', width: '60px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '订单归属月', field: 'BelongMonth', width: '60px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({ title: '入库时间', field: 'InHouseTime', width: '130px', formatter: DateTimeFormatter });
+                type = 1;
+            }
+            $("#tt").tree('loadData', []);
+            $('#dg').datagrid('loadData', []);
+            $('#tt').tree({
+                url: 'priceApi.aspx?method=QueryInHouseData',
+                queryParams: {
+                    APID: $("#APID").combobox('getValue'),//一级产品
+                    ASID: $("#ASID").combobox('getValue'),//二级产品
+                    ProductName: $('#AProductName').val(),
+                    ContainerCode: $('#CCode').val(),
+                    Specs: $('#ASpecs').textbox('getValue'),
+                    //Model: $('#AModel').val(),
+                    BatchYear: $('#ABatchYear').combobox('getValue'),
+                    Figure: $('#AFigure').val(),
+                    GoodsCode: $('#AGoodsCode').val(),//AMeridian
+                    Batch: $('#ABatch').val(),
+                    StartDate: $('#StartDate').datebox('getValue'),
+                    EndDate: $('#EndDate').datebox('getValue'),
+                    HID: $("#HID").combobox('getValues').toString(),
+                    AnomalousPrice: $('#AnomalousPrice').is(':checked') ? "1" : "0",
+                    AnomalousUnitPrice: $('#AnomalousUnitPrice').is(':checked') ? "1" : "0",
+                    BelongDepart: $("#BelongDepart").combobox('getValue'),
+                    FirstID: $("#PID").combobox('getValue')//所属仓库 
+                },
+                onClick: function (node) {
+                    $('#dg').datagrid('clearSelections');
+                    var gridOpts = $('#dg').datagrid('options');
+                    gridOpts.url = 'priceApi.aspx?method=QueryInHouseProduct';
+                    $('#dg').datagrid('load', {
+                        APID: $("#APID").combobox('getValue'),//一级产品
+                        ASID: $("#ASID").combobox('getValue'),//二级产品
+                        ProductName: $('#AProductName').val(),
+                        ContainerCode: $('#CCode').val(),
+                        Specs: $('#ASpecs').textbox('getValue'),
+                        BatchYear: $('#ABatchYear').combobox('getValue'),
+                        //Model: $('#AModel').val(),
+                        Figure: $('#AFigure').val(),
+                        GoodsCode: node.id,//AMeridian
+                        Batch: $('#ABatch').val(),
+                        StartDate: $('#StartDate').datebox('getValue'),
+                        EndDate: $('#EndDate').datebox('getValue'),
+                        HID: $("#HID").combobox('getValues').toString(),
+                        ThrwG: $('#ThrwG').is(':checked') ? "1" : "0",
+                        AnomalousPrice: $('#AnomalousPrice').is(':checked') ? "1" : "0",
+                        AnomalousUnitPrice: $('#AnomalousUnitPrice').is(':checked') ? "1" : "0",
+                        BelongDepart: $("#BelongDepart").combobox('getValue'),
+                        FirstID: $("#PID").combobox('getValue')//所属仓库 
+                    });
+                    //alert(node.id + node.text);  // alert node text property when clicked
+                }
+            });
+            //$('#dg').datagrid({
+            //    url: null,
+            //    columns: [columns]
+            //})
+
+            if (type == 1) {
+                $('#dg').datagrid({
+                    columns: [columns]
+                })
+            }
+        }
+    </script>
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">一级产品:
+                </td>
+                <td>
+                    <input id="APID" class="easyui-combobox" style="width: 100px;" panelheight="auto" />
+                </td>
+                <td style="text-align: right;">产品名称:
+                </td>
+                <td>
+                    <input id="AProductName" class="easyui-textbox" data-options="prompt:'请输入产品名称'" style="width: 100px" />
+                </td>
+                <td style="text-align: right;">规格:
+                </td>
+                <td>
+                    <input id="ASpecs" class="easyui-textbox" data-options="prompt:'请输入规格'" style="width: 100px" />
+                </td>
+                <td id="AFigureTd" style="text-align: right;">花纹:
+                </td>
+                <td>
+                    <input id="AFigure" class="easyui-textbox" data-options="prompt:'请输入花纹'" style="width: 100px" />
+                </td>
+                <td style="text-align: right;">区域大仓:
+                </td>
+                <td>
+                    <input id="HID" class="easyui-combobox" style="width: 100px;" panelheight="auto" data-options="multiple:true" />
+                </td>
+                <td style="text-align: right;">货位代码:
+                </td>
+                <td>
+                    <input id="CCode" class="easyui-textbox" data-options="prompt:'请输入货位代码'" style="width: 100px" />
+                    <input type="checkbox" id="ThrwG" value="1" />
+                    <label for="ThrwG">显示有库存</label>
+                </td>
+
+            </tr>
+            <tr>
+                <td style="text-align: right;">二级产品:
+                </td>
+                <td>
+                    <input id="ASID" class="easyui-combobox" style="width: 100px;" data-options="valueField:'TypeID',textField:'TypeName'" panelheight="auto" />
+                </td>
+                <td id="AGoodsCodeTd" style="text-align: right;">货品代码:
+                </td>
+                <td>
+                    <input id="AGoodsCode" class="easyui-textbox" data-options="prompt:'请输入货品代码'" style="width: 100px" />
+                </td>
+                <td class="ABatchYear" style="text-align: right;">年周:
+                </td>
+                <td class="ABatchYear">
+                    <select class="easyui-combobox" id="ABatchYear" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="25">25年</option>
+                        <option value="24">24年</option>
+                        <option value="23">23年</option>
+                        <option value="22">22年</option>
+                        <option value="21">21年</option>
+                        <option value="20">20年</option>
+                        <option value="19">19年</option>
+                        <option value="18">18年</option>
+                        <option value="17">17年</option>
+                    </select>
+                </td>
+                <%--  <td id="AModelTd" style="text-align: right;">型号:
+                </td>
+                <td>
+                    <input id="AModel" class="easyui-textbox" data-options="prompt:'请输入产品型号'" style="width: 100px">
+                </td>--%>
+                <td style="text-align: right;">批次:
+                </td>
+                <td>
+                    <input id="ABatch" class="easyui-textbox" data-options="prompt:'请输入批次'" style="width: 100px" />
+                </td>
+                <td style="text-align: right;">所属仓库:
+                </td>
+                <td>
+                    <input id="PID" class="easyui-combobox" style="width: 100px;" data-options="valueField:'AreaID',textField:'Name'" panelheight="auto" /></td>
+                <td style="text-align: right;">入库时间:
+                </td>
+                <td>
+                    <input id="StartDate" class="easyui-datebox" style="width: 100px" />~
+                    <input id="EndDate" class="easyui-datebox" style="width: 100px" />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="8"><a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="modifyUnitPrice()">&nbsp;批量修改单价&nbsp;</a>&nbsp;&nbsp;
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editItem()">&nbsp;批量修改门店价&nbsp;</a>&nbsp;&nbsp;
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="modifySalePrice()">&nbsp;批量修改小程序价&nbsp;</a>&nbsp;&nbsp;
+                </td>
+                <td style="text-align: right;">所属部门:
+                </td>
+                <td>
+                    <input id="BelongDepart" name="BelongDepart" class="easyui-combobox" style="width: 100px;" data-options="valueField:'ID',textField:'DepName',editable:false" />
+                    <%--<select class="easyui-combobox" id="BelongDepart" name="BelongDepart" style="width: 100px;" panelheight="auto" editable="false">
+                        <option value="-1">全部</option>
+                        <option value="0">RE渠道销售部</option>
+                        <option value="1">OE渠道销售部</option>
+                    </select>--%>
+                </td>
+                <td colspan="2">
+                    <input type="checkbox" id="AnomalousPrice" value="1" />
+                    <label for="AnomalousPrice">查询异常销售价</label>
+                    <input type="checkbox" id="AnomalousUnitPrice" value="2" />
+                    <label for="AnomalousUnitPrice">查询异常单价</label>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="treeDiv" style="float: left; width: 9%; overflow: auto; border: solid 1px #95B8E7">
+        <ul id="tt" class="easyui-tree" data-options="animate:true"></ul>
+    </div>
+    <div style="float: left; width: 90%;">
+        <input type="hidden" id="HiddenHouseID" />
+        <table id="dg" class="easyui-datagrid">
+        </table>
+    </div>
+
+    <!--Begin 批量修改批发销售价-->
+
+    <div id="dlgUpInNum" class="easyui-dialog" style="width: 400px; height: 250px; padding: 5px 5px"
+        closed="true" buttons="#dlgUpInNum-buttons">
+        <form id="fmUpInNum" class="easyui-form" method="post">
+            <input type="hidden" name="MType" id="MType" />
+            <table>
+                <tr>
+                    <td style="text-align: right;" id="dp">产品批发销售价:
+                    </td>
+                    <td>
+                        <input name="TradePrice" id="TradePrice" class="easyui-numberbox" data-options="min:0,precision:2"
+                            style="width: 200px;">
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+    <div id="dlgUpInNum-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="savePriceModify()">&nbsp;确&nbsp;定&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgUpInNum').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+    <!--End 批量修改单价-->
+    <script type="text/javascript">
+        //根据来源ID获取来源名称
+        function GetSourceName(value) {
+            var name = '';
+            for (var i = 0; i < ProductSource.length; i++) {
+                if (ProductSource[i].Source == value) {
+                    name = ProductSource[i].SourceName;
+                    break;
+                }
+            }
+            return name;
+        };
+        //根据公司部门ID获取部门名称
+        function GetUpClientDepName(value) {
+            var name = '';
+            if (value != "") {
+                for (var i = 0; i < UpClientDep.length; i++) {
+                    if (UpClientDep[i].ID == value) {
+                        name = UpClientDep[i].DepName;
+                        break;
+                    }
+                }
+            }
+            return name;
+        };
+        //批量修改单 价
+        function modifyUnitPrice() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning'); return;
+            }
+            if (rows) {
+                $('#dlgUpInNum').dialog('open').dialog('setTitle', '批量修改产品单价');
+                $('#TradePrice').numberbox('setValue', rows[0].UnitPrice);
+                $('#MType').val(1);
+                $('#dp').html("产品单价：");
+            }
+        }
+
+
+        //批量修改销售价
+        function modifySalePrice() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning'); return;
+            }
+            if (rows) {
+                $('#dlgUpInNum').dialog('open').dialog('setTitle', '批量修改产品销售价');
+                $('#TradePrice').numberbox('setValue', rows[0].SalePrice);
+                $('#MType').val(2);
+                $('#dp').html("产品销售价：");
+            }
+        }
+        //批量修改单价
+        function editItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning'); return;
+            }
+            if (rows) {
+                $('#dlgUpInNum').dialog('open').dialog('setTitle', '批量修改产品门店价');
+                $('#TradePrice').numberbox('setValue', rows[0].TradePrice);
+                $('#MType').val(0);
+                $('#dp').html("产品门店价：");
+            }
+        }
+
+        //保存批量修改单价
+        function savePriceModify() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要保存的数据！', 'warning'); return; }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定修改？', function (r) {
+                if (r) {
+                    var MType = $('#MType').val();
+                    var json = JSON.stringify(rows);
+                    $('#fmUpInNum').form('submit', {
+                        url: 'priceApi.aspx?method=savePriceModify&MType=' + MType,
+                        contentType: "application/json;charset=utf-8", dataType: "json",
+                        onSubmit: function (param) {
+                            param.submitData = json;
+                            var trd = $(this).form('enableValidation').form('validate');
+                            return trd;
+                        },
+                        success: function (msg) {
+                            var result = eval('(' + msg + ')');
+                            if (result.Result) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
+                                $('#dg').datagrid('reload');
+                                $('#dlgUpInNum').dialog('close');
+                            } else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改失败：' + result.Message, 'warning'); }
+                        }
+                    })
+                }
+            });
+        }
+    </script>
+</asp:Content>

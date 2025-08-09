@@ -1,0 +1,207 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    public class GoodsEntity
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public int code { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public List<GoodsInfo> data { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string msg { get; set; }
+    }
+    public class GoodsDetailEntity
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public int code { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public GoodsDetail data { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string msg { get; set; }
+    }
+    public class GoodsDetail
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public GoodsInfo basicInfo { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public Category category { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string content { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public List<Pics> pics { get; set; }
+    }
+    public class Category
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public string name { get; set; }
+    }
+    public class Pics
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public string pic { get; set; }
+    }
+    public class GoodsInfo
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public int categoryId { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool hasAddition { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public int id { get; set; }
+        /// <summary>
+        /// 最小购买数量
+        /// </summary>
+        public int minBuyNumber { get; set; }
+        /// <summary>
+        /// 现价
+        /// </summary>
+        public decimal minPrice { get; set; }
+        /// <summary>
+        /// 划线价
+        /// </summary>
+        public decimal listPrice { get; set; }
+        /// <summary>
+        /// 男童防晒衣夏装薄外套2019年新款童装儿童中大童透气帅洋气休闲潮
+        /// </summary>
+        public string name { get; set; }
+        /// <summary>
+        /// 购买人数
+        /// </summary>
+        public int numberOrders { get; set; }
+        /// <summary>
+        /// 售出件数
+        /// </summary>
+        public int numberSells { get; set; }
+        /// <summary>
+        /// 点击数量
+        /// </summary>
+        public int clickNum { get; set; }
+        /// <summary>
+        /// 库存数量
+        /// </summary>
+        public int StoreNum { get; set; }
+        /// <summary>
+        /// 库存数量
+        /// </summary>
+        public string stores { get; set; }
+        /// <summary>
+        /// 库存数量中文显示
+        /// </summary>
+        public string storesStr { get; set; }
+        /// <summary>
+        /// 原价
+        /// </summary>
+        public decimal originalPrice { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string pic { get; set; }
+        public string notes { get; set; }
+        /// <summary>
+        /// 产品编码
+        /// </summary>
+        public string ProductCode { get; set; }
+        /// <summary>
+        /// 供应商编码
+        /// </summary>
+        public int SuppClientNum { get; set; }
+        /// <summary>
+        /// 供应商
+        /// </summary>
+        public string Supplier { get; set; }
+        /// <summary>
+        /// 仓库名称
+        /// </summary>
+        public string HouseName { get; set; }
+        /// <summary>
+        /// 自提点地址
+        /// </summary>
+        public string PickUpAddress { get; set; }
+        /// <summary>
+        /// 配送点地址
+        /// </summary>
+        public string DeliveryAddress { get; set; }
+        /// <summary>
+        /// 周期年
+        /// </summary>
+        public string BatchYear { get; set; }
+        /// <summary>
+        /// 产品类型
+        /// </summary>
+        public string SpecsType { get; set; }
+        /// <summary>
+        /// 促销规则ID
+        /// </summary>
+        public long RuleID { get; set; }
+    }
+
+    public class GoodsCategoryEntity
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public int code { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public List<GoodsCategoryInfo> data { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string msg { get; set; }
+    }
+    public class GoodsCategoryInfo
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public string pid { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string id { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public int level { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string name { get; set; }
+        public string icon { get; set; }
+    }
+}

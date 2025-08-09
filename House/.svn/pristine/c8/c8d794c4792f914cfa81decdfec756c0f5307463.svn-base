@@ -1,0 +1,1784 @@
+﻿<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>
+    </ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{36D1C420-DF55-4D2B-8277-D9A021FFE7E9}</ProjectGuid>
+    <ProjectTypeGuids>{349c5851-65df-11da-9384-00065b846f21};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Supplier</RootNamespace>
+    <AssemblyName>Supplier</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <UseIISExpress>true</UseIISExpress>
+    <Use64BitIISExpress />
+    <IISExpressSSLPort />
+    <IISExpressAnonymousAuthentication />
+    <IISExpressWindowsAuthentication />
+    <IISExpressUseClassicPipelineMode />
+    <UseGlobalApplicationHostFile />
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="BouncyCastle.Crypto, Version=1.8.1.0, Culture=neutral, PublicKeyToken=0e99375e54769942, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>bin\BouncyCastle.Crypto.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Newtonsoft.Json.Net35">
+      <HintPath>..\DLL\Newtonsoft.Json.Net35.dll</HintPath>
+    </Reference>
+    <Reference Include="NPOI">
+      <HintPath>..\DLL\NPOI.dll</HintPath>
+    </Reference>
+    <Reference Include="NPOI.DDF">
+      <HintPath>..\DLL\NPOI.DDF.dll</HintPath>
+    </Reference>
+    <Reference Include="NPOI.HPSF">
+      <HintPath>..\DLL\NPOI.HPSF.dll</HintPath>
+    </Reference>
+    <Reference Include="NPOI.HSSF">
+      <HintPath>..\DLL\NPOI.HSSF.dll</HintPath>
+    </Reference>
+    <Reference Include="NPOI.POIFS">
+      <HintPath>..\DLL\NPOI.POIFS.dll</HintPath>
+    </Reference>
+    <Reference Include="NPOI.Util">
+      <HintPath>..\DLL\NPOI.Util.dll</HintPath>
+    </Reference>
+    <Reference Include="Senparc.Weixin">
+      <HintPath>..\DLL\Senparc.Weixin.dll</HintPath>
+    </Reference>
+    <Reference Include="Senparc.Weixin.MP">
+      <HintPath>..\DLL\Senparc.Weixin.MP.dll</HintPath>
+    </Reference>
+    <Reference Include="Senparc.Weixin.QY">
+      <HintPath>..\DLL\Senparc.Weixin.QY.dll</HintPath>
+    </Reference>
+    <Reference Include="StackExchange.Redis">
+      <HintPath>..\DLL\StackExchange.Redis.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Web.DynamicData" />
+    <Reference Include="System.Web.Entity" />
+    <Reference Include="System.Web.ApplicationServices" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Xml.Linq" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Basic\BasicApi.aspx" />
+    <Content Include="Basic\ChannelCustomers.aspx" />
+    <Content Include="Basic\priceRuleBank.aspx" />
+    <Content Include="Basic\ProductInformation.aspx" />
+    <Content Include="CSS\road\fonts\ecoico.eot" />
+    <Content Include="CSS\road\fonts\ecoico.ttf" />
+    <Content Include="CSS\road\fonts\ecoico.woff" />
+    <Content Include="Default.aspx" />
+    <Content Include="FormService.aspx" />
+    <Content Include="Global.asax" />
+    <Content Include="House\HouseApi.aspx" />
+    <Content Include="House\HouseReturnOrder.aspx" />
+    <Content Include="House\NextDayStock.aspx" />
+    <Content Include="House\PurchaseOrder.aspx" />
+    <Content Include="House\PurchaseOrderManager.aspx" />
+    <Content Include="House\RealTimeStock.aspx" />
+    <Content Include="JS\easy\js\datagrid-cellediting.js" />
+    <Content Include="JS\EChart\chart.umd.js" />
+    <Content Include="JS\EChart\chartjs-plugin-datalabels.min.js" />
+    <Content Include="JS\FloatNavi\base.css" />
+    <Content Include="JS\FloatNavi\common.js" />
+    <Content Include="JS\FloatNavi\jquery-1.7.min.js" />
+    <Content Include="JS\FloatNavi\quick_links.js" />
+    <Content Include="JS\MUI\fonts\mui-icons-extra.ttf" />
+    <Content Include="JS\MUI\fonts\mui.ttf" />
+    <Content Include="Main.aspx" />
+    <Content Include="Order\ChannelOrders.aspx" />
+    <Content Include="Order\NextDayOrders.aspx" />
+    <Content Include="Order\NextDayReturnOrder.aspx" />
+    <Content Include="Order\orderApi.aspx" />
+    <Content Include="Order\ToDayOrders.aspx" />
+    <Content Include="Report\AccessingStockDetails.aspx" />
+    <Content Include="Report\HouseReturnDetails.aspx" />
+    <Content Include="Report\NextDayReturnDetails.aspx" />
+    <Content Include="Report\OrderSale.aspx" />
+    <Content Include="Report\OrderSaleDetails.aspx" />
+    <Content Include="Report\PurchaseOrderDetails.aspx" />
+    <Content Include="Report\reportApi.aspx" />
+    <Content Include="Report\SaleDayReport.aspx" />
+    <Content Include="Report\SaleStockUpDetails.aspx" />
+    <Content Include="Report\ToDayReturnDetails.aspx" />
+    <Content Include="Site.Master" />
+    <Content Include="Data\TyreSpeedLevel.json" />
+    <Content Include="JS\EChart\chart.umd.js.map" />
+    <None Include="Web.Debug.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
+    <None Include="Web.Release.config">
+      <DependentUpon>Web.config</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="CSS\default.css" />
+    <Content Include="CSS\default1.css" />
+    <Content Include="CSS\image\wce.jpg" />
+    <Content Include="CSS\road\css\component.css" />
+    <Content Include="CSS\road\css\default.css" />
+    <Content Include="CSS\road\fonts\ecoico.dev.svg" />
+    <Content Include="CSS\road\fonts\ecoico.svg" />
+    <Content Include="JS\Autocomplete\Client.js" />
+    <Content Include="JS\Autocomplete\jquery.autocompleter.js" />
+    <Content Include="JS\Autocomplete\jquery.min.js" />
+    <Content Include="JS\Autocomplete\main.css" />
+    <Content Include="JS\Date\CheckActivX.js" />
+    <Content Include="JS\Date\ComJs.js" />
+    <Content Include="JS\dropzone\dropzone.css" />
+    <Content Include="JS\dropzone\dropzone.min.js" />
+    <Content Include="JS\easy\css\default\accordion.css" />
+    <Content Include="JS\easy\css\default\calendar.css" />
+    <Content Include="JS\easy\css\default\combo.css" />
+    <Content Include="JS\easy\css\default\combobox.css" />
+    <Content Include="JS\easy\css\default\datagrid.css" />
+    <Content Include="JS\easy\css\default\datebox.css" />
+    <Content Include="JS\easy\css\default\dialog.css" />
+    <Content Include="JS\easy\css\default\easyui.css" />
+    <Content Include="JS\easy\css\default\filebox.css" />
+    <Content Include="JS\easy\css\default\images\accordion_arrows.png" />
+    <Content Include="JS\easy\css\default\images\blank.gif" />
+    <Content Include="JS\easy\css\default\images\calendar_arrows.png" />
+    <Content Include="JS\easy\css\default\images\combo_arrow.png" />
+    <Content Include="JS\easy\css\default\images\datagrid_icons.png" />
+    <Content Include="JS\easy\css\default\images\datebox_arrow.png" />
+    <Content Include="JS\easy\css\default\images\layout_arrows.png" />
+    <Content Include="JS\easy\css\default\images\linkbutton_bg.png" />
+    <Content Include="JS\easy\css\default\images\loading.gif" />
+    <Content Include="JS\easy\css\default\images\menu_arrows.png" />
+    <Content Include="JS\easy\css\default\images\messager_icons.png" />
+    <Content Include="JS\easy\css\default\images\pagination_icons.png" />
+    <Content Include="JS\easy\css\default\images\panel_tools.png" />
+    <Content Include="JS\easy\css\default\images\searchbox_button.png" />
+    <Content Include="JS\easy\css\default\images\slider_handle.png" />
+    <Content Include="JS\easy\css\default\images\spinner_arrows.png" />
+    <Content Include="JS\easy\css\default\images\tabs_icons.png" />
+    <Content Include="JS\easy\css\default\images\tree_icons.png" />
+    <Content Include="JS\easy\css\default\images\validatebox_warning.png" />
+    <Content Include="JS\easy\css\default\layout.css" />
+    <Content Include="JS\easy\css\default\linkbutton.css" />
+    <Content Include="JS\easy\css\default\menu.css" />
+    <Content Include="JS\easy\css\default\menubutton.css" />
+    <Content Include="JS\easy\css\default\messager.css" />
+    <Content Include="JS\easy\css\default\numberbox.css" />
+    <Content Include="JS\easy\css\default\pagination.css" />
+    <Content Include="JS\easy\css\default\panel.css" />
+    <Content Include="JS\easy\css\default\progressbar.css" />
+    <Content Include="JS\easy\css\default\propertygrid.css" />
+    <Content Include="JS\easy\css\default\searchbox.css" />
+    <Content Include="JS\easy\css\default\slider.css" />
+    <Content Include="JS\easy\css\default\spinner.css" />
+    <Content Include="JS\easy\css\default\splitbutton.css" />
+    <Content Include="JS\easy\css\default\tabs.css" />
+    <Content Include="JS\easy\css\default\textbox.css" />
+    <Content Include="JS\easy\css\default\tooltip.css" />
+    <Content Include="JS\easy\css\default\tree.css" />
+    <Content Include="JS\easy\css\default\validatebox.css" />
+    <Content Include="JS\easy\css\default\window.css" />
+    <Content Include="JS\easy\css\icon.css" />
+    <Content Include="JS\easy\css\icons\accept.png" />
+    <Content Include="JS\easy\css\icons\add.png" />
+    <Content Include="JS\easy\css\icons\anchor.png" />
+    <Content Include="JS\easy\css\icons\application.png" />
+    <Content Include="JS\easy\css\icons\application_add.png" />
+    <Content Include="JS\easy\css\icons\application_cascade.png" />
+    <Content Include="JS\easy\css\icons\application_delete.png" />
+    <Content Include="JS\easy\css\icons\application_double.png" />
+    <Content Include="JS\easy\css\icons\application_edit.png" />
+    <Content Include="JS\easy\css\icons\application_error.png" />
+    <Content Include="JS\easy\css\icons\application_form.png" />
+    <Content Include="JS\easy\css\icons\application_form_add.png" />
+    <Content Include="JS\easy\css\icons\application_form_delete.png" />
+    <Content Include="JS\easy\css\icons\application_form_edit.png" />
+    <Content Include="JS\easy\css\icons\application_form_magnify.png" />
+    <Content Include="JS\easy\css\icons\application_get.png" />
+    <Content Include="JS\easy\css\icons\application_go.png" />
+    <Content Include="JS\easy\css\icons\application_home.png" />
+    <Content Include="JS\easy\css\icons\application_key.png" />
+    <Content Include="JS\easy\css\icons\application_lightning.png" />
+    <Content Include="JS\easy\css\icons\application_link.png" />
+    <Content Include="JS\easy\css\icons\application_osx.png" />
+    <Content Include="JS\easy\css\icons\application_osx_terminal.png" />
+    <Content Include="JS\easy\css\icons\application_put.png" />
+    <Content Include="JS\easy\css\icons\application_side_boxes.png" />
+    <Content Include="JS\easy\css\icons\application_side_contract.png" />
+    <Content Include="JS\easy\css\icons\application_side_expand.png" />
+    <Content Include="JS\easy\css\icons\application_side_list.png" />
+    <Content Include="JS\easy\css\icons\application_side_tree.png" />
+    <Content Include="JS\easy\css\icons\application_split.png" />
+    <Content Include="JS\easy\css\icons\application_tile_horizontal.png" />
+    <Content Include="JS\easy\css\icons\application_tile_vertical.png" />
+    <Content Include="JS\easy\css\icons\application_view_columns.png" />
+    <Content Include="JS\easy\css\icons\application_view_detail.png" />
+    <Content Include="JS\easy\css\icons\application_view_gallery.png" />
+    <Content Include="JS\easy\css\icons\application_view_icons.png" />
+    <Content Include="JS\easy\css\icons\application_view_list.png" />
+    <Content Include="JS\easy\css\icons\application_view_tile.png" />
+    <Content Include="JS\easy\css\icons\application_xp.png" />
+    <Content Include="JS\easy\css\icons\application_xp_terminal.png" />
+    <Content Include="JS\easy\css\icons\arrow_branch.png" />
+    <Content Include="JS\easy\css\icons\arrow_divide.png" />
+    <Content Include="JS\easy\css\icons\arrow_down.png" />
+    <Content Include="JS\easy\css\icons\arrow_in.png" />
+    <Content Include="JS\easy\css\icons\arrow_inout.png" />
+    <Content Include="JS\easy\css\icons\arrow_join.png" />
+    <Content Include="JS\easy\css\icons\arrow_left.png" />
+    <Content Include="JS\easy\css\icons\arrow_merge.png" />
+    <Content Include="JS\easy\css\icons\arrow_out.png" />
+    <Content Include="JS\easy\css\icons\arrow_redo.png" />
+    <Content Include="JS\easy\css\icons\arrow_refresh.png" />
+    <Content Include="JS\easy\css\icons\arrow_refresh_small.png" />
+    <Content Include="JS\easy\css\icons\arrow_right.png" />
+    <Content Include="JS\easy\css\icons\arrow_rotate_anticlockwise.png" />
+    <Content Include="JS\easy\css\icons\arrow_rotate_clockwise.png" />
+    <Content Include="JS\easy\css\icons\arrow_switch.png" />
+    <Content Include="JS\easy\css\icons\arrow_turn_left.png" />
+    <Content Include="JS\easy\css\icons\arrow_turn_right.png" />
+    <Content Include="JS\easy\css\icons\arrow_undo.png" />
+    <Content Include="JS\easy\css\icons\arrow_up.png" />
+    <Content Include="JS\easy\css\icons\asterisk_orange.png" />
+    <Content Include="JS\easy\css\icons\asterisk_yellow.png" />
+    <Content Include="JS\easy\css\icons\attach.png" />
+    <Content Include="JS\easy\css\icons\auto.png" />
+    <Content Include="JS\easy\css\icons\auto_add.png" />
+    <Content Include="JS\easy\css\icons\auto_type.png" />
+    <Content Include="JS\easy\css\icons\award_star_add.png" />
+    <Content Include="JS\easy\css\icons\award_star_bronze_1.png" />
+    <Content Include="JS\easy\css\icons\award_star_bronze_2.png" />
+    <Content Include="JS\easy\css\icons\award_star_bronze_3.png" />
+    <Content Include="JS\easy\css\icons\award_star_delete.png" />
+    <Content Include="JS\easy\css\icons\award_star_gold_1.png" />
+    <Content Include="JS\easy\css\icons\award_star_gold_2.png" />
+    <Content Include="JS\easy\css\icons\award_star_gold_3.png" />
+    <Content Include="JS\easy\css\icons\award_star_silver_1.png" />
+    <Content Include="JS\easy\css\icons\award_star_silver_2.png" />
+    <Content Include="JS\easy\css\icons\award_star_silver_3.png" />
+    <Content Include="JS\easy\css\icons\back.png" />
+    <Content Include="JS\easy\css\icons\basket.png" />
+    <Content Include="JS\easy\css\icons\basket_add.png" />
+    <Content Include="JS\easy\css\icons\basket_delete.png" />
+    <Content Include="JS\easy\css\icons\basket_edit.png" />
+    <Content Include="JS\easy\css\icons\basket_error.png" />
+    <Content Include="JS\easy\css\icons\basket_go.png" />
+    <Content Include="JS\easy\css\icons\basket_put.png" />
+    <Content Include="JS\easy\css\icons\basket_remove.png" />
+    <Content Include="JS\easy\css\icons\bell.png" />
+    <Content Include="JS\easy\css\icons\bell_add.png" />
+    <Content Include="JS\easy\css\icons\bell_delete.png" />
+    <Content Include="JS\easy\css\icons\bell_error.png" />
+    <Content Include="JS\easy\css\icons\bell_go.png" />
+    <Content Include="JS\easy\css\icons\bell_link.png" />
+    <Content Include="JS\easy\css\icons\bin.png" />
+    <Content Include="JS\easy\css\icons\bin_closed.png" />
+    <Content Include="JS\easy\css\icons\bin_empty.png" />
+    <Content Include="JS\easy\css\icons\blank.gif" />
+    <Content Include="JS\easy\css\icons\bomb.png" />
+    <Content Include="JS\easy\css\icons\book.png" />
+    <Content Include="JS\easy\css\icons\book_add.png" />
+    <Content Include="JS\easy\css\icons\book_addresses.png" />
+    <Content Include="JS\easy\css\icons\book_delete.png" />
+    <Content Include="JS\easy\css\icons\book_edit.png" />
+    <Content Include="JS\easy\css\icons\book_error.png" />
+    <Content Include="JS\easy\css\icons\book_go.png" />
+    <Content Include="JS\easy\css\icons\book_key.png" />
+    <Content Include="JS\easy\css\icons\book_link.png" />
+    <Content Include="JS\easy\css\icons\book_next.png" />
+    <Content Include="JS\easy\css\icons\book_open.png" />
+    <Content Include="JS\easy\css\icons\book_previous.png" />
+    <Content Include="JS\easy\css\icons\box.png" />
+    <Content Include="JS\easy\css\icons\brick.png" />
+    <Content Include="JS\easy\css\icons\bricks.png" />
+    <Content Include="JS\easy\css\icons\brick_add.png" />
+    <Content Include="JS\easy\css\icons\brick_delete.png" />
+    <Content Include="JS\easy\css\icons\brick_edit.png" />
+    <Content Include="JS\easy\css\icons\brick_error.png" />
+    <Content Include="JS\easy\css\icons\brick_go.png" />
+    <Content Include="JS\easy\css\icons\brick_link.png" />
+    <Content Include="JS\easy\css\icons\briefcase.png" />
+    <Content Include="JS\easy\css\icons\bug.png" />
+    <Content Include="JS\easy\css\icons\bug_add.png" />
+    <Content Include="JS\easy\css\icons\bug_delete.png" />
+    <Content Include="JS\easy\css\icons\bug_edit.png" />
+    <Content Include="JS\easy\css\icons\bug_error.png" />
+    <Content Include="JS\easy\css\icons\bug_go.png" />
+    <Content Include="JS\easy\css\icons\bug_link.png" />
+    <Content Include="JS\easy\css\icons\building.png" />
+    <Content Include="JS\easy\css\icons\building_add.png" />
+    <Content Include="JS\easy\css\icons\building_delete.png" />
+    <Content Include="JS\easy\css\icons\building_edit.png" />
+    <Content Include="JS\easy\css\icons\building_error.png" />
+    <Content Include="JS\easy\css\icons\building_go.png" />
+    <Content Include="JS\easy\css\icons\building_key.png" />
+    <Content Include="JS\easy\css\icons\building_link.png" />
+    <Content Include="JS\easy\css\icons\bullet_add.png" />
+    <Content Include="JS\easy\css\icons\bullet_arrow_bottom.png" />
+    <Content Include="JS\easy\css\icons\bullet_arrow_down.png" />
+    <Content Include="JS\easy\css\icons\bullet_arrow_top.png" />
+    <Content Include="JS\easy\css\icons\bullet_arrow_up.png" />
+    <Content Include="JS\easy\css\icons\bullet_black.png" />
+    <Content Include="JS\easy\css\icons\bullet_blue.png" />
+    <Content Include="JS\easy\css\icons\bullet_delete.png" />
+    <Content Include="JS\easy\css\icons\bullet_disk.png" />
+    <Content Include="JS\easy\css\icons\bullet_error.png" />
+    <Content Include="JS\easy\css\icons\bullet_feed.png" />
+    <Content Include="JS\easy\css\icons\bullet_go.png" />
+    <Content Include="JS\easy\css\icons\bullet_green.png" />
+    <Content Include="JS\easy\css\icons\bullet_key.png" />
+    <Content Include="JS\easy\css\icons\bullet_orange.png" />
+    <Content Include="JS\easy\css\icons\bullet_picture.png" />
+    <Content Include="JS\easy\css\icons\bullet_pink.png" />
+    <Content Include="JS\easy\css\icons\bullet_purple.png" />
+    <Content Include="JS\easy\css\icons\bullet_red.png" />
+    <Content Include="JS\easy\css\icons\bullet_star.png" />
+    <Content Include="JS\easy\css\icons\bullet_toggle_minus.png" />
+    <Content Include="JS\easy\css\icons\bullet_toggle_plus.png" />
+    <Content Include="JS\easy\css\icons\bullet_white.png" />
+    <Content Include="JS\easy\css\icons\bullet_wrench.png" />
+    <Content Include="JS\easy\css\icons\bullet_yellow.png" />
+    <Content Include="JS\easy\css\icons\cake.png" />
+    <Content Include="JS\easy\css\icons\calculator.png" />
+    <Content Include="JS\easy\css\icons\calculator_add.png" />
+    <Content Include="JS\easy\css\icons\calculator_delete.png" />
+    <Content Include="JS\easy\css\icons\calculator_edit.png" />
+    <Content Include="JS\easy\css\icons\calculator_error.png" />
+    <Content Include="JS\easy\css\icons\calculator_link.png" />
+    <Content Include="JS\easy\css\icons\calendar.png" />
+    <Content Include="JS\easy\css\icons\calendar_add.png" />
+    <Content Include="JS\easy\css\icons\calendar_delete.png" />
+    <Content Include="JS\easy\css\icons\calendar_edit.png" />
+    <Content Include="JS\easy\css\icons\calendar_link.png" />
+    <Content Include="JS\easy\css\icons\calendar_view_day.png" />
+    <Content Include="JS\easy\css\icons\calendar_view_month.png" />
+    <Content Include="JS\easy\css\icons\calendar_view_week.png" />
+    <Content Include="JS\easy\css\icons\camera.png" />
+    <Content Include="JS\easy\css\icons\camera_add.png" />
+    <Content Include="JS\easy\css\icons\camera_delete.png" />
+    <Content Include="JS\easy\css\icons\camera_edit.png" />
+    <Content Include="JS\easy\css\icons\camera_error.png" />
+    <Content Include="JS\easy\css\icons\camera_go.png" />
+    <Content Include="JS\easy\css\icons\camera_link.png" />
+    <Content Include="JS\easy\css\icons\camera_small.png" />
+    <Content Include="JS\easy\css\icons\cancel.png" />
+    <Content Include="JS\easy\css\icons\car.png" />
+    <Content Include="JS\easy\css\icons\cart.png" />
+    <Content Include="JS\easy\css\icons\cart_add.png" />
+    <Content Include="JS\easy\css\icons\cart_delete.png" />
+    <Content Include="JS\easy\css\icons\cart_edit.png" />
+    <Content Include="JS\easy\css\icons\cart_error.png" />
+    <Content Include="JS\easy\css\icons\cart_go.png" />
+    <Content Include="JS\easy\css\icons\cart_put.png" />
+    <Content Include="JS\easy\css\icons\cart_remove.png" />
+    <Content Include="JS\easy\css\icons\car_add.png" />
+    <Content Include="JS\easy\css\icons\car_delete.png" />
+    <Content Include="JS\easy\css\icons\cd.png" />
+    <Content Include="JS\easy\css\icons\cd_add.png" />
+    <Content Include="JS\easy\css\icons\cd_burn.png" />
+    <Content Include="JS\easy\css\icons\cd_delete.png" />
+    <Content Include="JS\easy\css\icons\cd_edit.png" />
+    <Content Include="JS\easy\css\icons\cd_eject.png" />
+    <Content Include="JS\easy\css\icons\cd_go.png" />
+    <Content Include="JS\easy\css\icons\chart_bar.png" />
+    <Content Include="JS\easy\css\icons\chart_bar_add.png" />
+    <Content Include="JS\easy\css\icons\chart_bar_delete.png" />
+    <Content Include="JS\easy\css\icons\chart_bar_edit.png" />
+    <Content Include="JS\easy\css\icons\chart_bar_error.png" />
+    <Content Include="JS\easy\css\icons\chart_bar_link.png" />
+    <Content Include="JS\easy\css\icons\chart_curve.png" />
+    <Content Include="JS\easy\css\icons\chart_curve_add.png" />
+    <Content Include="JS\easy\css\icons\chart_curve_delete.png" />
+    <Content Include="JS\easy\css\icons\chart_curve_edit.png" />
+    <Content Include="JS\easy\css\icons\chart_curve_error.png" />
+    <Content Include="JS\easy\css\icons\chart_curve_go.png" />
+    <Content Include="JS\easy\css\icons\chart_curve_link.png" />
+    <Content Include="JS\easy\css\icons\chart_line.png" />
+    <Content Include="JS\easy\css\icons\chart_line_add.png" />
+    <Content Include="JS\easy\css\icons\chart_line_delete.png" />
+    <Content Include="JS\easy\css\icons\chart_line_edit.png" />
+    <Content Include="JS\easy\css\icons\chart_line_error.png" />
+    <Content Include="JS\easy\css\icons\chart_line_link.png" />
+    <Content Include="JS\easy\css\icons\chart_organisation.png" />
+    <Content Include="JS\easy\css\icons\chart_organisation_add.png" />
+    <Content Include="JS\easy\css\icons\chart_organisation_delete.png" />
+    <Content Include="JS\easy\css\icons\chart_pie.png" />
+    <Content Include="JS\easy\css\icons\chart_pie_add.png" />
+    <Content Include="JS\easy\css\icons\chart_pie_delete.png" />
+    <Content Include="JS\easy\css\icons\chart_pie_edit.png" />
+    <Content Include="JS\easy\css\icons\chart_pie_error.png" />
+    <Content Include="JS\easy\css\icons\chart_pie_link.png" />
+    <Content Include="JS\easy\css\icons\city.png" />
+    <Content Include="JS\easy\css\icons\clear.png" />
+    <Content Include="JS\easy\css\icons\client.png" />
+    <Content Include="JS\easy\css\icons\clock.png" />
+    <Content Include="JS\easy\css\icons\clock_add.png" />
+    <Content Include="JS\easy\css\icons\clock_delete.png" />
+    <Content Include="JS\easy\css\icons\clock_edit.png" />
+    <Content Include="JS\easy\css\icons\clock_error.png" />
+    <Content Include="JS\easy\css\icons\clock_go.png" />
+    <Content Include="JS\easy\css\icons\clock_link.png" />
+    <Content Include="JS\easy\css\icons\clock_pause.png" />
+    <Content Include="JS\easy\css\icons\clock_play.png" />
+    <Content Include="JS\easy\css\icons\clock_red.png" />
+    <Content Include="JS\easy\css\icons\clock_stop.png" />
+    <Content Include="JS\easy\css\icons\cog.png" />
+    <Content Include="JS\easy\css\icons\cog_add.png" />
+    <Content Include="JS\easy\css\icons\cog_delete.png" />
+    <Content Include="JS\easy\css\icons\cog_edit.png" />
+    <Content Include="JS\easy\css\icons\cog_error.png" />
+    <Content Include="JS\easy\css\icons\cog_go.png" />
+    <Content Include="JS\easy\css\icons\coins.png" />
+    <Content Include="JS\easy\css\icons\coins_add.png" />
+    <Content Include="JS\easy\css\icons\coins_delete.png" />
+    <Content Include="JS\easy\css\icons\color_swatch.png" />
+    <Content Include="JS\easy\css\icons\color_wheel.png" />
+    <Content Include="JS\easy\css\icons\comment.png" />
+    <Content Include="JS\easy\css\icons\comments.png" />
+    <Content Include="JS\easy\css\icons\comments_add.png" />
+    <Content Include="JS\easy\css\icons\comments_delete.png" />
+    <Content Include="JS\easy\css\icons\comment_add.png" />
+    <Content Include="JS\easy\css\icons\comment_delete.png" />
+    <Content Include="JS\easy\css\icons\comment_edit.png" />
+    <Content Include="JS\easy\css\icons\compress.png" />
+    <Content Include="JS\easy\css\icons\computer.png" />
+    <Content Include="JS\easy\css\icons\computer_add.png" />
+    <Content Include="JS\easy\css\icons\computer_delete.png" />
+    <Content Include="JS\easy\css\icons\computer_edit.png" />
+    <Content Include="JS\easy\css\icons\computer_error.png" />
+    <Content Include="JS\easy\css\icons\computer_go.png" />
+    <Content Include="JS\easy\css\icons\computer_key.png" />
+    <Content Include="JS\easy\css\icons\computer_link.png" />
+    <Content Include="JS\easy\css\icons\connect.png" />
+    <Content Include="JS\easy\css\icons\contrast.png" />
+    <Content Include="JS\easy\css\icons\contrast_decrease.png" />
+    <Content Include="JS\easy\css\icons\contrast_high.png" />
+    <Content Include="JS\easy\css\icons\contrast_increase.png" />
+    <Content Include="JS\easy\css\icons\contrast_low.png" />
+    <Content Include="JS\easy\css\icons\controller.png" />
+    <Content Include="JS\easy\css\icons\controller_add.png" />
+    <Content Include="JS\easy\css\icons\controller_delete.png" />
+    <Content Include="JS\easy\css\icons\controller_error.png" />
+    <Content Include="JS\easy\css\icons\control_eject.png" />
+    <Content Include="JS\easy\css\icons\control_eject_blue.png" />
+    <Content Include="JS\easy\css\icons\control_end.png" />
+    <Content Include="JS\easy\css\icons\control_end_blue.png" />
+    <Content Include="JS\easy\css\icons\control_equalizer.png" />
+    <Content Include="JS\easy\css\icons\control_equalizer_blue.png" />
+    <Content Include="JS\easy\css\icons\control_fastforward.png" />
+    <Content Include="JS\easy\css\icons\control_fastforward_blue.png" />
+    <Content Include="JS\easy\css\icons\control_pause.png" />
+    <Content Include="JS\easy\css\icons\control_pause_blue.png" />
+    <Content Include="JS\easy\css\icons\control_play.png" />
+    <Content Include="JS\easy\css\icons\control_play_blue.png" />
+    <Content Include="JS\easy\css\icons\control_repeat.png" />
+    <Content Include="JS\easy\css\icons\control_repeat_blue.png" />
+    <Content Include="JS\easy\css\icons\control_rewind.png" />
+    <Content Include="JS\easy\css\icons\control_rewind_blue.png" />
+    <Content Include="JS\easy\css\icons\control_start.png" />
+    <Content Include="JS\easy\css\icons\control_start_blue.png" />
+    <Content Include="JS\easy\css\icons\control_stop.png" />
+    <Content Include="JS\easy\css\icons\control_stop_blue.png" />
+    <Content Include="JS\easy\css\icons\creditcards.png" />
+    <Content Include="JS\easy\css\icons\cross.png" />
+    <Content Include="JS\easy\css\icons\css.png" />
+    <Content Include="JS\easy\css\icons\css_add.png" />
+    <Content Include="JS\easy\css\icons\css_delete.png" />
+    <Content Include="JS\easy\css\icons\css_go.png" />
+    <Content Include="JS\easy\css\icons\css_valid.png" />
+    <Content Include="JS\easy\css\icons\cup.png" />
+    <Content Include="JS\easy\css\icons\cup_add.png" />
+    <Content Include="JS\easy\css\icons\cup_delete.png" />
+    <Content Include="JS\easy\css\icons\cup_edit.png" />
+    <Content Include="JS\easy\css\icons\cup_error.png" />
+    <Content Include="JS\easy\css\icons\cup_go.png" />
+    <Content Include="JS\easy\css\icons\cup_key.png" />
+    <Content Include="JS\easy\css\icons\cup_link.png" />
+    <Content Include="JS\easy\css\icons\cursor.png" />
+    <Content Include="JS\easy\css\icons\cut.png" />
+    <Content Include="JS\easy\css\icons\cut_red.png" />
+    <Content Include="JS\easy\css\icons\database.png" />
+    <Content Include="JS\easy\css\icons\database_add.png" />
+    <Content Include="JS\easy\css\icons\database_connect.png" />
+    <Content Include="JS\easy\css\icons\database_delete.png" />
+    <Content Include="JS\easy\css\icons\database_edit.png" />
+    <Content Include="JS\easy\css\icons\database_error.png" />
+    <Content Include="JS\easy\css\icons\database_gear.png" />
+    <Content Include="JS\easy\css\icons\database_go.png" />
+    <Content Include="JS\easy\css\icons\database_key.png" />
+    <Content Include="JS\easy\css\icons\database_lightning.png" />
+    <Content Include="JS\easy\css\icons\database_link.png" />
+    <Content Include="JS\easy\css\icons\database_refresh.png" />
+    <Content Include="JS\easy\css\icons\database_save.png" />
+    <Content Include="JS\easy\css\icons\database_table.png" />
+    <Content Include="JS\easy\css\icons\date.png" />
+    <Content Include="JS\easy\css\icons\date_add.png" />
+    <Content Include="JS\easy\css\icons\date_delete.png" />
+    <Content Include="JS\easy\css\icons\date_edit.png" />
+    <Content Include="JS\easy\css\icons\date_error.png" />
+    <Content Include="JS\easy\css\icons\date_go.png" />
+    <Content Include="JS\easy\css\icons\date_link.png" />
+    <Content Include="JS\easy\css\icons\date_magnify.png" />
+    <Content Include="JS\easy\css\icons\date_next.png" />
+    <Content Include="JS\easy\css\icons\date_previous.png" />
+    <Content Include="JS\easy\css\icons\delete.png" />
+    <Content Include="JS\easy\css\icons\disconnect.png" />
+    <Content Include="JS\easy\css\icons\disk.png" />
+    <Content Include="JS\easy\css\icons\disk_multiple.png" />
+    <Content Include="JS\easy\css\icons\door.png" />
+    <Content Include="JS\easy\css\icons\door_in.png" />
+    <Content Include="JS\easy\css\icons\door_open.png" />
+    <Content Include="JS\easy\css\icons\door_out.png" />
+    <Content Include="JS\easy\css\icons\drink.png" />
+    <Content Include="JS\easy\css\icons\drink_empty.png" />
+    <Content Include="JS\easy\css\icons\drive.png" />
+    <Content Include="JS\easy\css\icons\drive_add.png" />
+    <Content Include="JS\easy\css\icons\drive_burn.png" />
+    <Content Include="JS\easy\css\icons\drive_cd.png" />
+    <Content Include="JS\easy\css\icons\drive_cd_empty.png" />
+    <Content Include="JS\easy\css\icons\drive_delete.png" />
+    <Content Include="JS\easy\css\icons\drive_disk.png" />
+    <Content Include="JS\easy\css\icons\drive_edit.png" />
+    <Content Include="JS\easy\css\icons\drive_error.png" />
+    <Content Include="JS\easy\css\icons\drive_go.png" />
+    <Content Include="JS\easy\css\icons\drive_key.png" />
+    <Content Include="JS\easy\css\icons\drive_link.png" />
+    <Content Include="JS\easy\css\icons\drive_magnify.png" />
+    <Content Include="JS\easy\css\icons\drive_network.png" />
+    <Content Include="JS\easy\css\icons\drive_rename.png" />
+    <Content Include="JS\easy\css\icons\drive_user.png" />
+    <Content Include="JS\easy\css\icons\drive_web.png" />
+    <Content Include="JS\easy\css\icons\dvd.png" />
+    <Content Include="JS\easy\css\icons\dvd_add.png" />
+    <Content Include="JS\easy\css\icons\dvd_delete.png" />
+    <Content Include="JS\easy\css\icons\dvd_edit.png" />
+    <Content Include="JS\easy\css\icons\dvd_error.png" />
+    <Content Include="JS\easy\css\icons\dvd_go.png" />
+    <Content Include="JS\easy\css\icons\dvd_key.png" />
+    <Content Include="JS\easy\css\icons\dvd_link.png" />
+    <Content Include="JS\easy\css\icons\edit_add.png" />
+    <Content Include="JS\easy\css\icons\edit_remove.png" />
+    <Content Include="JS\easy\css\icons\email.png" />
+    <Content Include="JS\easy\css\icons\email_add.png" />
+    <Content Include="JS\easy\css\icons\email_attach.png" />
+    <Content Include="JS\easy\css\icons\email_delete.png" />
+    <Content Include="JS\easy\css\icons\email_edit.png" />
+    <Content Include="JS\easy\css\icons\email_error.png" />
+    <Content Include="JS\easy\css\icons\email_go.png" />
+    <Content Include="JS\easy\css\icons\email_link.png" />
+    <Content Include="JS\easy\css\icons\email_open.png" />
+    <Content Include="JS\easy\css\icons\email_open_image.png" />
+    <Content Include="JS\easy\css\icons\emoticon_evilgrin.png" />
+    <Content Include="JS\easy\css\icons\emoticon_grin.png" />
+    <Content Include="JS\easy\css\icons\emoticon_happy.png" />
+    <Content Include="JS\easy\css\icons\emoticon_smile.png" />
+    <Content Include="JS\easy\css\icons\emoticon_surprised.png" />
+    <Content Include="JS\easy\css\icons\emoticon_tongue.png" />
+    <Content Include="JS\easy\css\icons\emoticon_unhappy.png" />
+    <Content Include="JS\easy\css\icons\emoticon_waii.png" />
+    <Content Include="JS\easy\css\icons\emoticon_wink.png" />
+    <Content Include="JS\easy\css\icons\error.png" />
+    <Content Include="JS\easy\css\icons\error_add.png" />
+    <Content Include="JS\easy\css\icons\error_delete.png" />
+    <Content Include="JS\easy\css\icons\error_go.png" />
+    <Content Include="JS\easy\css\icons\exclamation.png" />
+    <Content Include="JS\easy\css\icons\eye.png" />
+    <Content Include="JS\easy\css\icons\feed.png" />
+    <Content Include="JS\easy\css\icons\feed_add.png" />
+    <Content Include="JS\easy\css\icons\feed_delete.png" />
+    <Content Include="JS\easy\css\icons\feed_disk.png" />
+    <Content Include="JS\easy\css\icons\feed_edit.png" />
+    <Content Include="JS\easy\css\icons\feed_error.png" />
+    <Content Include="JS\easy\css\icons\feed_go.png" />
+    <Content Include="JS\easy\css\icons\feed_key.png" />
+    <Content Include="JS\easy\css\icons\feed_link.png" />
+    <Content Include="JS\easy\css\icons\feed_magnify.png" />
+    <Content Include="JS\easy\css\icons\female.png" />
+    <Content Include="JS\easy\css\icons\filesave.png" />
+    <Content Include="JS\easy\css\icons\film.png" />
+    <Content Include="JS\easy\css\icons\film_add.png" />
+    <Content Include="JS\easy\css\icons\film_delete.png" />
+    <Content Include="JS\easy\css\icons\film_edit.png" />
+    <Content Include="JS\easy\css\icons\film_error.png" />
+    <Content Include="JS\easy\css\icons\film_go.png" />
+    <Content Include="JS\easy\css\icons\film_key.png" />
+    <Content Include="JS\easy\css\icons\film_link.png" />
+    <Content Include="JS\easy\css\icons\film_save.png" />
+    <Content Include="JS\easy\css\icons\filter.png" />
+    <Content Include="JS\easy\css\icons\find.png" />
+    <Content Include="JS\easy\css\icons\flag_blue.png" />
+    <Content Include="JS\easy\css\icons\flag_green.png" />
+    <Content Include="JS\easy\css\icons\flag_orange.png" />
+    <Content Include="JS\easy\css\icons\flag_pink.png" />
+    <Content Include="JS\easy\css\icons\flag_purple.png" />
+    <Content Include="JS\easy\css\icons\flag_red.png" />
+    <Content Include="JS\easy\css\icons\flag_yellow.png" />
+    <Content Include="JS\easy\css\icons\folder.png" />
+    <Content Include="JS\easy\css\icons\folder_add.png" />
+    <Content Include="JS\easy\css\icons\folder_bell.png" />
+    <Content Include="JS\easy\css\icons\folder_brick.png" />
+    <Content Include="JS\easy\css\icons\folder_bug.png" />
+    <Content Include="JS\easy\css\icons\folder_camera.png" />
+    <Content Include="JS\easy\css\icons\folder_database.png" />
+    <Content Include="JS\easy\css\icons\folder_delete.png" />
+    <Content Include="JS\easy\css\icons\folder_edit.png" />
+    <Content Include="JS\easy\css\icons\folder_error.png" />
+    <Content Include="JS\easy\css\icons\folder_explore.png" />
+    <Content Include="JS\easy\css\icons\folder_feed.png" />
+    <Content Include="JS\easy\css\icons\folder_find.png" />
+    <Content Include="JS\easy\css\icons\folder_go.png" />
+    <Content Include="JS\easy\css\icons\folder_heart.png" />
+    <Content Include="JS\easy\css\icons\folder_image.png" />
+    <Content Include="JS\easy\css\icons\folder_key.png" />
+    <Content Include="JS\easy\css\icons\folder_lightbulb.png" />
+    <Content Include="JS\easy\css\icons\folder_link.png" />
+    <Content Include="JS\easy\css\icons\folder_magnify.png" />
+    <Content Include="JS\easy\css\icons\folder_page.png" />
+    <Content Include="JS\easy\css\icons\folder_page_white.png" />
+    <Content Include="JS\easy\css\icons\folder_palette.png" />
+    <Content Include="JS\easy\css\icons\folder_picture.png" />
+    <Content Include="JS\easy\css\icons\folder_star.png" />
+    <Content Include="JS\easy\css\icons\folder_table.png" />
+    <Content Include="JS\easy\css\icons\folder_user.png" />
+    <Content Include="JS\easy\css\icons\folder_wrench.png" />
+    <Content Include="JS\easy\css\icons\font.png" />
+    <Content Include="JS\easy\css\icons\font_add.png" />
+    <Content Include="JS\easy\css\icons\font_delete.png" />
+    <Content Include="JS\easy\css\icons\font_go.png" />
+    <Content Include="JS\easy\css\icons\group.png" />
+    <Content Include="JS\easy\css\icons\group_add.png" />
+    <Content Include="JS\easy\css\icons\group_delete.png" />
+    <Content Include="JS\easy\css\icons\group_edit.png" />
+    <Content Include="JS\easy\css\icons\group_error.png" />
+    <Content Include="JS\easy\css\icons\group_gear.png" />
+    <Content Include="JS\easy\css\icons\group_go.png" />
+    <Content Include="JS\easy\css\icons\group_key.png" />
+    <Content Include="JS\easy\css\icons\group_link.png" />
+    <Content Include="JS\easy\css\icons\heart.png" />
+    <Content Include="JS\easy\css\icons\heart_add.png" />
+    <Content Include="JS\easy\css\icons\heart_delete.png" />
+    <Content Include="JS\easy\css\icons\help.png" />
+    <Content Include="JS\easy\css\icons\hourglass.png" />
+    <Content Include="JS\easy\css\icons\hourglass_add.png" />
+    <Content Include="JS\easy\css\icons\hourglass_delete.png" />
+    <Content Include="JS\easy\css\icons\hourglass_go.png" />
+    <Content Include="JS\easy\css\icons\hourglass_link.png" />
+    <Content Include="JS\easy\css\icons\house.png" />
+    <Content Include="JS\easy\css\icons\house_go.png" />
+    <Content Include="JS\easy\css\icons\house_link.png" />
+    <Content Include="JS\easy\css\icons\html.png" />
+    <Content Include="JS\easy\css\icons\html_add.png" />
+    <Content Include="JS\easy\css\icons\html_delete.png" />
+    <Content Include="JS\easy\css\icons\html_go.png" />
+    <Content Include="JS\easy\css\icons\html_valid.png" />
+    <Content Include="JS\easy\css\icons\image.png" />
+    <Content Include="JS\easy\css\icons\images.png" />
+    <Content Include="JS\easy\css\icons\image_add.png" />
+    <Content Include="JS\easy\css\icons\image_delete.png" />
+    <Content Include="JS\easy\css\icons\image_edit.png" />
+    <Content Include="JS\easy\css\icons\image_link.png" />
+    <Content Include="JS\easy\css\icons\information.png" />
+    <Content Include="JS\easy\css\icons\in_cargo.png" />
+    <Content Include="JS\easy\css\icons\ipod.png" />
+    <Content Include="JS\easy\css\icons\ipod_cast.png" />
+    <Content Include="JS\easy\css\icons\ipod_cast_add.png" />
+    <Content Include="JS\easy\css\icons\ipod_cast_delete.png" />
+    <Content Include="JS\easy\css\icons\ipod_sound.png" />
+    <Content Include="JS\easy\css\icons\joystick.png" />
+    <Content Include="JS\easy\css\icons\joystick_add.png" />
+    <Content Include="JS\easy\css\icons\joystick_delete.png" />
+    <Content Include="JS\easy\css\icons\joystick_error.png" />
+    <Content Include="JS\easy\css\icons\key.png" />
+    <Content Include="JS\easy\css\icons\keyboard.png" />
+    <Content Include="JS\easy\css\icons\keyboard_add.png" />
+    <Content Include="JS\easy\css\icons\keyboard_delete.png" />
+    <Content Include="JS\easy\css\icons\keyboard_magnify.png" />
+    <Content Include="JS\easy\css\icons\key_add.png" />
+    <Content Include="JS\easy\css\icons\key_delete.png" />
+    <Content Include="JS\easy\css\icons\key_go.png" />
+    <Content Include="JS\easy\css\icons\large_chart.png" />
+    <Content Include="JS\easy\css\icons\large_clipart.png" />
+    <Content Include="JS\easy\css\icons\large_picture.png" />
+    <Content Include="JS\easy\css\icons\large_shapes.png" />
+    <Content Include="JS\easy\css\icons\large_smartart.png" />
+    <Content Include="JS\easy\css\icons\layers.png" />
+    <Content Include="JS\easy\css\icons\layout.png" />
+    <Content Include="JS\easy\css\icons\layout_add.png" />
+    <Content Include="JS\easy\css\icons\layout_content.png" />
+    <Content Include="JS\easy\css\icons\layout_delete.png" />
+    <Content Include="JS\easy\css\icons\layout_edit.png" />
+    <Content Include="JS\easy\css\icons\layout_error.png" />
+    <Content Include="JS\easy\css\icons\layout_header.png" />
+    <Content Include="JS\easy\css\icons\layout_link.png" />
+    <Content Include="JS\easy\css\icons\layout_sidebar.png" />
+    <Content Include="JS\easy\css\icons\lightbulb.png" />
+    <Content Include="JS\easy\css\icons\lightbulb_add.png" />
+    <Content Include="JS\easy\css\icons\lightbulb_delete.png" />
+    <Content Include="JS\easy\css\icons\lightbulb_off.png" />
+    <Content Include="JS\easy\css\icons\lightning.png" />
+    <Content Include="JS\easy\css\icons\lightning_add.png" />
+    <Content Include="JS\easy\css\icons\lightning_delete.png" />
+    <Content Include="JS\easy\css\icons\lightning_go.png" />
+    <Content Include="JS\easy\css\icons\link.png" />
+    <Content Include="JS\easy\css\icons\link_add.png" />
+    <Content Include="JS\easy\css\icons\link_break.png" />
+    <Content Include="JS\easy\css\icons\link_delete.png" />
+    <Content Include="JS\easy\css\icons\link_edit.png" />
+    <Content Include="JS\easy\css\icons\link_error.png" />
+    <Content Include="JS\easy\css\icons\link_go.png" />
+    <Content Include="JS\easy\css\icons\lock.png" />
+    <Content Include="JS\easy\css\icons\lock_add.png" />
+    <Content Include="JS\easy\css\icons\lock_break.png" />
+    <Content Include="JS\easy\css\icons\lock_delete.png" />
+    <Content Include="JS\easy\css\icons\lock_edit.png" />
+    <Content Include="JS\easy\css\icons\lock_go.png" />
+    <Content Include="JS\easy\css\icons\lock_open.png" />
+    <Content Include="JS\easy\css\icons\lorry.png" />
+    <Content Include="JS\easy\css\icons\lorry_add.png" />
+    <Content Include="JS\easy\css\icons\lorry_delete.png" />
+    <Content Include="JS\easy\css\icons\lorry_error.png" />
+    <Content Include="JS\easy\css\icons\lorry_flatbed.png" />
+    <Content Include="JS\easy\css\icons\lorry_go.png" />
+    <Content Include="JS\easy\css\icons\lorry_link.png" />
+    <Content Include="JS\easy\css\icons\magifier_zoom_out.png" />
+    <Content Include="JS\easy\css\icons\magnifier.png" />
+    <Content Include="JS\easy\css\icons\magnifier_zoom_in.png" />
+    <Content Include="JS\easy\css\icons\male.png" />
+    <Content Include="JS\easy\css\icons\man.png" />
+    <Content Include="JS\easy\css\icons\map.png" />
+    <Content Include="JS\easy\css\icons\map_add.png" />
+    <Content Include="JS\easy\css\icons\map_delete.png" />
+    <Content Include="JS\easy\css\icons\map_edit.png" />
+    <Content Include="JS\easy\css\icons\map_go.png" />
+    <Content Include="JS\easy\css\icons\map_magnify.png" />
+    <Content Include="JS\easy\css\icons\medal_bronze_1.png" />
+    <Content Include="JS\easy\css\icons\medal_bronze_2.png" />
+    <Content Include="JS\easy\css\icons\medal_bronze_3.png" />
+    <Content Include="JS\easy\css\icons\medal_bronze_add.png" />
+    <Content Include="JS\easy\css\icons\medal_bronze_delete.png" />
+    <Content Include="JS\easy\css\icons\medal_gold_1.png" />
+    <Content Include="JS\easy\css\icons\medal_gold_2.png" />
+    <Content Include="JS\easy\css\icons\medal_gold_3.png" />
+    <Content Include="JS\easy\css\icons\medal_gold_add.png" />
+    <Content Include="JS\easy\css\icons\medal_gold_delete.png" />
+    <Content Include="JS\easy\css\icons\medal_silver_1.png" />
+    <Content Include="JS\easy\css\icons\medal_silver_2.png" />
+    <Content Include="JS\easy\css\icons\medal_silver_3.png" />
+    <Content Include="JS\easy\css\icons\medal_silver_add.png" />
+    <Content Include="JS\easy\css\icons\medal_silver_delete.png" />
+    <Content Include="JS\easy\css\icons\mini_add.png" />
+    <Content Include="JS\easy\css\icons\mini_edit.png" />
+    <Content Include="JS\easy\css\icons\mini_refresh.png" />
+    <Content Include="JS\easy\css\icons\money.png" />
+    <Content Include="JS\easy\css\icons\money_add.png" />
+    <Content Include="JS\easy\css\icons\money_delete.png" />
+    <Content Include="JS\easy\css\icons\money_dollar.png" />
+    <Content Include="JS\easy\css\icons\money_euro.png" />
+    <Content Include="JS\easy\css\icons\money_pound.png" />
+    <Content Include="JS\easy\css\icons\money_yen.png" />
+    <Content Include="JS\easy\css\icons\monitor.png" />
+    <Content Include="JS\easy\css\icons\monitor_add.png" />
+    <Content Include="JS\easy\css\icons\monitor_delete.png" />
+    <Content Include="JS\easy\css\icons\monitor_edit.png" />
+    <Content Include="JS\easy\css\icons\monitor_error.png" />
+    <Content Include="JS\easy\css\icons\monitor_go.png" />
+    <Content Include="JS\easy\css\icons\monitor_lightning.png" />
+    <Content Include="JS\easy\css\icons\monitor_link.png" />
+    <Content Include="JS\easy\css\icons\mouse.png" />
+    <Content Include="JS\easy\css\icons\mouse_add.png" />
+    <Content Include="JS\easy\css\icons\mouse_delete.png" />
+    <Content Include="JS\easy\css\icons\mouse_error.png" />
+    <Content Include="JS\easy\css\icons\music.png" />
+    <Content Include="JS\easy\css\icons\new.png" />
+    <Content Include="JS\easy\css\icons\newspaper.png" />
+    <Content Include="JS\easy\css\icons\newspaper_add.png" />
+    <Content Include="JS\easy\css\icons\newspaper_delete.png" />
+    <Content Include="JS\easy\css\icons\newspaper_go.png" />
+    <Content Include="JS\easy\css\icons\newspaper_link.png" />
+    <Content Include="JS\easy\css\icons\no.png" />
+    <Content Include="JS\easy\css\icons\note.png" />
+    <Content Include="JS\easy\css\icons\note_add.png" />
+    <Content Include="JS\easy\css\icons\note_delete.png" />
+    <Content Include="JS\easy\css\icons\note_edit.png" />
+    <Content Include="JS\easy\css\icons\note_error.png" />
+    <Content Include="JS\easy\css\icons\note_go.png" />
+    <Content Include="JS\easy\css\icons\ok.png" />
+    <Content Include="JS\easy\css\icons\order_add.png" />
+    <Content Include="JS\easy\css\icons\order_Manager.png" />
+    <Content Include="JS\easy\css\icons\order_return.png" />
+    <Content Include="JS\easy\css\icons\order_returnManager.png" />
+    <Content Include="JS\easy\css\icons\out_cargo.png" />
+    <Content Include="JS\easy\css\icons\overlays.png" />
+    <Content Include="JS\easy\css\icons\package.png" />
+    <Content Include="JS\easy\css\icons\package_add.png" />
+    <Content Include="JS\easy\css\icons\package_delete.png" />
+    <Content Include="JS\easy\css\icons\package_go.png" />
+    <Content Include="JS\easy\css\icons\package_green.png" />
+    <Content Include="JS\easy\css\icons\package_link.png" />
+    <Content Include="JS\easy\css\icons\page.png" />
+    <Content Include="JS\easy\css\icons\page_add.png" />
+    <Content Include="JS\easy\css\icons\page_attach.png" />
+    <Content Include="JS\easy\css\icons\page_code.png" />
+    <Content Include="JS\easy\css\icons\page_copy.png" />
+    <Content Include="JS\easy\css\icons\page_delete.png" />
+    <Content Include="JS\easy\css\icons\page_edit.png" />
+    <Content Include="JS\easy\css\icons\page_error.png" />
+    <Content Include="JS\easy\css\icons\page_excel.png" />
+    <Content Include="JS\easy\css\icons\page_find.png" />
+    <Content Include="JS\easy\css\icons\page_gear.png" />
+    <Content Include="JS\easy\css\icons\page_go.png" />
+    <Content Include="JS\easy\css\icons\page_green.png" />
+    <Content Include="JS\easy\css\icons\page_key.png" />
+    <Content Include="JS\easy\css\icons\page_lightning.png" />
+    <Content Include="JS\easy\css\icons\page_link.png" />
+    <Content Include="JS\easy\css\icons\page_paintbrush.png" />
+    <Content Include="JS\easy\css\icons\page_paste.png" />
+    <Content Include="JS\easy\css\icons\page_red.png" />
+    <Content Include="JS\easy\css\icons\page_refresh.png" />
+    <Content Include="JS\easy\css\icons\page_save.png" />
+    <Content Include="JS\easy\css\icons\page_white.png" />
+    <Content Include="JS\easy\css\icons\page_white_acrobat.png" />
+    <Content Include="JS\easy\css\icons\page_white_actionscript.png" />
+    <Content Include="JS\easy\css\icons\page_white_add.png" />
+    <Content Include="JS\easy\css\icons\page_white_c.png" />
+    <Content Include="JS\easy\css\icons\page_white_camera.png" />
+    <Content Include="JS\easy\css\icons\page_white_cd.png" />
+    <Content Include="JS\easy\css\icons\page_white_code.png" />
+    <Content Include="JS\easy\css\icons\page_white_code_red.png" />
+    <Content Include="JS\easy\css\icons\page_white_coldfusion.png" />
+    <Content Include="JS\easy\css\icons\page_white_compressed.png" />
+    <Content Include="JS\easy\css\icons\page_white_copy.png" />
+    <Content Include="JS\easy\css\icons\page_white_cplusplus.png" />
+    <Content Include="JS\easy\css\icons\page_white_csharp.png" />
+    <Content Include="JS\easy\css\icons\page_white_cup.png" />
+    <Content Include="JS\easy\css\icons\page_white_database.png" />
+    <Content Include="JS\easy\css\icons\page_white_delete.png" />
+    <Content Include="JS\easy\css\icons\page_white_dvd.png" />
+    <Content Include="JS\easy\css\icons\page_white_edit.png" />
+    <Content Include="JS\easy\css\icons\page_white_error.png" />
+    <Content Include="JS\easy\css\icons\page_white_excel.png" />
+    <Content Include="JS\easy\css\icons\page_white_find.png" />
+    <Content Include="JS\easy\css\icons\page_white_flash.png" />
+    <Content Include="JS\easy\css\icons\page_white_freehand.png" />
+    <Content Include="JS\easy\css\icons\page_white_gear.png" />
+    <Content Include="JS\easy\css\icons\page_white_get.png" />
+    <Content Include="JS\easy\css\icons\page_white_go.png" />
+    <Content Include="JS\easy\css\icons\page_white_h.png" />
+    <Content Include="JS\easy\css\icons\page_white_horizontal.png" />
+    <Content Include="JS\easy\css\icons\page_white_key.png" />
+    <Content Include="JS\easy\css\icons\page_white_lightning.png" />
+    <Content Include="JS\easy\css\icons\page_white_link.png" />
+    <Content Include="JS\easy\css\icons\page_white_magnify.png" />
+    <Content Include="JS\easy\css\icons\page_white_medal.png" />
+    <Content Include="JS\easy\css\icons\page_white_office.png" />
+    <Content Include="JS\easy\css\icons\page_white_paint.png" />
+    <Content Include="JS\easy\css\icons\page_white_paintbrush.png" />
+    <Content Include="JS\easy\css\icons\page_white_paste.png" />
+    <Content Include="JS\easy\css\icons\page_white_php.png" />
+    <Content Include="JS\easy\css\icons\page_white_picture.png" />
+    <Content Include="JS\easy\css\icons\page_white_powerpoint.png" />
+    <Content Include="JS\easy\css\icons\page_white_put.png" />
+    <Content Include="JS\easy\css\icons\page_white_ruby.png" />
+    <Content Include="JS\easy\css\icons\page_white_stack.png" />
+    <Content Include="JS\easy\css\icons\page_white_star.png" />
+    <Content Include="JS\easy\css\icons\page_white_swoosh.png" />
+    <Content Include="JS\easy\css\icons\page_white_text.png" />
+    <Content Include="JS\easy\css\icons\page_white_text_width.png" />
+    <Content Include="JS\easy\css\icons\page_white_tux.png" />
+    <Content Include="JS\easy\css\icons\page_white_vector.png" />
+    <Content Include="JS\easy\css\icons\page_white_visualstudio.png" />
+    <Content Include="JS\easy\css\icons\page_white_width.png" />
+    <Content Include="JS\easy\css\icons\page_white_word.png" />
+    <Content Include="JS\easy\css\icons\page_white_world.png" />
+    <Content Include="JS\easy\css\icons\page_white_wrench.png" />
+    <Content Include="JS\easy\css\icons\page_white_zip.png" />
+    <Content Include="JS\easy\css\icons\page_word.png" />
+    <Content Include="JS\easy\css\icons\page_world.png" />
+    <Content Include="JS\easy\css\icons\paintbrush.png" />
+    <Content Include="JS\easy\css\icons\paintcan.png" />
+    <Content Include="JS\easy\css\icons\palette.png" />
+    <Content Include="JS\easy\css\icons\paste_plain.png" />
+    <Content Include="JS\easy\css\icons\paste_word.png" />
+    <Content Include="JS\easy\css\icons\pencil.png" />
+    <Content Include="JS\easy\css\icons\pencil_add.png" />
+    <Content Include="JS\easy\css\icons\pencil_delete.png" />
+    <Content Include="JS\easy\css\icons\pencil_go.png" />
+    <Content Include="JS\easy\css\icons\phone.png" />
+    <Content Include="JS\easy\css\icons\phone_add.png" />
+    <Content Include="JS\easy\css\icons\phone_delete.png" />
+    <Content Include="JS\easy\css\icons\phone_sound.png" />
+    <Content Include="JS\easy\css\icons\photo.png" />
+    <Content Include="JS\easy\css\icons\photos.png" />
+    <Content Include="JS\easy\css\icons\photo_add.png" />
+    <Content Include="JS\easy\css\icons\photo_delete.png" />
+    <Content Include="JS\easy\css\icons\photo_link.png" />
+    <Content Include="JS\easy\css\icons\picture.png" />
+    <Content Include="JS\easy\css\icons\pictures.png" />
+    <Content Include="JS\easy\css\icons\picture_add.png" />
+    <Content Include="JS\easy\css\icons\picture_delete.png" />
+    <Content Include="JS\easy\css\icons\picture_edit.png" />
+    <Content Include="JS\easy\css\icons\picture_empty.png" />
+    <Content Include="JS\easy\css\icons\picture_error.png" />
+    <Content Include="JS\easy\css\icons\picture_go.png" />
+    <Content Include="JS\easy\css\icons\picture_key.png" />
+    <Content Include="JS\easy\css\icons\picture_link.png" />
+    <Content Include="JS\easy\css\icons\picture_save.png" />
+    <Content Include="JS\easy\css\icons\pilcrow.png" />
+    <Content Include="JS\easy\css\icons\pill.png" />
+    <Content Include="JS\easy\css\icons\pill_add.png" />
+    <Content Include="JS\easy\css\icons\pill_delete.png" />
+    <Content Include="JS\easy\css\icons\pill_go.png" />
+    <Content Include="JS\easy\css\icons\plugin.png" />
+    <Content Include="JS\easy\css\icons\plugin_add.png" />
+    <Content Include="JS\easy\css\icons\plugin_delete.png" />
+    <Content Include="JS\easy\css\icons\plugin_disabled.png" />
+    <Content Include="JS\easy\css\icons\plugin_edit.png" />
+    <Content Include="JS\easy\css\icons\plugin_error.png" />
+    <Content Include="JS\easy\css\icons\plugin_go.png" />
+    <Content Include="JS\easy\css\icons\plugin_link.png" />
+    <Content Include="JS\easy\css\icons\position.png" />
+    <Content Include="JS\easy\css\icons\print.png" />
+    <Content Include="JS\easy\css\icons\printer.png" />
+    <Content Include="JS\easy\css\icons\printer_add.png" />
+    <Content Include="JS\easy\css\icons\printer_delete.png" />
+    <Content Include="JS\easy\css\icons\printer_empty.png" />
+    <Content Include="JS\easy\css\icons\printer_error.png" />
+    <Content Include="JS\easy\css\icons\rainbow.png" />
+    <Content Include="JS\easy\css\icons\redo.png" />
+    <Content Include="JS\easy\css\icons\reload.png" />
+    <Content Include="JS\easy\css\icons\report.png" />
+    <Content Include="JS\easy\css\icons\report_add.png" />
+    <Content Include="JS\easy\css\icons\report_delete.png" />
+    <Content Include="JS\easy\css\icons\report_disk.png" />
+    <Content Include="JS\easy\css\icons\report_edit.png" />
+    <Content Include="JS\easy\css\icons\report_go.png" />
+    <Content Include="JS\easy\css\icons\report_key.png" />
+    <Content Include="JS\easy\css\icons\report_link.png" />
+    <Content Include="JS\easy\css\icons\report_magnify.png" />
+    <Content Include="JS\easy\css\icons\report_picture.png" />
+    <Content Include="JS\easy\css\icons\report_user.png" />
+    <Content Include="JS\easy\css\icons\report_word.png" />
+    <Content Include="JS\easy\css\icons\resultset_first.png" />
+    <Content Include="JS\easy\css\icons\resultset_last.png" />
+    <Content Include="JS\easy\css\icons\resultset_next.png" />
+    <Content Include="JS\easy\css\icons\resultset_previous.png" />
+    <Content Include="JS\easy\css\icons\rosette.png" />
+    <Content Include="JS\easy\css\icons\rss.png" />
+    <Content Include="JS\easy\css\icons\rss_add.png" />
+    <Content Include="JS\easy\css\icons\rss_delete.png" />
+    <Content Include="JS\easy\css\icons\rss_go.png" />
+    <Content Include="JS\easy\css\icons\rss_valid.png" />
+    <Content Include="JS\easy\css\icons\ruby.png" />
+    <Content Include="JS\easy\css\icons\ruby_add.png" />
+    <Content Include="JS\easy\css\icons\ruby_delete.png" />
+    <Content Include="JS\easy\css\icons\ruby_gear.png" />
+    <Content Include="JS\easy\css\icons\ruby_get.png" />
+    <Content Include="JS\easy\css\icons\ruby_go.png" />
+    <Content Include="JS\easy\css\icons\ruby_key.png" />
+    <Content Include="JS\easy\css\icons\ruby_link.png" />
+    <Content Include="JS\easy\css\icons\ruby_put.png" />
+    <Content Include="JS\easy\css\icons\script.png" />
+    <Content Include="JS\easy\css\icons\script_add.png" />
+    <Content Include="JS\easy\css\icons\script_code.png" />
+    <Content Include="JS\easy\css\icons\script_code_red.png" />
+    <Content Include="JS\easy\css\icons\script_delete.png" />
+    <Content Include="JS\easy\css\icons\script_edit.png" />
+    <Content Include="JS\easy\css\icons\script_error.png" />
+    <Content Include="JS\easy\css\icons\script_gear.png" />
+    <Content Include="JS\easy\css\icons\script_go.png" />
+    <Content Include="JS\easy\css\icons\script_key.png" />
+    <Content Include="JS\easy\css\icons\script_lightning.png" />
+    <Content Include="JS\easy\css\icons\script_link.png" />
+    <Content Include="JS\easy\css\icons\script_palette.png" />
+    <Content Include="JS\easy\css\icons\script_save.png" />
+    <Content Include="JS\easy\css\icons\search.png" />
+    <Content Include="JS\easy\css\icons\server.png" />
+    <Content Include="JS\easy\css\icons\server_add.png" />
+    <Content Include="JS\easy\css\icons\server_chart.png" />
+    <Content Include="JS\easy\css\icons\server_compressed.png" />
+    <Content Include="JS\easy\css\icons\server_connect.png" />
+    <Content Include="JS\easy\css\icons\server_database.png" />
+    <Content Include="JS\easy\css\icons\server_delete.png" />
+    <Content Include="JS\easy\css\icons\server_edit.png" />
+    <Content Include="JS\easy\css\icons\server_error.png" />
+    <Content Include="JS\easy\css\icons\server_go.png" />
+    <Content Include="JS\easy\css\icons\server_key.png" />
+    <Content Include="JS\easy\css\icons\server_lightning.png" />
+    <Content Include="JS\easy\css\icons\server_link.png" />
+    <Content Include="JS\easy\css\icons\server_uncompressed.png" />
+    <Content Include="JS\easy\css\icons\shading.png" />
+    <Content Include="JS\easy\css\icons\shape_align_bottom.png" />
+    <Content Include="JS\easy\css\icons\shape_align_center.png" />
+    <Content Include="JS\easy\css\icons\shape_align_left.png" />
+    <Content Include="JS\easy\css\icons\shape_align_middle.png" />
+    <Content Include="JS\easy\css\icons\shape_align_right.png" />
+    <Content Include="JS\easy\css\icons\shape_align_top.png" />
+    <Content Include="JS\easy\css\icons\shape_flip_horizontal.png" />
+    <Content Include="JS\easy\css\icons\shape_flip_vertical.png" />
+    <Content Include="JS\easy\css\icons\shape_group.png" />
+    <Content Include="JS\easy\css\icons\shape_handles.png" />
+    <Content Include="JS\easy\css\icons\shape_move_back.png" />
+    <Content Include="JS\easy\css\icons\shape_move_backwards.png" />
+    <Content Include="JS\easy\css\icons\shape_move_forwards.png" />
+    <Content Include="JS\easy\css\icons\shape_move_front.png" />
+    <Content Include="JS\easy\css\icons\shape_rotate_anticlockwise.png" />
+    <Content Include="JS\easy\css\icons\shape_rotate_clockwise.png" />
+    <Content Include="JS\easy\css\icons\shape_square.png" />
+    <Content Include="JS\easy\css\icons\shape_square_add.png" />
+    <Content Include="JS\easy\css\icons\shape_square_delete.png" />
+    <Content Include="JS\easy\css\icons\shape_square_edit.png" />
+    <Content Include="JS\easy\css\icons\shape_square_error.png" />
+    <Content Include="JS\easy\css\icons\shape_square_go.png" />
+    <Content Include="JS\easy\css\icons\shape_square_key.png" />
+    <Content Include="JS\easy\css\icons\shape_square_link.png" />
+    <Content Include="JS\easy\css\icons\shape_ungroup.png" />
+    <Content Include="JS\easy\css\icons\shield.png" />
+    <Content Include="JS\easy\css\icons\shield_add.png" />
+    <Content Include="JS\easy\css\icons\shield_delete.png" />
+    <Content Include="JS\easy\css\icons\shield_go.png" />
+    <Content Include="JS\easy\css\icons\sitemap.png" />
+    <Content Include="JS\easy\css\icons\sitemap_color.png" />
+    <Content Include="JS\easy\css\icons\sound.png" />
+    <Content Include="JS\easy\css\icons\sound_add.png" />
+    <Content Include="JS\easy\css\icons\sound_delete.png" />
+    <Content Include="JS\easy\css\icons\sound_low.png" />
+    <Content Include="JS\easy\css\icons\sound_mute.png" />
+    <Content Include="JS\easy\css\icons\sound_none.png" />
+    <Content Include="JS\easy\css\icons\spellcheck.png" />
+    <Content Include="JS\easy\css\icons\sport_8ball.png" />
+    <Content Include="JS\easy\css\icons\sport_basketball.png" />
+    <Content Include="JS\easy\css\icons\sport_football.png" />
+    <Content Include="JS\easy\css\icons\sport_golf.png" />
+    <Content Include="JS\easy\css\icons\sport_raquet.png" />
+    <Content Include="JS\easy\css\icons\sport_shuttlecock.png" />
+    <Content Include="JS\easy\css\icons\sport_soccer.png" />
+    <Content Include="JS\easy\css\icons\sport_tennis.png" />
+    <Content Include="JS\easy\css\icons\star.png" />
+    <Content Include="JS\easy\css\icons\status_away.png" />
+    <Content Include="JS\easy\css\icons\status_busy.png" />
+    <Content Include="JS\easy\css\icons\status_offline.png" />
+    <Content Include="JS\easy\css\icons\status_online.png" />
+    <Content Include="JS\easy\css\icons\stop.png" />
+    <Content Include="JS\easy\css\icons\style.png" />
+    <Content Include="JS\easy\css\icons\style_add.png" />
+    <Content Include="JS\easy\css\icons\style_delete.png" />
+    <Content Include="JS\easy\css\icons\style_edit.png" />
+    <Content Include="JS\easy\css\icons\style_go.png" />
+    <Content Include="JS\easy\css\icons\sum.png" />
+    <Content Include="JS\easy\css\icons\tab.png" />
+    <Content Include="JS\easy\css\icons\table.png" />
+    <Content Include="JS\easy\css\icons\table_add.png" />
+    <Content Include="JS\easy\css\icons\table_delete.png" />
+    <Content Include="JS\easy\css\icons\table_edit.png" />
+    <Content Include="JS\easy\css\icons\table_error.png" />
+    <Content Include="JS\easy\css\icons\table_gear.png" />
+    <Content Include="JS\easy\css\icons\table_go.png" />
+    <Content Include="JS\easy\css\icons\table_key.png" />
+    <Content Include="JS\easy\css\icons\table_lightning.png" />
+    <Content Include="JS\easy\css\icons\table_link.png" />
+    <Content Include="JS\easy\css\icons\table_multiple.png" />
+    <Content Include="JS\easy\css\icons\table_refresh.png" />
+    <Content Include="JS\easy\css\icons\table_relationship.png" />
+    <Content Include="JS\easy\css\icons\table_row_delete.png" />
+    <Content Include="JS\easy\css\icons\table_row_insert.png" />
+    <Content Include="JS\easy\css\icons\table_save.png" />
+    <Content Include="JS\easy\css\icons\table_sort.png" />
+    <Content Include="JS\easy\css\icons\tab_add.png" />
+    <Content Include="JS\easy\css\icons\tab_delete.png" />
+    <Content Include="JS\easy\css\icons\tab_edit.png" />
+    <Content Include="JS\easy\css\icons\tab_go.png" />
+    <Content Include="JS\easy\css\icons\tag.png" />
+    <Content Include="JS\easy\css\icons\tag_blue.png" />
+    <Content Include="JS\easy\css\icons\tag_blue_add.png" />
+    <Content Include="JS\easy\css\icons\tag_blue_delete.png" />
+    <Content Include="JS\easy\css\icons\tag_blue_edit.png" />
+    <Content Include="JS\easy\css\icons\tag_green.png" />
+    <Content Include="JS\easy\css\icons\tag_orange.png" />
+    <Content Include="JS\easy\css\icons\tag_pink.png" />
+    <Content Include="JS\easy\css\icons\tag_purple.png" />
+    <Content Include="JS\easy\css\icons\tag_red.png" />
+    <Content Include="JS\easy\css\icons\tag_yellow.png" />
+    <Content Include="JS\easy\css\icons\telephone.png" />
+    <Content Include="JS\easy\css\icons\telephone_add.png" />
+    <Content Include="JS\easy\css\icons\telephone_delete.png" />
+    <Content Include="JS\easy\css\icons\telephone_edit.png" />
+    <Content Include="JS\easy\css\icons\telephone_error.png" />
+    <Content Include="JS\easy\css\icons\telephone_go.png" />
+    <Content Include="JS\easy\css\icons\telephone_key.png" />
+    <Content Include="JS\easy\css\icons\telephone_link.png" />
+    <Content Include="JS\easy\css\icons\television.png" />
+    <Content Include="JS\easy\css\icons\television_add.png" />
+    <Content Include="JS\easy\css\icons\television_delete.png" />
+    <Content Include="JS\easy\css\icons\textfield.png" />
+    <Content Include="JS\easy\css\icons\textfield_add.png" />
+    <Content Include="JS\easy\css\icons\textfield_delete.png" />
+    <Content Include="JS\easy\css\icons\textfield_key.png" />
+    <Content Include="JS\easy\css\icons\textfield_rename.png" />
+    <Content Include="JS\easy\css\icons\text_align_center.png" />
+    <Content Include="JS\easy\css\icons\text_align_justify.png" />
+    <Content Include="JS\easy\css\icons\text_align_left.png" />
+    <Content Include="JS\easy\css\icons\text_align_right.png" />
+    <Content Include="JS\easy\css\icons\text_allcaps.png" />
+    <Content Include="JS\easy\css\icons\text_bold.png" />
+    <Content Include="JS\easy\css\icons\text_columns.png" />
+    <Content Include="JS\easy\css\icons\text_dropcaps.png" />
+    <Content Include="JS\easy\css\icons\text_heading_1.png" />
+    <Content Include="JS\easy\css\icons\text_heading_2.png" />
+    <Content Include="JS\easy\css\icons\text_heading_3.png" />
+    <Content Include="JS\easy\css\icons\text_heading_4.png" />
+    <Content Include="JS\easy\css\icons\text_heading_5.png" />
+    <Content Include="JS\easy\css\icons\text_heading_6.png" />
+    <Content Include="JS\easy\css\icons\text_horizontalrule.png" />
+    <Content Include="JS\easy\css\icons\text_indent.png" />
+    <Content Include="JS\easy\css\icons\text_indent_remove.png" />
+    <Content Include="JS\easy\css\icons\text_italic.png" />
+    <Content Include="JS\easy\css\icons\text_kerning.png" />
+    <Content Include="JS\easy\css\icons\text_letterspacing.png" />
+    <Content Include="JS\easy\css\icons\text_letter_omega.png" />
+    <Content Include="JS\easy\css\icons\text_linespacing.png" />
+    <Content Include="JS\easy\css\icons\text_list_bullets.png" />
+    <Content Include="JS\easy\css\icons\text_list_numbers.png" />
+    <Content Include="JS\easy\css\icons\text_lowercase.png" />
+    <Content Include="JS\easy\css\icons\text_padding_bottom.png" />
+    <Content Include="JS\easy\css\icons\text_padding_left.png" />
+    <Content Include="JS\easy\css\icons\text_padding_right.png" />
+    <Content Include="JS\easy\css\icons\text_padding_top.png" />
+    <Content Include="JS\easy\css\icons\text_replace.png" />
+    <Content Include="JS\easy\css\icons\text_signature.png" />
+    <Content Include="JS\easy\css\icons\text_smallcaps.png" />
+    <Content Include="JS\easy\css\icons\text_strikethrough.png" />
+    <Content Include="JS\easy\css\icons\text_subscript.png" />
+    <Content Include="JS\easy\css\icons\text_superscript.png" />
+    <Content Include="JS\easy\css\icons\text_underline.png" />
+    <Content Include="JS\easy\css\icons\text_uppercase.png" />
+    <Content Include="JS\easy\css\icons\thumb_down.png" />
+    <Content Include="JS\easy\css\icons\thumb_up.png" />
+    <Content Include="JS\easy\css\icons\tick.png" />
+    <Content Include="JS\easy\css\icons\time.png" />
+    <Content Include="JS\easy\css\icons\timeline_marker.png" />
+    <Content Include="JS\easy\css\icons\time_add.png" />
+    <Content Include="JS\easy\css\icons\time_delete.png" />
+    <Content Include="JS\easy\css\icons\time_go.png" />
+    <Content Include="JS\easy\css\icons\tip.png" />
+    <Content Include="JS\easy\css\icons\transmit.png" />
+    <Content Include="JS\easy\css\icons\transmit_add.png" />
+    <Content Include="JS\easy\css\icons\transmit_blue.png" />
+    <Content Include="JS\easy\css\icons\transmit_delete.png" />
+    <Content Include="JS\easy\css\icons\transmit_edit.png" />
+    <Content Include="JS\easy\css\icons\transmit_error.png" />
+    <Content Include="JS\easy\css\icons\transmit_go.png" />
+    <Content Include="JS\easy\css\icons\tux.png" />
+    <Content Include="JS\easy\css\icons\undo.png" />
+    <Content Include="JS\easy\css\icons\user.png" />
+    <Content Include="JS\easy\css\icons\user_add.png" />
+    <Content Include="JS\easy\css\icons\user_comment.png" />
+    <Content Include="JS\easy\css\icons\user_delete.png" />
+    <Content Include="JS\easy\css\icons\user_edit.png" />
+    <Content Include="JS\easy\css\icons\user_female.png" />
+    <Content Include="JS\easy\css\icons\user_go.png" />
+    <Content Include="JS\easy\css\icons\user_gray.png" />
+    <Content Include="JS\easy\css\icons\user_green.png" />
+    <Content Include="JS\easy\css\icons\user_orange.png" />
+    <Content Include="JS\easy\css\icons\user_red.png" />
+    <Content Include="JS\easy\css\icons\user_suit.png" />
+    <Content Include="JS\easy\css\icons\vcard.png" />
+    <Content Include="JS\easy\css\icons\vcard_add.png" />
+    <Content Include="JS\easy\css\icons\vcard_delete.png" />
+    <Content Include="JS\easy\css\icons\vcard_edit.png" />
+    <Content Include="JS\easy\css\icons\vector.png" />
+    <Content Include="JS\easy\css\icons\vector_add.png" />
+    <Content Include="JS\easy\css\icons\vector_delete.png" />
+    <Content Include="JS\easy\css\icons\wand.png" />
+    <Content Include="JS\easy\css\icons\weather_clouds.png" />
+    <Content Include="JS\easy\css\icons\weather_cloudy.png" />
+    <Content Include="JS\easy\css\icons\weather_lightning.png" />
+    <Content Include="JS\easy\css\icons\weather_rain.png" />
+    <Content Include="JS\easy\css\icons\weather_snow.png" />
+    <Content Include="JS\easy\css\icons\weather_sun.png" />
+    <Content Include="JS\easy\css\icons\webcam.png" />
+    <Content Include="JS\easy\css\icons\webcam_add.png" />
+    <Content Include="JS\easy\css\icons\webcam_delete.png" />
+    <Content Include="JS\easy\css\icons\webcam_error.png" />
+    <Content Include="JS\easy\css\icons\weixin.png" />
+    <Content Include="JS\easy\css\icons\world.png" />
+    <Content Include="JS\easy\css\icons\world_add.png" />
+    <Content Include="JS\easy\css\icons\world_delete.png" />
+    <Content Include="JS\easy\css\icons\world_edit.png" />
+    <Content Include="JS\easy\css\icons\world_go.png" />
+    <Content Include="JS\easy\css\icons\world_link.png" />
+    <Content Include="JS\easy\css\icons\wrench.png" />
+    <Content Include="JS\easy\css\icons\wrench_orange.png" />
+    <Content Include="JS\easy\css\icons\xhtml.png" />
+    <Content Include="JS\easy\css\icons\xhtml_add.png" />
+    <Content Include="JS\easy\css\icons\xhtml_delete.png" />
+    <Content Include="JS\easy\css\icons\xhtml_go.png" />
+    <Content Include="JS\easy\css\icons\xhtml_valid.png" />
+    <Content Include="JS\easy\css\icons\zoom.png" />
+    <Content Include="JS\easy\css\icons\zoom_in.png" />
+    <Content Include="JS\easy\css\icons\zoom_out.png" />
+    <Content Include="JS\easy\js\ajaxfileupload.js" />
+    <Content Include="JS\easy\js\datagrid-groupview.js" />
+    <Content Include="JS\easy\js\easyui-lang-zh_CN.js" />
+    <Content Include="JS\easy\js\jquery.easyui.min.js" />
+    <Content Include="JS\easy\js\jquery.min.1.13.js" />
+    <Content Include="JS\easy\js\jquery.min.js" />
+    <Content Include="JS\easy\js\validator.js" />
+    <Content Include="JS\EChart\chart\bar.js" />
+    <Content Include="JS\EChart\chart\chord.js" />
+    <Content Include="JS\EChart\chart\eventRiver.js" />
+    <Content Include="JS\EChart\chart\force.js" />
+    <Content Include="JS\EChart\chart\funnel.js" />
+    <Content Include="JS\EChart\chart\gauge.js" />
+    <Content Include="JS\EChart\chart\heatmap.js" />
+    <Content Include="JS\EChart\chart\k.js" />
+    <Content Include="JS\EChart\chart\line.js" />
+    <Content Include="JS\EChart\chart\map.js" />
+    <Content Include="JS\EChart\chart\pie.js" />
+    <Content Include="JS\EChart\chart\radar.js" />
+    <Content Include="JS\EChart\chart\scatter.js" />
+    <Content Include="JS\EChart\chart\tree.js" />
+    <Content Include="JS\EChart\chart\treemap.js" />
+    <Content Include="JS\EChart\chart\venn.js" />
+    <Content Include="JS\EChart\chart\wordCloud.js" />
+    <Content Include="JS\EChart\echarts-all.js" />
+    <Content Include="JS\EChart\echarts.js" />
+    <Content Include="JS\json\json2.js" />
+    <Content Include="JS\KindEditer\kindeditor-all-min.js" />
+    <Content Include="JS\KindEditer\kindeditor-all.js" />
+    <Content Include="JS\KindEditer\lang\ar.js" />
+    <Content Include="JS\KindEditer\lang\en.js" />
+    <Content Include="JS\KindEditer\lang\ko.js" />
+    <Content Include="JS\KindEditer\lang\ru.js" />
+    <Content Include="JS\KindEditer\lang\zh-CN.js" />
+    <Content Include="JS\KindEditer\lang\zh-TW.js" />
+    <Content Include="JS\KindEditer\plugins\anchor\anchor.js" />
+    <Content Include="JS\KindEditer\plugins\autoheight\autoheight.js" />
+    <Content Include="JS\KindEditer\plugins\baidumap\baidumap.js" />
+    <Content Include="JS\KindEditer\plugins\baidumap\index.html" />
+    <Content Include="JS\KindEditer\plugins\baidumap\map.html" />
+    <Content Include="JS\KindEditer\plugins\clearhtml\clearhtml.js" />
+    <Content Include="JS\KindEditer\plugins\code\code.js" />
+    <Content Include="JS\KindEditer\plugins\code\prettify.css" />
+    <Content Include="JS\KindEditer\plugins\code\prettify.js" />
+    <Content Include="JS\KindEditer\plugins\emoticons\emoticons.js" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\0.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\1.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\10.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\100.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\101.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\102.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\103.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\104.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\105.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\106.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\107.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\108.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\109.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\11.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\110.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\111.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\112.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\113.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\114.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\115.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\116.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\117.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\118.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\119.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\12.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\120.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\121.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\122.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\123.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\124.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\125.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\126.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\127.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\128.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\129.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\13.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\130.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\131.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\132.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\133.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\134.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\14.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\15.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\16.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\17.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\18.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\19.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\2.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\20.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\21.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\22.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\23.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\24.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\25.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\26.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\27.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\28.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\29.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\3.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\30.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\31.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\32.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\33.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\34.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\35.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\36.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\37.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\38.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\39.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\4.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\40.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\41.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\42.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\43.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\44.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\45.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\46.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\47.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\48.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\49.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\5.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\50.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\51.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\52.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\53.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\54.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\55.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\56.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\57.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\58.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\59.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\6.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\60.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\61.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\62.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\63.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\64.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\65.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\66.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\67.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\68.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\69.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\7.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\70.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\71.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\72.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\73.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\74.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\75.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\76.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\77.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\78.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\79.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\8.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\80.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\81.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\82.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\83.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\84.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\85.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\86.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\87.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\88.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\89.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\9.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\90.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\91.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\92.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\93.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\94.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\95.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\96.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\97.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\98.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\99.gif" />
+    <Content Include="JS\KindEditer\plugins\emoticons\images\static.gif" />
+    <Content Include="JS\KindEditer\plugins\filemanager\filemanager.js" />
+    <Content Include="JS\KindEditer\plugins\filemanager\images\file-16.gif" />
+    <Content Include="JS\KindEditer\plugins\filemanager\images\file-64.gif" />
+    <Content Include="JS\KindEditer\plugins\filemanager\images\folder-16.gif" />
+    <Content Include="JS\KindEditer\plugins\filemanager\images\folder-64.gif" />
+    <Content Include="JS\KindEditer\plugins\filemanager\images\go-up.gif" />
+    <Content Include="JS\KindEditer\plugins\fixtoolbar\fixtoolbar.js" />
+    <Content Include="JS\KindEditer\plugins\flash\flash.js" />
+    <Content Include="JS\KindEditer\plugins\image\image.js" />
+    <Content Include="JS\KindEditer\plugins\image\images\align_left.gif" />
+    <Content Include="JS\KindEditer\plugins\image\images\align_right.gif" />
+    <Content Include="JS\KindEditer\plugins\image\images\align_top.gif" />
+    <Content Include="JS\KindEditer\plugins\image\images\refresh.png" />
+    <Content Include="JS\KindEditer\plugins\insertfile\insertfile.js" />
+    <Content Include="JS\KindEditer\plugins\lineheight\lineheight.js" />
+    <Content Include="JS\KindEditer\plugins\link\link.js" />
+    <Content Include="JS\KindEditer\plugins\map\map.html" />
+    <Content Include="JS\KindEditer\plugins\map\map.js" />
+    <Content Include="JS\KindEditer\plugins\media\media.js" />
+    <Content Include="JS\KindEditer\plugins\multiimage\images\image.png" />
+    <Content Include="JS\KindEditer\plugins\multiimage\images\select-files-en.png" />
+    <Content Include="JS\KindEditer\plugins\multiimage\images\select-files-zh-CN.png" />
+    <Content Include="JS\KindEditer\plugins\multiimage\images\swfupload.swf" />
+    <Content Include="JS\KindEditer\plugins\multiimage\multiimage.js" />
+    <Content Include="JS\KindEditer\plugins\pagebreak\pagebreak.js" />
+    <Content Include="JS\KindEditer\plugins\plainpaste\plainpaste.js" />
+    <Content Include="JS\KindEditer\plugins\preview\preview.js" />
+    <Content Include="JS\KindEditer\plugins\quickformat\quickformat.js" />
+    <Content Include="JS\KindEditer\plugins\table\table.js" />
+    <Content Include="JS\KindEditer\plugins\template\html\1.html" />
+    <Content Include="JS\KindEditer\plugins\template\html\2.html" />
+    <Content Include="JS\KindEditer\plugins\template\html\3.html" />
+    <Content Include="JS\KindEditer\plugins\template\template.js" />
+    <Content Include="JS\KindEditer\plugins\wordpaste\wordpaste.js" />
+    <Content Include="JS\KindEditer\themes\common\anchor.gif" />
+    <Content Include="JS\KindEditer\themes\common\blank.gif" />
+    <Content Include="JS\KindEditer\themes\common\flash.gif" />
+    <Content Include="JS\KindEditer\themes\common\loading.gif" />
+    <Content Include="JS\KindEditer\themes\common\media.gif" />
+    <Content Include="JS\KindEditer\themes\common\rm.gif" />
+    <Content Include="JS\KindEditer\themes\default\background.png" />
+    <Content Include="JS\KindEditer\themes\default\default.css" />
+    <Content Include="JS\KindEditer\themes\default\default.png" />
+    <Content Include="JS\KindEditer\themes\qq\editor.gif" />
+    <Content Include="JS\KindEditer\themes\qq\qq.css" />
+    <Content Include="JS\KindEditer\themes\simple\simple.css" />
+    <Content Include="JS\lefttree.js" />
+    <Content Include="JS\Lodop\LodopFuncs.js" />
+    <Content Include="JS\mobile\JCookie.js" />
+    <Content Include="JS\mobile\jquery.mobile-1.3.2.min.css" />
+    <Content Include="JS\mobile\jquery.mobile-1.3.2.min.js" />
+    <Content Include="JS\MUI\css\app.css" />
+    <Content Include="JS\MUI\css\icons-extra.css" />
+    <Content Include="JS\MUI\css\mui.min.css" />
+    <Content Include="JS\MUI\css\mui.picker.css" />
+    <Content Include="JS\MUI\css\mui.poppicker.css" />
+    <Content Include="JS\MUI\js\mui.js" />
+    <Content Include="JS\MUI\js\mui.picker.js" />
+    <Content Include="JS\MUI\js\mui.poppicker.js" />
+    <Content Include="JS\MUI\js\mui.pullToRefresh.js" />
+    <Content Include="JS\MUI\js\mui.pullToRefresh.material.js" />
+    <Content Include="JS\MUI\js\showLoading.js" />
+    <Content Include="JS\MUI\js\TryeBrand.js" />
+    <Content Include="JS\MUI\js\TryeBrand2.js" />
+    <Content Include="JS\QR\qrcode.js" />
+    <Content Include="JS\Rotate\jQueryRotate.2.2.js" />
+    <Content Include="systempage\sysService.aspx" />
+    <Content Include="systempage\UpdatePassword.aspx" />
+    <Content Include="Web.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Basic\BasicApi.aspx.cs">
+      <DependentUpon>BasicApi.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Basic\BasicApi.aspx.designer.cs">
+      <DependentUpon>BasicApi.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Basic\ChannelCustomers.aspx.cs">
+      <DependentUpon>ChannelCustomers.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Basic\ChannelCustomers.aspx.designer.cs">
+      <DependentUpon>ChannelCustomers.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Basic\priceRuleBank.aspx.cs">
+      <DependentUpon>priceRuleBank.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Basic\priceRuleBank.aspx.designer.cs">
+      <DependentUpon>priceRuleBank.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Basic\ProductInformation.aspx.cs">
+      <DependentUpon>ProductInformation.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Basic\ProductInformation.aspx.designer.cs">
+      <DependentUpon>ProductInformation.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Common\BasePage.cs">
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Common\Common.cs" />
+    <Compile Include="Common\CookiesHelper.cs" />
+    <Compile Include="Common\JSON.cs" />
+    <Compile Include="Common\RedisHelper.cs" />
+    <Compile Include="Common\ToExcel.cs" />
+    <Compile Include="Common\Union\AppConstants.cs" />
+    <Compile Include="Common\Union\AppUtil.cs" />
+    <Compile Include="Common\Union\HttpUtil.cs" />
+    <Compile Include="Common\Union\SybWxPayService.cs" />
+    <Compile Include="Common\wxHttpUtility.cs" />
+    <Compile Include="Common\WxQYSendHelper.cs" />
+    <Compile Include="Default.aspx.cs">
+      <DependentUpon>Default.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Default.aspx.designer.cs">
+      <DependentUpon>Default.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="FormService.aspx.cs">
+      <DependentUpon>FormService.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="FormService.aspx.designer.cs">
+      <DependentUpon>FormService.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Global.asax.cs">
+      <DependentUpon>Global.asax</DependentUpon>
+    </Compile>
+    <Compile Include="House\HouseApi.aspx.cs">
+      <DependentUpon>HouseApi.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="House\HouseApi.aspx.designer.cs">
+      <DependentUpon>HouseApi.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="House\HouseReturnOrder.aspx.cs">
+      <SubType>ASPXCodeBehind</SubType>
+      <DependentUpon>HouseReturnOrder.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="House\HouseReturnOrder.aspx.designer.cs">
+      <DependentUpon>HouseReturnOrder.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="House\NextDayStock.aspx.cs">
+      <DependentUpon>NextDayStock.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="House\NextDayStock.aspx.designer.cs">
+      <DependentUpon>NextDayStock.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="House\PurchaseOrder.aspx.cs">
+      <DependentUpon>PurchaseOrder.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="House\PurchaseOrder.aspx.designer.cs">
+      <DependentUpon>PurchaseOrder.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="House\PurchaseOrderManager.aspx.cs">
+      <DependentUpon>PurchaseOrderManager.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="House\PurchaseOrderManager.aspx.designer.cs">
+      <DependentUpon>PurchaseOrderManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="House\RealTimeStock.aspx.cs">
+      <DependentUpon>RealTimeStock.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="House\RealTimeStock.aspx.designer.cs">
+      <DependentUpon>RealTimeStock.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Main.aspx.cs">
+      <DependentUpon>Main.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Main.aspx.designer.cs">
+      <DependentUpon>Main.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Order\ChannelOrders.aspx.cs">
+      <DependentUpon>ChannelOrders.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Order\ChannelOrders.aspx.designer.cs">
+      <DependentUpon>ChannelOrders.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Order\NextDayOrders.aspx.cs">
+      <DependentUpon>NextDayOrders.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Order\NextDayOrders.aspx.designer.cs">
+      <DependentUpon>NextDayOrders.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Order\NextDayReturnOrder.aspx.cs">
+      <DependentUpon>NextDayReturnOrder.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Order\NextDayReturnOrder.aspx.designer.cs">
+      <DependentUpon>NextDayReturnOrder.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Order\orderApi.aspx.cs">
+      <DependentUpon>orderApi.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Order\orderApi.aspx.designer.cs">
+      <DependentUpon>orderApi.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Order\ToDayOrders.aspx.cs">
+      <DependentUpon>ToDayOrders.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Order\ToDayOrders.aspx.designer.cs">
+      <DependentUpon>ToDayOrders.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Report\AccessingStockDetails.aspx.cs">
+      <DependentUpon>AccessingStockDetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\AccessingStockDetails.aspx.designer.cs">
+      <DependentUpon>AccessingStockDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\HouseReturnDetails.aspx.cs">
+      <DependentUpon>HouseReturnDetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\HouseReturnDetails.aspx.designer.cs">
+      <DependentUpon>HouseReturnDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\NextDayReturnDetails.aspx.cs">
+      <DependentUpon>NextDayReturnDetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\NextDayReturnDetails.aspx.designer.cs">
+      <DependentUpon>NextDayReturnDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\OrderSale.aspx.cs">
+      <DependentUpon>OrderSale.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\OrderSale.aspx.designer.cs">
+      <DependentUpon>OrderSale.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\OrderSaleDetails.aspx.cs">
+      <DependentUpon>OrderSaleDetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\OrderSaleDetails.aspx.designer.cs">
+      <DependentUpon>OrderSaleDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\PurchaseOrderDetails.aspx.cs">
+      <DependentUpon>PurchaseOrderDetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\PurchaseOrderDetails.aspx.designer.cs">
+      <DependentUpon>PurchaseOrderDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\reportApi.aspx.cs">
+      <DependentUpon>reportApi.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\reportApi.aspx.designer.cs">
+      <DependentUpon>reportApi.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\SaleDayReport.aspx.cs">
+      <DependentUpon>SaleDayReport.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\SaleDayReport.aspx.designer.cs">
+      <DependentUpon>SaleDayReport.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\SaleStockUpDetails.aspx.cs">
+      <DependentUpon>SaleStockUpDetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\SaleStockUpDetails.aspx.designer.cs">
+      <DependentUpon>SaleStockUpDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\ToDayReturnDetails.aspx.cs">
+      <DependentUpon>ToDayReturnDetails.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\ToDayReturnDetails.aspx.designer.cs">
+      <DependentUpon>ToDayReturnDetails.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Site.Master.cs">
+      <DependentUpon>Site.Master</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Site.Master.designer.cs">
+      <DependentUpon>Site.Master</DependentUpon>
+    </Compile>
+    <Compile Include="systempage\sysService.aspx.cs">
+      <DependentUpon>sysService.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="systempage\sysService.aspx.designer.cs">
+      <DependentUpon>sysService.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="systempage\UpdatePassword.aspx.cs">
+      <DependentUpon>UpdatePassword.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="systempage\UpdatePassword.aspx.designer.cs">
+      <DependentUpon>UpdatePassword.aspx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\House.Business\House.Business.csproj">
+      <Project>{0e910013-ee0c-4f03-b41f-ae0c4f630535}</Project>
+      <Name>House.Business</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\House.Entity\House.Entity.csproj">
+      <Project>{a888a0d3-ffb1-4444-8ca1-bf7c42eefba0}</Project>
+      <Name>House.Entity</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
+    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(VSToolsPath)\WebApplications\Microsoft.WebApplication.targets" Condition="'$(VSToolsPath)' != ''" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v10.0\WebApplications\Microsoft.WebApplication.targets" Condition="false" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
+        <WebProjectProperties>
+          <UseIIS>True</UseIIS>
+          <AutoAssignPort>True</AutoAssignPort>
+          <DevelopmentServerPort>56185</DevelopmentServerPort>
+          <DevelopmentServerVPath>/</DevelopmentServerVPath>
+          <IISUrl>http://localhost:56185/</IISUrl>
+          <NTLMAuthentication>False</NTLMAuthentication>
+          <UseCustomServer>False</UseCustomServer>
+          <CustomServerUrl>
+          </CustomServerUrl>
+          <SaveServerSettingsInUserFile>False</SaveServerSettingsInUserFile>
+        </WebProjectProperties>
+      </FlavorProperties>
+    </VisualStudio>
+  </ProjectExtensions>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

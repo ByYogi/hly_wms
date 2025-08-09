@@ -1,0 +1,787 @@
+﻿<%@ Page Title="开销售单" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="addSaleOrder.aspx.cs" Inherits="Dealer.addSaleOrder" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script src="../JS/Lodop/LodopFuncs.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            //$("#PayTotalCharge1").hide();
+            //$("#PayTotalCharge2").hide();
+            //$("#PayTotalCharge3").hide();
+            //var height = parseInt((Number($(window).height()) - 100) / 2);
+            var height = parseInt((Number($(window).height()) - Number($("div[name='SelectDiv1']").outerHeight(true))) / 2);
+            $('#dg').datagrid({ height: height - 60 });
+            $('#outDg').datagrid({ height: (Number($(window).height()) - 90) - height });
+        }
+        $(document).ready(function () {
+            var columns = [];
+            columns.push({ title: '', field: 'ID', checkbox: true, width: '10%' });
+            columns.push({
+                title: '产品品牌', field: 'TypeName', width: '130px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '货品代码', field: 'GoodsCode', width: '180px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '规格', field: 'Specs', width: '130px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '花纹', field: 'Figure', width: '130px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '载速', field: 'LoadIndex', width: '60px', align: 'right', formatter: function (value, row) {
+                    return "<span title='" + value + row.SpeedLevel + "'>" + value + row.SpeedLevel + "</span>";
+                }
+            });
+            columns.push({
+                title: '批次', field: 'BatchYear', width: '60px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '库存情况', field: 'Piece', width: '60px', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    if (value < 9) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    } else if (value > 8 && value < 21) {
+                        return "<span title='紧张'>紧张</span>";
+                    } else {
+                        return "<span title='充足'>充足</span>";
+                    }
+                }
+            });
+            columns.push({
+                title: '销售价', field: 'SalePrice', width: '60px', align: 'right', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            $('#dg').datagrid({
+                width: '100%',
+                //height: '50%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: true, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [columns],
+                onLoadSuccess: function (data) { },
+                onClickRow: function (index, row) {
+                    $('#dg').datagrid('clearSelections');
+                    $('#dg').datagrid('selectRow', index);
+                },
+                onDblClickRow: function (index, row) { plOutCargo(); },
+                rowStyler: function (index, row) {
+                    if (row.RuleType == "1") { return "background-color:#f5a99a"; };
+                    if (row.RuleType == "2") { return "background-color:#e1bd7f"; };
+                    if (row.RuleType == "3") { return "background-color:#D4EFDF"; };
+                }
+            });
+            columns = [];
+            columns.push({ title: '', field: 'ID', checkbox: true, width: '10%' });
+            columns.push({
+                title: '产品品牌', field: 'TypeName', width: '130px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '货品代码', field: 'GoodsCode', width: '180px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '规格', field: 'Specs', width: '130px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '花纹', field: 'Figure', width: '130px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '载速', field: 'LoadIndex', width: '60px', align: 'right', formatter: function (value, row) {
+                    return "<span title='" + value + row.SpeedLevel + "'>" + value + row.SpeedLevel + "</span>";
+                }
+            });
+            columns.push({
+                title: '批次', field: 'Batch', width: '60px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '物料数量', field: 'Piece', width: '60px', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '销售价', field: 'ActSalePrice', width: '60px', align: 'right', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '汇总', field: 'Count', width: '80px', align: 'right', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({ title: '是否优惠', field: 'IsRuleBank', hidden: true });
+            columns.push({ title: '优惠类型', field: 'RuleType', hidden: true });
+            columns.push({ title: '优惠规则ID', field: 'RuleID', hidden: true });
+            columns.push({ title: '优惠规则名称', field: 'RuleTitle', hidden: true });
+            columns.push({ title: '适用客户', field: 'SuitClientNum', hidden: true });
+            //出库列表
+            $('#outDg').datagrid({
+                width: '100%',
+                //height: '38%',
+                title: '订单物料', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '',
+                columns: [columns],
+                onLoadSuccess: function (data) { },
+                onDblClickRow: function (index, row) { dblClickDelCargo(index); },
+                rowStyler: function (index, row) {
+                    if (row.RuleType == "1") { return "background-color:#f5a99a"; };
+                    if (row.RuleType == "2") { return "background-color:#e5ba71"; };
+                    if (row.RuleType == "3") { return "background-color:#D4EFDF"; };
+                }
+            });
+
+            $('#AcceptPeople').combobox('textbox').bind('focus', function () { $('#AcceptPeople').combobox('showPanel'); });
+            $('#ASpecs').textbox('textbox').keydown(function (e) {
+                if (e.keyCode == 13) {
+                    dosearch();
+                }
+            });
+            $('#AFigure').textbox('textbox').keydown(function (e) {
+                if (e.keyCode == 13) {
+                    dosearch();
+                }
+            });
+            $('#AcceptPeople').combobox({
+                valueField: 'ADID', textField: 'AcceptPeopleCellphone', delay: '10',
+                url: '../FormService.aspx?method=AutoCompleteClientAcceptPeople&ClientNum=' + <%=UserInfor.LoginName%>,
+                onLoadSuccess: function () {
+                    //默认选中第一个
+                    var array = $(this).combobox("getData");
+                    for (var item in array[0]) {
+                        if (item == "ADID") {
+                            $(this).combobox('select', array[0][item]);
+                        }
+                    }
+                    //$('#ASpecs').next('span').find('input').focus();
+                },
+                onSelect: onAcceptAddressChanged
+            });
+            $("#UseRebateMoney").click(function () {
+                var RebateMoney = $("#RebateMoney").val();
+                var tCharge = $('#TotalCharge').numberbox('getValue') == null || $('#TotalCharge').numberbox('getValue') == "" ? 0 : Number($('#TotalCharge').numberbox('getValue'));
+                if (this.checked) {
+                    if (Number(RebateMoney) >= Number(tCharge)) {
+                        $('#PayTotalCharge').numberbox('setValue', 0);
+                    } else {
+                        $('#PayTotalCharge').numberbox('setValue', Number(tCharge) - Number(RebateMoney));
+                    }
+                } else {
+                    $('#PayTotalCharge').numberbox('setValue', $('#TotalCharge').numberbox('getValue'));
+                }
+            })
+        });
+
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = '../FormService.aspx?method=QueryALLHouseData';
+            $('#dg').datagrid('load', {
+                Specs: $('#ASpecs').val(),
+                Figure: $('#AFigure').val(),
+                GoodsCode: $('#AGoodsCode').val(),
+                ClientNum: $('#ClientNum').val()
+            });
+        }
+    </script>
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">规格:
+                </td>
+                <td>
+                    <input id="ASpecs" class="easyui-textbox" data-options="prompt:'请输入规格'" style="width: 100px" />
+                </td>
+                <td id="AFigureTd" style="text-align: right;">花纹:
+                </td>
+                <td>
+                    <input id="AFigure" class="easyui-textbox" data-options="prompt:'请输入花纹'" style="width: 100px" />
+                </td>
+                <td id="AGoodsCodeTd" style="text-align: right;">货品代码:
+                </td>
+                <td>
+                    <input id="AGoodsCode" class="easyui-textbox" data-options="prompt:'请输入货品代码'" style="width: 100px"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <table id="outDg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;&nbsp;双击物料信息进行下单&nbsp;&nbsp;&nbsp;&nbsp;
+        <asp:Label runat="server" ID="UnpaidText" Font-Bold="true" Font-Size="15px" ForeColor="#cd5b5b"></asp:Label>
+        <input type="hidden" id="RebateMoney" runat="server" clientidmode="Static" />
+    </div>
+    <!--Begin 出库操作-->
+
+    <div id="dlg" class="easyui-dialog" style="width: 350px; height: 350px; padding: 0px" closed="true" buttons="#dlg-buttons">
+        <form id="fm" class="easyui-form" method="post">
+            <input type="hidden" id="InPiece" />
+            <input type="hidden" id="InIndex" />
+            <table>
+                <tr>
+                    <td style="text-align: right;">拉上订单数量：
+                    </td>
+                    <td>
+                        <input name="Numbers" id="Numbers" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 170px;" type="text" />
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">系统销售价：</td>
+                    <td>
+                        <input type="hidden" id="RuleType" />
+                        <input type="hidden" id="RuleID" />
+                        <input type="hidden" id="SuitClientNum" />
+                        <input type="hidden" id="Regular" />
+                        <input type="hidden" id="RuleTitle" />
+                        <input type="hidden" id="SystemSalePrice" />
+                        <input type="hidden" id="index" />
+                        <input name="ActSalePrice" id="ActSalePrice" class="easyui-numberbox" data-options="min:0,precision:2" style="width: 170px;" readonly="readonly" />
+                    </td>
+                </tr>
+            </table>
+            <div id="lblRule">
+            </div>
+        </form>
+    </div>
+    <div id="dlg-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="outOK()">&nbsp;确&nbsp;定&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+    <input type="hidden" id="DisplayNum" />
+    <input type="hidden" id="DisplayPiece" />
+    <!--End 出库操作-->
+    <form id="fmDep" class="easyui-form" method="post">
+        <input type="hidden" name="SaleCellPhone" id="SaleCellPhone" />
+        <input type="hidden" name="ShopCode" id="ShopCode" />
+        <input type="hidden" name="ClientNum" id="ClientNum" />
+        <input type="hidden" id="ClientType" name="ClientType" />
+        <input type="hidden" name="BelongHouse" id="BelongHouse" />
+        <input type="hidden" name="HouseID" id="HouseID" />
+        <input type="hidden" name="HiddenClientSelectName" id="HiddenClientSelectName" />
+        <input type="hidden" name="AAcceptUnit" id="AAcceptUnit" />
+        <input type="hidden" name="AAcceptCellphone" id="AAcceptCellphone" />
+        <input type="hidden" name="AAcceptTelephone" id="AAcceptTelephone" />
+        <input type="hidden" name="AAcceptPeople" id="AAcceptPeople" />
+        <input type="hidden" name="AAcceptCity" id="AAcceptCity" />
+        <input type="hidden" id="HiddenLimitID" />
+        <input type="hidden" id="HiddenLimitTitle" />
+
+        <div id="saPanel">
+            <table style="width: 100%">
+                <tr>
+                    <td style="text-align: right;">收货人:</td>
+                    <td>
+                        <input id="AcceptPeople" style="width: 180px;" data-options="required:true" class="easyui-combobox AcceptPeople" />
+                    </td>
+                    <td style="text-align: right;">收货地址:
+                    </td>
+                    <td colspan="1">
+                        <input name="AcceptAddress" id="AAcceptAddress" data-options="disabled:true" style="width: 350px;" class="easyui-textbox" />
+                    </td>
+                    <td style="text-align: right;">总件数:
+                    </td>
+                    <td>
+                        <input name="Piece" id="APiece" class="easyui-numberbox" data-options="min:0,precision:0,required:true,disabled:true" style="width: 80px;" />
+                    </td>
+                    <td style="text-align: right;">订单费用:
+                    </td>
+                    <td>
+                        <input name="TotalCharge" id="TotalCharge" class="easyui-numberbox" data-options="min:0,precision:2,disabled:true" style="width: 100px;" />
+                    </td>
+                </tr>
+
+                <tr>
+                    <td style="text-align: right;">备注:
+                    </td>
+                    <td colspan="4">
+                        <textarea name="Remark" id="ARemark" placeholder="请输入订单备注" style="width: 70%; resize: none"></textarea>
+                    </td>
+                    <td colspan="1" id="PayTotalCharge1">
+                        <input type="checkbox" id="UseRebateMoney" name="UseRebateMoney"  value="1" />
+                        <label for="UseRebateMoney">使用返利</label>
+                    </td>
+                    <td style="text-align: right;" id="PayTotalCharge3">支付费用:
+                    </td>
+                    <td id="PayTotalCharge2">
+                        <input name="PayTotalCharge" id="PayTotalCharge" class="easyui-numberbox" data-options="min:0,precision:2,disabled:true" style="width: 100px;" />
+                    </td>
+                    <td colspan="2" rowspan="2" style="text-align: center;">
+                        <a href="#" id="btnSave" class="easyui-linkbutton" iconcls="icon-ok" plain="false" onclick="saveOutCargo()">&nbsp;保&nbsp;存&nbsp;订&nbsp;单</a>
+
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </form>
+    <script type="text/javascript">
+        function UnpaidOrder() {
+            $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '订单未支付！', 'warning');
+        }
+        $("body").on('click', '.RuleBankCheck', function () {
+            var id = $(this).attr("id");
+            var name = $(this).attr("name");
+            var title = $(this).attr("value");
+            if (this.checked) {
+                $("#rule").find('input[type=checkbox]').not(this).attr("checked", false);
+                UselRuleBank(id, name, title);
+            } else {
+                CancelRuleBank(id, name, title);
+            }
+        });
+
+        function UselRuleBank(id, name, title) {
+            var RuleType = $('#RuleType').val();
+            var SystemSalePrice = $('#SystemSalePrice').val();
+
+            var ThisRuleType = $('#RuleType' + id).val();
+            if (ThisRuleType == RuleType) {
+                RuleType = null;
+                $('#RuleType').val("");
+                $('#RuleID').val("");
+                $('#RuleTitle').val("");
+                $('#SuitClientNum').val("");
+            }
+            switch (parseInt(ThisRuleType)) {
+                case 0:
+                    break;
+                case 1:
+
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    break;
+                case 4:
+                    break;
+                case 6:
+                    var ThisRuleContent = $('#CutEntry' + id).val();
+                    if (RuleType == null || RuleType == "") {
+                        $('#RuleType').val(6);
+                        $('#RuleID').val(id);
+                        $('#RuleTitle').val(title);
+                        $('#SuitClientNum').val(name);
+                        var price = ($('#ActSalePrice').val() * 1 - ThisRuleContent);
+                    } else {
+                        if (RuleType.indexOf(',6') < 0) {
+                            $('#RuleType').val(RuleType + ',' + 6);
+                            $('#RuleID').val($('#RuleID').val() + ',' + id);
+                            $('#RuleTitle').val($('#RuleTitle').val() + ',' + title);
+                            $('#SuitClientNum').val($('#SuitClientNum').val() + ',' + name);
+                        } else {
+                            $('#RuleID').val($('#HiddenLimitID').val() + ',' + id);
+                            $('#RuleTitle').val($('#HiddenLimitTitle').val() + ',' + title);
+                            $('#SuitClientNum').val($('#SuitClientNum').val() + ',' + name);
+                        }
+                        var price = (SystemSalePrice * 1 - ThisRuleContent);
+                    }
+                    $('#ActSalePrice').numberbox('setValue', price);
+                    break;
+                default:
+                    break;
+            }
+        }
+        function CancelRuleBank(id, name, title) {
+            var RuleType = $('#RuleType').val();
+            var ThisRuleType = $('#RuleType' + id).val();
+            switch (parseInt(ThisRuleType)) {
+                case 0:
+                    break;
+                case 1:
+                    break;
+                case 2:
+                    break;
+                case 3:
+                    break;
+                case 4:
+                    break;
+                case 6:
+                    var ThisRuleContent = $('#CutEntry' + id).val();
+                    if (RuleType.indexOf(",") < 0) {
+                        $('#RuleType').val("");
+                        $('#RuleID').val("");
+                        $('#RuleTitle').val("");
+                        $('#SuitClientNum').val("");
+                        var price = ($('#ActSalePrice').val() * 1 + ThisRuleContent * 1);
+                    } else {
+                        $('#RuleType').val($('#RuleType').val().replace(',6', ''));
+                        $('#RuleID').val($('#RuleID').val().replace(',' + id, ''));
+                        $('#RuleTitle').val($('#RuleTitle').val().replace(',' + title, ''));
+                        $('#SuitClientNum').val($('#SuitClientNum').val().replace(',' + name, ''));
+                        var price = ($('#ActSalePrice').val() * 1 + ThisRuleContent * 1);
+                    }
+                    $('#ActSalePrice').numberbox('setValue', price);
+                    //$("#ActSalePrice").numberbox('enable');
+                    break;
+                default:
+                    break;
+            }
+        }
+        //保存订单
+        function saveOutCargo() {
+            //取消业务员禁用方便后台取值
+            $('#APiece').combobox('enable');
+            $('#TotalCharge').combobox('enable');
+            $('#AAcceptAddress').combobox('enable');
+            $('#PayTotalCharge').combobox('enable');
+            var rows = $('#outDg').datagrid('getRows');
+            if (rows == null || rows == "") { $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '出库列表为空！', 'warning'); return; }
+
+            //$('#HouseCode').val(rows[0].OrderCode);
+            $('#BelongHouse').val(rows[0].BelongHouse);
+            $('#HouseID').val(rows[0].HouseID);
+            //$('#HouseName').val(rows[0].HouseName);
+            $.messager.progress({ msg: '请稍后,正在保存中...' });
+            $('#btnSave').linkbutton('disable');
+            var json = JSON.stringify(rows);
+
+            $('#fmDep').form('submit', {
+                url: '../FormService.aspx?method=saveSimpleOrderData',
+                contentType: "application/json;charset=utf-8", dataType: "json",
+                onSubmit: function (param) {
+                    param.submitData = json;
+                    var trd = $(this).form('enableValidation').form('validate');
+                    if (trd) { $('#btnSave').linkbutton('disable'); } else {
+                        $.messager.progress("close");
+                        $('#btnSave').linkbutton('enable');
+                    }
+                    return trd;
+                },
+                success: function (msg) {
+                    $.messager.progress("close");
+                    $('#btnSave').linkbutton('enable');
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        var dd = result.Message.split('/');
+                        location.reload();
+                    } else {
+                        $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                        //$('#SaleManID').combobox('disable');
+                    }
+                }
+            })
+
+        }
+        function reset() {
+            $('#fmDep').form('clear');
+            $('#outDg').datagrid('loadData', { total: 0, rows: [] });
+            $('#DisplayNum').val(0);
+            $('#DisplayPiece').val(0);
+            var title = "";
+            $('#outDg').datagrid("getPanel").panel("setTitle", title);
+        }
+        //业务员选择方法
+        function onSaleManIDChanged(item) {
+            if (item) {
+                $('#SaleCellPhone').val(item.CellPhone);
+            }
+        }
+
+        //删除出库的数据
+        function dblClickDelCargo(Did) {
+            var row = $("#outDg").datagrid('getData').rows[Did];
+            var tCharge = $('#TotalCharge').numberbox('getValue') == null || $('#TotalCharge').numberbox('getValue') == "" ? 0 : Number($('#TotalCharge').numberbox('getValue'));
+            var n = $('#DisplayNum').val() == "" || isNaN($('#DisplayNum').val()) ? 0 : Number($('#DisplayNum').val());
+            var p = $('#DisplayPiece').val() == "" || isNaN($('#DisplayPiece').val()) ? 0 : Number($('#DisplayPiece').val());
+            n--;
+            var pt = p - (Number(row.InPiece) - Number(row.Piece));
+            $('#DisplayNum').val(Number(n));
+            $('#DisplayPiece').val(Number(pt));
+            $('#APiece').numberbox('setValue', Number(pt));
+            var SalePrice = Number(row.ActSalePrice);//销售价
+            var NC = SalePrice * (Number(row.InPiece) - Number(row.Piece));
+
+            $('#TotalCharge').numberbox('setValue', tCharge - NC);
+            $('#PayTotalCharge').numberbox('setValue', $('#TotalCharge').numberbox('getValue'));
+            var title = "订单物料     已拉上：" + n + "个物料号，总数量：" + pt + " 条";
+            $('#outDg').datagrid("getPanel").panel("setTitle", title);
+            var index = $('#dg').datagrid('getRowIndex', row.ID);
+            if (index >= 0) {
+                var Trow = $("#dg").datagrid('getData').rows[index];
+                Trow.Piece = Trow.InPiece;
+                $('#dg').datagrid('updateRow', { index: index, row: Trow });
+            }
+            var index = $('#outDg').datagrid('getRowIndex', row);
+            $('#outDg').datagrid('deleteRow', index);
+        }
+        //新增出库数据
+        function outOK() {
+            $("#ActSalePrice").numberbox('enable');
+            var SalePrice = $('#ActSalePrice').numberbox('getValue');// Number(row.SalePrice);//销售价
+            $('#dg').datagrid('selectRow', $('#index').val());
+            var row = $('#dg').datagrid('getSelected');
+            var RuleType = $('#RuleType').val();
+            var row2 = row;
+            //对轮胎产品进行价格管控
+            if (row.TypeParentID == 1) {
+                if (SalePrice == "0" || SalePrice == '' || SalePrice == undefined) {
+                    $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '请输入业务员销售价格！', 'warning');
+                    return;
+                }
+            }
+            if ($('#Numbers').val() == null || $('#Numbers').val() == "") {
+                $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '请输入拉上订单数量！', 'warning');
+                return;
+            }
+            if ($('#Numbers').val() < 1) {
+                $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '拉上订单数量必须大于0！', 'warning');
+                return;
+            }
+            var Total = Number(row.Piece);
+            var tCharge = $('#TotalCharge').numberbox('getValue') == null || $('#TotalCharge').numberbox('getValue') == "" ? 0 : Number($('#TotalCharge').numberbox('getValue'));
+            var Aindex = $('#InIndex').val();
+            var index = $('#outDg').datagrid('getRowIndex', row.ID);
+            if (index < 0) {
+                if (RuleType != "" && RuleType != null) {
+                    row.IsRuleBank = 1;
+                    row.RuleType = RuleType;
+                    row.RuleID = $('#RuleID').val();
+                    row.RuleTitle = $('#RuleTitle').val();
+                    row.SuitClientNum = $('#SuitClientNum').val();
+
+                    if (RuleType.indexOf('1') > -1) {
+
+                    }
+                } else {
+                    row.IsRuleBank = "";
+                    row.RuleType = "";
+                    row.RuleID = "";
+                    row.RuleTitle = "";
+                    row.SuitClientNum = "";
+                }
+                row.Piece = $('#Numbers').numberbox('getValue');
+                row.ActSalePrice = SalePrice;
+                row.Count = Number(row.Piece) * Number(row.ActSalePrice);
+                row.SystemSalePrice = $('#SystemSalePrice').val();
+                $('#outDg').datagrid('appendRow', row);
+                var indexD = $('#outDg').datagrid('getRowIndex', row.ID);
+                $('#outDg').datagrid('refreshRow', indexD);
+
+                var n = $('#DisplayNum').val() == "" || isNaN($('#DisplayNum').val()) ? 0 : Number($('#DisplayNum').val());
+                var p = $('#DisplayPiece').val() == "" || isNaN($('#DisplayPiece').val()) ? 0 : Number($('#DisplayPiece').val());
+                n++;
+                var pt = p + Number($('#Numbers').numberbox('getValue'));
+
+                $('#DisplayNum').val(Number(n));
+                $('#DisplayPiece').val(Number(pt));
+                $('#APiece').numberbox('setValue', Number(pt));
+                var NC = SalePrice * Number($('#Numbers').numberbox('getValue'));
+                $('#TotalCharge').numberbox('setValue', tCharge + NC);
+                $('#PayTotalCharge').numberbox('setValue', $('#TotalCharge').numberbox('getValue'));
+                var title = "订单物料     已拉上：" + n + "个物料号，总数：" + pt + " 条";
+                $('#outDg').datagrid("getPanel").panel("setTitle", title);
+                closedgShowData();
+
+                if (Total > Number($('#Numbers').numberbox('getValue'))) {
+                    row2.Piece = Total - Number($('#Numbers').numberbox('getValue'));
+                } else {
+                    row2.Piece = 0;
+                }
+                $('#dg').datagrid('updateRow', { index: Aindex, row: row2 });
+            } else { $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '订单列表已存在该产品，请先删除再添加！', 'warning'); }
+        }
+        //关闭
+        function closedgShowData() {
+            $('#dlg').dialog('close');
+        }
+        ///出库
+        function plOutCargo() {
+            $("#ActSalePrice").numberbox('enable');
+            $('#RuleType').val("");
+            $('#RuleID').val("");
+            $('#SuitClientNum').val("");
+            $('#Regular').val("");
+            $('#RuleTitle').val("");
+            $('#SystemSalePrice').val("");
+            $('#index').val("");
+
+            var row = $('#dg').datagrid('getSelected');
+            $('#index').val($('#dg').datagrid('getRowIndex', row.ID));
+            if (row == null || row == "") {
+                $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '请选择要拉上订单的数据！', 'warning');
+                return;
+            }
+            if (row.Piece == 0) {
+                $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '库存不足', 'warning');
+                return;
+            }
+            var year = new Date().getFullYear();
+            debugger;
+            if (row.BatchYear < year.toString().slice(-2)) {
+                $.messager.confirm('<%= Dealer.Common.GetSystemNameAndVersion()%>', "当前产品周期为" + row.BatchYear + "年，确认下单？", function (r) {
+                    if (r) {
+                        out(row);
+                    }
+                });
+            } else {
+                out(row);
+            }            
+        }
+        function out(row) {
+            if (row) {
+                $.ajax({
+                    url: "../FormService.aspx?method=QueryPriceRuleBankInfo&HouseID=" + row.HouseID + "&TypeID=" + row.TypeID + "&Specs=" + encodeURIComponent(row.Specs) + "&Figure=" + encodeURIComponent(row.Figure) + "&LoadIndex=" + encodeURIComponent(row.LoadIndex) + "&SpeedLevel=" + encodeURIComponent(row.SpeedLevel) + "&Batch=" + row.Batch + "&ClientNum=" + <%=UserInfor.LoginName%>,
+                    cache: false,
+                    async: true,
+                    dataType: "json",
+                    success: function (text) {
+                        $("#lblRule").html(text.Html);
+                        $.parser.parse($("#lblRule"));
+                        if (text.QuotaNum != -1) {
+                            var RuleID = $('#LimitID').val();
+                            var RuleTitle = $('#LimitTitle').val();
+                            $('#RuleType').val(4);
+                            $('#RuleID').val(RuleID);
+                            $('#RuleTitle').val(RuleTitle);
+                            $('#HiddenLimitID').val(RuleID);
+                            $('#HiddenLimitTitle').val(RuleTitle);
+                            var outDgrows = $("#outDg").datagrid('getData').rows;
+                            var num = 0;
+                            if (outDgrows.length > 0) {
+                                for (var i = 0; i < outDgrows.length; i++) {
+                                    var batch = outDgrows[i].Batch;
+                                    if (batch.length == 4) {
+                                        var batch1 = batch.substring(0, 2);
+                                        var batch2 = batch.substring(2);
+                                        batch = batch2 + batch1;
+                                    }
+
+                                    var ifstr = 1 == 1;
+                                    if (text.QuotaSpecs != "") {
+                                        ifstr = ifstr && text.QuotaSpecs == outDgrows[i].Specs;
+                                    }
+                                    if (text.QuotaFigure != "") {
+                                        ifstr = ifstr && text.QuotaFigure == outDgrows[i].Figure;
+                                    }
+                                    if (text.QuotaStartBatch != -1) {
+                                        ifstr = ifstr && text.QuotaStartBatch <= batch;
+                                    }
+                                    if (text.QuotaEndBatch != -1) {
+                                        ifstr = ifstr && text.QuotaEndBatch >= batch;
+                                    }
+                                    if (ifstr) {
+                                        var piece = parseInt(outDgrows[i].InPiece) - parseInt(outDgrows[i].Piece);
+                                        num = parseInt(num) + parseInt(piece);
+                                    }
+                                }
+                            } else {
+
+                            }
+                            if (parseInt(num) >= parseInt(text.QuotaNum)) {
+                                $.messager.alert('<%= Dealer.Common.GetSystemNameAndVersion()%>', '此产品达到限购数量', 'warning');
+                                $('#dlg').dialog('close');
+                                return;
+                            } else {
+                                var quotaNmu = parseInt(text.QuotaNum) - num;
+                                if (row.Piece < quotaNmu) {
+                                    quotaNmu = row.Piece;
+                                }
+                                $('#Numbers').numberbox({
+                                    min: 0,
+                                    max: parseInt(quotaNmu),
+                                    precision: 0
+                                });
+                                $('#dlg').dialog('setTitle', '拉上  ' + row.Specs + ' 花纹：' + row.Figure);
+                            }
+                        }
+                    }
+                });
+
+
+
+                $('#dlg').dialog('open').dialog('setTitle', '拉上  ' + row.Specs + ' 花纹：' + row.Figure);
+                $('#InPiece').val(row.Piece);
+                $('#InIndex').val($('#dg').datagrid('getRowIndex', row));
+                $('#Numbers').numberbox('setValue', '');
+
+                if (row.SalePriceClient != undefined && row.SalePriceClient != "") {
+                    $('#ActSalePrice').numberbox('setValue', row.SalePriceClient);
+                } else {
+                    $('#ActSalePrice').numberbox('setValue', row.TradePrice);
+                }
+                $('#SystemSalePrice').val(row.SalePrice);
+
+                $('#Numbers').numberbox({
+                    min: 0,
+                    max: row.Piece,
+                    precision: 0
+                });
+                $('#Numbers').numberbox().next('span').find('input').focus();
+                $("#ActSalePrice").numberbox('disable');
+            }
+        }
+        function onAcceptAddressChanged(item) {
+            $('#AAcceptCity').val(item.AcceptCity);
+            $('#AAcceptUnit').val(item.AcceptCompany);
+            $('#AAcceptAddress').textbox('setValue', item.AcceptAddress);
+            $('#AAcceptTelephone').val(item.AcceptTelephone);
+            $('#AAcceptCellphone').val(item.AcceptCellphone);
+            $('#AAcceptPeople').val(item.AcceptPeople);
+        }
+
+    </script>
+</asp:Content>

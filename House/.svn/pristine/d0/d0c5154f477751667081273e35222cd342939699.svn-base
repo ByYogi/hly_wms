@@ -1,0 +1,1739 @@
+﻿using House.Entity;
+using House.Entity.Cargo;
+using House.Entity.Cargo.House;
+using House.Entity.Cargo.Order;
+using House.Entity.Cargo.Report;
+using House.Manager;
+using House.Manager.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices.ComTypes;
+using System.Runtime.Remoting.Metadata.W3cXsd2001;
+using System.Security;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Transactions;
+
+namespace House.Business.Cargo
+{
+    /// <summary>
+    /// 数据统计逻辑操作类
+    /// </summary>
+    public class CargoReportBus
+    {
+        private CargoReportManager man = new CargoReportManager();
+        #region 访问备货明细
+        /// <summary>
+        /// 查询商品访问量与仓库备货信息数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryPageAccessingStockDetails(int pIndex, int pNum, CargoAccessingStockDetailsEntity entity)
+        {
+            return man.QueryPageAccessingStockDetails(pIndex, pNum, entity);
+        }
+        #endregion
+        #region 销售日收入报表操作方法集合
+        /// <summary>
+        /// 查询销售日收入报表
+        /// </summary>
+        /// <param name=""></param>
+        /// <returns></returns>
+        public SaleDayReportEntity QuerySaleDayReportInfo(SaleDayReportEntity entity)
+        {
+            return man.QuerySaleDayReportInfo(entity);
+        }
+        #endregion
+        #region 销售备货明细操作方法集合
+        public Hashtable QueryPageSaleStockUpDetails(int pIndex, int pNum, CargoOrderGoodsEntity entity)
+        {
+            return man.QueryPageSaleStockUpDetails(pIndex, pNum, entity);
+        }
+        #endregion
+        #region 仓库盘点操作方法集合
+        /// <summary>
+        /// 仓库盘点数据查询
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoStocktakingEntity> QueryHouseStocktaking(CargoStocktakingEntity entity)
+        {
+            return man.QueryHouseStocktaking(entity);
+        }
+        /// <summary>
+        /// 按产品分类统计盘点仓库数量
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoStocktakingEntity> QueryHouseStockByType(CargoStocktakingEntity entity)
+        {
+            return man.QueryHouseStockByType(entity);
+        }
+        #endregion
+        #region 每日进出库报表查询
+        /// <summary>
+        /// 查询每日的入库报表
+        /// </summary>
+        public List<CargoDailyReportEntity> QueryInDailyReport(CargoDailyReportEntity entity)
+        {
+            return man.QueryInDailyReport(entity);
+        }
+        /// <summary>
+        /// 查询每日的出库报表
+        /// </summary>
+        public List<CargoDailyReportEntity> QueryOutDailyReport(CargoDailyReportEntity entity)
+        {
+            return man.QueryOutDailyReport(entity);
+        }
+        public List<CargoDailyReportEntity> QueryStockDailyReport(CargoDailyReportEntity entity)
+        {
+            return man.QueryStockDailyReport(entity);
+        }
+        /// <summary>
+        /// 查询业务员报日报表 
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QuerySaleManDailyReport(int pIndex, int pNum, SaleManReportEntity entity)
+        {
+            return man.QuerySaleManDailyReport(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询每日移库报表数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoReportMoveContainerEntity> QueryMoveContainerReport(CargoReportMoveContainerEntity entity)
+        {
+            return man.QueryMoveContainerReport(entity);
+        }
+        /// <summary>
+        /// 查询销售轮胎平均尺寸
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDailyReportEntity> QueryAveraHub(CargoDailyReportEntity entity)
+        {
+            return man.QueryAveraHub(entity);
+        }
+        public List<SaleManReportEntity> QueryGrossReport(SaleManReportEntity entity)
+        {
+            return man.QueryGrossReport(entity);
+        }
+        #endregion
+        #region 领导驾驶舱
+        /// <summary>
+        /// 根据产品类型分类查询统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoLeaderCookpitEntity> QueryByProductType(CargoLeaderCookpitEntity entity)
+        {
+            return man.QueryByProductType(entity);
+        }
+        /// <summary>
+        /// 按销售业务员查询统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoLeaderCookpitEntity> QueryBySaleMan(CargoLeaderCookpitEntity entity)
+        {
+            return man.QueryBySaleMan(entity);
+        }
+        /// <summary>
+        /// 按客户数据统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoLeaderCookpitEntity> QueryByClient(CargoLeaderCookpitEntity entity)
+        {
+            return man.QueryByClient(entity);
+        }
+        /// <summary>
+        /// 保存每月统计数据 每月的2和5号统计上个月的数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void saveMonthStatis(List<CargoMonthStatisEntity> statisList, LogEntity log)
+        {
+            LogWrite<CargoMonthStatisEntity> lw = new LogWrite<CargoMonthStatisEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.saveMonthStatis(statisList);
+                    log.Memo = "定时服务，年：" + statisList[0].Year.ToString() + "，月：" + statisList[0].Month.ToString() + "，总销量：" + statisList.Find(c => c.StatisType.Equals("0")).SaleNum.ToString() + "，总收入：" + statisList.Find(c => c.StatisType.Equals("0")).SaleIncome.ToString();
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "定时服务失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改统计数据
+        /// </summary>
+        /// <param name="statisList"></param>
+        public void updateMonthStatis(List<CargoMonthStatisEntity> statisList, LogEntity log)
+        {
+            LogWrite<CargoMonthStatisEntity> lw = new LogWrite<CargoMonthStatisEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.updateMonthStatis(statisList);
+                    log.Memo = "更新3月前数据，年：" + statisList[0].Year.ToString() + "，月：" + statisList[0].Month.ToString() + "，总销量：" + statisList.Find(c => c.StatisType.Equals("0")).SaleNum.ToString() + "，总收入：" + statisList.Find(c => c.StatisType.Equals("0")).SaleIncome.ToString();
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "定时服务失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 按月统计所有仓库营业数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoLeaderCookpitEntity> QueryByMonthStatis(CargoLeaderCookpitEntity entity)
+        {
+            List<CargoLeaderCookpitEntity> result = man.QueryByMonthStatis(entity);
+
+            List<CargoLeaderCookpitEntity> orderList = man.QueryMonthOrderNum(entity);
+            foreach (var it in result)
+            {
+                it.TotalCharge = Math.Round(it.TotalCharge / 10000, 2);
+                CargoLeaderCookpitEntity order = orderList.Find(c => c.Year.Equals(it.Year) && c.Month.Equals(it.Month) && c.HouseID.Equals(it.HouseID));
+                if (order == null)
+                {
+                    continue;
+                }
+                it.OrderNum = order.OrderNum;
+            }
+            return result;
+        }
+        #endregion
+        #region 销售库存表查询集合
+        /// <summary>
+        /// 查询销售库存 表
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoSaleStockStatisEntity> QuerySaleStockData(CargoSaleStockStatisEntity entity)
+        {
+            return man.QuerySaleStockData(entity);
+        }
+        #endregion
+        #region 仓库库存快照操作方法集合
+        /// <summary>
+        /// 保存仓库库存快照
+        /// </summary>
+        /// <param name="CargoPermisID"></param>
+        public void SaveStockSnapData(string CargoPermisID, LogEntity log)
+        {
+            LogWrite<CargoMonthStatisEntity> lw = new LogWrite<CargoMonthStatisEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.SaveStockSnapData(CargoPermisID);
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "定时服务失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询快照库存 数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryStockSnapData(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.QueryStockSnapData(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 导出快照数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerShowEntity> QueryStockSnapDataForExport(CargoContainerShowEntity entity)
+        {
+            return man.QueryStockSnapDataForExport(entity);
+        }
+        #endregion
+        #region 微信商城数据统计集合
+        /// <summary>
+        /// 各仓库轮胎微信商城销售数据统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoWeixinMallReportEntity> QueryWeixinMalReportData(CargoWeixinMallReportEntity entity)
+        {
+            return man.QueryWeixinMalReportData(entity);
+        }
+        /// <summary>
+        /// 处理微信 商城 昨天 的数据统计
+        /// </summary>
+        /// <param name="entity"></param>
+        public void HandleWxMallStatis(CargoWeixinMallReportEntity entity)
+        {
+            man.HandleWxMallStatis(entity);
+        }
+        /// <summary>
+        /// 查询微信商城数据统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoWeixinMallReportEntity> QueryWeixinMallStatisData(CargoWeixinMallReportEntity entity)
+        {
+            return man.QueryWeixinMallStatisData(entity);
+        }
+        #endregion
+        #region 仓储系统总统计
+        /// <summary>
+        /// 按订单统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryOrderStatis(CargoDLTDataStatisEntity entity)
+        {
+            List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> order = man.QueryOrderStatis(entity);
+            foreach (var it in order)
+            {
+                if (result.Exists(c => c.HouseName.Equals(it.HouseName) && c.ReportDate.Equals(it.ReportDate)))
+                {
+                    //已经存在
+                    CargoDLTDataStatisEntity ent = result.Find(c => c.HouseName.Equals(it.HouseName) && c.ReportDate.Equals(it.ReportDate));
+                    switch (it.OrderType)
+                    {
+                        case "0":
+                            ent.DNOrderNum = it.OrderNum;
+                            ent.DNOrderPiece = it.OrderPiece;
+                            ent.DNOrderCharge = it.OrderCharge;
+                            break;
+                        case "2":
+                            ent.SCOrderNum = it.OrderNum;
+                            ent.SCOrderPiece = it.OrderPiece;
+                            ent.SCOrderCharge = it.OrderCharge;
+                            break;
+                        case "1":
+                            ent.QYOrderNum = it.OrderNum;
+                            ent.QYOrderPiece = it.OrderPiece;
+                            ent.QYOrderCharge = it.OrderCharge;
+                            break;
+                        case "3":
+                            ent.APPOrderNum = it.OrderNum;
+                            ent.APPOrderPiece = it.OrderPiece;
+                            ent.APPOrderCharge = it.OrderCharge;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                else
+                {
+                    switch (it.OrderType)
+                    {
+                        case "0":
+                            result.Add(new CargoDLTDataStatisEntity
+                            {
+                                HouseName = it.HouseName,
+                                ReportDate = it.ReportDate,
+                                DNOrderNum = it.OrderNum,
+                                DNOrderPiece = it.OrderPiece,
+                                DNOrderCharge = it.OrderCharge
+                            });
+                            break;
+                        case "2":
+                            result.Add(new CargoDLTDataStatisEntity
+                            {
+                                HouseName = it.HouseName,
+                                ReportDate = it.ReportDate,
+                                SCOrderNum = it.OrderNum,
+                                SCOrderPiece = it.OrderPiece,
+                                SCOrderCharge = it.OrderCharge
+                            });
+                            break;
+                        case "1":
+                            result.Add(new CargoDLTDataStatisEntity
+                            {
+                                HouseName = it.HouseName,
+                                ReportDate = it.ReportDate,
+                                QYOrderNum = it.OrderNum,
+                                QYOrderPiece = it.OrderPiece,
+                                QYOrderCharge = it.OrderCharge
+                            });
+                            break;
+                        case "3":
+                            result.Add(new CargoDLTDataStatisEntity
+                            {
+                                HouseName = it.HouseName,
+                                ReportDate = it.ReportDate,
+                                APPOrderNum = it.OrderNum,
+                                APPOrderPiece = it.OrderPiece,
+                                APPOrderCharge = it.OrderCharge
+                            });
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+            foreach (var it in result)
+            {
+                it.OrderNum = it.DNOrderNum + it.SCOrderNum + it.QYOrderNum + it.APPOrderNum;
+                it.OrderPiece = it.DNOrderPiece + it.SCOrderPiece + it.QYOrderPiece + it.APPOrderPiece;
+                it.OrderCharge = it.DNOrderCharge + it.SCOrderCharge + it.QYOrderCharge + it.APPOrderCharge;
+                it.SCScale = ((double)it.SCOrderNum / (double)it.OrderNum).ToString("P");
+                it.DNScale = ((double)it.DNOrderNum / (double)it.OrderNum).ToString("P");
+                it.APPScale = ((double)it.APPOrderNum / (double)it.OrderNum).ToString("P");
+                //it.SCScale = ((double)it.SCOrderNum / (double)it.OrderNum).ToString("P");
+            }
+            return result;
+        }
+
+        public List<CargoDLTDataStatisEntity> StatisticalChart(CargoDLTDataStatisEntity entity)
+        {
+            return man.StatisticalChart(entity);
+        }
+        /// <summary>
+        /// 按品牌销售统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryBrandStatis(CargoDLTDataStatisEntity entity)
+        {
+            List<CargoDLTDataStatisEntity> houseList = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> dateList = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> brandList = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> proList = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> order = man.QueryBrandStatis(entity);
+            int i = 1;
+            int j = 1;
+            foreach (var it in order)
+            {
+                i++;
+                j++;
+                //处理仓库
+                if (houseList.Exists(c => c.HouseName.Equals(it.HouseName)))
+                {
+                    CargoDLTDataStatisEntity house = houseList.Find(c => c.HouseName.Equals(it.HouseName));
+                    house.OrderPiece += it.OrderPiece;
+                    house.OrderCharge += it.OrderCharge;
+                }
+                else
+                {
+                    houseList.Add(new CargoDLTDataStatisEntity
+                    {
+                        id = i++,
+                        HouseName = it.HouseName,
+                        OrderPiece = it.OrderPiece,
+                        OrderCharge = it.OrderCharge,
+                        state = "closed"
+                    });
+                }
+                //处理仓库日期
+                if (dateList.Exists(c => c.HouseName.Equals(it.HouseName) && c.ReportDate.Equals(it.ReportDate)))
+                {
+                    CargoDLTDataStatisEntity dateEnt = dateList.Find(c => c.HouseName.Equals(it.HouseName) && c.ReportDate.Equals(it.ReportDate));
+                    dateEnt.OrderPiece += it.OrderPiece;
+                    dateEnt.OrderCharge += it.OrderCharge;
+                }
+                else
+                {
+                    CargoDLTDataStatisEntity house = houseList.Find(c => c.HouseName.Equals(it.HouseName));
+                    dateList.Add(new CargoDLTDataStatisEntity
+                    {
+                        id = i++,
+                        HouseName = it.HouseName,
+                        ReportDate = it.ReportDate,
+                        OrderPiece = it.OrderPiece,
+                        OrderCharge = it.OrderCharge,
+                        state = "closed",
+                        _parentId = house.id
+                    });
+                }
+                //处理品牌
+                if (brandList.Exists(c => c.HouseName.Equals(it.HouseName) && c.ReportDate.Equals(it.ReportDate) && c.TypeName.Equals(it.TypeName)))
+                {
+                    CargoDLTDataStatisEntity brandEnt = brandList.Find(c => c.HouseName.Equals(it.HouseName) && c.ReportDate.Equals(it.ReportDate) && c.TypeName.Equals(it.TypeName));
+                    brandEnt.OrderPiece += it.OrderPiece;
+                    brandEnt.OrderCharge += it.OrderCharge;
+                }
+                else
+                {
+                    CargoDLTDataStatisEntity house = dateList.Find(c => c.HouseName.Equals(it.HouseName) && c.ReportDate.Equals(it.ReportDate));
+                    brandList.Add(new CargoDLTDataStatisEntity
+                    {
+                        id = i++,
+                        HouseName = it.HouseName,
+                        ReportDate = it.ReportDate,
+                        TypeName = it.TypeName,
+                        OrderPiece = it.OrderPiece,
+                        OrderCharge = it.OrderCharge,
+                        state = "closed",
+                        _parentId = house.id
+                    });
+                }
+                //处理规格 花纹
+                if (proList.Count(c => c.HouseName.Equals(it.HouseName) && c.ReportDate.Equals(it.ReportDate) && c.TypeName.Equals(it.TypeName)) > 20)
+                {
+                    continue;
+                }
+                CargoDLTDataStatisEntity brand = brandList.Find(c => c.HouseName.Equals(it.HouseName) && c.ReportDate.Equals(it.ReportDate) && c.TypeName.Equals(it.TypeName));
+                proList.Add(new CargoDLTDataStatisEntity
+                {
+                    id = i++,
+                    HouseName = it.HouseName,
+                    ReportDate = it.ReportDate,
+                    TypeName = it.TypeName,
+                    OrderPiece = it.OrderPiece,
+                    OrderCharge = it.OrderCharge,
+                    Specs = it.Specs,
+                    Figure = it.Figure,
+                    _parentId = brand.id
+                });
+            }
+            foreach (var item in brandList)
+            {
+                if (item.state.Equals("closed"))
+                {
+                    double proportion = Convert.ToDouble(item.OrderPiece) / dateList[0].OrderPiece;
+                    item.Salesproportion = Math.Round(proportion, 4) * 100 + "%";
+                    item.NumSalesproportion = Math.Round(proportion, 4) * 100;
+                }
+            }
+            result.AddRange(houseList);
+            result.AddRange(dateList);
+            result.AddRange(brandList);
+            result.AddRange(proList);
+            result = result.OrderByDescending(c => c.OrderPiece).ToList();
+            return result;
+        }
+        public List<CargoDLTDataStatisEntity> QueryRegionStatistics(CargoDLTDataStatisEntity entity)
+        {
+            List<CargoDLTDataStatisEntity> result = man.QueryRegionStatistics(entity);
+            int sum = 0;
+            for (int i = 0; i < result.Count; i++)
+            {
+                sum += result[i].OrderPiece;
+            }
+            foreach (var item in result)
+            {
+                double proportion = Convert.ToDouble(item.OrderPiece) / sum;
+                item.Salesproportion = Math.Round(proportion, 4) * 100 + "%";
+                item.NumSalesproportion = Math.Round(proportion, 4) * 100;
+            }
+            return result;
+        }
+        /// <summary>
+        /// 按客户查询统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryClientStatis(CargoDLTDataStatisEntity entity)
+        {
+            entity.OrderModel = "0";
+            return man.QueryClientStatis(entity);
+        }
+        public List<CargoDLTDataStatisEntity> QuerySalesVolume(CargoDLTDataStatisEntity entity, string around)
+        {
+            List<CargoDLTDataStatisEntity> result = man.QuerySalesVolume(entity);
+            int sum = 0;
+            for (int i = 0; i < result.Count; i++)
+            {
+                sum += result[i].OrderPiece;
+            }
+            foreach (var item in result)
+            {
+
+                item.NumSalesproportion = Convert.ToDouble(item.OrderPiece) / sum;
+            }
+            if (!around.Equals("0"))
+            {
+                result = result.OrderBy(c => c.OrderPiece).ToList();
+            }
+            result = result.Take(20).ToList();
+            return result;
+        }
+        public CargoDLTDataStatisEntity Statisticalheader(CargoDLTDataStatisEntity entity)
+        {
+            return man.Statisticalheader(entity);
+        }
+        public double QueryAgeing(CargoDLTDataStatisEntity entity)
+        {
+            double result = 0;
+            List<CargoDLTDataStatisEntity> list = man.QueryAgeing(entity);
+            if (list.Count > 0)
+            {
+                foreach (var item in list)
+                {
+                    string[] Dates = item.DeadTime.Split(':');
+                    DateTime time = new DateTime(item.CreateDate.Year, item.CreateDate.Month, item.CreateDate.AddDays(item.ApartDay).Day, Convert.ToInt32(Dates[0]), Convert.ToInt32(Dates[1]), Convert.ToInt32(Dates[2]));
+                    if (time > item.SignTime)
+                    {
+                        item.IsPunctuality = 0;
+                    }
+                    else
+                    {
+                        item.IsPunctuality = 1;
+                    }
+                }
+                double sum = 0;
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i].IsPunctuality == 0)
+                    {
+                        sum += 1;
+                    }
+                }
+                result = sum / Convert.ToDouble(list.Count);
+            }
+            return result;
+        }
+        public List<CargoDLTDataStatisEntity> RegionalpunctualityRate(CargoDLTDataStatisEntity entity)
+        {
+            List<CargoDLTDataStatisEntity> statisEntities = man.QueryAgeing(entity);
+            List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
+            //var ShopCode = statisEntities.GroupBy(i => new {i.ShopCode}).Select(c => new { ShopCode=c.Key.ShopCode });
+            foreach (var item in statisEntities)
+            {
+                string[] Dates = item.DeadTime.Split(':');
+                DateTime time = new DateTime(item.CreateDate.Year, item.CreateDate.Month, item.CreateDate.AddDays(item.ApartDay).Day, Convert.ToInt32(Dates[0]), Convert.ToInt32(Dates[1]), Convert.ToInt32(Dates[2]));
+                if (time > item.SignTime)
+                {
+                    item.IsPunctuality = 0;
+                }
+                else
+                {
+                    item.IsPunctuality = 1;
+                }
+            }
+            var Product = statisEntities.GroupBy(i => new { i.Specs, i.IsPunctuality }).Select(c => new { Specs = c.Key.Specs, IsPunctuality = c.Key.IsPunctuality, IsPunctualityCount = c.Count() });
+            foreach (var item in Product)
+            {
+                result.Add(new CargoDLTDataStatisEntity
+                {
+                    Specs = item.Specs,
+                    IsPunctuality = item.IsPunctuality,
+                    IsPunctualityCount = item.IsPunctualityCount,
+                });
+            }
+            var grouby = result.GroupBy(i => new { i.Specs }).Select(c => new { Specs = c.Key.Specs, IsPunctualitySum = c.Sum(k => k.IsPunctualityCount) });
+            List<CargoDLTDataStatisEntity> results = new List<CargoDLTDataStatisEntity>();
+            foreach (var item in result)
+            {
+                foreach (var Specs in grouby)
+                {
+                    if (item.IsPunctuality == 0 && Specs.Specs.Equals(item.Specs))
+                    {
+                        results.Add(new CargoDLTDataStatisEntity
+                        {
+                            Specs = item.Specs,
+                            PunctualityRate = Convert.ToDouble(item.IsPunctualityCount) / Convert.ToDouble(Specs.IsPunctualitySum)
+                        });
+                    }
+                }
+            }
+            return results;
+        }
+
+        public List<CargoDLTDataStatisEntity> ShopPunctualityrate(CargoDLTDataStatisEntity entity)
+        {
+            List<CargoDLTDataStatisEntity> statisEntities = man.QueryAgeing(entity);
+            List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
+            //var ShopCode = statisEntities.GroupBy(i => new {i.ShopCode}).Select(c => new { ShopCode=c.Key.ShopCode });
+            foreach (var item in statisEntities)
+            {
+                string[] Dates = item.DeadTime.Split(':');
+                DateTime time = new DateTime(item.CreateDate.Year, item.CreateDate.Month, item.CreateDate.AddDays(item.ApartDay).Day, Convert.ToInt32(Dates[0]), Convert.ToInt32(Dates[1]), Convert.ToInt32(Dates[2]));
+                if (time > item.SignTime)
+                {
+                    item.IsPunctuality = 0;
+                }
+                else
+                {
+                    item.IsPunctuality = 1;
+                }
+            }
+            var Product = statisEntities.GroupBy(i => new { i.ShopCode, i.IsPunctuality, i.ShopName }).Select(c => new { ShopCode = c.Key.ShopCode, IsPunctuality = c.Key.IsPunctuality, IsPunctualityCount = c.Count(), ShopName = c.Key.ShopName });
+            ArrayList array = new ArrayList();
+            foreach (var item in Product)
+            {
+                result.Add(new CargoDLTDataStatisEntity
+                {
+                    ShopCode = item.ShopCode,
+                    ShopName = item.ShopName,
+                    IsPunctuality = item.IsPunctuality,
+                    IsPunctualityCount = item.IsPunctualityCount,
+                });
+            }
+            var grouby = result.GroupBy(i => new { i.ShopCode }).Select(c => new { ShopCode = c.Key.ShopCode, IsPunctualitySum = c.Sum(k => k.IsPunctualityCount) });
+            List<CargoDLTDataStatisEntity> results = new List<CargoDLTDataStatisEntity>();
+            foreach (var item in result)
+            {
+                foreach (var Specs in grouby)
+                {
+                    if (item.IsPunctuality == 0 && Specs.ShopCode.Equals(item.ShopCode))
+                    {
+                        results.Add(new CargoDLTDataStatisEntity
+                        {
+                            ShopCode = item.ShopCode,
+                            ShopName = item.ShopName,
+                            PunctualityRate = Convert.ToDouble(item.IsPunctualityCount) / Convert.ToDouble(Specs.IsPunctualitySum)
+                        });
+                    }
+                }
+            }
+            results = results.OrderBy(c => c.PunctualityRate).ToList();
+            return results;
+        }
+        public List<CargoDLTDataStatisEntity> ProvincePunctualityRate(CargoDLTDataStatisEntity entity)
+        {
+            List<CargoDLTDataStatisEntity> statisEntities = man.QueryAgeing(entity);
+            List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
+            //var ShopCode = statisEntities.GroupBy(i => new {i.ShopCode}).Select(c => new { ShopCode=c.Key.ShopCode });
+            foreach (var item in statisEntities)
+            {
+                string[] Dates = item.DeadTime.Split(':');
+                DateTime time = new DateTime(item.CreateDate.Year, item.CreateDate.Month, item.CreateDate.AddDays(item.ApartDay).Day, Convert.ToInt32(Dates[0]), Convert.ToInt32(Dates[1]), Convert.ToInt32(Dates[2]));
+                if (time > item.SignTime)
+                {
+                    item.IsPunctuality = 0;
+                }
+                else
+                {
+                    item.IsPunctuality = 1;
+                }
+            }
+            var Product = statisEntities.GroupBy(i => new { i.Province, i.IsPunctuality }).Select(c => new { Province = c.Key.Province, IsPunctuality = c.Key.IsPunctuality, IsPunctualityCount = c.Count() });
+            ArrayList array = new ArrayList();
+            foreach (var item in Product)
+            {
+                result.Add(new CargoDLTDataStatisEntity
+                {
+                    Province = item.Province,
+                    IsPunctuality = item.IsPunctuality,
+                    IsPunctualityCount = item.IsPunctualityCount,
+                });
+            }
+            var grouby = result.GroupBy(i => new { i.Province }).Select(c => new { Province = c.Key.Province, IsPunctualitySum = c.Sum(k => k.IsPunctualityCount) });
+            List<CargoDLTDataStatisEntity> results = new List<CargoDLTDataStatisEntity>();
+            foreach (var item in result)
+            {
+                foreach (var Specs in grouby)
+                {
+                    if (item.IsPunctuality == 0 && Specs.Province.Equals(item.Province))
+                    {
+                        results.Add(new CargoDLTDataStatisEntity
+                        {
+                            Province = item.Province,
+                            PunctualityRate = Convert.ToDouble(item.IsPunctualityCount) / Convert.ToDouble(Specs.IsPunctualitySum)
+                        });
+                    }
+                }
+            }
+            return results;
+        }
+        public List<CargoDLTDataStatisEntity> QuryTyreType(CargoDLTDataStatisEntity entity)
+        {
+            entity.OrderModel = "0";
+            return man.QuryTyreType(entity);
+        }
+        public ArrayList StatisticalAmountSalesvolume(CargoDLTDataStatisEntity entity)
+        {
+            DateTime date = DateTime.Now;
+            // 指定年份和月份
+            int year = date.Year;
+            int month = date.Month;
+
+            DateTime January = new DateTime(year, 1, 1);
+            DateTime Currentmonth = new DateTime(year, month, 1);
+            entity.StartDate = January;
+            entity.EndDate = Currentmonth;
+            List<CargoDLTDataStatisEntity> res = man.StatisticalAmountSalesvolume(entity);
+            List<CargoDLTDataStatisEntity> money = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> sales = new List<CargoDLTDataStatisEntity>();
+            foreach (var item in res)
+            {
+                money.Add(new CargoDLTDataStatisEntity
+                {
+                    OrderCharge = item.OrderCharge,
+                    DeadTime = item.DeadTime,
+                });
+                sales.Add(new CargoDLTDataStatisEntity
+                {
+                    OrderPiece = item.OrderPiece,
+                    DeadTime = item.DeadTime,
+                });
+            }
+            ArrayList resultList = new ArrayList() {
+                money,
+                sales
+            };
+            return resultList;
+
+        }
+        public ArrayList Statistics(CargoDLTDataStatisEntity entity)
+        {
+            List<CargoDLTDataStatisEntity> statisEntity = new List<CargoDLTDataStatisEntity>();
+            DateTime date = DateTime.Now;
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01") && (entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                date = entity.StartDate;
+            }
+            // 指定年份和月份
+            int year = date.Year;
+            int month = date.Month;
+
+            // 获取本月的第一天和最后一天
+            DateTime firstDayOfMonth = new DateTime(year, month, 1);
+            DateTime lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+            //获取上一个月第一天喝最后一天
+            DateTime firstdayoflastmonth = firstDayOfMonth.AddMonths(-1);
+            DateTime Lastdayoflastmonth = firstDayOfMonth.AddDays(-1);
+
+            // 计算每周的起始日期和结束日期
+            DateTime currentDay = firstDayOfMonth;
+            DayOfWeek startOfWeek = DayOfWeek.Sunday; // 以周日为一周的起始日
+            int week = 0;
+            if (firstDayOfMonth.DayOfWeek == startOfWeek)
+            {
+                statisEntity.Add(new CargoDLTDataStatisEntity
+                {
+                    StartDate = firstDayOfMonth,
+                    EndDate = firstDayOfMonth,
+                    ReportDate = "1"
+                });
+                week++;
+            }
+            while (currentDay < lastDayOfMonth)
+            {
+                DateTime startOfWeekDate = currentDay;
+                DateTime endOfWeekDate = new DateTime();
+                if (lastDayOfMonth < currentDay.AddDays(7))
+                {
+                    endOfWeekDate = currentDay.AddDays((lastDayOfMonth - currentDay).Days);
+                }
+                else
+                {
+                    endOfWeekDate = currentDay.AddDays(7);
+                }
+
+                // 如果当前日期不是起始日，则需要向前调整到本周的起始日
+                while (startOfWeekDate.DayOfWeek == startOfWeek)
+                {
+                    startOfWeekDate = startOfWeekDate.AddDays(+1);
+                }
+                week++;
+                statisEntity.Add(new CargoDLTDataStatisEntity
+                {
+                    StartDate = startOfWeekDate,
+                    EndDate = endOfWeekDate,
+                    ReportDate = Convert.ToString(week)
+                });
+                // 进入下一周
+                int Days = (lastDayOfMonth - currentDay).Days;
+                if (Days < 7)
+                {
+                    currentDay = currentDay.AddDays(Days);
+                }
+                else
+                {
+                    currentDay = currentDay.AddDays(7);
+                }
+
+            }
+            if (lastDayOfMonth.DayOfWeek == DayOfWeek.Monday)
+            {
+                statisEntity.Add(new CargoDLTDataStatisEntity
+                {
+                    StartDate = firstDayOfMonth,
+                    EndDate = firstDayOfMonth,
+                    ReportDate = Convert.ToString(week)
+                });
+            }
+            foreach (var item in statisEntity)
+            {
+                item.CargoPermisID = entity.CargoPermisID;
+            }
+            entity.OrderModel = "0";
+            List<CargoDLTDataStatisEntity> Statistics = man.Statistics(statisEntity);
+            List<CargoDLTDataStatisEntity> CartypeEntity = man.QueryClientStatisCartype(entity);
+            List<CargoDLTDataStatisEntity> RegionEntity = man.QueryClientStatis(entity);
+            List<CargoDLTDataStatisEntity> BrandEntity = man.QueryClientStatisByBrand(entity);
+            var RegionStatistics = RegionEntity.GroupBy(i => new { i.Area }).Select(t => new { Area = t.Key.Area, OrderPiece = t.Sum(c => c.OrderPiece) }).ToList();
+            var BrandStatistics = BrandEntity.GroupBy(i => new { i.TypeName }).Select(t => new { TypeName = t.Key.TypeName, OrderPiece = t.Sum(c => c.OrderPiece), Previous = "" }).ToList();
+            entity.StartDate = firstdayoflastmonth;
+            entity.EndDate = Lastdayoflastmonth;
+
+            List<CargoDLTDataStatisEntity> lastmonthBrand = man.QueryClientStatisByBrand(entity);
+            var ListlastmonthBrand = lastmonthBrand.GroupBy(i => new { i.TypeName }).Select(t => new { TypeName = t.Key.TypeName, OrderPiece = t.Sum(c => c.OrderPiece) }).ToList();
+            List<CargoDLTDataStatisEntity> resultBrand = new List<CargoDLTDataStatisEntity>();
+
+            var list = from left in BrandStatistics
+                       join right in ListlastmonthBrand on left.TypeName equals right.TypeName into tempArray
+                       select new
+                       {
+                           TypeName = left.TypeName,
+                           OrderPiece = left.OrderPiece,
+                           QYOrderPiece = tempArray.Select(t => t.OrderPiece).FirstOrDefault()
+                       };
+
+
+            foreach (var item in list)
+            {
+                resultBrand.Add(new CargoDLTDataStatisEntity
+                {
+                    TypeName = item.TypeName,
+                    OrderPiece = item.OrderPiece,
+                    QYOrderPiece = item.QYOrderPiece,
+                });
+            }
+            //foreach ( var brand in ListlastmonthBrand)
+            //{
+            //    foreach (var item in BrandStatistics)
+            //    {
+            //        if (item.TypeName.Equals(brand.TypeName))
+            //        {
+            //            resultBrand.Add(new CargoDLTDataStatisEntity
+            //            {
+            //                OrderPiece = item.OrderPiece,
+            //                TypeName=item.TypeName,
+            //                QYOrderPiece=brand.OrderPiece,
+            //            });
+            //        }
+            //    }
+            //}
+            resultBrand = resultBrand.OrderByDescending(i => i.OrderPiece).Take(10).ToList();
+
+            ArrayList result = new ArrayList
+            {
+                Statistics,
+                CartypeEntity,
+                RegionStatistics,
+                resultBrand
+            };
+            if (firstDayOfMonth == entity.StartDate && lastDayOfMonth == entity.EndDate)
+            {
+                entity.StartDate = entity.StartDate.AddMonths(-1);
+                entity.EndDate = entity.EndDate.AddMonths(-1);
+                List<CargoDLTDataStatisEntity> RegionMoMEntity = man.QueryRegionStatisMoM(entity);
+                result.Add(RegionMoMEntity);
+            }
+
+            return result;
+        }
+        public Dictionary<string, object> HCYCStatistics(CargoDLTDataStatisEntity entity)
+        {
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            DateTime currentDate = DateTime.Today;
+            // 获取本月第一天
+            DateTime firstDayOfMonth = entity.StartDate;//new DateTime(currentDate.Year, currentDate.Month, 1);
+            // 获取本月最后一天，即下个月的第一天的前一天
+            DateTime lastDayOfMonth = entity.EndDate.AddDays(1);//firstDayOfMonth.AddMonths(1).AddDays(-1);
+            // 获取当天的开始时间（凌晨）
+            DateTime startOfDay = currentDate.Date;
+
+            // 获取当天的结束时间（23:59:59.999）
+            DateTime endOfDay = startOfDay.AddDays(1).AddMilliseconds(-1);
+
+            #region 统计用户
+
+            List<CargoDLTDataStatisEntity> Users = man.HCYC_User_Statistics(entity);
+            Dictionary<string, object> Userkey = new Dictionary<string, object>();
+            //Users = Users.Where(c => c.CreateDate >= entity.StartDate && c.CreateDate <= entity.EndDate).ToList();
+            Userkey.Add("Count", Users.Count());
+            Userkey.Add("MonthCount", Users.Where(c => c.CreateDate >= firstDayOfMonth && c.CreateDate < lastDayOfMonth).ToList().Count());
+            Userkey.Add("DayCount", Users.Where(c => c.CreateDate >= startOfDay && c.CreateDate <= endOfDay).ToList().Count());
+            result.Add("Users", Userkey);
+            #endregion
+            #region 统计门店
+            List<CargoDLTDataStatisEntity> Stores = man.HCYC_Stores_Statistics(entity);
+            Dictionary<string, object> StoresKey = new Dictionary<string, object>();
+            StoresKey.Add("Count", Stores.Count());
+            StoresKey.Add("MonthCount", Users.Where(c => c.CreateDate >= firstDayOfMonth && c.CreateDate < lastDayOfMonth).GroupBy(c => c.ClientNum).ToList().Count());
+            StoresKey.Add("DayCount", Users.Where(c => c.CreateDate >= startOfDay && c.CreateDate <= endOfDay).GroupBy(c => c.ClientNum).ToList().Count());
+            result.Add("Stores", StoresKey);
+            #endregion
+            #region 统计订单
+            List<CargoDLTDataStatisEntity> Order = man.HCYC_Order_Statistics(new CargoDLTDataStatisEntity() { HouseID = entity.HouseID });
+            if (Order.Count > 0)
+            {
+                Dictionary<string, object> OrderKey = new Dictionary<string, object>
+                {
+                    {"MonthOrderNum", Order[0].SaleOrderMonthNum}, //月订单数量
+                    {"DayOrderNum", Order[0].SaleOrderDayNum },//日订单数量
+                    {"MonthOrderSalesVolume",Order[0].SaleOrderMonthPiece },//月订单销售条数
+                    {"DayOrderSalesVolume",Order[0].SaleOrderDayPiece },//当日销售条数
+                    {"MonthOrderRevenue",Order[0].SaleOrderMonthCharge },//月销售额
+                    {"DayOrderRevenue",Order[0].SaleOrderDayCharge },//日销售金额
+                    {"TotalNum",Order[0].SaleOrderTotalPiece },//总销售订单数 没有减去退款的
+                    {"TotalRevenue",Order[0].SaleOrderTotalCharge },//总销售额 没有减去退款的
+                    {"ReturnOrderMonthNum",Order[0].ReturnOrderMonthNum },//月退货订单数
+                    {"ReturnOrderMonthPiece",Order[0].ReturnOrderMonthPiece },//月退货条数
+                    {"ReturnOrderMonthCharge",Order[0].ReturnOrderMonthCharge },//月退货金额
+                    {"ReturnOrderDayPiece",Order[0].ReturnOrderDayPiece },//日退货条数
+                    {"ReturnOrderDayCharge",Order[0].ReturnOrderDayCharge },//日退货金额
+                    {"ReturnOrderDayNum",Order[0].ReturnOrderDayNum },//日退货订单数
+                    {"OESSaleOrderMonthNum",Order[0].OESSaleOrderMonthNum },//月OES订单数量
+                    {"OESSaleOrderMonthPiece",Order[0].OESSaleOrderMonthPiece },//月OES订单销售条数
+                    {"OESSaleOrderMonthCharge",Order[0].OESSaleOrderMonthCharge},//月OES销售额
+                    {"OESSaleOrderDayCharge",Order[0].OESSaleOrderDayCharge },//日OES销售金额
+                    {"OESSaleOrderDayNum",Order[0].OESSaleOrderDayNum },//日OES订单数量
+                    {"OESSaleOrderDayPiece",Order[0].OESSaleOrderDayPiece},//日OES订单销售条数
+                };
+                //Dictionary<string, object> OrderKey = new Dictionary<string, object>
+                //{
+                //    { "MonthOrderNum", Order.Where(c=>c.CreateDate >= firstDayOfMonth && c.CreateDate < lastDayOfMonth).Count()}, //订单数量
+                //    { "DayOrderNum", Order.Where(c => c.CreateDate >= startOfDay && c.CreateDate <= endOfDay).ToList().Count() },//当日订单数量
+                //    {"MonthOrderSalesVolume",Order.Where(c=>c.CreateDate >= firstDayOfMonth && c.CreateDate < lastDayOfMonth).Sum(c=>c.OrderPiece) },//月订单销售条数
+                //    {"DayOrderSalesVolume",Order.Where(c=> c.CreateDate >= startOfDay && c.CreateDate <= endOfDay).Sum(t=>t.OrderPiece) },//当日销售条数
+                //    {"MonthOrderRevenue",Order.Where(c=>c.CreateDate >= firstDayOfMonth && c.CreateDate < lastDayOfMonth).Sum(c=>c.OrderCharge) },//月销售额
+                //    {"DayOrderRevenue",Order.Where(c=> c.CreateDate >= startOfDay && c.CreateDate <= endOfDay).Sum(t=>t.OrderCharge) },//今日销售金额
+                //    {"TotalNum",Order.Sum(c=>c.OrderPiece) },
+                //    {"TotalRevenue",Order.Sum(t=>t.OrderCharge) },
+                //};
+                result.Add("Order", OrderKey);
+            }
+
+            #endregion
+
+            Dictionary<string, object> Statistics = new Dictionary<string, object>();
+            var UserStatistics = Users.GroupBy(a => a.CreateDate.ToString("yyyy-MM-dd")).Select(a => new
+            {
+                Date = Convert.ToDateTime(a.Key).ToString("MM-dd"),
+                Num = a.Count(),
+            }).ToList().OrderBy(t => t.Date).Where(r => Convert.ToDateTime(r.Date) >= firstDayOfMonth && Convert.ToDateTime(r.Date) < lastDayOfMonth);
+            Statistics.Add("User", UserStatistics);
+
+            var StoresStatistics = Stores.GroupBy(a => a.CreateDate.ToString("yyyy-MM-dd")).Select(a => new
+            {
+                Date = Convert.ToDateTime(a.Key).ToString("MM-dd"),
+                Num = a.Count(),
+            }).ToList().OrderBy(t => t.Date).Where(r => Convert.ToDateTime(r.Date) >= firstDayOfMonth && Convert.ToDateTime(r.Date) < lastDayOfMonth);
+            Statistics.Add("Stores", StoresStatistics);
+
+            Order = man.HCYC_Order_StatisticsDetail(new CargoDLTDataStatisEntity() { HouseID = entity.HouseID });
+            var OrderStatistics = Order.GroupBy(a => a.CreateDate.ToString("yyyy-MM-dd")).Select(y => new { Date = Convert.ToDateTime(y.Key).ToString("MM-dd"), OrderNum = y.Count(), OrderRevenue = y.Sum(t => t.OrderCharge), OrderSalesVolume = y.Sum(i => i.OrderPiece) }).Where(r => Convert.ToDateTime(r.Date) >= firstDayOfMonth && Convert.ToDateTime(r.Date) < lastDayOfMonth).OrderBy(r => r.Date);
+            Statistics.Add("Order", OrderStatistics);
+
+
+
+            result.Add("Statistics", Statistics);
+            return result;
+        }
+        /// <summary>
+        /// 供应商查询订单信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Dictionary<string, object> HCYCStatistics_Supplier(CargoDLTDataStatisEntity entity)
+        {
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            DateTime currentDate = DateTime.Today;
+            // 获取当天的开始时间（凌晨）
+            DateTime startOfDay = currentDate.Date;
+            // 获取当天的结束时间（23:59:59.999）
+            DateTime endOfDay = startOfDay.AddDays(1).AddMilliseconds(-1);
+            // 获取本月第一天（改查询时间段开始时间）
+            DateTime firstDayOfMonth = entity.StartDate;
+            // 获取本月最后一天，即下个月的第一天的前一天（改查询时间段结束时间）
+            DateTime lastDayOfMonth = entity.EndDate;
+
+            #region 统计订单
+            List<CargoDLTDataStatisEntity> Order = man.HCYC_Order_Statistics_Supplier(new CargoDLTDataStatisEntity() { HouseID = entity.HouseID, TypeName = entity.TypeName });
+            Dictionary<string, object> OrderKey = new Dictionary<string, object>
+            {
+                { "MonthOrderNum", Order.Where(c=>c.CreateDate >= firstDayOfMonth && c.CreateDate <= lastDayOfMonth).Count()}, //订单数量
+                { "DayOrderNum", Order.Where(c => c.CreateDate >= startOfDay && c.CreateDate <= endOfDay).ToList().Count() },//当日订单数量
+                {"MonthOrderSalesVolume",Order.Where(c=>c.CreateDate >= firstDayOfMonth && c.CreateDate <= lastDayOfMonth).Sum(c=>c.OrderPiece) },//月订单销售条数
+                {"DayOrderSalesVolume",Order.Where(c=> c.CreateDate >= startOfDay && c.CreateDate <= endOfDay).Sum(t=>t.OrderPiece) },//当日销售条数
+                {"MonthOrderRevenue",Order.Where(c=>c.CreateDate >= firstDayOfMonth && c.CreateDate <= lastDayOfMonth).Sum(c=>c.OrderCharge) },//月销售额
+                {"DayOrderRevenue",Order.Where(c=> c.CreateDate >= startOfDay && c.CreateDate <= endOfDay).Sum(t=>t.OrderCharge) },//今日销售金额
+                {"TotalNum",Order.Sum(c=>c.OrderPiece) },
+                {"TotalRevenue",Order.Sum(t=>t.OrderCharge) },
+            };
+            result.Add("Order", OrderKey);
+            #endregion
+
+            Dictionary<string, object> Statistics = new Dictionary<string, object>();
+            var OrderStatistics = Order.GroupBy(a => a.CreateDate.ToString("yyyy-MM-dd")).Select(y => new { Date = Convert.ToDateTime(y.Key).ToString("MM-dd"), OrderNum = y.Count(), OrderRevenue = y.Sum(t => t.OrderCharge), OrderSalesVolume = y.Sum(i => i.OrderPiece) }).Where(r => Convert.ToDateTime(r.Date) >= firstDayOfMonth && Convert.ToDateTime(r.Date) <= lastDayOfMonth).OrderBy(r => r.Date);
+            Statistics.Add("Order", OrderStatistics);
+
+
+
+            result.Add("Statistics", Statistics);
+            return result;
+        }
+
+        /// <summary>
+        /// 慧采云仓访问统计数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Dictionary<string, object> HCYCAccessStatis(CargoDLTDataStatisEntity entity)
+        {
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            DateTime currentDate = DateTime.Today;
+            // 获取本月第一天
+            DateTime firstDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+            // 获取本月最后一天，即下个月的第一天的前一天
+            DateTime lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+            // 获取当天的开始时间（凌晨）
+            DateTime startOfDay = currentDate.Date;
+
+            // 获取当天的结束时间（23:59:59.999）
+            DateTime endOfDay = startOfDay.AddDays(1).AddMilliseconds(-1);
+
+            #region 统计用户访问数据
+
+            List<CargoDLTDataStatisEntity> Users = man.HCYC_Access_Statistics(entity);
+            Dictionary<string, object> Userkey = new Dictionary<string, object>();
+            //Users = Users.Where(c => c.CreateDate >= entity.StartDate && c.CreateDate <= entity.EndDate).ToList();
+            //Userkey.Add("Count", Users.Count());
+            Userkey.Add("DayClickCount", Users.Where(c => c.AccessDate >= startOfDay && c.AccessDate <= endOfDay).ToList().Count());
+            Userkey.Add("MonthClickCount", Users.Count());
+            Userkey.Add("DayUserCount", Users.Where(c => c.AccessDate >= startOfDay && c.AccessDate <= endOfDay).GroupBy(c => c.WxOpenID).ToList().Count());
+            Userkey.Add("MonthUserCount", Users.Where(c => c.AccessDate >= firstDayOfMonth && c.AccessDate <= lastDayOfMonth).GroupBy(c => c.WxOpenID).ToList().Count());
+            Userkey.Add("DayClientCount", Users.Where(c => c.AccessDate >= startOfDay && c.AccessDate <= endOfDay).GroupBy(c => c.ClientNum).ToList().Count());
+            Userkey.Add("MonthClientCount", Users.Where(c => c.AccessDate >= firstDayOfMonth && c.AccessDate <= lastDayOfMonth).GroupBy(c => c.ClientNum).ToList().Count());
+            result.Add("Users", Userkey);
+            #endregion
+
+            return result;
+        }
+        /// <summary>
+        /// 慧采云仓访问统计数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Dictionary<string, object> HCYCAccessStatisSupplier(CargoDLTDataStatisEntity entity)
+        {
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            DateTime currentDate = DateTime.Today;
+            // 获取当天的开始时间（凌晨）
+            DateTime startOfDay = currentDate.Date;
+            // 获取当天的结束时间（23:59:59.999）
+            DateTime endOfDay = startOfDay.AddDays(1).AddMilliseconds(-1);
+            // 获取本月第一天（改查询时间段开始时间）
+            DateTime firstDayOfMonth = entity.StartDate;
+            // 获取本月最后一天，即下个月的第一天的前一天（改查询时间段结束时间）
+            DateTime lastDayOfMonth = entity.EndDate;
+
+
+            #region 统计用户访问数据
+
+            List<CargoDLTDataStatisEntity> Users = man.HCYC_Access_Statistics_Supplier(entity);
+
+            Dictionary<string, object> Userkey = new Dictionary<string, object>();
+            //Users = Users.Where(c => c.CreateDate >= entity.StartDate && c.CreateDate <= entity.EndDate).ToList();
+            //Userkey.Add("Count", Users.Count());
+            Userkey.Add("DayClickCount", Users.Where(c => c.AccessDate >= startOfDay && c.AccessDate <= endOfDay).ToList().Count());  //日浏览数
+            Userkey.Add("MonthClickCount", Users.Count());//月浏览数
+            Userkey.Add("DayUserCount", Users.Where(c => c.AccessDate >= startOfDay && c.AccessDate <= endOfDay).GroupBy(c => c.WxOpenID).ToList().Count());//日访问用户数
+            Userkey.Add("MonthUserCount", Users.Where(c => c.AccessDate >= firstDayOfMonth && c.AccessDate <= lastDayOfMonth).GroupBy(c => c.WxOpenID).ToList().Count());//月访问用户数
+            Userkey.Add("DayClientCount", Users.Where(c => c.AccessDate >= startOfDay && c.AccessDate <= endOfDay).GroupBy(c => c.ClientNum).ToList().Count());//日访问门店数
+            Userkey.Add("MonthClientCount", Users.Where(c => c.AccessDate >= firstDayOfMonth && c.AccessDate <= lastDayOfMonth).GroupBy(c => c.ClientNum).ToList().Count());//月访问门店数
+            result.Add("Users", Userkey);
+            #endregion
+
+            return result;
+        }
+
+        public List<CargoDLTDataStatisEntity> QueryHCYC_BrandNum(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryHCYC_BrandNum(entity);
+        }
+        /// <summary>
+        /// 销售最好的前30个轮胎规格
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryHCYC_BrandSpecsNum(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryHCYC_BrandSpecsNum(entity);
+        }
+        /// <summary>
+        /// 查询日浏览数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryHCYC_DayAccessNum(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryHCYC_DayAccessNum(entity);
+        }
+        /// <summary>
+        /// 查询品牌月销售转化率
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryHCYC_BrandConverRate(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryHCYC_BrandConverRate(entity);
+        }
+        /// <summary>
+        /// 客户浏览成交转化率
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryHCYC_ClientConverRate(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryHCYC_ClientConverRate(entity);
+        }
+        /// <summary>
+        /// 近七日的订单数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryHCYC_SevenDayOrderInfo(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryHCYC_SevenDayOrderInfo(entity);
+        }
+        /// <summary>
+        /// 系统SKU数据统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryHCYC_BrandSKUData(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryHCYC_BrandSKUData(entity);
+        }
+
+        /// <summary>
+        /// 客户关键字搜索统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryHCYC_KeyWordNum(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryHCYC_KeyWordNum(entity);
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryUrbanStatistics(CargoDLTDataStatisEntity entity)
+        {
+            List<CargoDLTDataStatisEntity> brandList = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> proList = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> order = man.QueryClientStatis(entity);
+
+            int i = 1;
+            int j = 1;
+            foreach (var it in order)
+            {
+                i++;
+                j++;
+                //处理省份
+                if (brandList.Exists(c => c.Province.Equals(it.Province)))
+                {
+                    CargoDLTDataStatisEntity brandEnt = brandList.Find(c => c.Province.Equals(it.Province));
+                    brandEnt.OrderPiece += it.OrderPiece;
+                    brandEnt.OrderCharge += it.OrderCharge;
+                }
+                else
+                {
+                    brandList.Add(new CargoDLTDataStatisEntity
+                    {
+                        id = i++,
+                        Province = it.Province,
+                        state = "closed",
+                        OrderPiece = it.OrderPiece,
+                    });
+                }
+                CargoDLTDataStatisEntity brand = brandList.Find(c => c.Province.Equals(it.Province));
+                if (proList.Exists(a => a.Province.Equals(it.City)))
+                {
+                    CargoDLTDataStatisEntity pro = proList.Find(c => c.Province.Equals(it.City));
+                    pro.OrderPiece += it.OrderPiece;
+                }
+                else
+                {
+                    proList.Add(new CargoDLTDataStatisEntity
+                    {
+                        id = i++,
+                        Province = it.City,
+                        OrderPiece = it.OrderPiece,
+                        _parentId = brand.id
+                    });
+                }
+
+            }
+            foreach (var item in brandList)
+            {
+                int sum = 0;
+                for (int w = 0; w < brandList.Count; w++)
+                {
+                    sum += brandList[w].OrderPiece;
+                }
+                double proportion = Convert.ToDouble(item.OrderPiece) / sum;
+                item.Salesproportion = Math.Round(proportion, 4) * 100 + "%";
+                item.NumSalesproportion = Math.Round(proportion, 4) * 100;
+            }
+            foreach (var item in proList)
+            {
+                for (int t = 0; t < brandList.Count; t++)
+                {
+                    if (item._parentId.Equals(brandList[t].id))
+                    {
+                        double proportion = Convert.ToDouble(item.OrderPiece) / brandList[t].OrderPiece;
+                        item.Salesproportion = Math.Round(proportion, 4) * 100 + "%";
+                    }
+                }
+            }
+            result.AddRange(brandList);
+            result.AddRange(proList);
+            result = result.OrderByDescending(c => c.OrderPiece).ToList();
+            return result;
+        }
+        /// <summary>
+        /// 查询某一客户的按品牌统计数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns> 
+        public List<CargoDLTDataStatisEntity> QueryClientStatisByBrand(CargoDLTDataStatisEntity entity)
+        {
+
+            List<CargoDLTDataStatisEntity> brandList = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> proList = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
+            List<CargoDLTDataStatisEntity> order = man.QueryClientStatisByBrand(entity);
+            int i = 1;
+            int j = 1;
+            foreach (var it in order)
+            {
+                i++;
+                j++;
+                //处理品牌
+                if (brandList.Exists(c => c.TypeName.Equals(it.TypeName)))
+                {
+                    CargoDLTDataStatisEntity brandEnt = brandList.Find(c => c.TypeName.Equals(it.TypeName));
+                    brandEnt.OrderPiece += it.OrderPiece;
+                    brandEnt.OrderCharge += it.OrderCharge;
+                }
+                else
+                {
+                    brandList.Add(new CargoDLTDataStatisEntity
+                    {
+                        id = i++,
+                        TypeName = it.TypeName,
+                        state = "closed",
+                        OrderPiece = it.OrderPiece,
+                    });
+                }
+                //处理规格 花纹
+                if (proList.Count(c => c.TypeName.Equals(it.TypeName)) > 20)
+                {
+                    continue;
+                }
+                CargoDLTDataStatisEntity brand = brandList.Find(c => c.TypeName.Equals(it.TypeName));
+                proList.Add(new CargoDLTDataStatisEntity
+                {
+                    id = i++,
+                    TypeName = it.TypeName,
+                    OrderPiece = it.OrderPiece,
+                    Specs = it.Specs,
+                    Figure = it.Figure,
+                    _parentId = brand.id
+                });
+            }
+            result.AddRange(brandList);
+            result.AddRange(proList);
+            return result;
+        }
+        /// <summary>
+        /// 查询某一客户的按尺寸统计数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDLTDataStatisEntity> QueryClientStatisByHubDiameter(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryClientStatisByHubDiameter(entity);
+        }
+        public List<CargoDLTDataStatisEntity> QueryClientStatisCartype(CargoDLTDataStatisEntity entity)
+        {
+            return man.QueryClientStatisCartype(entity);
+        }
+
+        #endregion
+        #region 统计订单出库时长
+        /// <summary>
+        /// 统计订单出库时长
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoOrderOutTimeEntity> QueryOrderOutTime(CargoOrderOutTimeEntity entity)
+        {
+            return man.QueryOrderOutTime(entity);
+        }
+        /// <summary>
+        /// 查询订单详细出库时间
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoOrderOutTimeEntity> QueryOrderDetailedTime(CargoOrderOutTimeEntity entity)
+        {
+            return man.QueryOrderDetailedTime(entity);
+        }
+
+        /// <summary>
+        /// 查询出库和签收时效
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoReportAgeingEntity> QueryReportAgeingList(CargoReportAgeingEntity entity)
+        {
+            return man.QueryReportAgeingList(entity);
+        }
+
+        #endregion
+        #region 每天仓库库存统计
+        /// <summary>
+        /// 保存仓库每天的库存数据
+        /// </summary>
+        public void SaveDayCargoStock(List<CargoDayStockEntity> entity)
+        {
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                man.SaveDayCargoStock(entity);
+                scope.Complete();
+            }
+        }
+        /// <summary>
+        /// 查询当前仓库库存 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoDayStockEntity QueryDayCargoStockList(CargoDayStockEntity entity)
+        {
+            return man.QueryDayCargoStockList(entity);
+        }
+        /// <summary>
+        /// 查询每日库存数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryDayStockData(int pIndex, int pNum, CargoDayStockEntity entity)
+        {
+            return man.QueryDayStockData(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询每日库存数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDayStockEntity> QueryDayStockListData(CargoDayStockEntity entity)
+        {
+            return man.QueryDayStockListData(entity);
+        }
+        #endregion
+        #region 订单数据统计
+        /// <summary>
+        /// 查询订单统计数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryOrderStatistics(int pIndex, int pNum, CargoOrderEntity entity)
+        {
+            return man.QueryOrderStatistics(pIndex, pNum, entity);
+        }
+        #endregion
+        public Hashtable QueryClientArrearsStatistics(CargoOrderEntity entity)
+        {
+            return man.QueryClientArrearsStatistics(entity);
+        }
+
+        public Hashtable QueryClientArrearsDetailed(int pIndex, int pNum, CargoOrderEntity entity)
+        {
+            return man.QueryClientArrearsDetailed(pIndex, pNum, entity);
+        }
+
+        public List<CargoOrderEntity> QuerySaleProfitData(CargoOrderEntity entity)
+        {
+            return man.QuerySaleProfitData(entity);
+        }
+
+        public List<CargoClientAcceptAddressEntity> QueryWxLongitudeAndLatitude()
+        {
+            return man.QueryWxLongitudeAndLatitude();
+        }
+        #region 云仓数据
+
+        public Dictionary<string, object> HCYCStatisticsData(CargoDLTDataStatisEntity entity)
+        {
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            DateTime currentDate = DateTime.Today;
+            // 获取本月第一天
+            DateTime firstDayOfMonth = entity.StartDate;//new DateTime(currentDate.Year, currentDate.Month, 1);
+            // 获取本月最后一天，即下个月的第一天的前一天
+            DateTime lastDayOfMonth = entity.EndDate.AddDays(1);//firstDayOfMonth.AddMonths(1).AddDays(-1);
+            // 获取当天的开始时间（凌晨）
+            DateTime startOfDay = currentDate.Date;
+
+            // 获取当天的结束时间（23:59:59.999）
+            DateTime endOfDay = startOfDay.AddDays(1).AddMilliseconds(-1);
+
+            #region 统计用户
+
+            var Users = man.HCYC_User_StatisticsData(entity);
+            Dictionary<string, object> Userkey = new Dictionary<string, object>();
+            //Users = Users.Where(c => c.CreateDate >= entity.StartDate && c.CreateDate <= entity.EndDate).ToList();
+            Userkey.Add("Count", Users.UserCount);
+            Userkey.Add("RegisterUserCount", Users.RegisterUserCount);
+            result.Add("Users", Userkey);
+            #endregion
+            #region 统计门店
+            Dictionary<string, object> StoresKey = new Dictionary<string, object>();
+            StoresKey.Add("Count", Users.ClientCount);
+            StoresKey.Add("RegisterStoresCount", Users.RegisterStoresCount);
+            result.Add("Stores", StoresKey);
+            #endregion
+            #region 统计订单
+            List<CargoDLTDataStatisEntity> Order = man.HCYC_Order_StatisticsData(new CargoDLTDataStatisEntity() { StartDate = entity.StartDate, EndDate = entity.EndDate });
+            if (Order.Count > 0)
+            {
+                Dictionary<string, object> OrderKey = new Dictionary<string, object>
+                {
+                    {"SalesPiece", Order[0].SalesPiece}, //销量
+                    {"ReturnPiece", Order[0].ReturnPiece },//退货
+                    {"SalesTotalCharge",Order[0].SalesTotalCharge },//销售金额
+                    {"ReturnTotalCharge",Order[0].ReturnTotalCharge },//退货金额
+                    {"TotalPiece",Order[0].TotalPiece },//月销售额
+                    {"MonthHouseTotalPiece",Order[0].MonthHouseTotalPiece },//月目标销售量
+                };
+                result.Add("Order", OrderKey);
+            }
+
+            #endregion
+
+            return result;
+        }
+
+        /// <summary>
+        /// 慧采云仓访问统计数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Dictionary<string, object> HCYCAccessStatisData(CargoDLTDataStatisEntity entity)
+        {
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            DateTime currentDate = DateTime.Today;
+            // 获取本月第一天
+            DateTime firstDayOfMonth = new DateTime(currentDate.Year, currentDate.Month, 1);
+            // 获取本月最后一天，即下个月的第一天的前一天
+            DateTime lastDayOfMonth = firstDayOfMonth.AddMonths(1).AddDays(-1);
+            // 获取当天的开始时间（凌晨）
+            DateTime startOfDay = currentDate.Date;
+
+            // 获取当天的结束时间（23:59:59.999）
+            DateTime endOfDay = startOfDay.AddDays(1).AddMilliseconds(-1);
+
+            #region 统计用户访问数据
+
+            List<CargoDLTDataStatisEntity> Users = man.HCYC_Access_Statistics(entity, 2);
+            var Users2 = man.HCYC_Access_StatisticsData(entity);
+            Dictionary<string, object> Userkey = new Dictionary<string, object>();
+            //Users = Users.Where(c => c.CreateDate >= entity.StartDate && c.CreateDate <= entity.EndDate).ToList();
+            Userkey.Add("Count", Users.Count());
+            Userkey.Add("MonthClickCount", Users.Count());
+            Userkey.Add("DayClickCount", Users2.UserUniqueClientCount);
+            Userkey.Add("StoresUniqueClientCount", Users2.StoresUniqueClientCount);
+            Userkey.Add("DayUserCount", Users.GroupBy(c => c.WxOpenID).ToList().Count());
+            //Userkey.Add("MonthUserCount", Users.Where(c => c.AccessDate >= firstDayOfMonth && c.AccessDate <= lastDayOfMonth).GroupBy(c => c.WxOpenID).ToList().Count());
+            Userkey.Add("DayClientCount", Users.GroupBy(c => c.ClientNum).ToList().Count());
+            //Userkey.Add("MonthClientCount", Users.Where(c => c.AccessDate >= firstDayOfMonth && c.AccessDate <= lastDayOfMonth).GroupBy(c => c.ClientNum).ToList().Count());
+            result.Add("Users", Userkey);
+            #endregion
+
+            return result;
+        }
+
+
+
+        /// <summary>
+        /// 慧采云仓交易数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoHouseAimEntity> QueryHCYC_House(CargoHouseAimEntity entity)
+        {
+            #region 统计用户访问数据
+
+            List<CargoHouseAimEntity> Users = man.QueryHCYC_House(entity);
+            #endregion
+
+            return Users;
+        }
+
+
+        /// <summary>
+        /// 慧采云仓品牌月销售排名统计数
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoOrderDayStatisticsEntity> QueryHCYC_OrderDayStatistics(CargoHouseAimEntity entity)
+        {
+            #region 统计用户访问数据
+
+            List<CargoOrderDayStatisticsEntity> Users = man.QueryHCYC_OrderDayStatistics(entity);
+            #endregion
+
+            return Users;
+        }
+
+
+        /// <summary>
+        /// 慧采云仓品牌月销售排名统计数
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoOrderDayStatisticsEntity> QueryHCYC_BrandData(CargoHouseAimEntity entity)
+        {
+            #region 统计用户访问数据
+
+            List<CargoOrderDayStatisticsEntity> List = man.QueryHCYC_BrandData(entity);
+
+            //计算
+            foreach (var item in List)
+            {
+                item.SatisfactionRate = 0;
+                if (item.ProCount > 0 && item.StockNum > 0)
+                    item.SatisfactionRate = Math.Round(Convert.ToDouble(item.ProCount) / Convert.ToDouble(item.StockNum) * 100, 2);
+                item.SalesRate = 0;
+                if (item.ProCount > 0 && item.DayStatisticsCount > 0)
+                    item.SalesRate = Math.Round(Convert.ToDouble((item.DayStatisticsCount)) / Convert.ToDouble(item.ProCount) * 100, 2);
+                item.InventoryTurnover = 0;
+                if (item.Piece > 0 && item.ProPiece > 0)
+                    item.InventoryTurnover = Math.Round(Convert.ToDouble(item.ProPiece) / Convert.ToDouble((item.Piece)), 2);
+                item.ClickConversionRate = 0;
+                if (item.UniqueClientCount > 0 && item.clickCount > 0)
+                    item.ClickConversionRate = Math.Round(Convert.ToDouble((item.UniqueClientCount)) / Convert.ToDouble(item.clickCount) * 100, 2);
+            }
+            #endregion
+
+            return List;
+        }
+        public List<CargoOrderDayStatisticsEntity> GetSalesRateDetail(CargoHouseAimEntity entity)
+        {
+            #region 统计用户访问数据
+
+            List<CargoOrderDayStatisticsEntity> List = man.GetSalesRateDetail(entity);
+            return List;
+        }
+        public List<CargoOrderDayStatisticsEntity> GetClickConversionRateDetail(CargoHouseAimEntity entity)
+        {
+            #region 统计用户访问数据
+
+            List<CargoOrderDayStatisticsEntity> List = man.GetClickConversionRateDetail(entity);
+            return List;
+        }
+
+        /// <summary>
+        /// 慧采云仓交易数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoOrderDayStatisticsEntity> QueryHCYC_TotalDays(CargoHouseAimEntity entity)
+        {
+            #region 统计用户访问数据
+            //只查询结束日期那一个月的数据
+            entity.StartDate = Convert.ToDateTime(entity.EndDate.ToString("yyyy-MM-01"));
+            entity.EndDate = entity.StartDate.AddMonths(1).AddDays(-1);
+            List<CargoOrderDayStatisticsEntity> Users = man.QueryHCYC_TotalDays(entity);
+
+            //生成当月天数列表
+            var dt1 = entity.StartDate;
+            var dt2 = entity.EndDate;
+            List<int> days = new List<int>();
+            for (DateTime i = dt1; i <= dt2; i = i.AddDays(1))
+            {
+                days.Add(i.Day);
+            }
+            #endregion
+            //获取本月天数
+            DateTime dtNow = DateTime.Now;
+            int currDays = DateTime.DaysInMonth(dtNow.Year, dtNow.Month);
+            var list = new List<CargoOrderDayStatisticsEntity>();
+            foreach (var item in days)
+            {
+                var data = Users.Where(a => a.Month == dt2.Month && a.Day == item).FirstOrDefault();
+                if (data != null && data.MonthAimQuantity > 0 && data.Piece > 0)
+                {
+                    var dayCount = Math.Floor(data.MonthAimQuantity / currDays);
+                    data.CompletionRate = dayCount <= 0 ? 0 : Math.Round((Convert.ToDecimal(data.Piece) / Convert.ToDecimal(dayCount) * 100), 2);
+                }
+                list.Add(data == null ? new CargoOrderDayStatisticsEntity() { Day = item, Piece = 0 } : data);
+            }
+
+            return list;
+        }
+        public List<CargoOrderDayStatisticsEntity> QueryHCYC_TotalMonths(CargoHouseAimEntity entity)
+        {
+            //只查询结束日期那一个月的数据
+            entity.StartDate = Convert.ToDateTime(entity.EndDate.ToString("yyyy-01-01"));
+            entity.EndDate = entity.StartDate.AddYears(1).AddDays(-1);
+            List<CargoOrderDayStatisticsEntity> Users = man.QueryHCYC_TotalMonths(entity);
+
+            //生成当月列表
+            var dt1 = entity.StartDate;
+            var dt2 = entity.EndDate;
+            List<int> months = new List<int>();
+            for (DateTime i = dt1; i <= dt2; i = i.AddMonths(1))
+            {
+                months.Add(i.Month);
+            }
+            var list = new List<CargoOrderDayStatisticsEntity>();
+            foreach (var item in months)
+            {
+                var data = Users.Where(a => a.Month == item).FirstOrDefault();
+                if (data != null && data.Piece > 0 && data.MonthAimQuantity > 0) data.CompletionRate = Math.Round(Convert.ToDecimal(data.Piece) / Convert.ToDecimal(data.MonthAimQuantity) * 100, 2);
+                list.Add(data == null ? new CargoOrderDayStatisticsEntity() { Month = item, Piece = 0 } : data);
+            }
+
+            return list;
+        }
+        #endregion
+        #endregion
+        #endregion
+    }
+}

@@ -1,0 +1,615 @@
+﻿<%@ Page Title="仓库区域管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="houseAreaManager.aspx.cs" Inherits="Cargo.House.houseAreaManager" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+
+            //如果是广州、广东、揭阳的用户开放区域大仓选项
+            if ("<%=UserInfor.IsAdmin%>" == "1") {
+                $('#UpdTypeItem').show();
+            } else {
+                $('#UpdTypeItem').hide();
+            }
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'AreaID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [[
+                    { title: '', field: 'AreaID', checkbox: true, width: '2%' },
+                    {
+                        title: '区域名称', field: 'Name', width: '10%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '区域代码', field: 'Code', width: '4%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '订单代码', field: 'OrderCode', width: '4%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '出发城市', field: 'OrderDep', width: '4%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '上级区域', field: 'ParentName', width: '10%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '上级仓库', field: 'MainHouseName', width: '10%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '所属仓库', field: 'HouseName', width: '8%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '承运物流', field: 'LogisticName', width: '8%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '配送区域', field: 'DeliveryArea', width: '20%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '备注', field: 'Remark', width: '20%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    { title: '操作时间', field: 'OP_DATE', width: '10%', formatter: DateTimeFormatter }
+                ]],
+                onLoadSuccess: function (data) { },
+                onDblClickRow: function (index, row) { editItemByID(index); },
+                rowStyler: function (index, row) {
+                    if (row.DelFlag == "1") { return "background-color:#D2D2D2"; }
+                }
+            });
+
+            //所在仓库
+            $('#HID').combobox({
+                url: 'houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    $('#PID').combobox('clear');
+                    var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    $('#PID').combobox('reload', url);
+                    //一级仓库
+                    $('#PID').combobox({
+                        onSelect: function (fai) {
+                            $('#SID').combobox('clear');
+                            var url = 'houseApi.aspx?method=QueryALLArea&hid=' + rec.HouseID + '&pid=' + fai.AreaID;
+                            $('#SID').combobox('reload', url);
+                            $('#SID').combobox('textbox').bind('focus', function () { $('#SID').combobox('showPanel'); });
+                        },
+                        onChange: function (newValue, oldValue) {
+                            if (newValue != undefined) {
+
+                            }
+                        }
+                    });
+                    $('#PID').combobox('textbox').bind('focus', function () { $('#PID').combobox('showPanel'); });
+                }
+            });
+
+            //所在仓库
+            $('#HouseID').combobox({
+                url: 'houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    $('#ParentID').combobox('clear');
+                    var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    $('#ParentID').combobox('reload', url);
+
+                    //$("#Address").textbox('options').required = true;
+                    //$("#Address").textbox('textbox').validatebox('options').required = true;
+                    //$("#Address").textbox('validate');
+                    $("#OrderCodeTr").show();
+                    $("#LogisTr").show();
+                    
+                    $("#OrderDepTr").show();
+                    //$("#AOrderCode").textbox('options').required = true;
+                    //$("#AOrderCode").textbox('textbox').validatebox('options').required = true;
+                    //$("#AOrderCode").textbox('validate');
+                    $("#AOrderDep").textbox('options').required = true;
+                    $("#AOrderDep").textbox('textbox').validatebox('options').required = true;
+                    $("#AOrderDep").textbox('validate');
+                }
+            });
+            //一级仓库
+            $('#ParentID').combobox({
+                onSelect: function (fai) {
+                    $("#OrderCodeTr").hide();
+                    $("#LogisTr").hide();
+                    $("#OrderDepTr").hide();
+                    $("#FirstAreaIDTr").show();
+                    $("#AOrderCode").textbox('setValue', '');
+                    $("#AOrderDep").textbox('setValue', '');
+                    //$("#AOrderCode").textbox('options').required = false;
+                    //$("#AOrderCode").textbox('textbox').validatebox('options').required = false;
+                    //$("#AOrderCode").textbox('validate');
+                    $("#AOrderDep").textbox('options').required = false;
+                    $("#AOrderDep").textbox('textbox').validatebox('options').required = false;
+                    $("#AOrderDep").textbox('validate');
+                    $('#FirstAreaID').combobox('clear');
+                    var url = 'houseApi.aspx?method=QueryALLArea&hid=' + $("#HouseID").combobox('getValue') + '&pid=' + fai.AreaID;
+                    $('#FirstAreaID').combobox('reload', url);
+                },
+                onChange: function (newValue, oldValue) {
+                    if (newValue == undefined || newValue == "") {
+                        $("#OrderCodeTr").show();
+                        $("#LogisTr").show();
+                        $("#OrderDepTr").show();
+                        $("#FirstAreaIDTr").hide();
+                        $('#FirstAreaID').combobox('clear');
+                        //$("#AOrderCode").textbox('options').required = true;
+                        //$("#AOrderCode").textbox('textbox').validatebox('options').required = true;
+                        //$("#AOrderCode").textbox('validate');
+                        $("#AOrderDep").textbox('options').required = true;
+                        $("#AOrderDep").textbox('textbox').validatebox('options').required = true;
+                        $("#AOrderDep").textbox('validate');
+                        //    $("#Address").textbox('options').required = true;
+                        //    $("#Address").textbox('textbox').validatebox('options').required = true;
+                        //    $("#Address").textbox('validate');
+                    } else {
+                        //    $("#Address").textbox('options').required = false;
+                        //    $("#Address").textbox('textbox').validatebox('options').required = false;
+                        //    $("#Address").textbox('validate');
+                    }
+                }
+            });
+
+            $('#HID').combobox('textbox').bind('focus', function () { $('#HID').combobox('showPanel'); });
+            $('#ParentID').combobox('textbox').bind('focus', function () { $('#ParentID').combobox('showPanel'); });
+            $('#FirstAreaID').combobox('textbox').bind('focus', function () { $('#FirstAreaID').combobox('showPanel'); });
+            $('#HouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+        });
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'houseApi.aspx?method=QueryCargoArea';
+            $('#dg').datagrid('load', {
+                Name: $('#Name').val(),
+                Code: $("#Code").val(),
+                PID: $("#PID").combobox('getValue'),
+                HID: $("#HID").combobox('getValue'),
+                SID: $("#SID").combobox('getValue')
+            });
+        }
+    </script>
+</asp:Content>
+
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">区域名称:
+                </td>
+                <td style="width: 10%">
+                    <input id="Name" class="easyui-textbox" data-options="prompt:'请输入区域名称'" style="width: 100%">
+                </td>
+                <td style="text-align: right;">区域代码:
+                </td>
+                <td style="width: 10%">
+                    <input id="Code" class="easyui-textbox" data-options="prompt:'请输入区域代码'" style="width: 100%">
+                </td>
+                <td style="text-align: right;">所属仓库:
+                </td>
+                <td style="width: 10%">
+                    <input id="HID" class="easyui-combobox" style="width: 100%;" />
+                </td>
+                <td style="text-align: right;">一级仓库:
+                </td>
+                <td style="width: 10%">
+                    <input id="PID" class="easyui-combobox" style="width: 100%;" data-options="valueField:'AreaID',textField:'Name'"
+                        panelheight="auto" />
+                </td>
+                <td style="text-align: right;">二级区域:
+                </td>
+                <td style="width: 10%">
+                    <input id="SID" class="easyui-combobox" style="width: 100%;" data-options="valueField:'AreaID',textField:'Name'"
+                        panelheight="auto" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addItem()">&nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editItem()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-contrast_low" plain="false" id="UpdTypeItem" onclick="UpdTypeItem()">&nbsp;启用/禁用&nbsp;</a>
+    </div>
+    <div id="dlg" class="easyui-dialog" style="width: 500px; height: 500px; padding: 0px"
+        closed="true" buttons="#dlg-buttons">
+        <form id="fm" class="easyui-form" method="post">
+            <div id="saPanel">
+                <input type="hidden" name="AreaID" />
+                <table>
+                    <tr>
+                        <td style="text-align: right;">所属仓库:
+                        </td>
+                        <td>
+                            <input id="HouseID" name="HouseID" class="easyui-combobox" style="width: 300px;" data-options="required:true"
+                                panelheight="auto" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">一级仓库:
+                        </td>
+                        <td>
+                            <input id="ParentID" name="ParentID" class="easyui-combobox" style="width: 300px;" data-options="valueField:'AreaID',textField:'Name'"
+                                panelheight="auto" />
+                        </td>
+                    </tr>
+                    <tr id="FirstAreaIDTr">
+                        <td style="text-align: right;">一级区域:
+                        </td>
+                        <td>
+                            <input id="FirstAreaID" name="FirstAreaID" class="easyui-combobox" style="width: 300px;" data-options="valueField:'AreaID',textField:'Name'"
+                                panelheight="auto" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">区域名称:
+                        </td>
+                        <td>
+                            <input name="Name" class="easyui-textbox" data-options="prompt:'请输入区域名称',required:true"
+                                style="width: 300px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">区域代码:
+                        </td>
+                        <td>
+                            <input name="Code" id="ACode" class="easyui-textbox" data-options="prompt:'请输入区域代码',required:true"
+                                style="width: 300px;" />
+                        </td>
+                    </tr>
+                    <tr id="OrderCodeTr">
+                        <td style="text-align: right;">订单代码:
+                        </td>
+                        <td>
+                            <input name="OrderCode" id="AOrderCode" class="easyui-textbox" data-options="prompt:'请输入订单代码，作为订单号前缀'" style="width: 300px;" />
+                        </td>
+                    </tr>
+                    <tr id="OrderDepTr">
+                        <td style="text-align: right;">出发城市:
+                        </td>
+                        <td>
+                            <input name="OrderDep" id="AOrderDep" class="easyui-textbox" data-options="prompt:'请输入出发城市，作为订单出发站'" style="width: 300px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">仓库地址:
+                        </td>
+                        <td>
+                            <input name="Address" id="Address" class="easyui-textbox" data-options="prompt:'请输入仓库准确地址',required:false" style="width: 300px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">虚拟库存:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="IsShowStock" name="IsShowStock" style="width: 300px;" panelheight="auto">
+                                <option value="0">否</option>
+                                <option value="1">是</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr id="LogisTr">
+                        <td style="text-align: right;">承运物流:
+                        </td>
+                        <td>
+                            <input id="LogisID" name="LogisID" class="easyui-combobox" style="width: 300px;" data-options="valueField:'ID',textField:'LogisticName',url:'../systempage/sysService.aspx?method=QueryAllLogistic'" />
+                        </td>
+                    </tr>
+                    <%--                <tr>
+                    <td style="text-align: right;">区域经度:
+                    </td>
+                    <td>
+                        <input name="Longitude" id="Longitude" class="easyui-textbox" data-options="prompt:'请输入区域经度',required:false"
+                            style="width: 300px;">
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">区域纬度:
+                    </td>
+                    <td>
+                        <input name="Latitude" id="Latitude" class="easyui-textbox" data-options="prompt:'请输入区域纬度',required:false"
+                            style="width: 300px;">
+                    </td>
+                </tr>--%>
+                    <tr>
+                        <td style="text-align: right;" rowspan="2">配送区域:
+                        </td>
+                        <%--  <td>省：<input id="Province" class="easyui-combobox" style="width: 70px;"
+                        data-options="url:'houseApi.aspx?method=QueryCityData',valueField:'City',textField:'City'" />
+                        市：<input id="City" class="easyui-combobox" style="width: 70px;"
+                        data-options="url:'houseApi.aspx?method=QueryCityData',valueField:'City',textField:'City'" />
+                        区：<input id="Country" class="easyui-combobox" style="width: 70px;"
+                        data-options="url:'houseApi.aspx?method=QueryCityData',valueField:'City',textField:'City',multiple:true" />
+                    </td>--%>
+                    </tr>
+                    <tr>
+                        <td>
+                            <textarea cols="5" id="DeliveryArea" rows="6" name="DeliveryArea" style="width: 300px;"></textarea>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="text-align: right;">备注:
+                        </td>
+                        <td>
+                            <textarea cols="5" id="Remark" rows="3" name="Remark" style="width: 300px;"></textarea>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </form>
+    </div>
+    <div id="dlg-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItem()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+
+    <script type="text/javascript">
+        //新增区域信息
+        function addItem() {
+            $('#dlg').dialog('open').dialog('setTitle', '新增区域信息');
+            $('#fm').form('clear');
+            $('#ACode').textbox('readonly', false);
+            $('#IsShowStock').combobox('setValue', 0);
+            
+            $("#Address").textbox('options').required = false;
+            $("#Address").textbox('textbox').validatebox('options').required = false;
+            $("#Address").textbox('validate');
+            $("#OrderCodeTr").hide();
+            $("#LogisTr").hide();
+            
+            $("#OrderDepTr").hide();
+            $("#FirstAreaIDTr").hide();
+        }
+        //修改区域信息
+        function editItem() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#fm').form('clear');
+                $('#dlg').dialog('open').dialog('setTitle', '修改区域信息');
+
+                $('#ParentID').combobox('clear');
+                var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=' + row.HouseID;
+                $('#ParentID').combobox('reload', url);
+
+                if (row.MainHouseID != 0) {
+                    $('#FirstAreaID').combobox('clear');
+                    var url = 'houseApi.aspx?method=QueryALLArea&hid=' + row.HouseID + '&pid=' + row.MainHouseID;
+                    $('#FirstAreaID').combobox('reload', url);
+                }
+                $('#fm').form('load', row);
+                if (row.MainHouseID != 0) {
+                    $('#ParentID').combobox('setValue', row.MainHouseID);
+                    $('#FirstAreaID').combobox('setValue', row.ParentID);
+                } else {
+                    $('#ParentID').combobox('setValue', row.ParentID);
+                }
+                $('#ACode').textbox('readonly', true);
+                if (row.ParentID == 0) {
+                    $("#OrderCodeTr").show();
+                    $("#LogisTr").show();
+                    $("#OrderDepTr").show();
+                    //$("#AOrderCode").textbox('options').required = true;
+                    //$("#AOrderCode").textbox('textbox').validatebox('options').required = true;
+                    //$("#AOrderCode").textbox('validate');
+                    $("#AOrderDep").textbox('options').required = true;
+                    $("#AOrderDep").textbox('textbox').validatebox('options').required = true;
+                    $("#AOrderDep").textbox('validate');
+                    //    $("#Address").textbox('options').required = true;
+                    //    $("#Address").textbox('textbox').validatebox('options').required = true;
+                    //    $("#Address").textbox('validate');
+                } else {
+                    $("#OrderCodeTr").hide();
+                    $("#LogisTr").hide();
+                    $("#OrderDepTr").hide();
+                    //$("#AOrderCode").textbox('options').required = false;
+                    //$("#AOrderCode").textbox('textbox').validatebox('options').required = false;
+                    //$("#AOrderCode").textbox('validate');
+                    $("#AOrderDep").textbox('options').required = false;
+                    $("#AOrderDep").textbox('textbox').validatebox('options').required = false;
+                    $("#AOrderDep").textbox('validate');
+                    //    $("#Address").textbox('options').required = false;
+                    //    $("#Address").textbox('textbox').validatebox('options').required = false;
+                    //    $("#Address").textbox('validate');
+                }
+            }
+        }
+        //修改区域信息
+        function editItemByID(Did) {
+            var row = $("#dg").datagrid('getData').rows[Did];
+            if (row) {
+                $('#fm').form('clear');
+                $('#dlg').dialog('open').dialog('setTitle', '修改区域信息');
+
+                $('#ParentID').combobox('clear');
+                var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=' + row.HouseID;
+                $('#ParentID').combobox('reload', url);
+
+                if (row.MainHouseID != 0) {
+                    $('#FirstAreaID').combobox('clear');
+                    var url = 'houseApi.aspx?method=QueryALLArea&hid=' + row.HouseID + '&pid=' + row.MainHouseID;
+                    $('#FirstAreaID').combobox('reload', url);
+                }
+                $('#fm').form('load', row);
+                if (row.MainHouseID != 0) {
+                    $('#ParentID').combobox('setValue', row.MainHouseID);
+                    $('#FirstAreaID').combobox('setValue', row.ParentID);
+                } else {
+                    $('#ParentID').combobox('setValue', row.ParentID);
+                }
+                $('#ACode').textbox('readonly', true);
+
+                if (row.ParentID == 0) {
+                    $("#OrderCodeTr").show();
+                    $("#LogisTr").show();
+                    $("#OrderDepTr").show();
+                    //$("#AOrderCode").textbox('options').required = true;
+                    //$("#AOrderCode").textbox('textbox').validatebox('options').required = true;
+                    //$("#AOrderCode").textbox('validate');
+                    $("#AOrderDep").textbox('options').required = true;
+                    $("#AOrderDep").textbox('textbox').validatebox('options').required = true;
+                    $("#AOrderDep").textbox('validate');
+                    //    $("#Address").textbox('options').required = true;
+                    //    $("#Address").textbox('textbox').validatebox('options').required = true;
+                    //    $("#Address").textbox('validate');
+                } else {
+                    $("#OrderCodeTr").hide();
+                    $("#LogisTr").hide();
+                    $("#OrderDepTr").hide();
+                    //$("#AOrderCode").textbox('options').required = false;
+                    //$("#AOrderCode").textbox('textbox').validatebox('options').required = false;
+                    //$("#AOrderCode").textbox('validate');
+                    $("#AOrderDep").textbox('options').required = false;
+                    $("#AOrderDep").textbox('textbox').validatebox('options').required = false;
+                    $("#AOrderDep").textbox('validate');
+                    //    $("#Address").textbox('options').required = false;
+                    //    $("#Address").textbox('textbox').validatebox('options').required = false;
+                    //    $("#Address").textbox('validate');
+                }
+            }
+        }
+        //删除区域信息
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'houseApi.aspx?method=DelCargoArea',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        function UpdTypeItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定修改？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'houseApi.aspx?method=UpdateCargoAreaType',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        //保存区域信息
+        function saveItem() {
+            $('#fm').form('submit', {
+                url: 'houseApi.aspx?method=SaveCargoArea',
+                onSubmit: function (param) {
+                    param.LogisticName = $('#LogisID').combobox('getText');
+                    param.VirtualInventory = "0";
+                    var trd = $(this).form('enableValidation').form('validate');
+                    return trd;
+                    //return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlg').dialog('close'); 	// close the dialog
+                        dosearch();
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+    </script>
+
+</asp:Content>

@@ -1,0 +1,542 @@
+﻿using House.Business.Cargo;
+using House.Entity.Cargo;
+using House.Entity;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using House.Business;
+using System.Reflection;
+using NPOI.HSSF.Record.Formula.Functions;
+using House.Entity.Cargo.Product;
+using NPOI.POIFS.FileSystem;
+using System.Data;
+using System.Text.RegularExpressions;
+using Newtonsoft.Json;
+using System.Collections.Specialized;
+using System.Security.Cryptography;
+using System.Web.Script.Serialization;
+
+namespace Supplier.Basic
+{
+    public partial class BasicApi : BasePage
+    {
+        /// <summary>
+        /// 方法入口
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+            string methodName = string.Empty;
+            try
+            {
+                methodName = Request["method"];
+                if (String.IsNullOrEmpty(methodName)) return;
+                Type type = this.GetType();
+                MethodInfo method = type.GetMethod(methodName);
+                method.Invoke(this, null);
+            }
+            catch (Exception ex)
+            {
+                LogBus bus = new LogBus();
+                LogEntity log = new LogEntity();
+                log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+                log.Operate = "";
+                log.Moudle = "";
+                log.Status = "1";
+                log.NvgPage = "";
+                log.UserID = UserInfor.LoginName.Trim();
+                log.Memo = methodName + " " + ex.Message + " " + ex.StackTrace;
+                bus.InsertLog(log);
+            }
+        }
+
+        #region 渠道客户方法集合
+        /// <summary>
+        /// 该客户下地址查询
+        /// </summary>
+        public void QuerySupplierAddresss()
+        {
+            CargoClientAcceptAddressEntity queryEntity = new CargoClientAcceptAddressEntity();
+
+            queryEntity.ClientNum = Convert.ToInt32(UserInfor.LoginName);//该客户的地址
+            if (!string.IsNullOrEmpty(Request["ClientName"]))
+            {
+                queryEntity.AcceptCompany = Convert.ToString(Request["ClientName"]);
+            }
+            if (!string.IsNullOrEmpty(Request["AcceptPeople"]))
+            {
+                queryEntity.AcceptPeople = Convert.ToString(Request["AcceptPeople"]);
+            }
+            if (!string.IsNullOrEmpty(Request["Cellphone"]))
+            {
+                queryEntity.AcceptCellphone = Convert.ToString(Request["Cellphone"]);
+            }
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoClientBus clientBus = new CargoClientBus();
+            Hashtable list = clientBus.QueryAcceptAddress(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+
+
+        /// <summary>
+        /// 删除客户收货地址
+        /// </summary>
+        public void DelAcceptAddress()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoClientAcceptAddressEntity> list = new List<CargoClientAcceptAddressEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoClientBus bus = new CargoClientBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "基本管理";
+            log.Status = "0";
+            log.NvgPage = "渠道客户";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoClientAcceptAddressEntity
+                    {
+                        ADID = Convert.ToInt64(row["ADID"]),
+                        ClientID = Convert.ToInt64(row["ClientID"]),
+                        ClientNum = Convert.ToInt32(row["ClientNum"]),
+                        AcceptPeople = Convert.ToString(row["AcceptPeople"]),
+                        AcceptAddress = Convert.ToString(row["AcceptAddress"]),
+                        AcceptCellphone = Convert.ToString(row["AcceptCellphone"])
+                    });
+                }
+                bus.DelAcceptAddress(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        /// <summary>
+        /// 保存客户收货地址
+        /// </summary>
+        public void SaveAcceptAddress()
+        {
+            CargoClientAcceptAddressEntity ent = new CargoClientAcceptAddressEntity();
+            CargoClientBus bus = new CargoClientBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "基本管理";
+            log.NvgPage = "渠道客户";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            String id = Request["ADID"] != null ? Request["ADID"].ToString() : "";
+            try
+            {
+                ent.ClientNum = Convert.ToInt32(UserInfor.LoginName);
+                ent.ClientID = Convert.ToInt64(UserInfor.UserID);
+                ent.HouseID = Convert.ToInt32(UserInfor.HouseID);
+
+                ent.AcceptCompany = Convert.ToString(Request["AcceptCompany"]).Trim();
+                ent.AcceptPeople = Convert.ToString(Request["AcceptPeople"]).Trim();
+                ent.AcceptProvince = Convert.ToString(Request["AProvince"]);
+                ent.AcceptCity = Convert.ToString(Request["ACity"]);
+                ent.AcceptCountry = Convert.ToString(Request["ACountry"]);
+                ent.AcceptAddress = Convert.ToString(Request["AcceptAddress"]).Trim();
+                ent.AcceptCellphone = Convert.ToString(Request["AcceptCellphone"]);
+                ent.AcceptTelephone = Convert.ToString(Request["AcceptTelephone"]);
+
+                if (id == "")
+                {
+                    log.Operate = "A";
+                    bus.AddAcceptAddress(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+                else
+                {
+                    ent.ADID = Convert.ToInt64(id);
+                    log.Operate = "U";
+                    bus.UpdateAcceptAddress(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+
+
+        /// <summary>
+        /// 查询城市 
+        /// </summary>
+        public void QueryCityData()
+        {
+            CargoHouseBus bus = new CargoHouseBus();
+            int PID = string.IsNullOrEmpty(Request["PID"]) ? 0 : Convert.ToInt32(Request["PID"]);
+            List<CargoCityEntity> list = bus.QueryCityData(new CargoCityEntity { ParentID = PID });
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        #endregion
+
+        #region 产品资料方法集合
+        /// <summary>
+        /// 查询该客户的所有产品
+        /// </summary>
+        public void QueryALLProductPageData()
+        {
+            CargoSupplierProductPriceEntity queryEntity = new CargoSupplierProductPriceEntity();
+            queryEntity.SupplierNum = Convert.ToInt32(UserInfor.LoginName);
+            if (!string.IsNullOrEmpty(Request["QBarnId"]))//品牌ID
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["QBarnId"]);
+            }
+            queryEntity.ProductCode = Convert.ToString(Request["QProductCode"]);
+            queryEntity.Specs = Convert.ToString(Request["QSpecs"]);
+            queryEntity.Figure = Convert.ToString(Request["QFigure"]);
+            if (!string.IsNullOrEmpty(Request["QHouseID"]))//仓库ID
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["QHouseID"]);
+            }
+
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoProductBus bus = new CargoProductBus();
+            Hashtable list = bus.QueryAllSupplierProductPrice(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+
+        }
+        /// <summary>
+        /// 导出该客户的所有产品资料
+        /// </summary>
+        public void QueryALLProductPageDataExport()
+        {
+            CargoSupplierProductPriceEntity queryEntity = new CargoSupplierProductPriceEntity();
+            queryEntity.SupplierNum = Convert.ToInt32(UserInfor.LoginName);
+            if (!string.IsNullOrEmpty(Request["QBarnId"]))//品牌ID
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["QBarnId"]);
+            }
+            queryEntity.ProductCode = Convert.ToString(Request["QProductCode"]);
+            queryEntity.Specs = Convert.ToString(Request["QSpecs"]);
+            queryEntity.Figure = Convert.ToString(Request["QFigure"]);
+            if (!string.IsNullOrEmpty(Request["QHouseID"]))//仓库ID
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["QHouseID"]);
+            }
+
+            CargoProductBus bus = new CargoProductBus();
+            List<CargoSupplierProductPriceEntity> list = bus.QuerySupplierProductALLExport(queryEntity);
+
+            string err = "OK";
+            if (list.Count > 0) { CargoSupplierProductPriceReport = list; }
+            else { err = "没有数据可以进行导出，请重新查询！"; }
+            //JSON
+            String json = JSON.Encode(err);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 保存批量修改成本价
+        /// </summary>
+        public void SaveSupplierCostData()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoSupplierProductPriceEntity> list = new List<CargoSupplierProductPriceEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "基本管理";
+            log.Status = "0";
+            log.NvgPage = "产品资料";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "A";
+            CargoProductBus bus = new CargoProductBus();
+
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoSupplierProductPriceEntity
+                    {
+                        ProductCode = Convert.ToString(row["ProductCode"]).Trim(),
+                        TypeName = Convert.ToString(row["TypeName"]).Trim(),
+                        Specs = Convert.ToString(row["Specs"]).Trim(),
+                        Figure = Convert.ToString(row["Figure"]).Trim(),
+                        UnitPrice = Convert.ToDouble(row["UnitPrice"]),
+                        SalePrice = Math.Ceiling(Convert.ToDouble(row["UnitPrice"]) * 0.009 + Convert.ToDouble(row["UnitPrice"])),
+                        SupplierNum = Convert.ToInt32(UserInfor.LoginName),
+                        HouseID = Convert.ToInt32(UserInfor.SettleHouseID),
+                        HouseName = UserInfor.SettleHouseName,
+                    });
+                }
+                bus.UpdateSupplierProductPrice(list, log);
+                msg.Result = true;
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+
+        /// <summary>
+        /// 删除导入的table中的空行
+        /// </summary>
+        /// <param name="dt"></param>
+        protected void removeEmpty(DataTable dt)
+        {
+            List<DataRow> removelist = new List<DataRow>();
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                bool rowdataisnull = true;
+                for (int j = 0; j < dt.Columns.Count; j++)
+                {
+                    if (!string.IsNullOrEmpty(dt.Rows[i][j].ToString().Trim()))
+                    {
+
+                        rowdataisnull = false;
+                    }
+                }
+                if (rowdataisnull)
+                {
+                    removelist.Add(dt.Rows[i]);
+                }
+
+            }
+            for (int i = 0; i < removelist.Count; i++)
+            {
+                dt.Rows.Remove(removelist[i]);
+            }
+        }
+        /// <summary>
+        /// 导入Excel文件
+        /// </summary>
+        public void saveFile()
+        {
+            System.Web.HttpFileCollection files = this.Request.Files;
+            if (files == null || files.Count == 0) return;
+            string attachmentId = Guid.NewGuid().ToString();
+            DataTable data = ToExcel.ImportExcelData(files);
+
+            CargoImportEntity import = new CargoImportEntity();
+            import.Result = true;
+            import.Data = "";
+            import.Message = "";
+            import.Type = 0;
+            import.ExistCount = 0;
+            string msg = "";
+
+            List<CargoSupplierProductPriceEntity> ent = new List<CargoSupplierProductPriceEntity>();
+
+            //验证上传excel文件列数是否有效
+            if (data.Columns.Count != 9)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "模板有误或缺少列，请重新导出后上传";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+            //清空table中的空行
+            removeEmpty(data);
+            if (data.Rows.Count <= 0)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "Excel无有效数据，请检查导入数据";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+
+            int abnormalCount = 0;
+            for (int i = 0; i < data.Rows.Count; i++)
+            {
+                //验证Excel表格指定列是否缺少数据
+                bool isContinue = false;
+                for (int j = 0; j < data.Columns.Count; j++)
+                {
+                    if (string.IsNullOrEmpty((data.Rows[i][j]).ToString())) { isContinue = true; break; }
+                }
+                if (isContinue)
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行数据有空值\r\n";
+                    continue;
+                }
+
+                //验证进仓价是否为数字
+                if (!isNumeric(data.Rows[i][8].ToString().Trim()))
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行进仓价有误\r\n";
+                    continue;
+                }
+
+                ent.Add(new CargoSupplierProductPriceEntity
+                {
+                    TypeName = Convert.ToString(data.Rows[i][2]).Trim(),
+                    ProductCode = Convert.ToString(data.Rows[i][3]).Trim(),
+                    Specs = Convert.ToString(data.Rows[i][4]).Trim(),
+                    Figure = Convert.ToString(data.Rows[i][5]).Trim(),
+                    LoadIndex = Convert.ToString(data.Rows[i][7]).Trim(),
+                    UnitPrice = Convert.ToDouble(data.Rows[i][8]),
+                });
+
+            }
+            String json = JSON.Encode(ent);
+
+            if (abnormalCount > 0)
+            {
+                import.Type = 1;
+                import.Message = msg;
+            }
+            import.Result = true;
+            import.Data = json;
+            json = JSON.Encode(import);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 判断字符串是否为整数或小数
+        /// </summary>
+        /// <param name="value">验证字符串</param>
+        /// <returns></returns>
+        public static bool isNumeric(String value)
+        {
+            return Regex.IsMatch(value, "^(\\-|\\+)?\\d+(\\.\\d+)?$");
+        }
+        /// <summary>
+        /// 导出实体
+        /// </summary>
+        public List<CargoSupplierProductPriceEntity> CargoSupplierProductPriceReport
+        {
+            get
+            {
+                if (Session["CargoSupplierProductPriceReport"] == null) { Session["CargoSupplierProductPriceReport"] = new List<CargoSupplierProductPriceEntity>(); }
+                return (List<CargoSupplierProductPriceEntity>)(Session["CargoSupplierProductPriceReport"]);
+            }
+            set
+            {
+                Session["CargoSupplierProductPriceReport"] = value;
+            }
+        }
+
+        /// <summary>
+        /// 查询所有一级分类
+        /// </summary>
+        public void QueryALLOneProductType()
+        {
+            //查询条件
+            int PID = string.IsNullOrEmpty(Request["PID"]) ? 0 : Convert.ToInt32(Request["PID"]);
+            CargoProductBus bus = new CargoProductBus();
+            List<CargoProductTypeEntity> list = bus.QueryProductType(new CargoProductTypeEntity { ParentID = PID });
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+
+        /// <summary>
+        /// 修改供应商产品价格
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateSupplierProductPrice()
+        {
+            CargoProductBus bus = new CargoProductBus();
+            ErrMessage msg = new ErrMessage();
+            LogEntity log = new LogEntity()
+            {
+                IPAddress = Common.GetUserIP(HttpContext.Current.Request),
+                Moudle = "基本管理",
+                Status = "0",
+                NvgPage = "产品资料",
+                UserID = UserInfor.LoginName.Trim(),
+                Operate = "U",
+            };
+            try
+            {
+                List<CargoSupplierProductPriceEntity> entities = new List<CargoSupplierProductPriceEntity>();
+                CargoSupplierProductPriceEntity entity = new CargoSupplierProductPriceEntity();
+                entity.SupplierNum = Convert.ToInt32(UserInfor.LoginName); //客户ID
+                entity.HouseID = Convert.ToInt32(Request["HouseID"]);//仓库ID
+                entity.HouseName = Convert.ToString(UserInfor.SettleHouseName);
+                entity.ProductCode = Convert.ToString(Request["ProductCode"]).Trim();//产品编码
+                entity.UnitPrice = string.IsNullOrEmpty(Request["UnitPrice"]) ? 0 : Convert.ToDouble(Request["UnitPrice"]);//单价 
+                entity.SalePrice = Math.Ceiling(entity.UnitPrice * 0.009 + entity.UnitPrice);
+                entities.Add(entity);
+                bus.UpdateSupplierProductPrice(entities, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (Exception ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+
+        #endregion
+    }
+}

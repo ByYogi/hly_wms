@@ -1,0 +1,268 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
+
+namespace House.Entity.House
+{
+    /// <summary>
+    /// 用户实体类
+    /// </summary>
+    [Serializable]
+    public class SystemUserEntity
+    {
+        /// <summary>
+        /// 自增长表主键
+        /// </summary>
+        [Description("表主键")]
+        public int UserID { get; set; }
+        /// <summary>
+        /// 登陆系统用户名
+        /// </summary>
+        [Description("登陆名")]
+        public string LoginName { get; set; }
+        /// <summary>
+        /// 登陆密码
+        /// </summary>
+        [Description("登陆密码")]
+        public string LoginPwd { get; set; }
+        /// <summary>
+        /// 用户真实姓名
+        /// </summary>
+        [Description("用户姓名")]
+        public string UserName { get; set; }
+        /// <summary>
+        /// 性别 
+        /// </summary>
+        [Description("性别")]
+        public string Sex { get; set; }
+        [Description("年龄")]
+        public int Age { get; set; }
+        /// <summary>
+        /// 用户的身份证号
+        /// </summary>
+        [Description("身份证号码")]
+        public string UserIDNum { get; set; }
+        /// <summary>
+        /// 所属角色
+        /// </summary>
+        public string RoleCName { get; set; }
+        [Description("角色ID")]
+        public int RoleID { get; set; }
+        public string DepCName { get; set; }
+        [Description("所在岗位")]
+        public string UserJob { get; set; }
+        [Description("部门ID")]
+        public int DepID { get; set; }
+        [Description("部门代码")]
+        public string DepCode { get; set; }
+        [Description("住址电话")]
+        public string AddressPhone { get; set; }
+        [Description("公司电话")]
+        public string CompanyPhone { get; set; }
+        [Description("手机号码")]
+        public string CellPhone { get; set; }
+        [Description("邮件地址")]
+        public string Email { get; set; }
+        [Description("登陆电脑IP地址")]
+        public string IPAddress { get; set; }
+        /// <summary>
+        /// 最后登陆时间
+        /// </summary>
+        [Description("最后登陆时间")]
+        public DateTime LastLoginTime { get; set; }
+        [Description("删除标志")]
+        public string DelFlag { get; set; }
+        public DateTime OP_DATE { get; set; }
+        public string IsAdmin { get; set; }
+        /// <summary>
+        /// 是否能修改库存
+        /// </summary>
+        public string IsModifyInNum { get; set; }
+        /// <summary>
+        /// 特殊下单权限
+        /// </summary>
+        public string SpecialCreateAwb { get; set; }
+        /// <summary>
+        /// 是否有录入最终成本价权限
+        /// </summary>
+        public string IsFinalCostPrice { get; set; }
+        /// <summary>
+        /// 是否有成本价权限
+        /// </summary>
+        public string IsCostPrice { get; set; }
+        /// <summary>
+        /// 是否有修改单价权限
+        /// </summary>
+        public string IsModifyPrice { get; set; }
+        public string OrgRemark { get; set; }
+        /// <summary>
+        /// 缓存标志前缀
+        /// </summary>
+        public string CacheTag { get; set; }
+        /// <summary>
+        /// 所属仓库ID
+        /// </summary>
+        public int HouseID { get; set; }
+        /// <summary>
+        /// 所属仓库名称
+        /// </summary>
+        public string HouseName { get; set; }
+        /// <summary>
+        /// 所管理仓库权限集合，以仓库ID组成的数组1,2,3,5,
+        /// </summary>
+        public string CargoPermisID { get; set; }
+        /// <summary>
+        /// 所管理仓库名称权限集合
+        /// </summary>
+        public string CargoPermisName { get; set; }
+        /// <summary>
+        /// 仓库权限实体List
+        /// </summary>
+        public List<HouseEntity> CargoList { get; set; }
+        /// <summary>
+        /// 拣货单表头
+        /// </summary>
+        public string PickTitle { get; set; }
+        /// <summary>
+        /// 发货单表头
+        /// </summary>
+        public string SendTitle { get; set; }
+        /// <summary>
+        /// 发货城市
+        /// </summary>
+        public string DepCity { get; set; }
+        /// <summary>
+        /// 部门类型
+        /// </summary>
+        public string OrgaType { get; set; }
+        /// <summary>
+        /// 前置仓ID
+        /// </summary>
+        public int HeadHouseID { get; set; }
+        /// <summary>
+        /// 前置仓库名称
+        /// </summary>
+        public string HeadHouseName { get; set; }
+        /// <summary>
+        /// 是否是前置仓权限
+        /// </summary>
+        public string IsHeadHouse { get; set; }
+        /// <summary>
+        /// 锁定库存权限
+        /// </summary>
+        public string IsLockStock { get; set; }
+        /// <summary>
+        /// 修改订单权限
+        /// </summary>
+        public string IsModifyOrder { get; set; }
+        /// <summary>
+        /// 删除订单权限
+        /// </summary>
+        public string IsDelOrder { get; set; }
+        public string IsRevokeInCargo { get; set; }
+        public string IsRevokeOutCargo { get; set; }
+        public string IsAddClient { get; set; }
+        public string IsIncomeImport { get; set; }
+        public string IsModifySpecsData { get; set; }
+
+        
+        public string SaleManID { get; set; }
+        public string SaleManName { get; set; }
+        public string IsExportTyre { get; set; }
+        public string IsQueryLockStock { get; set; }
+        /// <summary>
+        /// 客户经营产品ID
+        /// </summary>
+        public string ClientTypeID { get; set; }
+        /// <summary>
+        /// 客户经营产品
+        /// </summary>
+        public string ClientTypeName { get; set; }
+        /// <summary>
+        /// 客户入驻仓库ID
+        /// </summary>
+        public string SettleHouseID { get; set; }
+        /// <summary>
+        /// 客户入驻仓库
+        /// </summary>
+        public string SettleHouseName { get; set; }
+        /// <summary>
+        /// 用户单位
+        /// </summary>
+        public string UserUnit { get; set; }
+        /// <summary>
+        /// 客户地址
+        /// </summary>
+        public string Address { get; set; }
+        /// <summary>
+        /// 资金账号管理权限
+        /// </summary>
+        public string IsCashManage { get; set; }
+        public string PermisCashName { get; set; }
+        #region 新路程
+        /// <summary>
+        /// 所属系统，用于智能系统在新路程系统查询广州新路程数据，值固定为NW
+        /// </summary>
+        public string NewLandBelongSystem = "NW";
+        /// <summary>
+        /// 所属系统名称，用于智能系统在新路程系统查询广州新路程数据，值固定为NW
+        /// </summary>
+        public string NewLandBelongSystemName = "新路程";
+        /// <summary>
+        /// 入库员代码
+        /// </summary>
+        public string ClerkNo { get; set; }
+        /// <summary>
+        /// 所属公司
+        /// </summary>
+        public int UpClientID { get; set; }
+        /// <summary>
+        /// 所属公司名称
+        /// </summary>
+        public string UpClientShortName { get; set; }
+
+        #endregion
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 用户与导航的权限关系实体
+    /// </summary>
+    [Serializable]
+    public class SystemUserItemEntity
+    {
+        public int UserID { get; set; }
+        public int ItemID { get; set; }
+        public DateTime OP_DATE { get; set; }
+    }
+    /// <summary>
+    /// 仓库权限数据实体
+    /// </summary>
+    [Serializable]
+    public class HouseEntity
+    {
+        public int ID { get; set; }
+        public string Name { get; set; }
+    }
+}

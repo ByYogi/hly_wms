@@ -1,0 +1,2451 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Data.SqlTypes;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using House.DataAccess;
+using House.Entity.Cargo;
+
+namespace House.Manager.Cargo
+{
+    public class CargoFactoryOrderManager
+    {
+        private SqlHelper conn = new SqlHelper();
+        /// <summary>
+        /// 判断是否已经存在GTMC广丰订单
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistGtmcOrder(CargoGtmcProOrderEntity entity)
+        {
+            string strSQL = "SELECT b.TID  FROM Tbl_GTMC_ProOrderDetail AS a INNER JOIN Tbl_GTMC_ProOrder AS b ON a.TID=b.TID WHERE (1=1)";
+            if (!string.IsNullOrEmpty(entity.GtmcNo)) { strSQL += " and b.GtmcNo='" + entity.GtmcNo + "'"; }
+            if (!string.IsNullOrEmpty(entity.SourceCode)) { strSQL += " and b.SourceCode='" + entity.SourceCode + "'"; }
+            if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and a.GoodsCode='" + entity.GoodsCode + "'"; }
+            if (!string.IsNullOrEmpty(entity.OrderFileName)) { strSQL += " and b.OrderFileName='" + entity.OrderFileName + "'"; }
+            using (DbCommand cmdQ = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable idr = conn.ExecuteDataTable(cmdQ))
+                {
+                    if (idr == null)
+                    {
+                        return false;
+                    }
+                    if (idr.Rows.Count <= 0)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        /// <summary>
+        /// 查询广丰导入的订单数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        /// <exception cref="ApplicationException"></exception>
+        public Hashtable QueryGtmcImportData(int pIndex, int pNum, CargoGtmcProOrderEntity entity)
+        {
+            List<CargoGtmcProOrderEntity> result = new List<CargoGtmcProOrderEntity>();
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OrderType desc, a.OrderStatus asc ,a.DepartTime asc) AS RowNumber,c.Name AS HouseName ,a.*,d.AwbStatus,d.CreateDate from Tbl_GTMC_ProOrder a inner join Tbl_Cargo_House c on a.HouseID=c.HouseID left join Tbl_Cargo_Order as d on a.OrderNo = d.OrderNo WHERE(1=1)";
+
+                if (!string.IsNullOrEmpty(entity.TakeNo)) { strSQL += " and a.TakeNo like '%" + entity.TakeNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.GtmcNo)) { strSQL += " and a.GtmcNo like '%" + entity.GtmcNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.SourceName)) { strSQL += " and a.SourceName like '%" + entity.SourceName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.SourceCode)) { strSQL += " and a.SourceCode like '%" + entity.SourceCode + "%'"; }
+                if (!string.IsNullOrEmpty(entity.OrderNo)) { strSQL += " and a.OrderNo like '%" + entity.OrderNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.AwbStatus)) { strSQL += " and d.AwbStatus = '" + entity.AwbStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.Route)) { strSQL += " and a.Route = '" + entity.Route + "'"; }
+                if (!string.IsNullOrEmpty(entity.FrequentNo)) { strSQL += " and a.FrequentNo = '" + entity.FrequentNo + "'"; }
+                if (!string.IsNullOrEmpty(entity.OrderStatus)) { strSQL += " and a.OrderStatus = '" + entity.OrderStatus + "'"; }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and a.HouseID=" + entity.HouseID; }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.DepartTime>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.DepartTime<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                strSQL += ") as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    #region 获取数据
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoGtmcProOrderEntity
+                            {
+                                TID = Convert.ToInt64(idr["TID"]),
+                                TakeNo = Convert.ToString(idr["TakeNo"]),
+                                GtmcNo = Convert.ToString(idr["GtmcNo"]),
+                                SourceCode = Convert.ToString(idr["SourceCode"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                Piece = Convert.ToInt32(idr["Piece"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                SourceName = Convert.ToString(idr["SourceName"]),
+                                OrderStatus = Convert.ToString(idr["OrderStatus"]),
+                                OPID = Convert.ToString(idr["OPID"]),
+                                OPName = Convert.ToString(idr["OPName"]),
+                                OrderNo = Convert.ToString(idr["OrderNo"]),
+                                Route = Convert.ToString(idr["Route"]),
+                                FrequentNo = Convert.ToString(idr["FrequentNo"]),
+                                IncomeNo = Convert.ToString(idr["IncomeNo"]),
+                                MainRoute = Convert.ToString(idr["MainRoute"]),
+                                SplitLine = Convert.ToString(idr["SplitLine"]),
+                                FactoryNo = Convert.ToString(idr["FactoryNo"]),
+                                TakeTime = Convert.ToDateTime(idr["TakeTime"]),
+                                OPDATE = Convert.ToDateTime(idr["OPDATE"]),
+                                OrderFileName = Convert.ToString(idr["OrderFileName"]),
+                                OrderType = Convert.ToString(idr["OrderType"]),
+                                AwbStatus = Convert.ToString(idr["AwbStatus"]),
+                                CreateDate = string.IsNullOrEmpty(Convert.ToString(idr["CreateDate"])) ? "" : Convert.ToDateTime(idr["CreateDate"]).ToString("yyyy-MM-dd HH:mm:ss"),
+                                DepartTime = Convert.ToDateTime(idr["DepartTime"])
+
+                            });
+                        }
+                    }
+                    #endregion
+                }
+                resHT["rows"] = result;
+                string strCount = @"Select Count(*) as TotalCount from Tbl_GTMC_ProOrder as a inner join Tbl_Cargo_House c on a.HouseID=c.HouseID left join Tbl_Cargo_Order as d on a.OrderNo = d.OrderNo Where (1=1)";
+
+                if (!string.IsNullOrEmpty(entity.TakeNo)) { strCount += " and a.TakeNo like '%" + entity.TakeNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.GtmcNo)) { strCount += " and a.GtmcNo like '%" + entity.GtmcNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.SourceName)) { strCount += " and a.SourceName like '%" + entity.SourceName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.SourceCode)) { strCount += " and a.SourceCode like '%" + entity.SourceCode + "%'"; }
+                if (!string.IsNullOrEmpty(entity.OrderStatus)) { strCount += " and a.OrderStatus = '" + entity.OrderStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.OrderNo)) { strCount += " and a.OrderNo like '%" + entity.OrderNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.AwbStatus)) { strCount += " and d.AwbStatus = '" + entity.AwbStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.Route)) { strCount += " and a.Route = '" + entity.Route + "'"; }
+                if (!string.IsNullOrEmpty(entity.FrequentNo)) { strCount += " and a.FrequentNo = '" + entity.FrequentNo + "'"; }
+                if (!entity.HouseID.Equals(0)) { strCount += " and a.HouseID=" + entity.HouseID; }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.DepartTime>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.DepartTime<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 查询广丰订单数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoGtmcProOrderEntity QueryGtmcProOrderEntity(CargoGtmcProOrderEntity entity)
+        {
+            CargoGtmcProOrderEntity result = new CargoGtmcProOrderEntity();
+            string strSQL = @"select c.Name AS HouseName ,a.* from Tbl_GTMC_ProOrder a inner join Tbl_Cargo_House c on a.HouseID=c.HouseID where (1=1)";
+            if (!entity.TID.Equals(0)) { strSQL += " and a.TID=" + entity.TID; }
+            if (!string.IsNullOrEmpty(entity.TakeNo)) { strSQL += " and a.TakeNo='" + entity.TakeNo + "'"; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.TID = Convert.ToInt64(idr["TID"]);
+                        result.TakeNo = Convert.ToString(idr["TakeNo"]);
+                        result.GtmcNo = Convert.ToString(idr["GtmcNo"]);
+                        result.SourceCode = Convert.ToString(idr["SourceCode"]);
+                        result.HouseID = Convert.ToInt32(idr["HouseID"]);
+                        result.Piece = Convert.ToInt32(idr["Piece"]);
+                        result.HouseName = Convert.ToString(idr["HouseName"]);
+                        result.SourceName = Convert.ToString(idr["SourceName"]);
+                        result.OrderStatus = Convert.ToString(idr["OrderStatus"]);
+                        result.OPID = Convert.ToString(idr["OPID"]);
+                        result.OPName = Convert.ToString(idr["OPName"]);
+                        result.OrderNo = Convert.ToString(idr["OrderNo"]);
+                        result.TakeTime = Convert.ToDateTime(idr["TakeTime"]);
+                        result.Route = Convert.ToString(idr["Route"]);
+                        result.FrequentNo = Convert.ToString(idr["FrequentNo"]);
+                        result.IncomeNo = Convert.ToString(idr["IncomeNo"]);
+                        result.MainRoute = Convert.ToString(idr["MainRoute"]);
+                        result.SplitLine = Convert.ToString(idr["SplitLine"]);
+                        result.FactoryNo = Convert.ToString(idr["FactoryNo"]);
+                        result.OPDATE = Convert.ToDateTime(idr["OPDATE"]);
+                        result.DepartTime = Convert.ToDateTime(idr["DepartTime"]);
+                        result.OrderFileName = Convert.ToString(idr["OrderFileName"]);
+                        result.OrderType = Convert.ToString(idr["OrderType"]);
+                    }
+                }
+            }
+            result.orderDetail = QueryGTMCOrderByID(new CargoGtmcProOrderDetailEntity { TID = result.TID });
+            return result;
+        }
+
+        /// <summary>
+        /// 查询广丰订单库存信息
+        /// </summary>
+        /// <returns></returns>
+        public List<CargoGtmcProOrderDetailEntity> QueryAllBatchImportOrder(CargoGtmcProOrderDetailEntity entity) {
+
+            List<CargoGtmcProOrderDetailEntity> result = new List<CargoGtmcProOrderDetailEntity>();
+            string strSQL = @"SELECT a.HouseID,ca3.Name as HouseName,SUM(b.Piece) AS Piece,SUM(CASE WHEN (a.BatchWeek > DATEPART(week, DATEADD(month, -9, GETDATE())) AND a.BatchYear = SUBSTRING(DATENAME(year, DATEADD(year, -1, GETDATE())), 3, 2)) OR a.BatchYear = SUBSTRING(DATENAME(year, DATEADD(year, 0, GETDATE())), 3, 2) THEN b.Piece ELSE 0 END) AS Stock FROM Tbl_Cargo_Product AS a INNER JOIN Tbl_Cargo_ContainerGoods AS b ON a.ProductID = b.ProductID LEFT JOIN Tbl_Cargo_Container AS c ON b.ContainerID = c.ContainerID INNER JOIN Tbl_Cargo_Area AS d ON c.AreaID = d.AreaID INNER JOIN Tbl_Cargo_Area ca2 ON d.ParentID = ca2.AreaID INNER JOIN Tbl_Cargo_Area ca3 ON ca2.ParentID = ca3.AreaID WHERE a.InCargoStatus = '1' AND a.IsLockStock = 0 AND b.Piece <> 0 ";
+            strSQL += "AND a.ProductCode IN('" + entity.ProductCode + "')";
+            //strSQL += "AND a.HouseID IN('" + entity.HouseID + "')";
+            //strSQL += "AND ca3.AreaID IN('" + entity.AreaID + "')";
+            // 狄乐汽服OE  湖北狄乐汽服  湖南狄乐汽服  广州狄乐汽服RE
+            strSQL += "AND a.SuppClientNum IN(551098, 130453, 891524, 542207)";
+            strSQL += "GROUP BY a.HouseID,ca3.Name ORDER BY Stock DESC,Piece DESC";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.Add(new CargoGtmcProOrderDetailEntity
+                        {
+                            HouseID = Convert.ToString(idr["HouseID"]),
+                            HouseName = Convert.ToString(idr["HouseName"]),
+                            //ProductCode = Convert.ToString(idr["ProductCode"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            Stock = Convert.ToInt32(idr["Stock"]),
+                            NoStock = Convert.ToInt32(idr["Piece"])- Convert.ToInt32(idr["Stock"]),
+                        });
+                    }
+                }
+            }
+            return result;
+
+        }
+        
+        /// <summary>
+        /// 更新广丰订单的智能系统订单号
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateGtmcProOrderStatus(CargoGtmcProOrderEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_GTMC_ProOrder Set OrderNo=@OrderNo,OrderStatus=@OrderStatus ";
+            if (!string.IsNullOrEmpty(entity.AutoOrderHandleStatus))
+            {
+                strSQL += " ,AutoOrderHandleStatus=@AutoOrderHandleStatus";
+            }
+            if (!string.IsNullOrEmpty(entity.OrderAlloType)) {
+
+                strSQL += " ,OrderAlloType=@OrderAlloType";
+            }
+            if (!entity.ExterOrderAlloNum.Equals(0))
+            {
+
+                strSQL += " ,ExterOrderAlloNum=@ExterOrderAlloNum";
+            }
+            if (!string.IsNullOrEmpty(entity.OrderHandleType))
+            {
+                strSQL += " ,OrderHandleType=@OrderHandleType,AutoOrderHandleTime=@AutoOrderHandleTime";
+            }
+            strSQL += " Where TID=@TID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@TID", DbType.Int64, entity.TID);
+                conn.AddInParameter(cmd, "@OrderStatus", DbType.String, entity.OrderStatus);
+                conn.AddInParameter(cmd, "@OrderNo", DbType.String, entity.OrderNo);
+                if (!string.IsNullOrEmpty(entity.AutoOrderHandleStatus))
+                {
+                    conn.AddInParameter(cmd, "@AutoOrderHandleStatus", DbType.String, entity.AutoOrderHandleStatus);
+                }
+                if (!string.IsNullOrEmpty(entity.OrderAlloType))
+                {
+                    conn.AddInParameter(cmd, "@OrderAlloType", DbType.String, entity.OrderAlloType);
+                }
+                if (!string.IsNullOrEmpty(entity.OrderHandleType))
+                {
+                    conn.AddInParameter(cmd, "@OrderHandleType", DbType.String, entity.OrderHandleType);
+                    conn.AddInParameter(cmd, "@AutoOrderHandleTime", DbType.DateTime, entity.AutoOrderHandleTime);
+                }
+                if (!entity.ExterOrderAlloNum.Equals(0))
+                {
+                    conn.AddInParameter(cmd, "@ExterOrderAlloNum", DbType.Int32, entity.ExterOrderAlloNum);
+                }
+                
+                conn.ExecuteNonQuery(cmd);
+            }
+
+        }
+        /// <summary>
+        /// 根据ID查询广丰订单明细数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoGtmcProOrderDetailEntity> QueryGTMCOrderByID(CargoGtmcProOrderDetailEntity entity)
+        {
+            List<CargoGtmcProOrderDetailEntity> result = new List<CargoGtmcProOrderDetailEntity>();
+            string strSQL = @"select a.*,b.GtmcNo,b.SourceCode,b.SourceName,c.TypeName,c.ParentID,c.TypeParentName from Tbl_GTMC_ProOrderDetail as a inner join Tbl_GTMC_ProOrder as b on a.TID=b.TID inner join Tbl_Cargo_ProductType as c on a.TypeID=c.TypeID where (1=1)";
+            if (!entity.TID.Equals(0)) { strSQL += " and a.TID=" + entity.TID; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.Add(new CargoGtmcProOrderDetailEntity
+                        {
+                            DeID = Convert.ToInt64(idr["DeID"]),
+                            TID = Convert.ToInt64(idr["TID"]),
+                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                            GoodsName = Convert.ToString(idr["GoodsName"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            Cage = Convert.ToString(idr["Cage"]),
+                            PackNum = Convert.ToInt32(idr["PackNum"]),
+                            TotalNum = Convert.ToInt32(idr["TotalNum"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            status = Convert.ToString(idr["status"]),
+                            GtmcNo = Convert.ToString(idr["GtmcNo"]),
+                            SourceCode = Convert.ToString(idr["SourceCode"]),
+                            SourceName = Convert.ToString(idr["SourceName"]),
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            TypeName = Convert.ToString(idr["TypeName"]),
+                            TypeParentID = Convert.ToInt32(idr["ParentID"]),
+                            TypeParentName = Convert.ToString(idr["TypeParentName"]),
+                            OPDATE = Convert.ToDateTime(idr["OPDATE"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        public List<CargoFactoryOrderEntity> QueryGTMCOrderTime(CargoFactoryOrderEntity entity)
+        {
+            List<CargoFactoryOrderEntity> result = new List<CargoFactoryOrderEntity>();
+            string strSQL = @"select TOP 1 * from Tbl_Cargo_FactoryOrder where (1=1) and OP_DATE>='2024-02-24'";
+            if (!entity.PushStatus.Equals(-1)) { strSQL += " and PushStatus=" + entity.PushStatus; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.Add(new CargoFactoryOrderEntity
+                        {
+                            ID = Convert.ToInt64(idr["ID"]),
+                            FacOrderNo = Convert.ToString(idr["FacOrderNo"]),
+                            FacName = Convert.ToString(idr["FacName"]),
+                            OrderType = Convert.ToInt32(idr["OrderType"]),
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            Source = Convert.ToInt32(idr["Source"]),
+                            ProductName = Convert.ToString(idr["ProductName"]),
+                            ProductID = Convert.ToString(idr["ProductID"]),
+                            Model = Convert.ToString(idr["Model"]),
+                            BelongMonth = Convert.ToString(idr["BelongMonth"]),
+                            Born = Convert.ToString(idr["Born"]),
+                            Assort = Convert.ToString(idr["Assort"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                            Figure = Convert.ToString(idr["Figure"]),
+                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                            Batch = Convert.ToString(idr["Batch"]),
+                            OrderNum = Convert.ToInt32(idr["OrderNum"]),
+                            ReplyNumber = Convert.ToInt32(idr["ReplyNumber"]),
+                            InPiece = Convert.ToInt32(idr["InPiece"]),
+                            InCargoStatus = Convert.ToInt32(idr["InCargoStatus"]),
+                            UnitPrice = Convert.ToDouble(idr["UnitPrice"]),
+                            SalePrice = Convert.ToDouble(idr["SalePrice"]),
+                            WhetherTax = Convert.ToInt32(idr["WhetherTax"]),
+                            InHousePrice = Convert.ToDouble(idr["InHousePrice"]),
+                            CostPrice = Convert.ToDouble(idr["CostPrice"]),
+                            TradePrice = Convert.ToDouble(idr["TradePrice"]),
+                            SaleMoney = Convert.ToDouble(idr["SaleMoney"]),
+                            ReceiveName = Convert.ToString(idr["ReceiveName"]),
+                            ReceiveCity = Convert.ToString(idr["ReceiveCity"]),
+                            ReceiveMobile = Convert.ToString(idr["ReceiveMobile"]),
+                            HLYReturnID = Convert.ToString(idr["HLYReturnID"]),
+                            SourceHouse = Convert.ToString(idr["SourceHouse"]),
+                            BelongDepart = Convert.ToString(idr["BelongDepart"]),
+                            SpecsType = Convert.ToString(idr["SpecsType"]),
+                            Supplier = Convert.ToString(idr["Supplier"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                            OP_Name = Convert.ToString(idr["OP_Name"]),
+                            ProductCode = Convert.ToString(idr["ProductCode"]),
+                            SupplierAddress = Convert.ToString(idr["SupplierAddress"]),
+                            SuppClientNum = Convert.ToString(idr["SuppClientNum"])
+                        });
+                    }
+                }
+            }
+
+
+            return result;
+        }
+        public void SaveGTMCImportData(CargoGtmcProOrderEntity entity)
+        {
+            entity.EnSafe();
+            Int64 did = 0;
+            string strSQL = @"INSERT INTO Tbl_GTMC_ProOrder(TakeNo,GtmcNo,SourceCode,SourceName,OrderStatus,OrderNo,HouseID,OPID,OPName";
+            if ((entity.TakeTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.TakeTime.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " ,TakeTime";
+            }
+            if ((entity.DepartTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.DepartTime.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " ,DepartTime";
+            }
+            if (!string.IsNullOrEmpty(entity.BusinessName))
+            {
+                strSQL += " ,BusinessName";
+            }
+            strSQL += ",BusinessID,Piece,Route,FrequentNo,IncomeNo,MainRoute,SplitLine,FactoryNo,OrderFileName,OrderType,Memo) VALUES (@TakeNo,@GtmcNo,@SourceCode,@SourceName,@OrderStatus,@OrderNo,@HouseID,@OPID,@OPName";
+            if ((entity.TakeTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.TakeTime.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " ,@TakeTime";
+            }
+            if ((entity.DepartTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.DepartTime.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " ,@DepartTime";
+            }
+            strSQL += ",@BusinessName,@BusinessID,@Piece,@Route,@FrequentNo,@IncomeNo,@MainRoute,@SplitLine,@FactoryNo,@OrderFileName,@OrderType,@Memo) SELECT @@IDENTITY";
+            try
+            {
+                #region 订单保存
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@TakeNo", DbType.String, entity.TakeNo);
+                    conn.AddInParameter(cmd, "@GtmcNo", DbType.String, entity.GtmcNo);
+                    conn.AddInParameter(cmd, "@SourceCode", DbType.String, entity.SourceCode);
+                    conn.AddInParameter(cmd, "@SourceName", DbType.String, entity.SourceName);
+                    conn.AddInParameter(cmd, "@OrderStatus", DbType.String, entity.OrderStatus);
+                    conn.AddInParameter(cmd, "@OrderNo", DbType.String, entity.OrderNo);
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@Piece", DbType.Int32, entity.Piece);
+                    conn.AddInParameter(cmd, "@Route", DbType.String, entity.Route);
+                    conn.AddInParameter(cmd, "@FrequentNo", DbType.String, entity.FrequentNo);
+                    conn.AddInParameter(cmd, "@IncomeNo", DbType.String, entity.IncomeNo);
+                    conn.AddInParameter(cmd, "@MainRoute", DbType.String, entity.MainRoute);
+                    conn.AddInParameter(cmd, "@SplitLine", DbType.String, entity.SplitLine);
+                    conn.AddInParameter(cmd, "@FactoryNo", DbType.String, entity.FactoryNo);
+                    conn.AddInParameter(cmd, "@OPID", DbType.String, entity.OPID);
+                    conn.AddInParameter(cmd, "@OPName", DbType.String, entity.OPName);
+                    conn.AddInParameter(cmd, "@OrderFileName", DbType.String, entity.OrderFileName);
+                    if ((entity.TakeTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.TakeTime.ToString("yyyy-MM-dd") != "1900-01-01"))
+                    {
+                        conn.AddInParameter(cmd, "@TakeTime", DbType.DateTime, entity.TakeTime);
+                    }
+                    if ((entity.DepartTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.DepartTime.ToString("yyyy-MM-dd") != "1900-01-01"))
+                    {
+                        conn.AddInParameter(cmd, "@DepartTime", DbType.DateTime, entity.DepartTime);
+                    }
+                    conn.AddInParameter(cmd, "@BusinessName", DbType.String, entity.BusinessName);
+                    conn.AddInParameter(cmd, "@BusinessID", DbType.Int32, entity.BusinessID);
+                    conn.AddInParameter(cmd, "@OrderType", DbType.String, entity.OrderType);
+                    conn.AddInParameter(cmd, "@Memo", DbType.String, entity.Memo);
+                    //conn.ExecuteNonQuery(cmd);
+                    did = Convert.ToInt64(conn.ExecuteScalar(cmd));
+                }
+                #endregion
+
+                //新增产品与订单关联数据
+                AddGtmcOrderGoodsInfo(entity.orderDetail, did);
+
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        public void AddGtmcOrderGoodsInfo(List<CargoGtmcProOrderDetailEntity> goods, long TID)
+        {
+            foreach (var it in goods)
+            {
+                it.EnSafe();
+                string strSQL = @"INSERT INTO Tbl_GTMC_ProOrderDetail(TID,GoodsCode,GoodsName,Specs,Cage,PackNum,TotalNum,Piece,status,TypeID) VALUES  (@TID,@GoodsCode,@GoodsName,@Specs,@Cage,@PackNum,@TotalNum,@Piece,@status,@TypeID)";
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@TID", DbType.Int64, TID);
+                    conn.AddInParameter(cmd, "@GoodsCode", DbType.String, it.GoodsCode);
+                    conn.AddInParameter(cmd, "@PackNum", DbType.Int32, it.PackNum);
+                    conn.AddInParameter(cmd, "@TotalNum", DbType.Int32, it.TotalNum);
+                    conn.AddInParameter(cmd, "@Piece", DbType.Int32, it.Piece);
+                    conn.AddInParameter(cmd, "@GoodsName", DbType.String, it.GoodsName);
+                    conn.AddInParameter(cmd, "@Specs", DbType.String, it.Specs);
+                    conn.AddInParameter(cmd, "@Cage", DbType.String, it.Cage);
+                    conn.AddInParameter(cmd, "@status", DbType.String, it.status);
+                    conn.AddInParameter(cmd, "@TypeID", DbType.Int32, it.TypeID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+        }
+        /// <summary>
+        /// 清单编码明细查询
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoGtmcProOrderEntity> QueryExterOrderDataList(CargoGtmcProOrderEntity entity)
+        {
+            entity.EnSafe();
+            List<CargoGtmcProOrderEntity> result = new List<CargoGtmcProOrderEntity>();
+            string strSQL = " select ISNULL(f.HouseID,0) as FirstLevelHouseID,ISNULL(f.AreaID,0) as FirstLevelAreaID,e.Province,e.City,e.Product as Region,a.*,c.Specs,c.Figure,c.Model,c.LoadIndex,c.SpeedLevel,c.GoodsCode,c.ProductCode,d.TypeName,d.TypeID,d.ParentID as TypeParentID from Tbl_GTMC_ProOrder as a inner join Tbl_GTMC_ProOrderDetail as b on a.TID=b.TID inner join Tbl_Cargo_ProductSpec as c on b.GoodsCode=c.GoodsCode \r\n  inner join Tbl_Cargo_ProductType as d on c.TypeID=d.TypeID left join Tbl_Cargo_Client as e on a.SourceCode=e.ShopCode and a.HouseID=e.HouseID left join Tbl_Cargo_HouseCityMapp as f \r\n  on e.ClientNum=f.ClientNum and f.OrderLevel=1 where (1=1) ";
+            if (!entity.TID.Equals(0)) { strSQL += " and a.TID = " + entity.TID; }
+            if (!entity.ExterOrderAlloNum.Equals(0)) { strSQL += " and a.ExterOrderAlloNum = " + entity.ExterOrderAlloNum; }
+            if (!string.IsNullOrEmpty(entity.AutoOrderHandleStatus)) { strSQL += " and a.AutoOrderHandleStatus = '" + entity.AutoOrderHandleStatus + "'"; }
+            if (!string.IsNullOrEmpty(entity.OrderType)) { strSQL += " and a.OrderType = '" + entity.OrderType + "'"; }
+            if (!string.IsNullOrEmpty(entity.OrderStatus)) { strSQL += " and a.OrderStatus = '" + entity.OrderStatus + "'"; }
+            if (!string.IsNullOrEmpty(entity.GtmcNo)) { strSQL += " and a.GtmcNo = '" + entity.GtmcNo + "'"; }
+            if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and b.GoodsCode = '" + entity.GoodsCode + "'"; }
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.DepartTime>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.DepartTime<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+            }
+            strSQL += " Order by a.DepartTime desc";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                #region 获取数据
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoGtmcProOrderEntity
+                        {
+                            TID = Convert.ToInt64(idr["TID"]),
+                            TakeNo = Convert.ToString(idr["TakeNo"]),
+                            GtmcNo = Convert.ToString(idr["GtmcNo"]),
+                            SourceCode = Convert.ToString(idr["SourceCode"]),
+                            FirstLevelHouseID = Convert.ToInt32(idr["FirstLevelHouseID"]),
+                            FirstLevelAreaID = Convert.ToInt32(idr["FirstLevelAreaID"]),
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            //HouseName = Convert.ToString(idr["HouseName"]),
+                            SourceName = Convert.ToString(idr["SourceName"]),
+                            OrderStatus = Convert.ToString(idr["OrderStatus"]),
+                            OPID = Convert.ToString(idr["OPID"]),
+                            OPName = Convert.ToString(idr["OPName"]),
+                            OrderNo = Convert.ToString(idr["OrderNo"]),
+                            Route = Convert.ToString(idr["Route"]),
+                            FrequentNo = Convert.ToString(idr["FrequentNo"]),
+                            IncomeNo = Convert.ToString(idr["IncomeNo"]),
+                            MainRoute = Convert.ToString(idr["MainRoute"]),
+                            SplitLine = Convert.ToString(idr["SplitLine"]),
+                            FactoryNo = Convert.ToString(idr["FactoryNo"]),
+                            TakeTime = Convert.ToDateTime(idr["TakeTime"]),
+                            OPDATE = Convert.ToDateTime(idr["OPDATE"]),
+                            //OrderFileName = Convert.ToString(idr["OrderFileName"]),
+                            OrderType = Convert.ToString(idr["OrderType"]),
+                            //AwbStatus = Convert.ToString(idr["AwbStatus"]),
+                            //CreateDate = string.IsNullOrEmpty(Convert.ToString(idr["CreateDate"])) ? "" : Convert.ToDateTime(idr["CreateDate"]).ToString("yyyy-MM-dd HH:mm:ss"),
+                            //DepartTime = Convert.ToDateTime(idr["DepartTime"]),
+                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                            //InPiece = Convert.ToInt32(idr["InPiece"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            Figure = Convert.ToString(idr["Figure"]),
+                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                            Model = Convert.ToString(idr["Model"]),
+                            //LineName = Convert.ToString(idr["LineName"]),
+                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                            ProductCode = Convert.ToString(idr["ProductCode"]),
+                            TypeName = Convert.ToString(idr["TypeName"]),
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            TypeParentID = Convert.ToInt32(idr["TypeParentID"]),
+                            Memo = Convert.ToString(idr["Memo"]),
+                            BusinessName = Convert.ToString(idr["BusinessName"]),
+                            BusinessID = Convert.ToString(idr["BusinessID"]),
+                            OrderAlloType = Convert.ToString(idr["OrderAlloType"]),
+                            ExterOrderAlloNum = string.IsNullOrEmpty(Convert.ToString(idr["ExterOrderAlloNum"])) ? 0 : Convert.ToInt32(idr["ExterOrderAlloNum"]),
+                            AutoOrderHandleStatus = Convert.ToString(idr["AutoOrderHandleStatus"]),
+                            Region = Convert.ToString(idr["Region"]),
+                            Province = Convert.ToString(idr["Province"]),
+                            City = Convert.ToString(idr["City"]),
+                        });
+                    }
+                }
+                #endregion
+            }
+            return result;
+        }
+
+        public Hashtable QueryBatchImportOrderData(int pIndex, int pNum, CargoGtmcProOrderEntity entity)
+        {
+            entity.EnSafe();
+            List<CargoGtmcProOrderEntity> result = new List<CargoGtmcProOrderEntity>();
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY po.OrderStatus asc,po.SourceCode asc ,po.DepartTime asc) AS RowNumber,po.*,pod.GoodsCode,o.AwbStatus,o.CreateDate,h.Name AS HouseName,ISNULL( a.Piece,0)InPiece,ps.Specs,ps.Figure,ps.LoadIndex,ps.SpeedLevel,ps.ProductCode,d.LineName,m.TypeName,b.City,b.Province,b.Product from Tbl_GTMC_ProOrder po inner join Tbl_GTMC_ProOrderDetail pod on po.TID=pod.TID left join Tbl_Cargo_ProductSpec ps on pod.GoodsCode=ps.GoodsCode inner join Tbl_Cargo_House h on po.HouseID=h.HouseID left join Tbl_Cargo_ProductType as m on ps.TypeID=m.TypeID left join Tbl_Cargo_Order as o on po.OrderNo = o.OrderNo left join Tbl_Cargo_Client as b on po.SourceCode=b.ShopCode and po.HouseID=b.HouseID left join Tbl_Cargo_LogisLineClient as c on b.ClientID=c.ClientID left join Tbl_Cargo_LogisLine as d on c.LineID=d.LineID and b.HouseID=d.HouseID left join (select SUM(cg.Piece)as Piece,p.GoodsCode from Tbl_Cargo_Product p inner join tbl_cargo_ContainerGoods cg on p.ProductID=cg.ProductID where (1=1) and p.IsLockStock=0";
+                if (!string.IsNullOrEmpty(entity.CargoPermisID)) { strSQL += " and p.HouseID in (" + entity.CargoPermisID + ")"; }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and p.HouseID = '" + entity.HouseID + "'"; }
+                if (!entity.LastMonth.Equals(0))
+                {
+                    if (DateTime.Now.Month > entity.LastMonth)
+                    {
+                        strSQL += " AND ((p.BatchWeek>DATEPART(week,DATEADD(month," + (entity.LastMonth * -1) + ",getdate())) AND p.BatchYear=SUBSTRING(DateName(year,dateadd(YEAR,0,GetDate()) ),3,2)))";
+                    }
+                    else
+                    {
+                        strSQL += " AND ((p.BatchWeek>DATEPART(week,DATEADD(month," + (entity.LastMonth * -1) + ",getdate())) AND p.BatchYear=SUBSTRING(DateName(year,dateadd(YEAR,-1,GetDate()) ),3,2)) or p.BatchYear=SUBSTRING(DateName(year,dateadd(YEAR,0,GetDate()) ),3,2))";
+                    }
+                }
+                strSQL += " group by p.GoodsCode)a on a.GoodsCode=pod.GoodsCode where(1=1)"; 
+                if (!string.IsNullOrEmpty(entity.OrderType)) { strSQL += " and po.OrderType = '" + entity.OrderType + "'"; }
+                if (!string.IsNullOrEmpty(entity.AutoOrderHandleStatus)) { strSQL += " and po.AutoOrderHandleStatus = '" + entity.AutoOrderHandleStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.OrderHandleType)) { strSQL += " and po.OrderHandleType = '" + entity.OrderHandleType + "'"; }
+                if (!entity.OrderStatus.Equals("-1")) { strSQL += " and po.OrderStatus = '" + entity.OrderStatus + "'"; }
+                if (!entity.AwbStatus.Equals("-1")) { strSQL += " and o.AwbStatus = '" + entity.AwbStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.CargoPermisID)) { strSQL += " and po.HouseID in (" + entity.CargoPermisID + ")"; }
+                //if (!entity.HouseID.Equals(0)) { strSQL += " and po.HouseID = '" + entity.HouseID + "'"; }
+                if (!entity.ExterOrderAlloNum.Equals(0)) { strSQL += " and po.ExterOrderAlloNum = " + entity.ExterOrderAlloNum; }
+                if (!string.IsNullOrEmpty(entity.GtmcNo)) { strSQL += " and po.GtmcNo like '%" + entity.GtmcNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and pod.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+                if (!string.IsNullOrEmpty(entity.SourceName)) { strSQL += " and po.SourceName like '%" + entity.SourceName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.SourceCode)) { strSQL += " and po.SourceCode like '%" + entity.SourceCode + "%'"; }
+                if (!string.IsNullOrEmpty(entity.OrderNo)) { strSQL += " and po.OrderNo like '%" + entity.OrderNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.OPName)) { strSQL += " and po.OPName like '%" + entity.OPName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.BusinessName)){strSQL += " AND po.BusinessName LIKE '%"+ entity.BusinessName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.OrderAlloType)) { strSQL += " AND po.OrderAlloType='" + entity.OrderAlloType + "'"; }
+
+                //if (!string.IsNullOrEmpty(entity.OPName)) { strSQL += " and po.OPName like '%" + entity.OPName + "%'"; }
+                //if (!string.IsNullOrEmpty(entity.OPName)) { strSQL += " and po.OPName like '%" + entity.OPName + "%'"; }
+                if (!entity.LineID.Equals(0)) { strSQL += " and d.LineID=" + entity.LineID; }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and po.DepartTime>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and po.DepartTime<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                if (!entity.StockType.Equals(0))
+                {
+                    if (entity.StockType.Equals(1))
+                    {
+                        strSQL += " and po.Piece<=a.Piece";
+                    }
+                    else
+                    {
+                        strSQL += " and po.Piece>ISNULL( a.Piece,0)";
+                    }
+                }
+                strSQL += ") as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    #region 获取数据
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoGtmcProOrderEntity
+                            {
+                                TID = Convert.ToInt64(idr["TID"]),
+                                TakeNo = Convert.ToString(idr["TakeNo"]),
+                                GtmcNo = Convert.ToString(idr["GtmcNo"]),
+                                SourceCode = Convert.ToString(idr["SourceCode"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                Piece = Convert.ToInt32(idr["Piece"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                SourceName = Convert.ToString(idr["SourceName"]),
+                                OrderStatus = Convert.ToString(idr["OrderStatus"]),
+                                OPID = Convert.ToString(idr["OPID"]),
+                                OPName = Convert.ToString(idr["OPName"]),
+                                OrderNo = Convert.ToString(idr["OrderNo"]),
+                                Route = Convert.ToString(idr["Route"]),
+                                FrequentNo = Convert.ToString(idr["FrequentNo"]),
+                                IncomeNo = Convert.ToString(idr["IncomeNo"]),
+                                MainRoute = Convert.ToString(idr["MainRoute"]),
+                                SplitLine = Convert.ToString(idr["SplitLine"]),
+                                FactoryNo = Convert.ToString(idr["FactoryNo"]),
+                                TakeTime = Convert.ToDateTime(idr["TakeTime"]),
+                                OPDATE = Convert.ToDateTime(idr["OPDATE"]),
+                                OrderFileName = Convert.ToString(idr["OrderFileName"]),
+                                OrderType = Convert.ToString(idr["OrderType"]),
+                                AwbStatus = Convert.ToString(idr["AwbStatus"]),
+                                CreateDate = string.IsNullOrEmpty(Convert.ToString(idr["CreateDate"])) ? "" : Convert.ToDateTime(idr["CreateDate"]).ToString("yyyy-MM-dd HH:mm:ss"),
+                                DepartTime = Convert.ToDateTime(idr["DepartTime"]),
+                                GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                                InPiece = Convert.ToInt32(idr["InPiece"]),
+                                Specs = Convert.ToString(idr["Specs"]),
+                                Figure = Convert.ToString(idr["Figure"]),
+                                LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                                LineName = Convert.ToString(idr["LineName"]),
+                                SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                                ProductCode = Convert.ToString(idr["ProductCode"]),
+                                TypeName = Convert.ToString(idr["TypeName"]),
+                                Memo = Convert.ToString(idr["Memo"]),
+                                BusinessName = Convert.ToString(idr["BusinessName"]),
+                                BusinessID = Convert.ToString(idr["BusinessID"]),
+                                AutoOrderHandleStatus = Convert.ToString(idr["AutoOrderHandleStatus"]),
+                                OrderHandleType = Convert.ToString(idr["OrderHandleType"]),
+                                AutoOrderHandleTime = string.IsNullOrEmpty(Convert.ToString(idr["AutoOrderHandleTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["AutoOrderHandleTime"]),
+                                OrderAlloType = Convert.ToString(idr["OrderAlloType"]),
+                                City = Convert.ToString(idr["City"]),
+                                Province = Convert.ToString(idr["Province"]),
+                                Region = Convert.ToString(idr["Product"]),
+                                ExterOrderAlloNum = string.IsNullOrEmpty(Convert.ToString(idr["ExterOrderAlloNum"])) ? 0 : Convert.ToInt32(idr["ExterOrderAlloNum"]),
+                            });
+                        }
+                    }
+                    #endregion
+                }
+                resHT["rows"] = result;
+                string strCount = @"SELECT Count(*) as TotalCount FROM Tbl_GTMC_ProOrder po INNER JOIN Tbl_GTMC_ProOrderDetail pod ON po.TID=pod.TID INNER JOIN Tbl_Cargo_House h ON po.HouseID=h.HouseID LEFT JOIN Tbl_Cargo_Order AS o ON po.OrderNo = o.OrderNo left join Tbl_Cargo_Client as b on po.SourceCode=b.ShopCode and po.HouseID=b.HouseID left join Tbl_Cargo_LogisLineClient as c on b.ClientID=c.ClientID left join Tbl_Cargo_LogisLine as d on c.LineID=d.LineID and b.HouseID=d.HouseID LEFT JOIN (SELECT SUM(cg.Piece)as Piece,p.GoodsCode FROM Tbl_Cargo_Product p INNER JOIN tbl_cargo_ContainerGoods cg ON p.ProductID=cg.ProductID WHERE (1=1) and p.IsLockStock=0";
+                if (!string.IsNullOrEmpty(entity.CargoPermisID)) { strCount += " and p.HouseID in (" + entity.CargoPermisID + ")"; }
+                if (!entity.HouseID.Equals(0)) { strCount += " and p.HouseID = '" + entity.HouseID + "'"; }
+                if (!entity.LastMonth.Equals(0))
+                {
+                    if (DateTime.Now.Month > entity.LastMonth)
+                    {
+                        strCount += " AND ((p.BatchWeek>DATEPART(week,DATEADD(month," + (entity.LastMonth * -1) + ",getdate())) AND p.BatchYear=SUBSTRING(DateName(year,dateadd(YEAR,0,GetDate()) ),3,2)))";
+                    }
+                    else
+                    {
+                        strCount += " AND ((p.BatchWeek>DATEPART(week,DATEADD(month," + (entity.LastMonth * -1) + ",getdate())) AND p.BatchYear=SUBSTRING(DateName(year,dateadd(YEAR,-1,GetDate()) ),3,2)) or p.BatchYear=SUBSTRING(DateName(year,dateadd(YEAR,0,GetDate()) ),3,2))";
+                    }
+                }
+                strCount += " GROUP BY  p.GoodsCode)a ON a.GoodsCode=pod.GoodsCode where(1=1)";
+                if (!string.IsNullOrEmpty(entity.OrderType)) { strCount += " and po.OrderType = '" + entity.OrderType + "'"; }
+                if (!entity.OrderStatus.Equals("-1")) { strCount += " and po.OrderStatus = '" + entity.OrderStatus + "'"; }
+                if (!entity.AwbStatus.Equals("-1")) { strCount += " and o.AwbStatus = '" + entity.AwbStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.CargoPermisID)) { strCount += " and po.HouseID in (" + entity.CargoPermisID + ")"; }
+                if (!entity.ExterOrderAlloNum.Equals(0)) { strCount += " and po.ExterOrderAlloNum = " + entity.ExterOrderAlloNum; }
+                //if (!entity.HouseID.Equals(0)) { strCount += " and po.HouseID = '" + entity.HouseID + "'"; }
+                if (!string.IsNullOrEmpty(entity.GtmcNo)) { strCount += " and po.GtmcNo like '%" + entity.GtmcNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.SourceName)) { strCount += " and po.SourceName like '%" + entity.SourceName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.SourceCode)) { strCount += " and po.SourceCode like '%" + entity.SourceCode + "%'"; }
+                if (!string.IsNullOrEmpty(entity.OrderNo)) { strCount += " and po.OrderNo like '%" + entity.OrderNo + "%'"; }
+                if (!string.IsNullOrEmpty(entity.OPName)) { strCount += " and po.OPName like '%" + entity.OPName + "%'"; }
+                if (!entity.LineID.Equals(0)) { strCount += " and d.LineID=" + entity.LineID; }
+                if (!string.IsNullOrEmpty(entity.BusinessName)) { strSQL += " AND po.BusinessName LIKE '%" + entity.BusinessName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.OrderAlloType)) { strSQL += " AND po.OrderAlloType='" + entity.OrderAlloType + "'"; }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and po.DepartTime>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and po.DepartTime<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                if (!entity.StockType.Equals(0))
+                {
+                    if (entity.StockType.Equals(1))
+                    {
+                        strCount += " and po.Piece<=a.Piece";
+                    }
+                    else
+                    {
+                        strCount += " and po.Piece>ISNULL( a.Piece,0)";
+                    }
+                }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        public bool QueryBatchImportOrderType(CargoGtmcProOrderEntity entity)
+        {
+            string strSQL = $"select o.CreateDate from Tbl_GTMC_ProOrder po inner join Tbl_GTMC_ProOrderDetail pod on po.TID=pod.TID left join Tbl_Cargo_Order o on po.OrderNo=o.OrderNo where po.SourceCode='{entity.SourceCode}' and po.GtmcNo='{entity.GtmcNo}' and po.HouseID={entity.HouseID} and pod.GoodsCode='{entity.GoodsCode}'";
+            using (DbCommand cmdQ = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(cmdQ))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        if (string.IsNullOrEmpty(Convert.ToString(idr["CreateDate"])))
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            if (Convert.ToDateTime(Convert.ToString(idr["CreateDate"])).ToString("yyyy-MM-dd").Equals(DateTime.Now.ToString("yyyy-MM-dd")))
+                            {
+                                return true;
+                            }
+                            else
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        public void DelBatchImportOrder(CargoGtmcProOrderEntity entity)
+        {
+            try
+            {
+                string strSQL = @"Delete from Tbl_GTMC_ProOrder where TID=@TID ";
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@TID", DbType.String, entity.TID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+                strSQL = @"Delete from Tbl_GTMC_ProOrderDetail where TID=@TID ";
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@TID", DbType.String, entity.TID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        public Hashtable QueryData(int pIndex, int pNum, CargoFactoryOrderEntity entity)
+        {
+            List<CargoFactoryOrderEntity> result = new List<CargoFactoryOrderEntity>();
+            Hashtable resHT = new Hashtable();
+
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OP_DATE DESC) AS RowNumber,b.TypeName,c.Name AS HouseName , d.DepName as BusinessName, a.* from Tbl_Cargo_FactoryOrder a left join Tbl_Cargo_ProductType b on a.TypeID=b.TypeID  left join Tbl_Cargo_House c on a.HouseID=c.HouseID left join Tbl_Cargo_UpClientDep d on a.BusinessID=d.ID  WHERE (1=1)";
+
+                if (!string.IsNullOrEmpty(entity.FacOrderNo)) { strSQL += " and a.FacOrderNo like '%" + entity.FacOrderNo + "%'"; }
+                if (entity.OrderType != -1) { strSQL += " and a.OrderType = '" + entity.OrderType + "'"; }
+                if (entity.HouseID != -1) { strSQL += " and a.HouseID = '" + entity.HouseID + "'"; }
+                if (entity.InCargoStatus != -1) { strSQL += " and a.InCargoStatus = '" + entity.InCargoStatus + "'"; }
+                if (entity.TypeID != -1) { strSQL += " and a.TypeID = '" + entity.TypeID + "'"; }
+                if (entity.Source != 0) { strSQL += " and a.Source = '" + entity.Source + "'"; }
+                if (!string.IsNullOrEmpty(entity.Model)) { strSQL += " and a.Model like '%" + entity.Model + "%'"; }
+                if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and a.Specs like '%" + entity.Specs + "%'"; }
+                //if (!string.IsNullOrEmpty(entity.LoadIndex)) { strSQL += " and a.LoadIndex like '%" + entity.LoadIndex + "%'"; }
+                //if (!string.IsNullOrEmpty(entity.SpeedLevel)) { strSQL += " and a.SpeedLevel like '%" + entity.SpeedLevel + "%'"; }
+                if (!string.IsNullOrEmpty(entity.Figure)) { strSQL += " and a.Figure like '%" + entity.Figure + "%'"; }
+                if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and a.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ReceiveCity)) { strSQL += " and a.ReceiveCity like '%" + entity.ReceiveCity + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ReceiveName)) { strSQL += " and a.ReceiveName like '%" + entity.ReceiveName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ProductName)) { strSQL += " and a.ProductName like '%" + entity.ProductName + "%'"; }
+                //if (!string.IsNullOrEmpty(entity.ReceiveMobile)) { strSQL += " and a.ReceiveMobile like '%" + entity.ReceiveMobile + "%'"; }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.OP_DATE>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.OP_DATE<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                strSQL += ") as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    #region 获取数据
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoFactoryOrderEntity
+                            {
+                                ID = Convert.ToInt64(idr["ID"]),
+                                FacOrderNo = Convert.ToString(idr["FacOrderNo"]),
+                                FacName = Convert.ToString(idr["FacName"]),
+                                OrderType = Convert.ToInt32(idr["OrderType"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                TypeID = Convert.ToInt32(idr["TypeID"]),
+                                TypeName = Convert.ToString(idr["TypeName"]),
+                                Source = Convert.ToInt32(idr["Source"]),
+                                ProductName = Convert.ToString(idr["ProductName"]),
+                                ProductID = Convert.ToString(idr["ProductID"]),
+                                Model = Convert.ToString(idr["Model"]),
+                                BelongMonth = Convert.ToString(idr["BelongMonth"]),
+                                Born = Convert.ToString(idr["Born"]),
+                                Assort = Convert.ToString(idr["Assort"]),
+                                Specs = Convert.ToString(idr["Specs"]),
+                                LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                                SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                                Figure = Convert.ToString(idr["Figure"]),
+                                GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                                Batch = Convert.ToString(idr["Batch"]),
+                                OrderNum = Convert.ToInt32(idr["OrderNum"]),
+                                ReplyNumber = Convert.ToInt32(idr["ReplyNumber"]),
+                                InPiece = Convert.ToInt32(idr["InPiece"]),
+                                InCargoStatus = Convert.ToInt32(idr["InCargoStatus"]),
+                                UnitPrice = Convert.ToDouble(idr["UnitPrice"]),
+                                SalePrice = Convert.ToDouble(idr["SalePrice"]),
+                                WhetherTax = Convert.ToInt32(idr["WhetherTax"]),
+                                CostPrice = Convert.ToDouble(idr["CostPrice"]),
+                                TradePrice = Convert.ToDouble(idr["TradePrice"]),
+                                SaleMoney = Convert.ToDouble(idr["SaleMoney"]),
+                                InHousePrice = Convert.ToDouble(idr["InHousePrice"]),
+                                ReceiveName = Convert.ToString(idr["ReceiveName"]),
+                                ReceiveCity = Convert.ToString(idr["ReceiveCity"]),
+                                ReceiveMobile = Convert.ToString(idr["ReceiveMobile"]),
+                                HLYReturnID = Convert.ToString(idr["HLYReturnID"]),
+                                SourceHouse = Convert.ToString(idr["SourceHouse"]),
+                                BelongDepart = Convert.ToString(idr["BelongDepart"]),
+                                SpecsType = Convert.ToString(idr["SpecsType"]),
+                                Supplier = Convert.ToString(idr["Supplier"]),
+                                SuppClientNum = Convert.ToString(idr["SuppClientNum"]),
+                                SupplierAddress = Convert.ToString(idr["SupplierAddress"]),
+                                ProductCode = Convert.ToString(idr["ProductCode"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                                OP_Name = Convert.ToString(idr["OP_Name"]),
+                                BusinessID = Convert.ToString(idr["BusinessID"]),
+                                BusinessName = Convert.ToString(idr["BusinessID"]) == "0" ? "" : Convert.ToString(idr["BusinessName"]),
+
+                            });
+                        }
+                    }
+                    #endregion
+                }
+                resHT["rows"] = result;
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_FactoryOrder as a Where (1=1)";
+                if (!string.IsNullOrEmpty(entity.FacOrderNo)) { strCount += " and a.FacOrderNo like '%" + entity.FacOrderNo + "%'"; }
+                if (entity.OrderType != -1) { strCount += " and a.OrderType = '" + entity.OrderType + "'"; }
+                if (entity.HouseID != -1) { strCount += " and a.HouseID = '" + entity.HouseID + "'"; }
+                if (entity.InCargoStatus != -1) { strCount += " and a.InCargoStatus = '" + entity.InCargoStatus + "'"; }
+                if (entity.TypeID != -1) { strCount += " and a.TypeID = '" + entity.TypeID + "'"; }
+                if (!string.IsNullOrEmpty(entity.Model)) { strCount += " and a.Model like '%" + entity.Model + "%'"; }
+                if (!string.IsNullOrEmpty(entity.Specs)) { strCount += " and a.Specs like '%" + entity.Specs + "%'"; }
+                //if (!string.IsNullOrEmpty(entity.LoadIndex)) { strCount += " and a.LoadIndex like '%" + entity.LoadIndex + "%'"; }
+                //if (!string.IsNullOrEmpty(entity.SpeedLevel)) { strCount += " and a.SpeedLevel like '%" + entity.SpeedLevel + "%'"; }
+                if (!string.IsNullOrEmpty(entity.Figure)) { strCount += " and a.Figure like '%" + entity.Figure + "%'"; }
+                if (!string.IsNullOrEmpty(entity.GoodsCode)) { strCount += " and a.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+                //if (!string.IsNullOrEmpty(entity.ReceiveName)) { strCount += " and a.ReceiveName like '%" + entity.ReceiveName + "%'"; }
+                //if (!string.IsNullOrEmpty(entity.ReceiveMobile)) { strCount += " and a.ReceiveMobile like '%" + entity.ReceiveMobile + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ReceiveName)) { strCount += " and a.ReceiveName like '%" + entity.ReceiveName + "%'"; }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.OP_DATE>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.OP_DATE<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+
+        /// <summary>
+        /// 保存导入的数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void SaveData(List<CargoFactoryOrderEntity> entity)
+        {
+            foreach (var it in entity)
+            {
+                //if (!it.HouseID.Equals(9) && !it.HouseID.Equals(93))
+                //{
+                string pid = "";
+                if (it.OrderType.ToString() == "0" || it.OrderType.ToString() == "2")
+                {
+                    pid = InsertHLYData(it).ToString();
+                }
+                it.HLYReturnID = pid;
+                //}
+                //if (!it.HouseID.Equals(62))
+                //{
+                //    CheckProductSpec(it);
+                //}
+                _InsertData(it);
+            }
+        }
+        public void InsertData(CargoFactoryOrderEntity entity)
+        {
+            //if (!entity.HouseID.Equals(9) && !entity.HouseID.Equals(93))
+            //{
+            string pid = "";
+            if (entity.OrderType.ToString() == "0" || entity.OrderType.ToString() == "2")
+            {
+                pid = InsertHLYData(entity).ToString();
+            }
+            entity.HLYReturnID = pid;
+            //}
+            //CheckProductSpec(entity);
+            _InsertData(entity);
+        }
+        /// <summary>
+        /// 检验产品规格数据表中是否包含导入的数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void CheckProductSpec(CargoFactoryOrderEntity entity)
+        {
+            string strSQL = @"select * from Tbl_Cargo_ProductSpec where TypeID=@TypeID and Model=@Model and GoodsCode=@GoodsCode and Specs=@Specs and Figure=@Figure and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+            if (!string.IsNullOrEmpty(entity.Born))
+            {
+                strSQL += " and Born=@Born";
+            }
+            if (!string.IsNullOrEmpty(entity.Assort))
+            {
+                strSQL += " and Assort=@Assort";
+            }
+
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@TypeID", DbType.String, entity.TypeID);
+                    conn.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+                    conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                    conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                    conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                    conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                    conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                    if (!string.IsNullOrEmpty(entity.Born))
+                    {
+                        conn.AddInParameter(cmd, "@Born", DbType.Int32, entity.Born);
+                    }
+                    if (!string.IsNullOrEmpty(entity.Assort))
+                    {
+                        conn.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+                    }
+                    using (DataTable idr = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idr.Rows.Count <= 0)
+                        {
+                            strSQL = @"insert into Tbl_Cargo_ProductSpec (TypeID, Model, GoodsCode, Specs, Figure, LoadIndex, SpeedLevel";
+                            if (!string.IsNullOrEmpty(entity.Born))
+                            {
+                                strSQL += ", Born";
+                            }
+                            if (!string.IsNullOrEmpty(entity.Assort))
+                            {
+                                strSQL += ", Assort";
+                            }
+                            strSQL += ") values(@TypeID,@Model,@GoodsCode,@Specs,@Figure,@LoadIndex,@SpeedLevel";
+                            if (!string.IsNullOrEmpty(entity.Born))
+                            {
+                                strSQL += ", @Born";
+                            }
+                            if (!string.IsNullOrEmpty(entity.Assort))
+                            {
+                                strSQL += ", @Assort";
+                            }
+                            strSQL += ")";
+
+                            using (DbCommand cmdInsert = conn.GetSqlStringCommond(strSQL))
+                            {
+
+                                conn.AddInParameter(cmdInsert, "@TypeID", DbType.String, entity.TypeID);
+                                conn.AddInParameter(cmdInsert, "@Model", DbType.String, entity.Model);
+                                conn.AddInParameter(cmdInsert, "@GoodsCode", DbType.String, entity.GoodsCode);
+                                conn.AddInParameter(cmdInsert, "@Specs", DbType.String, entity.Specs);
+                                conn.AddInParameter(cmdInsert, "@Figure", DbType.String, entity.Figure);
+                                conn.AddInParameter(cmdInsert, "@LoadIndex", DbType.String, entity.LoadIndex);
+                                conn.AddInParameter(cmdInsert, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                                if (!string.IsNullOrEmpty(entity.Born))
+                                {
+                                    conn.AddInParameter(cmdInsert, "@Born", DbType.Int32, entity.Born);
+                                }
+                                if (!string.IsNullOrEmpty(entity.Assort))
+                                {
+                                    conn.AddInParameter(cmdInsert, "@Assort", DbType.String, entity.Assort);
+                                }
+                                conn.ExecuteNonQuery(cmdInsert);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 添加
+        /// </summary>
+        /// <param name="entity"></param>
+        public void _InsertData(CargoFactoryOrderEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = String.Empty;
+            if (entity.HouseID == 64)
+            {
+                strSQL = @"INSERT INTO Tbl_Cargo_FactoryOrder (FacOrderNo,OrderType,HouseID,TypeID,Model,Specs,LoadIndex,SpeedLevel,Figure,GoodsCode,Batch,OrderNum,ReplyNumber,InPiece,InCargoStatus,SalePrice,UnitPrice,CostPrice,TaxCostPrice,NoTaxCostPrice,TradePrice,SaleMoney,ReceiveName,ReceiveCity,ReceiveMobile,BelongMonth,Born,Assort,Source,ProductName,WhetherTax,HLYReturnID,SourceHouse,OP_DATE,OP_Name,BelongDepart,Company,SpecsType,Supplier,SuppClientNum,SupplierAddress,ProductCode,BusinessID) VALUES (@FacOrderNo,@OrderType,@HouseID,@TypeID,@Model,@Specs,@LoadIndex,@SpeedLevel,@Figure,@GoodsCode,@Batch,@OrderNum,@ReplyNumber,@InPiece,@InCargoStatus,@SalePrice,@UnitPrice,@CostPrice,@TaxCostPrice,@NoTaxCostPrice,
+    @TradePrice,@SaleMoney,@ReceiveName,@ReceiveCity,@ReceiveMobile,@BelongMonth,@Born,@Assort,@Source,@ProductName,@WhetherTax,@HLYReturnID,@SourceHouse,@OP_DATE,@OP_Name,@BelongDepart,@Company,@SpecsType,@Supplier,@SuppClientNum,@SupplierAddress,@ProductCode,@BusinessID)";
+            }
+            else
+            {
+                strSQL = @"INSERT INTO Tbl_Cargo_FactoryOrder (FacOrderNo,OrderType,HouseID,TypeID,Model,Specs,LoadIndex,SpeedLevel,Figure,GoodsCode,Batch,OrderNum,ReplyNumber,InPiece,InCargoStatus,SalePrice,UnitPrice,CostPrice,InHousePrice,TradePrice,SaleMoney,ReceiveName,ReceiveCity,ReceiveMobile,BelongMonth,Born,Assort,Source,ProductName,WhetherTax,HLYReturnID,SourceHouse,OP_DATE,OP_Name,BelongDepart,Company,SpecsType,Supplier,SuppClientNum,SupplierAddress,ProductCode,BusinessID) VALUES (@FacOrderNo,@OrderType,@HouseID,@TypeID,@Model,@Specs,@LoadIndex,@SpeedLevel,@Figure,@GoodsCode,@Batch,@OrderNum,@ReplyNumber,@InPiece,@InCargoStatus,@SalePrice,@UnitPrice,@CostPrice,@InHousePrice,@TradePrice,@SaleMoney,@ReceiveName,@ReceiveCity,@ReceiveMobile,@BelongMonth,@Born,@Assort,@Source,@ProductName,@WhetherTax,@HLYReturnID,@SourceHouse,@OP_DATE,@OP_Name,@BelongDepart,@Company,@SpecsType,@Supplier,@SuppClientNum,@SupplierAddress,@ProductCode,@BusinessID)";
+            }
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                    conn.AddInParameter(cmd, "@OrderType", DbType.Int32, entity.OrderType);
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                    conn.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+                    conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                    conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                    conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                    conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                    conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                    conn.AddInParameter(cmd, "@Batch", DbType.String, entity.Batch);
+                    conn.AddInParameter(cmd, "@OrderNum", DbType.Int32, entity.OrderNum);
+                    conn.AddInParameter(cmd, "@ReplyNumber", DbType.Int32, entity.ReplyNumber);
+                    if (entity.HouseID == 64 && entity.OrderType.ToString() == "3")
+                    {
+                        conn.AddInParameter(cmd, "@InCargoStatus", DbType.Int32, 1);
+                        conn.AddInParameter(cmd, "@InPiece", DbType.Int32, entity.OrderNum);
+                    }
+                    else
+                    {
+                        conn.AddInParameter(cmd, "@InCargoStatus", DbType.Int32, entity.InCargoStatus);
+                        conn.AddInParameter(cmd, "@InPiece", DbType.Int32, entity.InPiece);
+                    }
+
+                    conn.AddInParameter(cmd, "@UnitPrice", DbType.Decimal, entity.UnitPrice);
+                    conn.AddInParameter(cmd, "@SalePrice", DbType.Decimal, entity.SalePrice);
+                    conn.AddInParameter(cmd, "@CostPrice", DbType.Decimal, entity.CostPrice);
+                    conn.AddInParameter(cmd, "@InHousePrice", DbType.Decimal, entity.InHousePrice);
+                    if (entity.HouseID == 64)
+                    {
+                        conn.AddInParameter(cmd, "@TaxCostPrice", DbType.Decimal, entity.CostPrice);
+                        conn.AddInParameter(cmd, "@NoTaxCostPrice", DbType.Decimal, entity.CostPrice);
+                    }
+                    conn.AddInParameter(cmd, "@TradePrice", DbType.Decimal, entity.TradePrice);
+                    double saleMoney = Convert.ToDouble(entity.SalePrice) * entity.ReplyNumber;
+                    conn.AddInParameter(cmd, "@SaleMoney", DbType.Decimal, saleMoney);
+                    conn.AddInParameter(cmd, "@WhetherTax", DbType.Int32, entity.WhetherTax);
+                    conn.AddInParameter(cmd, "@ReceiveName", DbType.String, entity.ReceiveName);
+                    conn.AddInParameter(cmd, "@ReceiveCity", DbType.String, entity.ReceiveCity);
+                    conn.AddInParameter(cmd, "@ReceiveMobile", DbType.String, entity.ReceiveMobile);
+                    conn.AddInParameter(cmd, "@BelongMonth", DbType.String, entity.BelongMonth);
+                    conn.AddInParameter(cmd, "@Born", DbType.String, entity.Born);
+                    conn.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+                    conn.AddInParameter(cmd, "@Source", DbType.Int32, entity.Source);
+                    conn.AddInParameter(cmd, "@ProductName", DbType.String, entity.ProductName);
+                    string year = entity.BelongMonth.Substring(0, 4);
+                    string month = entity.BelongMonth.Substring(4, 2);
+                    if (month.IndexOf('0') == 0) { month = month.Replace("0", ""); }
+                    conn.AddInParameter(cmd, "@ProYear", DbType.String, year);
+                    conn.AddInParameter(cmd, "@ProMonth", DbType.String, month);
+                    conn.AddInParameter(cmd, "@HLYReturnID", DbType.String, entity.HLYReturnID);
+                    conn.AddInParameter(cmd, "@SourceHouse", DbType.String, entity.SourceHouse);
+                    conn.AddInParameter(cmd, "@BelongDepart", DbType.String, entity.BelongDepart);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@OP_Name", DbType.String, entity.OP_Name);
+                    conn.AddInParameter(cmd, "@Company", DbType.String, entity.Company);
+                    conn.AddInParameter(cmd, "@SpecsType", DbType.String, entity.SpecsType);
+                    conn.AddInParameter(cmd, "@Supplier", DbType.String, entity.Supplier);
+                    conn.AddInParameter(cmd, "@SuppClientNum", DbType.String, entity.SuppClientNum);
+                    conn.AddInParameter(cmd, "@SupplierAddress", DbType.String, entity.SupplierAddress);
+                    conn.AddInParameter(cmd, "@ProductCode", DbType.String, entity.ProductCode);
+                    conn.AddInParameter(cmd, "@BusinessID", DbType.String, string.IsNullOrEmpty(entity.BusinessID) ? "0" : entity.BusinessID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 保存来货订单成本价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void SavePriceData(List<CargoFactoryOrderEntity> entity)
+        {
+            try
+            {
+                foreach (var it in entity)
+                {
+                    string strSQL = @"UPDATE Tbl_Cargo_FactoryOrder SET CostPrice=@CostPrice,TaxCostPrice=@TaxCostPrice,NoTaxCostPrice=@NoTaxCostPrice,OP_DATE=@OP_DATE where FacOrderNo=@FacOrderNo and OrderType=@OrderType and HouseID=@HouseID and Source=@Source and BelongMonth=@BelongMonth and TypeID=@TypeID and Model=@Model and Specs=@Specs and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel and Figure=@Figure and GoodsCode=@GoodsCode and Batch=@Batch and WhetherTax=@WhetherTax";
+                    if (!string.IsNullOrEmpty(it.Born))
+                    {
+                        strSQL += " and Born=@Born";
+                    }
+                    if (!string.IsNullOrEmpty(it.Assort))
+                    {
+                        strSQL += " and Assort=@Assort";
+                    }
+
+                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    {
+                        conn.AddInParameter(cmd, "@CostPrice", DbType.Decimal, it.CostPrice);
+                        conn.AddInParameter(cmd, "@TaxCostPrice", DbType.Decimal, it.TaxCostPrice);
+                        conn.AddInParameter(cmd, "@NoTaxCostPrice", DbType.Decimal, it.NoTaxCostPrice);
+                        conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, it.FacOrderNo);
+                        conn.AddInParameter(cmd, "@OrderType", DbType.Int32, it.OrderType);
+                        conn.AddInParameter(cmd, "@HouseID", DbType.Int32, it.HouseID);
+                        conn.AddInParameter(cmd, "@Source", DbType.Int32, it.Source);
+                        conn.AddInParameter(cmd, "@BelongMonth", DbType.String, it.BelongMonth);
+                        if (!string.IsNullOrEmpty(it.Born))
+                        {
+                            conn.AddInParameter(cmd, "@Born", DbType.String, it.Born);
+                        }
+                        if (!string.IsNullOrEmpty(it.Assort))
+                        {
+                            conn.AddInParameter(cmd, "@Assort", DbType.String, it.Assort);
+                        }
+                        conn.AddInParameter(cmd, "@TypeID", DbType.Int32, it.TypeID);
+                        conn.AddInParameter(cmd, "@Model", DbType.String, it.Model);
+                        conn.AddInParameter(cmd, "@Specs", DbType.String, it.Specs);
+                        conn.AddInParameter(cmd, "@LoadIndex", DbType.Int32, it.LoadIndex);
+                        conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, it.SpeedLevel);
+                        conn.AddInParameter(cmd, "@Figure", DbType.String, it.Figure);
+                        conn.AddInParameter(cmd, "@GoodsCode", DbType.String, it.GoodsCode);
+                        conn.AddInParameter(cmd, "@Batch", DbType.String, it.Batch);
+                        conn.AddInParameter(cmd, "@WhetherTax", DbType.Int32, it.WhetherTax);
+
+                        //conn.AddInParameter(cmd, "@SalePrice", DbType.Decimal, it.SalePrice);
+                        //conn.AddInParameter(cmd, "@UnitPrice", DbType.Decimal, it.UnitPrice);
+                        //conn.AddInParameter(cmd, "@TradePrice", DbType.Decimal, it.SalePrice);
+
+                        conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                        conn.ExecuteNonQuery(cmd);
+                    }
+                    UpdateProductPriceData(it);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        /// <summary>
+        /// 基础价格调整同步调整产品表价格
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductPriceData(CargoFactoryOrderEntity entity)
+        {
+            string strSQL = @"update Tbl_Cargo_Product set CostPrice=@CostPrice,TaxCostPrice=@TaxCostPrice,NoTaxCostPrice=@NoTaxCostPrice where SourceOrderNo=@FacOrderNo and HouseID=@HouseID and Source=@Source and BelongMonth=@BelongMonth and TypeID=@TypeID and Model=@Model and Specs=@Specs and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel and Figure=@Figure and GoodsCode=@GoodsCode ";
+            if (!string.IsNullOrEmpty(entity.Born))
+            {
+                strSQL += " and Born=@Born";
+            }
+            if (!string.IsNullOrEmpty(entity.Assort))
+            {
+                strSQL += " and Assort=@Assort";
+            }
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@CostPrice", DbType.Decimal, entity.CostPrice);
+                conn.AddInParameter(cmd, "@TaxCostPrice", DbType.Decimal, entity.TaxCostPrice);
+                conn.AddInParameter(cmd, "@NoTaxCostPrice", DbType.Decimal, entity.NoTaxCostPrice);
+                conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@Source", DbType.Int32, entity.Source);
+                conn.AddInParameter(cmd, "@BelongMonth", DbType.String, entity.BelongMonth);
+                if (!string.IsNullOrEmpty(entity.Born))
+                {
+                    conn.AddInParameter(cmd, "@Born", DbType.String, entity.Born);
+                }
+                if (!string.IsNullOrEmpty(entity.Assort))
+                {
+                    conn.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+                }
+                conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+                conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+
+        /// <summary>
+        /// 内部订单插入到好来运数据库
+        /// </summary>
+        /// <param name="entity"></param>
+        public string InsertHLYData(CargoFactoryOrderEntity entity)
+        {
+            entity.EnSafe();
+            string did = "";
+            try
+            {
+                //好来运数据库的数据连接
+                SqlHelper hlySql = new SqlHelper("HLYSql");
+                string strSQL = @"Insert into Tbl_ProductListForIncoming(uid,Model,pName,Specs,Figure,Batch,OrderType,Number,area,Inuser,Indate,brand,InNumber,LoadIndex,SpeedLevel,GoodsCode,Source,SourceOrderNo,BelongMonth,BelongDepart,Assort,Born,ProductCode,BundleNum";
+                if (entity.HouseID.Equals(65))
+                {
+                    strSQL += ",ProductName,CarModel,Manufacturer,Seller,SellerAddress,Servicer,BrandCode";
+                }
+                strSQL += ")values (@uid,@Model,@pName,@Specs,@Figure,@Batch,@OrderType,@Number,@area,@Inuser,@Indate,@brand,@InNumber,@LoadIndex,@SpeedLevel,@GoodsCode,@Source,@SourceOrderNo,@BelongMonth,@BelongDepart,@Assort,@Born,@ProductCode,@BundleNum";
+                if (entity.HouseID.Equals(65))
+                {
+                    strSQL += ",@ProductName,@CarModel,@Manufacturer,@Seller,@SellerAddress,@Servicer,@BrandCode";
+                }
+                strSQL += ")SELECT @@IDENTITY";
+                using (DbCommand cmd = hlySql.GetSqlStringCommond(strSQL))
+                {
+                    hlySql.AddInParameter(cmd, "@uid", DbType.String, entity.FacOrderNo);
+                    hlySql.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+                    hlySql.AddInParameter(cmd, "@pName", DbType.String, entity.TypeName);//需要赋值
+                    hlySql.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                    hlySql.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                    hlySql.AddInParameter(cmd, "@Batch", DbType.String, entity.Batch);
+                    hlySql.AddInParameter(cmd, "@OrderType", DbType.Int32, entity.OrderType);
+                    hlySql.AddInParameter(cmd, "@Number", DbType.Int32, entity.ReplyNumber);
+                    if (entity.HouseID.Equals(65))
+                    {
+                        //hlySql.AddInParameter(cmd, "@area", DbType.String, entity.ProductName);
+                        hlySql.AddInParameter(cmd, "@area", DbType.String, entity.CargoDepart);
+                        hlySql.AddInParameter(cmd, "@ProductName", DbType.String, entity.ProductName);
+                        hlySql.AddInParameter(cmd, "@CarModel", DbType.String, entity.CarModel);
+                        hlySql.AddInParameter(cmd, "@Manufacturer", DbType.String, entity.Manufacturer);
+                        hlySql.AddInParameter(cmd, "@Seller", DbType.String, entity.Seller);
+                        hlySql.AddInParameter(cmd, "@SellerAddress", DbType.String, entity.SellerAddress);
+                        hlySql.AddInParameter(cmd, "@Servicer", DbType.String, entity.Servicer);
+                        hlySql.AddInParameter(cmd, "@BrandCode", DbType.String, entity.BrandCode);
+                    }
+                    else
+                    {
+                        hlySql.AddInParameter(cmd, "@area", DbType.String, entity.ProductName);
+
+                    }
+                    hlySql.AddInParameter(cmd, "@Inuser", DbType.String, entity.OP_Name);//需要赋值
+                    hlySql.AddInParameter(cmd, "@Indate", DbType.DateTime, DateTime.Now);
+                    hlySql.AddInParameter(cmd, "@brand", DbType.String, entity.TypeName);//需要赋值
+                    hlySql.AddInParameter(cmd, "@InNumber", DbType.Int32, "0");
+                    hlySql.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                    hlySql.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                    hlySql.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                    hlySql.AddInParameter(cmd, "@Source", DbType.String, entity.SourceName);//需要赋值
+                    hlySql.AddInParameter(cmd, "@SourceOrderNo", DbType.String, entity.FacOrderNo);
+                    hlySql.AddInParameter(cmd, "@BelongMonth", DbType.String, entity.BelongMonth);
+                    hlySql.AddInParameter(cmd, "@BelongDepart", DbType.String, entity.BelongDepart);
+                    hlySql.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+                    hlySql.AddInParameter(cmd, "@Born", DbType.String, entity.Born);
+                    hlySql.AddInParameter(cmd, "@ProductCode", DbType.String, entity.ProductCode);
+                    hlySql.AddInParameter(cmd, "@BundleNum", DbType.Int32, entity.BundleNum);
+                    //hlySql.ExecuteNonQuery(cmd);
+                    did = Convert.ToString(hlySql.ExecuteScalar(cmd));
+                }
+                return did;
+
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateData(CargoFactoryOrderEntity entity)
+        {
+            //if (entity.OrderType.ToString() == "0" || entity.OrderType.ToString() == "2")
+            //{
+            //    if (!string.IsNullOrWhiteSpace(entity.HLYReturnID))
+            //    {
+            //        UpdateHLYData(entity);
+            //    }
+            //    else
+            //    {
+            //        string pid = InsertHLYData(entity).ToString();
+            //        entity.HLYReturnID = pid;
+            //    }
+            //}
+            //else
+            //{
+            //    if (!string.IsNullOrEmpty(entity.HLYReturnID))
+            //    {
+            //        DeleteHLYData(Convert.ToInt32(entity.HLYReturnID));
+            //        entity.HLYReturnID = "";
+            //    }
+            //}
+            string strSQL = @"UPDATE Tbl_Cargo_FactoryOrder SET FacOrderNo=@FacOrderNo,OrderType =@OrderType,HouseID =@HouseID,TypeID =@TypeID,Model =@Model,Specs =@Specs,LoadIndex =@LoadIndex,SpeedLevel =@SpeedLevel,Figure =@Figure,GoodsCode =@GoodsCode,Batch =@Batch,OrderNum =@OrderNum,ReplyNumber =@ReplyNumber,SalePrice =@SalePrice,TradePrice =@TradePrice,SaleMoney =@SaleMoney,ReceiveName =@ReceiveName,ReceiveCity =@ReceiveCity,ReceiveMobile =@ReceiveMobile,Source =@Source,ProductName =@ProductName,BelongMonth =@BelongMonth,BelongDepart=@BelongDepart,SourceHouse=@SourceHouse,Born =@Born,Assort =@Assort,UnitPrice=@UnitPrice,HLYReturnID=@HLYReturnID,BusinessID=@BusinessID";
+            strSQL += ",WhetherTax=@WhetherTax,OP_DATE =@OP_DATE,OP_Name=@OP_Name,Company=@Company,SpecsType=@SpecsType,ProductCode=@ProductCode,Supplier=@Supplier,SupplierAddress=@SupplierAddress,SuppClientNum=@SuppClientNum,InHousePrice=@InHousePrice WHERE ID=@ID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                    conn.AddInParameter(cmd, "@OrderType", DbType.Int32, entity.OrderType);
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                    conn.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+                    conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                    conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                    conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                    conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                    conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                    conn.AddInParameter(cmd, "@Batch", DbType.String, entity.Batch);
+                    conn.AddInParameter(cmd, "@OrderNum", DbType.Int32, entity.OrderNum);
+                    conn.AddInParameter(cmd, "@ReplyNumber", DbType.Int32, entity.ReplyNumber);
+                    //conn.AddInParameter(cmd, "@InCargoStatus", DbType.Int32, entity.InCargoStatus);
+                    conn.AddInParameter(cmd, "@SalePrice", DbType.Decimal, entity.SalePrice);
+                    conn.AddInParameter(cmd, "@UnitPrice", DbType.Decimal, entity.UnitPrice);
+                    conn.AddInParameter(cmd, "@HLYReturnID", DbType.String, entity.HLYReturnID);
+                    conn.AddInParameter(cmd, "@WhetherTax", DbType.Int32, entity.WhetherTax);
+                    conn.AddInParameter(cmd, "@TradePrice", DbType.Decimal, entity.TradePrice);
+                    double saleMoney = Convert.ToDouble(entity.SalePrice) * entity.ReplyNumber;
+                    conn.AddInParameter(cmd, "@SaleMoney", DbType.Decimal, saleMoney);
+                    conn.AddInParameter(cmd, "@ReceiveName", DbType.String, entity.ReceiveName);
+                    conn.AddInParameter(cmd, "@ReceiveCity", DbType.String, entity.ReceiveCity);
+                    conn.AddInParameter(cmd, "@ReceiveMobile", DbType.String, entity.ReceiveMobile);
+                    conn.AddInParameter(cmd, "@Source", DbType.Int32, entity.Source);
+                    conn.AddInParameter(cmd, "@ProductName", DbType.String, entity.ProductName);
+                    conn.AddInParameter(cmd, "@BelongMonth", DbType.String, entity.BelongMonth);
+                    conn.AddInParameter(cmd, "@Born", DbType.String, entity.Born);
+                    conn.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+                    conn.AddInParameter(cmd, "@OP_Name", DbType.String, entity.OP_Name);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@ID", DbType.String, entity.ID);
+                    string year = entity.BelongMonth.Substring(0, 4);
+                    string month = entity.BelongMonth.Substring(4, 2);
+                    if (month.IndexOf('0') == 0) { month = month.Replace("0", ""); }
+                    conn.AddInParameter(cmd, "@ProYear", DbType.String, year);
+                    conn.AddInParameter(cmd, "@ProMonth", DbType.String, month);
+                    conn.AddInParameter(cmd, "@BelongDepart", DbType.String, entity.BelongDepart);
+                    conn.AddInParameter(cmd, "@Company", DbType.String, entity.Company);
+                    conn.AddInParameter(cmd, "@SpecsType", DbType.String, entity.SpecsType);
+                    conn.AddInParameter(cmd, "@SourceHouse", DbType.String, entity.SourceHouse);
+                    conn.AddInParameter(cmd, "@ProductCode", DbType.String, entity.ProductCode);
+                    conn.AddInParameter(cmd, "@Supplier", DbType.String, entity.Supplier);
+                    conn.AddInParameter(cmd, "@SupplierAddress", DbType.String, entity.SupplierAddress);
+                    conn.AddInParameter(cmd, "@SuppClientNum", DbType.String, entity.SuppClientNum);
+                    conn.AddInParameter(cmd, "@InHousePrice", DbType.Decimal, entity.InHousePrice);
+                    conn.AddInParameter(cmd, "@BusinessID", DbType.String, string.IsNullOrEmpty(entity.BusinessID) ? "0" : entity.BusinessID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 好来运来货订单修改同步
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void HLYUpdateData(CargoFactoryOrderEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_FactoryOrder SET PushStatus=@PushStatus,HLYReturnID=@HLYReturnID WHERE ID=@ID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@PushStatus", DbType.Int32, entity.PushStatus);
+                    conn.AddInParameter(cmd, "@HLYReturnID", DbType.String, entity.HLYReturnID);
+                    conn.AddInParameter(cmd, "@ID", DbType.String, entity.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 内部订单修改同步修改好来运数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateHLYData(CargoFactoryOrderEntity entity)
+        {
+            try
+            {
+                SqlHelper hlySql = new SqlHelper("HLYSql");
+                string strSQL = @"UPDATE Tbl_ProductListForIncoming set uid=@uid,Model=@Model,pName=@pName,Specs=@Specs,Figure=@Figure,Batch=@Batch,OrderType=@OrderType,Number=@Number,area=@area,Inuser=@Inuser,Indate=@Indate,brand=@brand,LoadIndex=@LoadIndex,SpeedLevel=@SpeedLevel,GoodsCode=@GoodsCode,Source=@Source,SourceOrderNo=@SourceOrderNo,BelongMonth=@BelongMonth,BelongDepart=@BelongDepart,Assort=@Assort,Born=@Born where Id=@HLYReturnID";
+
+                using (DbCommand cmd = hlySql.GetSqlStringCommond(strSQL))
+                {
+                    hlySql.AddInParameter(cmd, "@uid", DbType.String, entity.FacOrderNo);
+                    hlySql.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+                    hlySql.AddInParameter(cmd, "@pName", DbType.String, entity.TypeName);
+                    hlySql.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                    hlySql.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                    hlySql.AddInParameter(cmd, "@Batch", DbType.String, entity.Batch);
+                    hlySql.AddInParameter(cmd, "@OrderType", DbType.Int32, entity.OrderType);
+                    hlySql.AddInParameter(cmd, "@Number", DbType.Int32, entity.ReplyNumber);
+                    hlySql.AddInParameter(cmd, "@area", DbType.String, entity.ProductName);
+                    hlySql.AddInParameter(cmd, "@Inuser", DbType.String, entity.OP_Name);
+                    hlySql.AddInParameter(cmd, "@Indate", DbType.DateTime, DateTime.Now);
+                    hlySql.AddInParameter(cmd, "@brand", DbType.String, entity.TypeName);
+                    hlySql.AddInParameter(cmd, "@InNumber", DbType.Int32, "0");
+                    hlySql.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                    hlySql.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                    hlySql.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                    hlySql.AddInParameter(cmd, "@Source", DbType.String, entity.SourceName);
+                    hlySql.AddInParameter(cmd, "@SourceOrderNo", DbType.String, entity.FacOrderNo);
+                    hlySql.AddInParameter(cmd, "@BelongMonth", DbType.String, entity.BelongMonth);
+                    hlySql.AddInParameter(cmd, "@HLYReturnID", DbType.String, entity.HLYReturnID);
+                    hlySql.AddInParameter(cmd, "@BelongDepart", DbType.String, entity.BelongDepart);
+                    hlySql.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+                    hlySql.AddInParameter(cmd, "@Born", DbType.String, entity.Born);
+                    hlySql.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 删除
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DeleteData(List<CargoFactoryOrderEntity> entity)
+        {
+            try
+            {
+                foreach (var it in entity)
+                {
+                    string strSQL = @"Delete from Tbl_Cargo_FactoryOrder where ID=@ID ";
+
+                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    {
+                        conn.AddInParameter(cmd, "@ID", DbType.String, it.ID);
+                        conn.ExecuteNonQuery(cmd);
+                    }
+                    if (it.OrderType.ToString() != "1" && !string.IsNullOrEmpty(it.HLYReturnID))
+                    {
+                        DeleteHLYData(Convert.ToInt32(it.HLYReturnID));
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        /// <summary>
+        /// 内部订单删除同步删除好来运数据
+        /// </summary>
+        /// <param name="HLYReturnID"></param>
+        public void DeleteHLYData(int HLYReturnID)
+        {
+            try
+            {
+                SqlHelper hlySql = new SqlHelper("HLYSql");
+                string strSQL = @"Delete from Tbl_ProductListForIncoming where Id=@Id ";
+                using (DbCommand cmd = hlySql.GetSqlStringCommond(strSQL))
+                {
+                    hlySql.AddInParameter(cmd, "@Id", DbType.String, HLYReturnID);
+                    hlySql.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        /// <summary>
+        /// 修改入库状态 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoStatus(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_FactoryOrder Set InCargoStatus=@InCargoStatus,OP_DATE=@OP_DATE Where ProductID=@ProductID";
+            try
+            {
+                if (entity.InCargoStatus == "0")
+                {
+                    strSQL = @"UPDATE Tbl_Cargo_FactoryOrder Set InCargoStatus=@InCargoStatus,InPiece=0,OP_DATE=@OP_DATE Where ProductID=@ProductID";
+                }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@InCargoStatus", DbType.String, entity.InCargoStatus);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int32, entity.ProductID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改入库数量
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoPiece(CargoFactoryOrderEntity entity)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(entity.HLYReturnID))
+                {
+                    string strSQL = @"if((select InPiece from Tbl_Cargo_FactoryOrder where HLYReturnID=@HLYReturnID)+@InPiece>=(select ReplyNumber from Tbl_Cargo_FactoryOrder where HLYReturnID=@HLYReturnID))
+                                begin
+                                update Tbl_Cargo_FactoryOrder set InCargoStatus=1,InPiece=InPiece+@InPiece where HLYReturnID=@HLYReturnID
+                                end
+                                else
+                                begin
+                                update Tbl_Cargo_FactoryOrder set InPiece=InPiece+@InPiece,InCargoStatus=2 where HLYReturnID=@HLYReturnID
+                                end";
+
+                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    {
+                        conn.AddInParameter(cmd, "@HLYReturnID", DbType.String, entity.HLYReturnID);
+                        conn.AddInParameter(cmd, "@InPiece", DbType.Int32, entity.InPiece);
+                        conn.ExecuteNonQuery(cmd);
+                    }
+                }
+                else
+                {
+                    if (entity.TypeID.Equals(34) || entity.TypeID.Equals(345))
+                    {
+                        string strSQL = @"if((select InPiece from Tbl_Cargo_FactoryOrder where HouseID=@HouseID and TypeID=@TypeID and GoodsCode=@GoodsCode and FacOrderNo=@FacOrderNo and BelongDepart=@BelongDepart and SpecsType=@SpecsType)+1>=(select ReplyNumber from Tbl_Cargo_FactoryOrder where HouseID=@HouseID and TypeID=@TypeID and GoodsCode=@GoodsCode and FacOrderNo=@FacOrderNo and BelongDepart=@BelongDepart and SpecsType=@SpecsType))
+                                begin
+                                update Tbl_Cargo_FactoryOrder set InCargoStatus=1,InPiece=InPiece+1 where HouseID=@HouseID and TypeID=@TypeID and GoodsCode=@GoodsCode and FacOrderNo=@FacOrderNo and BelongDepart=@BelongDepart and SpecsType=@SpecsType end
+                                else
+                                begin
+                                update Tbl_Cargo_FactoryOrder set InPiece=InPiece+1,InCargoStatus=2 where HouseID=@HouseID and TypeID=@TypeID and GoodsCode=@GoodsCode and FacOrderNo=@FacOrderNo and BelongDepart=@BelongDepart and SpecsType=@SpecsType end";
+
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                            conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                            conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                            conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                            conn.AddInParameter(cmd, "@BelongDepart", DbType.String, entity.BelongDepart);
+                            conn.AddInParameter(cmd, "@SpecsType", DbType.String, entity.SpecsType);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                    else
+                    {
+                        string strSQL = @"if((select InPiece from Tbl_Cargo_FactoryOrder where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+                        if (!string.IsNullOrEmpty(entity.Born))
+                        {
+                            strSQL += @" and Born=@Born";
+                        }
+                        if (!string.IsNullOrEmpty(entity.Assort))
+                        {
+                            strSQL += @" and Assort=@Assort";
+                        }
+                        if (!string.IsNullOrEmpty(entity.BelongDepart))
+                        {
+                            strSQL += @" and BelongDepart=@BelongDepart";
+                        }
+                        strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth)+@InPiece>=(select ReplyNumber from Tbl_Cargo_FactoryOrder where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+                        if (!string.IsNullOrEmpty(entity.Born))
+                        {
+                            strSQL += @" and Born=@Born";
+                        }
+                        if (!string.IsNullOrEmpty(entity.Assort))
+                        {
+                            strSQL += @" and Assort=@Assort";
+                        }
+                        if (!string.IsNullOrEmpty(entity.BelongDepart))
+                        {
+                            strSQL += @" and BelongDepart=@BelongDepart";
+                        }
+                        strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth))
+                                                    begin
+                                                    update Tbl_Cargo_FactoryOrder set InCargoStatus=1,InPiece=InPiece+@InPiece where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+                        if (!string.IsNullOrEmpty(entity.Born))
+                        {
+                            strSQL += @" and Born=@Born";
+                        }
+                        if (!string.IsNullOrEmpty(entity.Assort))
+                        {
+                            strSQL += @" and Assort=@Assort";
+                        }
+                        if (!string.IsNullOrEmpty(entity.BelongDepart))
+                        {
+                            strSQL += @" and BelongDepart=@BelongDepart";
+                        }
+                        strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth
+                                                    end
+                                                    else
+                                                    begin
+                                                    update Tbl_Cargo_FactoryOrder set InPiece=InPiece+@InPiece,InCargoStatus=2 where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+                        if (!string.IsNullOrEmpty(entity.Born))
+                        {
+                            strSQL += @" and Born=@Born";
+                        }
+                        if (!string.IsNullOrEmpty(entity.Assort))
+                        {
+                            strSQL += @" and Assort=@Assort";
+                        }
+                        if (!string.IsNullOrEmpty(entity.BelongDepart))
+                        {
+                            strSQL += @" and BelongDepart=@BelongDepart";
+                        }
+                        strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth end";
+
+
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                            conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                            conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                            conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                            conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                            conn.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+                            conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                            conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                            if (!string.IsNullOrEmpty(entity.Born))
+                            {
+                                conn.AddInParameter(cmd, "@Born", DbType.Int32, entity.Born);
+                            }
+                            if (!string.IsNullOrEmpty(entity.Assort))
+                            {
+                                conn.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+                            }
+                            if (!string.IsNullOrEmpty(entity.BelongDepart))
+                            {
+                                conn.AddInParameter(cmd, "@BelongDepart", DbType.String, entity.BelongDepart);
+                            }
+                            conn.AddInParameter(cmd, "@Source", DbType.Int32, entity.Source);
+                            conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                            conn.AddInParameter(cmd, "@BelongMonth", DbType.String, entity.BelongMonth);
+                            conn.AddInParameter(cmd, "@InPiece", DbType.Int32, entity.InPiece);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+
+            #region 未使用企业微信扫描入库前的方法
+            //            //            string strSQL = @"if((select InPiece from Tbl_Cargo_FactoryOrder where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+            //            //            if (!string.IsNullOrEmpty(entity.Born))
+            //            //            {
+            //            //                strSQL += @" and Born=@Born";
+            //            //            }
+            //            //            if (!string.IsNullOrEmpty(entity.Assort))
+            //            //            {
+            //            //                strSQL += @" and Assort=@Assort";
+            //            //            }
+            //            //            strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth)+1>=(select ReplyNumber from Tbl_Cargo_FactoryOrder where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+            //            //            if (!string.IsNullOrEmpty(entity.Born))
+            //            //            {
+            //            //                strSQL += @" and Born=@Born";
+            //            //            }
+            //            //            if (!string.IsNullOrEmpty(entity.Assort))
+            //            //            {
+            //            //                strSQL += @" and Assort=@Assort";
+            //            //            }
+            //            //            strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth))
+            //            //                                begin
+            //            //                                update Tbl_Cargo_FactoryOrder set InCargoStatus=1,InPiece=InPiece+1 where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+            //            //            if (!string.IsNullOrEmpty(entity.Born))
+            //            //            {
+            //            //                strSQL += @" and Born=@Born";
+            //            //            }
+            //            //            if (!string.IsNullOrEmpty(entity.Assort))
+            //            //            {
+            //            //                strSQL += @" and Assort=@Assort";
+            //            //            }
+            //            //            strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth
+            //            //                                end
+            //            //                                else
+            //            //                                begin
+            //            //                                update Tbl_Cargo_FactoryOrder set InPiece=InPiece+1,InCargoStatus=2 where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+            //            //            if (!string.IsNullOrEmpty(entity.Born))
+            //            //            {
+            //            //                strSQL += @" and Born=@Born";
+            //            //            }
+            //            //            if (!string.IsNullOrEmpty(entity.Assort))
+            //            //            {
+            //            //                strSQL += @" and Assort=@Assort";
+            //            //            }
+            //            //            strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth
+            //            //                                end"; 
+
+            //            string strSQL = @"if((select InPiece from Tbl_Cargo_FactoryOrder where HLYReturnID=@HLYReturnID)+1>=(select ReplyNumber from Tbl_Cargo_FactoryOrder where HLYReturnID=@HLYReturnID))
+            //                                begin
+            //                                update Tbl_Cargo_FactoryOrder set InCargoStatus=1,InPiece=InPiece+1 where HLYReturnID=@HLYReturnID
+            //                                end
+            //                                else
+            //                                begin
+            //                                update Tbl_Cargo_FactoryOrder set InPiece=InPiece+1,InCargoStatus=2 where HLYReturnID=@HLYReturnID
+            //                                end";
+            //            try
+            //            {
+            //                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            //                {
+            //                    conn.AddInParameter(cmd, "@HLYReturnID", DbType.String, entity.HLYReturnID);
+            //                    //conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+            //                    //conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+            //                    //conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+            //                    //conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+            //                    //conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+            //                    //conn.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+            //                    //conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+            //                    //conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+            //                    //if (!string.IsNullOrEmpty(entity.Born))
+            //                    //{
+            //                    //    conn.AddInParameter(cmd, "@Born", DbType.Int32, entity.Born);
+            //                    //}
+            //                    //if (!string.IsNullOrEmpty(entity.Assort))
+            //                    //{
+            //                    //    conn.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+            //                    //}
+            //                    //conn.AddInParameter(cmd, "@Source", DbType.Int32, entity.Source);
+            //                    //conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+            //                    //conn.AddInParameter(cmd, "@BelongMonth", DbType.String, entity.BelongMonth);
+            //                    conn.ExecuteNonQuery(cmd);
+            //                }
+            //            }
+            //            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            #endregion
+        }
+        /// <summary>
+        /// 修改来货导入订单数量
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateFactoryOrderNum(CargoFactoryOrderEntity entity)
+        {
+            string strSQL = "Update Tbl_Cargo_FactoryOrder set OrderNum=@OrderNum,ReplyNumber=@ReplyNumber Where ID=@ID";
+
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                conn.AddInParameter(cmd, "@ReplyNumber", DbType.Int32, entity.ReplyNumber);
+                conn.AddInParameter(cmd, "@OrderNum", DbType.Int32, entity.OrderNum);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 修改来货订单入库数量
+        /// </summary>
+        /// <param name="FacOrderNo"></param>
+        /// <param name="HouseID"></param>
+        /// <param name="ID"></param>
+        /// <param name="InPiece"></param>
+        public void UpdateFactoryInPiece(CargoFactoryOrderEntity entity)
+        {
+            string strSQL = "Update Tbl_Cargo_FactoryOrder set InPiece=@InPiece Where FacOrderNo=@FacOrderNo and HouseID=@HouseID and ID=@ID";
+
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@InPiece", DbType.Int32, entity.InPiece);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 修改产品ID 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductID(CargoFactoryOrderEntity entity)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(entity.ID.ToString()) && entity.ID != 0)
+                {
+                    string strSQL = @"UPDATE Tbl_Cargo_FactoryOrder Set ProductID=@ProductID,InPiece=@InPiece,OP_DATE=@OP_DATE Where ID=@ID";
+                    try
+                    {
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@ProductID", DbType.Int32, entity.ProductID);
+                            conn.AddInParameter(cmd, "@InPiece", DbType.Int32, entity.InPiece);
+                            conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                            conn.AddInParameter(cmd, "@ID", DbType.String, entity.ID);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                    catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+                }
+                else
+                {
+                    if (entity.TypeID == 34)
+                    {
+                        string strSQL = @"update Tbl_Cargo_FactoryOrder set ProductID=@ProductID where HouseID=@HouseID and TypeID=@TypeID and GoodsCode=@GoodsCode and FacOrderNo=@FacOrderNo and BelongDepart=@BelongDepart";
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@ProductID", DbType.String, entity.ProductID);
+                            conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                            conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                            conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                            conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                            conn.AddInParameter(cmd, "@BelongDepart", DbType.String, entity.BelongDepart);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(entity.HLYReturnID))
+                        {
+                            string strSQL = @"update Tbl_Cargo_FactoryOrder set ProductID=@ProductID where HLYReturnID=@HLYReturnID";
+                            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                            {
+                                conn.AddInParameter(cmd, "@HLYReturnID", DbType.String, entity.HLYReturnID);
+                                conn.AddInParameter(cmd, "@ProductID", DbType.String, entity.ProductID);
+                                conn.ExecuteNonQuery(cmd);
+                            }
+                        }
+                        else
+                        {
+                            string strSQL = @"update Tbl_Cargo_FactoryOrder set ProductID=@ProductID where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+                            if (!string.IsNullOrEmpty(entity.Born))
+                            {
+                                strSQL += @" and Born=@Born";
+                            }
+                            if (!string.IsNullOrEmpty(entity.Assort))
+                            {
+                                strSQL += @" and Assort=@Assort";
+                            }
+                            if (!string.IsNullOrEmpty(entity.BelongDepart))
+                            {
+                                strSQL += @" and BelongDepart=@BelongDepart";
+                            }
+                            strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth";
+
+                            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                            {
+                                conn.AddInParameter(cmd, "@ProductID", DbType.String, entity.ProductID);
+                                conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                                conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                                conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                                conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                                conn.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+                                conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                                conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                                if (!string.IsNullOrEmpty(entity.Born))
+                                {
+                                    conn.AddInParameter(cmd, "@Born", DbType.Int32, entity.Born);
+                                }
+                                if (!string.IsNullOrEmpty(entity.Assort))
+                                {
+                                    conn.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+                                }
+                                if (!string.IsNullOrEmpty(entity.BelongDepart))
+                                {
+                                    conn.AddInParameter(cmd, "@BelongDepart", DbType.String, entity.BelongDepart);
+                                }
+                                conn.AddInParameter(cmd, "@Source", DbType.Int32, entity.Source);
+                                conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                                conn.AddInParameter(cmd, "@BelongMonth", DbType.String, entity.BelongMonth);
+                                conn.ExecuteNonQuery(cmd);
+                            }
+                        }
+                    }
+                    #region 未使用企业微信扫描入库前的方法
+                    ////string strSQL = @"update Tbl_Cargo_FactoryOrder set ProductID=@ProductID where GoodsCode=@GoodsCode and HouseID=@HouseID and TypeID=@TypeID and Specs=@Specs and Figure=@Figure and Model=@Model and LoadIndex=@LoadIndex and SpeedLevel=@SpeedLevel";
+                    ////if (!string.IsNullOrEmpty(entity.Born))
+                    ////{
+                    ////    strSQL += @" and Born=@Born";
+                    ////}
+                    ////if (!string.IsNullOrEmpty(entity.Assort))
+                    ////{
+                    ////    strSQL += @" and Assort=@Assort";
+                    ////}
+                    ////strSQL += @" and Source=@Source and FacOrderNo=@FacOrderNo and BelongMonth=@BelongMonth";
+
+                    //string strSQL = @"update Tbl_Cargo_FactoryOrder set ProductID=@ProductID where HLYReturnID=@HLYReturnID";
+                    //try
+                    //{
+                    //    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    //    {
+                    //        conn.AddInParameter(cmd, "@HLYReturnID", DbType.String, entity.HLYReturnID);
+                    //        conn.AddInParameter(cmd, "@ProductID", DbType.String, entity.ProductID);
+                    //        //conn.AddInParameter(cmd, "@GoodsCode", DbType.String, entity.GoodsCode);
+                    //        //conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    //        //conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                    //        //conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                    //        //conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                    //        //conn.AddInParameter(cmd, "@Model", DbType.String, entity.Model);
+                    //        //conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                    //        //conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                    //        //if (!string.IsNullOrEmpty(entity.Born))
+                    //        //{
+                    //        //    conn.AddInParameter(cmd, "@Born", DbType.Int32, entity.Born);
+                    //        //}
+                    //        //if (!string.IsNullOrEmpty(entity.Assort))
+                    //        //{
+                    //        //    conn.AddInParameter(cmd, "@Assort", DbType.String, entity.Assort);
+                    //        //}
+                    //        //conn.AddInParameter(cmd, "@Source", DbType.Int32, entity.Source);
+                    //        //conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                    //        //conn.AddInParameter(cmd, "@BelongMonth", DbType.String, entity.BelongMonth);
+                    //        conn.ExecuteNonQuery(cmd);
+                    //    }
+                    //}
+                    //catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+                    #endregion
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+
+        }
+        /// <summary>
+        /// 查询数据状态
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public int GetCargoType(CargoFactoryOrderEntity entity)
+        {
+            string strSQL = @"select * from Tbl_Cargo_FactoryOrder a where 1=1";
+            if (!string.IsNullOrEmpty(entity.FacOrderNo))
+            {
+                strSQL += " and a.FacOrderNo = '" + entity.FacOrderNo + "'";
+            }
+            if (!entity.HouseID.Equals(0))
+            {
+                strSQL += " and a.HouseID = '" + entity.HouseID + "'";
+            }
+            if (!entity.TypeID.Equals(0))
+            {
+                strSQL += " and a.TypeID = '" + entity.TypeID + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.Model))
+            {
+                strSQL += " and a.Model = '" + entity.Model + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.Specs))
+            {
+                strSQL += " and a.Specs = '" + entity.Specs + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.LoadIndex))
+            {
+                strSQL += " and a.LoadIndex = '" + entity.LoadIndex + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.SpeedLevel))
+            {
+                strSQL += " and a.SpeedLevel = '" + entity.SpeedLevel + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.Figure))
+            {
+                strSQL += " and a.Figure = '" + entity.Figure + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.GoodsCode))
+            {
+                strSQL += " and a.GoodsCode = '" + entity.GoodsCode + "'";
+            }
+            int count = 0;
+            using (DbCommand cmdQ = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable idr = conn.ExecuteDataTable(cmdQ))
+                {
+                    if (idr == null)
+                    {
+                        count = 0;
+                    }
+                    if (idr.Rows.Count >= 0)
+                    {
+                        count = idr.Rows.Count;
+                    }
+                }
+            }
+            return count;
+        }
+        /// <summary>
+        /// 根据条件获取单价
+        /// </summary>
+        /// <param name="FacOrderNo"></param>
+        /// <param name="HouseID"></param>
+        /// <param name="TypeID"></param>
+        /// <param name="Born"></param>
+        /// <param name="Assort"></param>
+        /// <param name="GoodsCode"></param>
+        /// <param name="Specs"></param>
+        /// <param name="Figure"></param>
+        /// <param name="LoadIndex"></param>
+        /// <param name="SpeedLevel"></param>
+        /// <param name="BelongMonth"></param>
+        /// <returns></returns>
+        public CargoFactoryOrderEntity QueryProductUnitPrice(CargoFactoryOrderEntity entity)
+        {
+            CargoFactoryOrderEntity result = new CargoFactoryOrderEntity();
+            try
+            {
+                string strSQL = string.Empty;
+                if (!string.IsNullOrEmpty(entity.HLYReturnID))
+                {
+                    strSQL = @"select a.*,ud.DepName as BelongDepartName from Tbl_Cargo_FactoryOrder a left join tbl_Cargo_UpClientDep ud on a.BelongDepart=ud.ID where 1=1 ";
+                    if (!string.IsNullOrEmpty(entity.FacOrderNo))
+                    {
+                        strSQL += @" and a.FacOrderNo=@FacOrderNo";
+                    }
+                    if (!string.IsNullOrEmpty(entity.HLYReturnID))
+                    {
+                        strSQL += @" and a.HLYReturnID=@HLYReturnID";
+                    }
+                    using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                    {
+                        if (!string.IsNullOrEmpty(entity.FacOrderNo))
+                        {
+                            conn.AddInParameter(command, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                        }
+                        if (!string.IsNullOrEmpty(entity.HLYReturnID))
+                        {
+                            conn.AddInParameter(command, "@HLYReturnID", DbType.String, entity.HLYReturnID);
+                        }
+                        using (DataTable dd = conn.ExecuteDataTable(command))
+                        {
+                            foreach (DataRow idr in dd.Rows)
+                            {
+                                result.ID = Convert.ToInt64(idr["ID"]);
+                                result.TypeID = Convert.ToInt32(idr["TypeID"]);
+                                result.Born = Convert.ToString(idr["Born"]);
+                                result.Assort = Convert.ToString(idr["Assort"]);
+                                result.Model = Convert.ToString(idr["Model"]);
+                                result.GoodsCode = Convert.ToString(idr["GoodsCode"]);
+                                result.Specs = Convert.ToString(idr["Specs"]);
+                                result.Figure = Convert.ToString(idr["Figure"]);
+                                result.LoadIndex = Convert.ToString(idr["LoadIndex"]);
+                                result.SpeedLevel = Convert.ToString(idr["SpeedLevel"]);
+                                result.InHousePrice = string.IsNullOrEmpty(idr["InHousePrice"].ToString()) ? 0 : Convert.ToDouble(idr["InHousePrice"]);
+                                result.UnitPrice = string.IsNullOrEmpty(idr["UnitPrice"].ToString()) ? 0 : Convert.ToDouble(idr["UnitPrice"]);
+                                result.TradePrice = string.IsNullOrEmpty(idr["TradePrice"].ToString()) ? 0 : Convert.ToDouble(idr["TradePrice"]);
+                                result.SalePrice = string.IsNullOrEmpty(idr["SalePrice"].ToString()) ? 0 : Convert.ToDouble(idr["SalePrice"]);
+                                result.CostPrice = string.IsNullOrEmpty(idr["CostPrice"].ToString()) ? 0 : Convert.ToDouble(idr["CostPrice"]);
+                                result.TaxCostPrice = string.IsNullOrEmpty(idr["TaxCostPrice"].ToString()) ? 0 : Convert.ToDouble(idr["TaxCostPrice"]);
+                                result.NoTaxCostPrice = string.IsNullOrEmpty(idr["NoTaxCostPrice"].ToString()) ? 0 : Convert.ToDouble(idr["NoTaxCostPrice"]);
+                                result.Company = Convert.ToString(idr["Company"]);
+                                result.BelongDepart = Convert.ToString(idr["BelongDepart"]);
+                                result.BelongDepartName = Convert.ToString(idr["BelongDepartName"]);
+                                result.SpecsType = Convert.ToString(idr["SpecsType"]);
+                                result.Source = Convert.ToInt32(idr["Source"]);
+                                result.Supplier = Convert.ToString(idr["Supplier"]);
+                                result.SuppClientNum = Convert.ToString(idr["SuppClientNum"]);
+                                result.SupplierAddress = Convert.ToString(idr["SupplierAddress"]);
+                                result.ProductCode = Convert.ToString(idr["ProductCode"]);
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    strSQL = @"select a.*,ud.DepName as BelongDepartName from Tbl_Cargo_FactoryOrder a left join tbl_Cargo_UpClientDep ud on a.BelongDepart=ud.ID where 1=1 ";
+                    if (!string.IsNullOrEmpty(entity.FacOrderNo))
+                    {
+                        strSQL += @" and a.FacOrderNo=@FacOrderNo";
+                    }
+                    if (entity.HouseID != -1)
+                    {
+                        strSQL += @" and a.HouseID=@HouseID";
+                    }
+                    if (entity.TypeID != -1)
+                    {
+                        strSQL += @" and a.TypeID=@TypeID";
+                    }
+                    if (!string.IsNullOrEmpty(entity.GoodsCode))
+                    {
+                        strSQL += @" and a.GoodsCode=@GoodsCode";
+                    }
+                    if (!string.IsNullOrEmpty(entity.ProductCode))
+                    {
+                        strSQL += @" and a.ProductCode=@ProductCode";
+                    }
+                    if (!string.IsNullOrEmpty(entity.Specs))
+                    {
+                        strSQL += @" and a.Specs=@Specs";
+                    }
+                    if (!string.IsNullOrEmpty(entity.Figure))
+                    {
+                        strSQL += @" and a.Figure=@Figure";
+                    }
+                    if (!string.IsNullOrEmpty(entity.LoadIndex))
+                    {
+                        strSQL += @" and a.LoadIndex=@LoadIndex";
+                    }
+                    if (!string.IsNullOrEmpty(entity.SpeedLevel))
+                    {
+                        strSQL += @" and a.SpeedLevel=@SpeedLevel";
+                    }
+                    if (!string.IsNullOrEmpty(entity.BelongMonth))
+                    {
+                        strSQL += @" and a.BelongMonth=@BelongMonth";
+                    }
+                    if (!string.IsNullOrEmpty(entity.Born))
+                    {
+                        strSQL += @" and a.Born=@Born";
+                    }
+                    if (!string.IsNullOrEmpty(entity.Assort))
+                    {
+                        strSQL += @" and a.Assort=@Assort";
+                    }
+                    using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                    {
+                        if (!string.IsNullOrEmpty(entity.FacOrderNo))
+                        {
+                            conn.AddInParameter(command, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                        }
+                        if (entity.HouseID != -1)
+                        {
+                            conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                        }
+                        if (entity.TypeID != -1)
+                        {
+                            conn.AddInParameter(command, "@TypeID", DbType.Int32, entity.TypeID);
+                        }
+                        if (!string.IsNullOrEmpty(entity.GoodsCode))
+                        {
+                            conn.AddInParameter(command, "@GoodsCode", DbType.String, entity.GoodsCode);
+                        }
+                        if (!string.IsNullOrEmpty(entity.ProductCode))
+                        {
+                            conn.AddInParameter(command, "@ProductCode", DbType.String, entity.ProductCode);
+                        }
+                        if (!string.IsNullOrEmpty(entity.Specs))
+                        {
+                            conn.AddInParameter(command, "@Specs", DbType.String, entity.Specs);
+                        }
+                        if (!string.IsNullOrEmpty(entity.Figure))
+                        {
+                            conn.AddInParameter(command, "@Figure", DbType.String, entity.Figure);
+                        }
+                        if (!string.IsNullOrEmpty(entity.LoadIndex))
+                        {
+                            conn.AddInParameter(command, "@LoadIndex", DbType.String, entity.LoadIndex);
+                        }
+                        if (!string.IsNullOrEmpty(entity.SpeedLevel))
+                        {
+                            conn.AddInParameter(command, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                        }
+                        if (!string.IsNullOrEmpty(entity.BelongMonth))
+                        {
+                            conn.AddInParameter(command, "@BelongMonth", DbType.String, entity.BelongMonth);
+                        }
+                        if (!string.IsNullOrEmpty(entity.Born))
+                        {
+                            conn.AddInParameter(command, "@Born", DbType.String, entity.Born);
+                        }
+                        if (!string.IsNullOrEmpty(entity.Assort))
+                        {
+                            conn.AddInParameter(command, "@Assort", DbType.String, entity.Assort);
+                        }
+                        using (DataTable dd = conn.ExecuteDataTable(command))
+                        {
+                            foreach (DataRow idr in dd.Rows)
+                            {
+                                result.ID = Convert.ToInt64(idr["ID"]);
+                                result.TypeID = Convert.ToInt32(idr["TypeID"]);
+                                result.Born = Convert.ToString(idr["Born"]);
+                                result.Assort = Convert.ToString(idr["Assort"]);
+                                result.Model = Convert.ToString(idr["Model"]);
+                                result.GoodsCode = Convert.ToString(idr["GoodsCode"]);
+                                result.Specs = Convert.ToString(idr["Specs"]);
+                                result.Figure = Convert.ToString(idr["Figure"]);
+                                result.LoadIndex = Convert.ToString(idr["LoadIndex"]);
+                                result.SpeedLevel = Convert.ToString(idr["SpeedLevel"]);
+                                result.InHousePrice = string.IsNullOrEmpty(idr["InHousePrice"].ToString()) ? 0 : Convert.ToDouble(idr["InHousePrice"]);
+                                result.UnitPrice = string.IsNullOrEmpty(idr["UnitPrice"].ToString()) ? 0 : Convert.ToDouble(idr["UnitPrice"]);
+                                result.TradePrice = string.IsNullOrEmpty(idr["TradePrice"].ToString()) ? 0 : Convert.ToDouble(idr["TradePrice"]);
+                                result.SalePrice = string.IsNullOrEmpty(idr["SalePrice"].ToString()) ? 0 : Convert.ToDouble(idr["SalePrice"]);
+                                result.CostPrice = string.IsNullOrEmpty(idr["CostPrice"].ToString()) ? 0 : Convert.ToDouble(idr["CostPrice"]);
+                                result.TaxCostPrice = string.IsNullOrEmpty(idr["TaxCostPrice"].ToString()) ? 0 : Convert.ToDouble(idr["TaxCostPrice"]);
+                                result.NoTaxCostPrice = string.IsNullOrEmpty(idr["NoTaxCostPrice"].ToString()) ? 0 : Convert.ToDouble(idr["NoTaxCostPrice"]);
+                                result.Company = Convert.ToString(idr["Company"]);
+                                result.BelongDepart = Convert.ToString(idr["BelongDepart"]);
+                                result.BelongDepartName = Convert.ToString(idr["BelongDepartName"]);
+                                result.SpecsType = Convert.ToString(idr["SpecsType"]);
+                                result.SuppClientNum = Convert.ToString(idr["SuppClientNum"]);
+                                result.Supplier = Convert.ToString(idr["Supplier"]);
+                                result.SupplierAddress = Convert.ToString(idr["SupplierAddress"]);
+                                result.ProductCode = Convert.ToString(idr["ProductCode"]);
+                                result.Source = Convert.ToInt32(idr["Source"]);
+                                result.Supplier = Convert.ToString(idr["Supplier"]);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        /// <summary>
+        /// 撤销标签入库修改入库数量
+        /// </summary>
+        /// <param name="entity"></param>
+        public void CancelTagInCargo(CargoFactoryOrderEntity entity)
+        {
+            string strSQL = @"if((select InPiece from Tbl_Cargo_FactoryOrder where ProductID=@ProductID)-@InPiece >= (select ReplyNumber from Tbl_Cargo_FactoryOrder where ProductID=@ProductID))
+                                begin update Tbl_Cargo_FactoryOrder set InCargoStatus=1,InPiece=InPiece-@InPiece,OP_DATE=@OP_DATE where ProductID=@ProductID end
+                                else begin if((select InPiece from Tbl_Cargo_FactoryOrder where ProductID=@ProductID)-@InPiece <= 0)
+                                begin update Tbl_Cargo_FactoryOrder set InCargoStatus=0,InPiece=0,ProductID='',OP_DATE=@OP_DATE where ProductID=@ProductID end
+                                else  begin update Tbl_Cargo_FactoryOrder set InCargoStatus=2,InPiece=InPiece-@InPiece,OP_DATE=@OP_DATE where ProductID=@ProductID end	
+		                    end";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@InPiece", DbType.Int32, entity.InPiece);
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int32, entity.ProductID);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 查询来货订单数据 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoFactoryOrderEntity QueryFactoryOrderData(CargoFactoryOrderEntity entity)
+        {
+            CargoFactoryOrderEntity result = new CargoFactoryOrderEntity();
+            string strSQL = "Select top 1 * From Tbl_Cargo_FactoryOrder a Where (1=1)";
+            if (!entity.ID.Equals(0)) { strSQL += " and a.ID=@ID"; }
+            if (!string.IsNullOrEmpty(entity.FacOrderNo)) { strSQL += " and a.FacOrderNo = '" + entity.FacOrderNo + "'"; }
+            if (!entity.HouseID.Equals(0)) { strSQL += " and a.HouseID = " + entity.HouseID; }
+            if (!entity.TypeID.Equals(0)) { strSQL += " and a.TypeID = " + entity.TypeID; }
+            if (!string.IsNullOrEmpty(entity.Model))
+            {
+                strSQL += " and a.Model = '" + entity.Model + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.Specs))
+            {
+                strSQL += " and a.Specs = '" + entity.Specs + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.LoadIndex))
+            {
+                strSQL += " and a.LoadIndex = '" + entity.LoadIndex + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.SpeedLevel))
+            {
+                strSQL += " and a.SpeedLevel = '" + entity.SpeedLevel + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.Figure))
+            {
+                strSQL += " and a.Figure = '" + entity.Figure + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.GoodsCode))
+            {
+                strSQL += " and a.GoodsCode = '" + entity.GoodsCode + "'";
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                if (!entity.ID.Equals(0)) { conn.AddInParameter(command, "@ID", DbType.Int64, entity.ID); }
+
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.ID = Convert.ToInt64(idr["ID"]);
+                        result.FacOrderNo = Convert.ToString(idr["FacOrderNo"]);
+                        result.FacName = Convert.ToString(idr["FacName"]);
+                        result.OrderType = Convert.ToInt32(idr["OrderType"]);
+                        result.HouseID = Convert.ToInt32(idr["HouseID"]);
+                        result.TypeID = Convert.ToInt32(idr["TypeID"]);
+                        result.Source = Convert.ToInt32(idr["Source"]);
+                        result.ProductName = Convert.ToString(idr["ProductName"]);
+                        result.ProductID = Convert.ToString(idr["ProductID"]);
+                        result.Model = Convert.ToString(idr["Model"]);
+                        result.BelongMonth = Convert.ToString(idr["BelongMonth"]);
+                        result.Born = Convert.ToString(idr["Born"]);
+                        result.Assort = Convert.ToString(idr["Assort"]);
+                        result.Specs = Convert.ToString(idr["Specs"]);
+                        result.LoadIndex = Convert.ToString(idr["LoadIndex"]);
+                        result.SpeedLevel = Convert.ToString(idr["SpeedLevel"]);
+                        result.Figure = Convert.ToString(idr["Figure"]);
+                        result.GoodsCode = Convert.ToString(idr["GoodsCode"]);
+                        result.Batch = Convert.ToString(idr["Batch"]);
+                        result.OrderNum = Convert.ToInt32(idr["OrderNum"]);
+                        result.ReplyNumber = Convert.ToInt32(idr["ReplyNumber"]);
+                        result.InPiece = Convert.ToInt32(idr["InPiece"]);
+                        result.InCargoStatus = Convert.ToInt32(idr["InCargoStatus"]);
+                        result.UnitPrice = Convert.ToDouble(idr["UnitPrice"]);
+                        result.SalePrice = Convert.ToDouble(idr["SalePrice"]);
+                        result.WhetherTax = Convert.ToInt32(idr["WhetherTax"]);
+                        result.InHousePrice = Convert.ToDouble(idr["InHousePrice"]);
+                        result.CostPrice = Convert.ToDouble(idr["CostPrice"]);
+                        result.TradePrice = Convert.ToDouble(idr["TradePrice"]);
+                        result.SaleMoney = Convert.ToDouble(idr["SaleMoney"]);
+                        result.ReceiveName = Convert.ToString(idr["ReceiveName"]);
+                        result.ReceiveCity = Convert.ToString(idr["ReceiveCity"]);
+                        result.ReceiveMobile = Convert.ToString(idr["ReceiveMobile"]);
+                        result.HLYReturnID = Convert.ToString(idr["HLYReturnID"]);
+                        result.SourceHouse = Convert.ToString(idr["SourceHouse"]);
+                        result.BelongDepart = Convert.ToString(idr["BelongDepart"]);
+                        result.SpecsType = Convert.ToString(idr["SpecsType"]);
+                        result.Supplier = Convert.ToString(idr["Supplier"]);
+                        result.OP_DATE = Convert.ToDateTime(idr["OP_DATE"]);
+                        result.OP_Name = Convert.ToString(idr["OP_Name"]);
+                        result.ProductCode = Convert.ToString(idr["ProductCode"]);
+                        result.SupplierAddress = Convert.ToString(idr["SupplierAddress"]);
+                        result.SuppClientNum = Convert.ToString(idr["SuppClientNum"]);
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 修改来货订单数据 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateFactoryOrderData(CargoFactoryOrderEntity entity, string OldFacOrderNo)
+        {
+            string strSQL = "Update Tbl_Cargo_FactoryOrder set FacOrderNo=@FacOrderNo Where InCargoStatus=@InCargoStatus and FacOrderNo='" + OldFacOrderNo + "' and HouseID=@HouseID and TypeID=@TypeID";
+
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                conn.AddInParameter(cmd, "@InCargoStatus", DbType.String, entity.InCargoStatus);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 新增来货订单照片数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoFactoryFile(CargoFactoryFileEntity entity)
+        {
+            string inSQL = @"INSERT INTO Tbl_Cargo_FactoryFile(FacOrderNo,FileName,FilePath,FileType,OP_DATE,HouseID) values (@FacOrderNo,@FileName,@FilePath,@FileType,@OP_DATE,@HouseID)";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(inSQL))
+                {
+                    conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                    conn.AddInParameter(cmd, "@FileName", DbType.String, entity.FileName);
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@FilePath", DbType.String, entity.FilePath);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@FileType", DbType.String, entity.FileType);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        public List<CargoFactoryFileEntity> QueryCargoFactoryFile(CargoFactoryFileEntity entity)
+        {
+            List<CargoFactoryFileEntity> result = new List<CargoFactoryFileEntity>();
+            try
+            {
+                string strSQL = @"SELECT * FROM Tbl_Cargo_FactoryFile where FacOrderNo=@FacOrderNo ";
+                if (!string.IsNullOrEmpty(entity.FileType)) { strSQL += " and FileType='" + entity.FileType + "'"; }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and HouseID=" + entity.HouseID + ""; }
+                strSQL += " Order by OP_DATE Desc ";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(command, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            result.Add(new CargoFactoryFileEntity
+                            {
+                                ID = Convert.ToInt64(idr["ID"]),
+                                FacOrderNo = Convert.ToString(idr["FacOrderNo"]),
+                                FileType = Convert.ToString(idr["FileType"]),
+                                FileName = Convert.ToString(idr["FileName"]),
+                                FilePath = Convert.ToString(idr["FilePath"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                            });
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+
+            return result;
+        }
+        /// <summary>
+        /// 修改来货订单照片数据 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoFactoryFileNo(CargoFactoryFileEntity entity, string OldFacOrderNo)
+        {
+            string strSQL = "Update Tbl_Cargo_FactoryFile set FacOrderNo=@FacOrderNo Where FacOrderNo='" + OldFacOrderNo + "' and HouseID=@HouseID";
+
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@FacOrderNo", DbType.String, entity.FacOrderNo);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+    }
+}

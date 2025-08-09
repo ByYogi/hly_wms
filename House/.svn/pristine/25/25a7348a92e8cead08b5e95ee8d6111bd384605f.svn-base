@@ -1,0 +1,344 @@
+﻿<%@ Page Title="渠道客户" MasterPageFile="~/Site.Master" Language="C#" AutoEventWireup="true" CodeBehind="ChannelCustomers.aspx.cs" Inherits="Supplier.Basic.ChannelCustomers" %>
+
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            //$.ajaxSetup({ async: true });
+            document.body.style.overflow = 'hidden';
+            adjustment();
+            $("[name='hiddenTr']").hide();
+            document.body.style.overflow = 'auto';
+        }
+        $(window).resize(function () {
+            document.body.style.overflow = 'hidden';
+            adjustment();
+            document.body.style.overflow = 'auto';
+        });
+        
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                height: '440px',
+                title: '', //标题内容
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ADID',
+                url: null,
+                toolbar: '#AcceptAddressbar',
+                columns: [[
+                    { title: '', field: 'ADID', checkbox: true, width: '30px' },
+                    { title: '公司名称', field: 'AcceptCompany', width: '160px' },
+                    { title: '收货人', field: 'AcceptPeople', width: '80px' },
+                    { title: '手机号码', field: 'AcceptCellphone', width: '100px' },
+                    { title: '电话', field: 'AcceptTelephone', width: '100px' },
+                    { title: '所在省', field: 'AcceptProvince', width: '60px' },
+                    { title: '所在市', field: 'AcceptCity', width: '60px' },
+                    { title: '所在区', field: 'AcceptCountry', width: '60px' },
+                    { title: '收货地址', field: 'AcceptAddress', width: '260px' },
+                    { title: '操作时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter }
+                ]],
+                onClickRow: function (index, row) {
+                    $('#dg').datagrid('clearSelections');
+                    $('#dg').datagrid('selectRow', index);
+                },
+                onDblClickRow: function (index, row) {
+                    editAcceptAddressByID(index);
+                }
+            });
+
+        });
+
+        //查询客户地址
+        function QueryAcceptAddress() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = '/Basic/basicApi.aspx?method=QuerySupplierAddresss';
+            $('#dg').datagrid('load', {
+                ClientName: $('#QClientName').val(),
+                //ClientNum: $('#QClientNum').val(),
+                AcceptPeople: $("#QAcceptPeople").val(),
+                Cellphone: $("#QCellphone").val(),
+            });
+            adjustment();
+        }
+
+
+
+    </script>
+</asp:Content>
+
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+
+    <%-- 查询条件 --%>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <%--    <td style="text-align: right;">客户编码:
+                </td>
+                <td>
+                    <input id="QClientNum" class="easyui-numberbox" data-options="prompt:'请输入客户编码'" style="width: 120px" />
+                </td>--%>
+                <td style="text-align: right;">公司名称:
+                </td>
+                <td>
+                    <input id="QClientName" class="easyui-textbox" data-options="prompt:'请输入客户全称'" style="width: 120px" />
+                </td>
+                <td style="text-align: right;">收货人姓名:
+                </td>
+                <td>
+                    <input id="QAcceptPeople" class="easyui-textbox" data-options="prompt:'请输入收货人姓名'" style="width: 120px" />
+                </td>
+                <td style="text-align: right;">手机号码:
+                </td>
+                <td>
+                    <input id="QCellphone" class="easyui-numberbox" data-options="prompt:'请输入手机号码'" style="width: 120px" />
+                </td>
+            </tr>
+
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid"></table>
+    <div id="AcceptAddressbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="QueryAcceptAddress()">&nbsp;查询&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addAcceptAddress()">&nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editAcceptAddressByID()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelAcceptAddress()">&nbsp;删&nbsp;除&nbsp;</a>
+
+    </div>
+
+
+
+    <!--新增客户收货地址-->
+    <div id="dlgAddAcceptAddress" class="easyui-dialog" style="width: 500px; height: 300px; padding: 0px 0px"
+        closed="true" buttons="#dlgAddAcceptAddress-buttons">
+        <div id="saPanel">
+            <form id="fmAddAcceptAddress" class="easyui-form" method="post">
+                <input type="hidden" name="ADID" />
+                <input type="hidden" name="ClientID" id="ADClientID" />
+                <table>
+                    <tr>
+                        <td style="text-align: right;">公司名称:
+                        </td>
+                        <td>
+                            <input name="AcceptCompany" id="AcceptCompany" class="easyui-textbox" data-options="required:true"
+                                style="width: 250px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">收货人:
+                        </td>
+                        <td>
+                            <input name="AcceptPeople" id="AcceptPeople" class="easyui-textbox" data-options="required:true"
+                                style="width: 250px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">手机号码:
+                        </td>
+                        <td>
+                            <input name="AcceptCellphone" id="AcceptCellphone" class="easyui-textbox" data-options="required:true" style="width: 250px;" />
+                        </td>
+
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">公司电话:
+                        </td>
+                        <td>
+                            <input name="AcceptTelephone" id="AcceptTelephone" class="easyui-textbox" style="width: 250px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">收货地址:
+                        </td>
+                        <td colspan="3">
+                            <input id="AcceptProvince" name="AcceptProvince" class="easyui-combobox" style="width: 70px;" data-options="required:true" />&nbsp;省
+                      <input id="AcceptCity" name="AcceptCity" class="easyui-combobox" style="width: 70px;" data-options="valueField:'ID',textField:'City',required:true" />&nbsp;市
+                      <input id="AcceptCountry" name="AcceptCountry" class="easyui-combobox" style="width: 70px;" data-options="valueField:'ID',textField:'City'" />&nbsp;区&nbsp;
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align:right;">详细地址：</td>
+                        <td><input name="AcceptAddress" id="AcceptAddress" class="easyui-textbox" style="width: 400px;" /></td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+    </div>
+    <div id="dlgAddAcceptAddress-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveAcceptAddress()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgAddAcceptAddress').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+
+
+
+
+
+    <!--查询客户开票资料-->
+    <script src="../JS/easy/js/ajaxfileupload.js" type="text/javascript"></script>
+    <script type="text/javascript">
+
+
+
+
+
+        //保存客户收货地址
+        function saveAcceptAddress() {
+            //var clientnum = $('#AClientNum').textbox('getValue'); 客户编码
+
+            $('#fmAddAcceptAddress').form('submit', {
+                url: '/Basic/basicApi.aspx?method=SaveAcceptAddress',
+                onSubmit: function (param) {
+                    param.AProvince = $('#AcceptProvince').combobox('getText');
+                    param.ACity = $('#AcceptCity').combobox('getText');
+                    param.ACountry = $('#AcceptCountry').combobox('getText');
+                    param.ClientID = $('#ADClientID').val();
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Supplier.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlgAddAcceptAddress').dialog('close'); 	// close the dialog
+                        QueryAcceptAddress();
+                    } else {
+                        $.messager.alert('<%= Supplier.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+        //新增收货地址
+        function addAcceptAddress() {
+
+            //省市区三级联动
+            $('#AcceptProvince').combobox({
+                url: '/Basic/basicApi.aspx?method=QueryCityData',
+                valueField: 'ID', textField: 'City',
+                onSelect: function (rec) {
+                    $('#AcceptCity').combobox('clear');
+                    var url = '/Basic/basicApi.aspx?method=QueryCityData&PID=' + rec.ID;
+                    $('#AcceptCity').combobox('reload', url);
+                    //一级仓库
+                    $('#AcceptCity').combobox({
+                        onSelect: function (fai) {
+                            $('#AcceptCountry').combobox('clear');
+                            var url = '/Basic/basicApi.aspx?method=QueryCityData&PID=' + fai.ID;
+                            $('#AcceptCountry').combobox('reload', url);
+                        }
+                    });
+                }
+            });
+
+            $('#dlgAddAcceptAddress').dialog('open').dialog('setTitle', '新增客户收货地址信息');
+            $('#fmAddAcceptAddress').form('clear');
+            var row = $('#dg').datagrid('getSelected');
+            if (row) {
+                $('#AClientNum').textbox('setValue', row.ClientNum);
+                $('#ADClientID').val(row.ClientID);
+            }
+
+        }
+
+        //修改客户地址信息
+        function editAcceptAddressByID() {
+
+            //省市区三级联动
+            $('#AcceptProvince').combobox({
+                url: '/Basic/basicApi.aspx?method=QueryCityData',
+                valueField: 'ID', textField: 'City',
+                onSelect: function (rec) {
+                    $('#AcceptCity').combobox('clear');
+                    var url = '/Basic/basicApi.aspx?method=QueryCityData&PID=' + rec.ID;
+                    $('#AcceptCity').combobox('reload', url);
+                    //一级仓库
+                    $('#AcceptCity').combobox({
+                        onSelect: function (fai) {
+                            $('#AcceptCountry').combobox('clear');
+                            var url = '/Basic/basicApi.aspx?method=QueryCityData&PID=' + fai.ID;
+                            $('#AcceptCountry').combobox('reload', url);
+                        }
+                    });
+                }
+            });
+
+
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Supplier.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (rows.length > 1) {
+                $.messager.alert('<%= Supplier.Common.GetSystemNameAndVersion()%>', '请选择一条要修改的数据！', 'warning');
+                return;
+            }
+            if (rows[0]) {
+                $('#fmAddAcceptAddress').form('clear');
+                $('#dlgAddAcceptAddress').dialog('open').dialog('setTitle', '修改客户收货地址信息');
+                $('#fmAddAcceptAddress').form('load', rows[0]);
+
+                $('#AClientNum').combobox('readonly', true);
+            }
+        }
+
+
+
+
+        //删除客户收货地址
+        function DelAcceptAddress() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Supplier.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Supplier.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'BasicApi.aspx?method=DelAcceptAddress',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Supplier.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dg').datagrid('reload');
+                                $('#dg').datagrid('unselectAll');
+                            }
+                            else {
+                                $.messager.alert('<%= Supplier.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+
+    </script>
+
+</asp:Content>

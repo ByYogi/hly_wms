@@ -1,0 +1,283 @@
+﻿<%@ Page Title="拣货计划" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="orderPicekPlan.aspx.cs" Inherits="Cargo.Order.orderPicekPlan" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'PickID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [[
+                    { title: '', field: 'PickID', checkbox: true, width: '30px' },
+                    {
+                        title: '拣货单号', field: 'PickPlanNo', width: '100px'
+                    },
+                    { title: '所属仓库', field: 'HouseName', width: '80px' },
+                    { title: '总数量', field: 'TotalNum', width: '80px' },
+                    { title: '创建日期', field: 'CreateDate', width: '120px', formatter: DateTimeFormatter },
+                    { title: '备注说明', field: 'Memo', width: '80px' },
+                    {
+                        title: '拣货状态', field: 'PickStatus', width: '80px', formatter: function (val, row, Index) {
+                            if (val == "0") { return "未开始"; }
+                            else if (val == "1") { return "拣货中"; }
+                            else if (val == "2") { return "已结束"; }
+                        }
+                    },
+                    {
+                        title: '拣货类型', field: 'PickType', width: '100px', formatter: function (val, row, Index) {
+                            if (val == "0") { return "普通"; }
+                            else if (val == "1") { return "紧急"; }
+                        }
+                    },
+                ]],
+                onClickRow: function (index, row) {
+                    $('#dg').datagrid('clearSelections');
+                    $('#dg').datagrid('selectRow', index);
+                },
+                onDblClickRow: function (index, row) {
+                    $('#dgShowData').dialog('open').dialog('setTitle', '拣货计划单号' + row.PickPlanNo + "详细数据");
+                    $('#dgDriver').datagrid({
+                        width: '100%',
+                        height: '480px',
+                        title: '', //标题内容
+                        loadMsg: '数据加载中请稍候...',
+                        autoRowHeight: false, //行高是否自动
+                        collapsible: true, //是否可折叠
+                        pagination: false, //分页是否显示
+                        fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                        singleSelect: true, //设置为 true，则只允许选中一行。
+                        checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                        rownumbers: true,
+                        idField: 'Code',
+                        url: null,
+                        columns: [[
+                            {
+                                title: '订单号', field: 'OrderNo', width: '100px'
+                            },
+                            { title: '产品名称', field: 'ProductName', width: '180px' },
+                            { title: '货品代码', field: 'GoodsCode', width: '120px' },
+                            { title: '货位编码', field: 'ContainerCode', width: '100px' },
+                            { title: '数量', field: 'Piece', width: '70px', align: 'right' },
+                            { title: '扫描数量', field: 'ScanPiece', width: '70px', align: 'right' },
+                            //{ title: '物流公司运单号', field: 'LogisAwbNo', width: '80px' },
+                            //{ title: '出发站', field: 'Dep', width: '70px' },
+                            //{ title: '到达站', field: 'Dest', width: '70px' },
+                            {
+                                title: '扫描状态', field: 'ScanStatus', width: '80px', formatter: function (val, row, index) {
+                                    if (val == "1") { return "已扫描"; }
+                                    else if (val == "2") { return "扫描中"; }
+                                    else { return "未扫描"; }
+                                }
+                            },
+                            { title: '扫描人', field: 'ScanUserID', width: '80px' },
+                            { title: '坑位号', field: 'PitNum', width: '60px' },
+                            { title: '客户名称', field: 'AcceptUnit', width: '80px' },
+                            { title: '客户联系人', field: 'AcceptPeople', width: '80px' },
+                            //{ title: '客户联系电话', field: 'AcceptTelephone', width: '100px' },
+                            {
+                                title: '客户手机', field: 'AcceptCellphone', width: '100px'
+                            },
+                        ]],
+                        rowStyler: function (index, row) {
+                            if (row.ScanStatus == "0") { return "background-color:#FCC7C7"; }
+                            if (row.ScanStatus == "2") { return "background-color:#D7D59C"; }
+                        },
+                    })
+                    var gridOpts = $('#dgDriver').datagrid('options');
+                    gridOpts.url = 'orderApi.aspx?method=QueryOrderPickPlanGoods&PickPlanNo=' + row.PickPlanNo;
+                }
+            });
+            function myformatter1(date) {
+                var y = date.getFullYear();
+                var m = date.getMonth() + 1;
+                var d = date.getDate() - 7;
+
+                return y + '-' + (m < 10 ? ('0' + m) : m) + '-'
+                    + (d < 10 ? ('0' + d) : d);
+            }
+            function myformatter2(date) {
+                var y = date.getFullYear();
+                var m = date.getMonth() + 1;
+                var d = date.getDate();
+
+                return y + '-' + (m < 10 ? ('0' + m) : m) + '-'
+                    + (d < 10 ? ('0' + d) : d);
+            }
+            var curr_time = new Date();
+            $("#StartDate").datebox({
+                value: myformatter1(curr_time)
+            });
+            $("#EndDate").datebox({
+                value: myformatter2(curr_time)
+            });
+            $('#StartDate').datebox('textbox').bind('focus', function () { $('#StartDate').datebox('showPanel'); });
+            $('#EndDate').datebox('textbox').bind('focus', function () { $('#EndDate').datebox('showPanel'); });
+
+
+            $('#SID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+
+        })
+        function dosearch() {
+            var HouseID = '';
+            var HouseIDs = $("#SID").combobox('getData')
+            if ($("#SID").combobox('getValue') == 0) {
+                var HouseIDs = $("#SID").combobox('getData');
+                for (var i = 0; i < HouseIDs.length; i++) {
+                    HouseID += HouseIDs[i].HouseID;
+                    if (i + 1 == HouseIDs.length) {
+                        continue;
+                    }
+                    HouseID += ','
+                }
+            }
+            else {
+                HouseID = $("#SID").combobox('getValue')
+            }
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'orderApi.aspx?method=QueryOrderPickPlan';
+            $('#dg').datagrid('load', {
+                PickPlanNo: $('#PickPlanNo').val(),
+                StartDate: $('#StartDate').datebox('getValue'),
+                EndDate: $('#EndDate').datebox('getValue'),
+                PickStatus: $("#PickStatus").combobox('getValue'),
+                HouseID: HouseID,
+            });
+        }
+        function closedgShowData() {
+            $('#dgShowData').dialog('close');
+        }
+    </script>
+
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
+        <table>
+            <tr>
+                <td style="text-align: right;">拣货单号:
+                </td>
+                <td>
+                    <input id="PickPlanNo" class="easyui-textbox" data-options="prompt:'请输入拣货计划单号'" style="width: 150px" />
+                </td>
+                <td style="text-align: right;">所属仓库:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="SID" style="width: 100px;" panelheight="auto"></select>
+                </td>
+                <td style="text-align: right;">拣货状态:</td>
+                <td>
+                    <select class="easyui-combobox" id="PickStatus" style="width: 100px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="1">未开始</option>
+                        <option value="2">拣货中</option>
+                        <option value="4">已结束</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">创建时间:
+                </td>
+                <td>
+                    <input id="StartDate" class="easyui-datebox" style="width: 100px" />~
+                    <input id="EndDate" class="easyui-datebox" style="width: 100px" />
+                </td>
+            </tr>
+
+        </table>
+    </div>
+
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" id="delete" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
+    </div>
+    <div id="dgShowData" class="easyui-dialog" style="width: 1000px; height: 600px; padding: 0px"
+        closed="true" buttons="#dgShowData-buttons">
+        <table id="dgDriver" class="easyui-datagrid">
+        </table>
+    </div>
+    <div id="dgShowData-buttons">
+          <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="Export()">&nbsp;导&nbsp;出&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="closedgShowData()">&nbsp;关&nbsp;闭&nbsp;</a>
+        <form runat="server" id="fm1">
+            <asp:Button ID="btnExport" runat="server" Style="display: none;" Text="导出" OnClick="btnExport_Click" />
+        </form>
+    </div>
+
+    <script type="text/javascript">
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            for (var i = 0; i < rows.length; i++) {
+                if (rows[i].PickStatus != 0) {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', rows[i].PickPlanNo + '已拣货无法删除！', 'warning'); return;
+                }
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    $.messager.progress({ msg: '请稍后,正在保存中...' });
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'orderApi.aspx?method=DelOrderPickPlan',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            $.messager.progress("close");
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        function Export() {
+            var obj = document.getElementById("<%=btnExport.ClientID %>");
+            obj.click();
+        }
+    </script>
+</asp:Content>

@@ -1,0 +1,1697 @@
+﻿using House.DataAccess;
+using House.Entity.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Reflection.Emit;
+using System.Text;
+
+
+namespace House.Manager.Cargo
+{
+    /// <summary>
+    /// 价格管理模块数据操作类
+    /// </summary>
+    public class CargoPriceManager
+    {
+        private SqlHelper conn = new SqlHelper();
+        /// <summary>
+        /// 查询在库产品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryInCargoProductInfo(CargoProductEntity showEnt)
+        {
+            List<CargoProductEntity> result = new List<CargoProductEntity>();
+            try
+            {
+                string strSQL = @"select b.TypeName,a.GoodsCode from Tbl_Cargo_Product as a inner join Tbl_Cargo_ProductType as b on a.TypeID=b.TypeID inner join Tbl_Cargo_InContainerGoods as c on a.ProductID=c.ProductID inner join Tbl_Cargo_Container as d on c.ContainerID=d.ContainerID inner join Tbl_Cargo_Area as e on d.AreaID=e.AreaID inner join Tbl_Cargo_ContainerGoods f on a.ProductID=f.ProductID ";
+                if (!showEnt.FirstAreaID.Equals(0))
+                {
+                    strSQL += " inner join Tbl_Cargo_Area as h on e.ParentID=h.AreaID inner join Tbl_Cargo_Area as g on h.ParentID=g.AreaID ";
+                }
+                strSQL += " where (1=1) ";
+                if (!showEnt.FirstAreaID.Equals(0))
+                {
+                    strSQL += " and g.AreaID = " + showEnt.FirstAreaID + "";
+                }
+                if (!string.IsNullOrEmpty(showEnt.CargoPermisID))
+                {
+                    strSQL += " and a.HouseID in (" + showEnt.CargoPermisID + ")";
+                }
+                if (!string.IsNullOrEmpty(showEnt.Specs)) { strSQL += " and a.Specs like '%" + showEnt.Specs + "%'"; }
+                //型号
+                if (!string.IsNullOrEmpty(showEnt.Model)) { strSQL += " and a.Model like '%" + showEnt.Model + "%'"; }
+                //以一级类型ID为查询条件
+                if (!showEnt.ParentID.Equals(0)) { strSQL += " and b.ParentID=" + showEnt.ParentID; }
+                //二级类型ID
+                if (!showEnt.TypeID.Equals(0)) { strSQL += " and a.TypeID=" + showEnt.TypeID; }
+                if (!showEnt.BatchYear.Equals(0)) { strSQL += " and a.BatchYear=" + showEnt.BatchYear; }
+                //花纹
+                if (!string.IsNullOrEmpty(showEnt.Figure)) { strSQL += " and a.Figure like '%" + showEnt.Figure + "%'"; }
+                //以产品名称为查询条件
+                if (!string.IsNullOrEmpty(showEnt.ProductName)) { strSQL += " and a.ProductName like '%" + showEnt.ProductName + "%'"; }
+                //货品代码
+                if (!string.IsNullOrEmpty(showEnt.GoodsCode)) { strSQL += " and a.GoodsCode like '%" + showEnt.GoodsCode + "%'"; }
+                //规格类型
+                if (!string.IsNullOrEmpty(showEnt.SpecsType)) { strSQL += " and a.SpecsType='" + showEnt.SpecsType + "'"; }
+                else
+                {
+                    strSQL += " and a.SpecsType<>5";
+                }
+                //制单日期范围
+                if ((showEnt.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && showEnt.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.InHouseTime>='" + showEnt.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((showEnt.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && showEnt.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.InHouseTime<'" + showEnt.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                if (showEnt.InStock) { strSQL += " and d.Piece>0"; }
+                //if (showEnt.AnomalousPrice) { strSQL += " and len(a.TradePrice)<6"; }
+                //if (showEnt.AnomalousUnitPrice) { strSQL += " and len(a.UnitPrice)<6"; }
+                if (showEnt.AnomalousPrice && showEnt.AnomalousUnitPrice)
+                {
+                    strSQL += " and (len(a.TradePrice)<6 or len(a.UnitPrice)<6)";
+                }
+                else
+                {
+                    if (showEnt.AnomalousPrice) { strSQL += " and len(a.TradePrice)<6"; }
+                    if (showEnt.AnomalousUnitPrice) { strSQL += " and len(a.UnitPrice)<6"; }
+                }
+                if (!string.IsNullOrEmpty(showEnt.Batch)) { strSQL += " and a.Batch = '" + showEnt.Batch + "'"; }
+                if (!showEnt.BelongDepart.Equals("-1"))
+                {
+                    strSQL += " and a.BelongDepart = '" + showEnt.BelongDepart + "'";
+                }
+                strSQL += "  group by a.GoodsCode,b.TypeName ";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            result.Add(new CargoProductEntity
+                            {
+                                GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                                TypeName = Convert.ToString(idr["TypeName"])
+                            });
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        /// <summary>
+        /// 查询在库产品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryInHouseProduct(CargoProductEntity entity)
+        {
+            List<CargoProductEntity> result = new List<CargoProductEntity>();
+            try
+            {
+                string strSQL = @"select a.*,ps.SourceName,f.InHouseType,h.Name as HouseName,b.TypeName,b.ParentID,b.TypeParentName as ParentName,ISNULL(e.ContainerCode,'') as ContainerCode,ISNULL(d.Piece,0) as Piece,ISNULL(f.Piece,0) as InPiece,k.Name as FirstAreaName";
+                if (entity.CargoPermisID == "64")
+                {
+                    strSQL += ",po.OrderID as PurchaseOrderID";
+                }
+                else
+                {
+                    strSQL += ",a.ProductID as PurchaseOrderID";
+                }
+                strSQL += " FROM Tbl_Cargo_Product as a inner join Tbl_Cargo_ProductType as b on a.TypeID=b.TypeID inner join Tbl_Cargo_ContainerGoods as d on a.ProductID=d.ProductID inner join Tbl_Cargo_Container as e on d.ContainerID=e.ContainerID inner join Tbl_Cargo_Area as g on e.AreaID=g.AreaID inner join Tbl_Cargo_House h on a.HouseID=h.HouseID";
+                strSQL += " inner join Tbl_Cargo_Area as j on g.ParentID=j.AreaID inner join Tbl_Cargo_Area as k on j.ParentID=k.AreaID ";
+                if (entity.CargoPermisID == "64") { strSQL += " left join Tbl_Cargo_PurchaseOrder po on po.FacOrderNo=a.SourceOrderNo "; }
+                strSQL += " inner join Tbl_Cargo_InContainerGoods as f on a.ProductID=f.ProductID left join Tbl_Cargo_ProductSource ps on a.Source=ps.Source WHERE (1=1) ";
+                if (!entity.FirstAreaID.Equals(0))
+                {
+                    strSQL += " and k.AreaID = " + entity.FirstAreaID + "";
+                }
+                if (entity.InStock) { strSQL += " and d.Piece>0"; }
+                //以产品名称为查询条件and f.InHouseType='0'
+                if (!string.IsNullOrEmpty(entity.ProductName)) { strSQL += " and a.ProductName like '%" + entity.ProductName + "%'"; }
+                if (!entity.ProductID.Equals(0)) { strSQL += " and a.ProductID=" + entity.ProductID; }
+
+                if (!string.IsNullOrEmpty(entity.ProductIDs)) { strSQL += " and a.ProductID in (" + entity.ProductIDs + ")"; }
+                //型号
+                if (!string.IsNullOrEmpty(entity.Model)) { strSQL += " and a.Model like '%" + entity.Model + "%'"; }
+                //规格
+                if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and a.Specs like '%" + entity.Specs + "%'"; }
+                //货品代码
+                if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and a.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+                //以一级类型ID为查询条件
+                if (!entity.ParentID.Equals(0)) { strSQL += " and b.ParentID=" + entity.ParentID; }
+                if (!entity.BatchYear.Equals(0)) { strSQL += " and a.BatchYear=" + entity.BatchYear; }
+                //二级类型ID
+                if (!entity.TypeID.Equals(0)) { strSQL += " and a.TypeID=" + entity.TypeID; }
+                if (!entity.CostPrice.Equals(-1)) { strSQL += " and a.CostPrice=" + entity.CostPrice; }
+                if (!entity.FinalCostPrice.Equals(-1)) { strSQL += " and a.FinalCostPrice=" + entity.FinalCostPrice; }
+                //花纹
+                if (!string.IsNullOrEmpty(entity.Batch)) { strSQL += " and a.Batch = '" + entity.Batch + "'"; }
+                if (!string.IsNullOrEmpty(entity.Figure)) { strSQL += " and a.Figure = '" + entity.Figure + "'"; }
+                //规格类型
+                if (!string.IsNullOrEmpty(entity.SpecsType)) { strSQL += " and a.SpecsType='" + entity.SpecsType + "'"; }
+                else
+                {
+                    strSQL += " and a.SpecsType<>5";
+                }
+                if (!entity.BelongDepart.Equals("-1"))
+                {
+                    strSQL += " and a.BelongDepart = '" + entity.BelongDepart + "'";
+                }
+                //入库时间范围
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.InHouseTime>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.InHouseTime<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                if (entity.AnomalousPrice || entity.AnomalousUnitPrice)
+                {
+                    strSQL += " and (len(a.TradePrice)<6 or len(a.UnitPrice)<6)";
+                }
+                else
+                {
+                    if (entity.AnomalousPrice) { strSQL += " and len(a.TradePrice)<6"; }
+                    if (entity.AnomalousUnitPrice) { strSQL += " and len(a.UnitPrice)<6"; }
+                }
+                //所属仓库ID
+                if (!string.IsNullOrEmpty(entity.CargoPermisID)) { strSQL += " and a.HouseID in (" + entity.CargoPermisID + ")"; }
+                if (!string.IsNullOrEmpty(entity.Source)) { strSQL += " and a.Source = '" + entity.Source + "'"; }
+                if (!string.IsNullOrEmpty(entity.Supplier)) { strSQL += " and a.Supplier = '" + entity.Supplier + "'"; }
+                if (entity.CargoPermisID == "64")
+                {
+                    if (!string.IsNullOrEmpty(entity.PurchaseOrderID)) { strSQL += " and po.OrderID='" + entity.PurchaseOrderID + "'"; }
+                }
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            if (result.Exists(c => c.ProductID == Convert.ToInt64(idr["ProductID"]))) { continue; }
+                            result.Add(new CargoProductEntity
+                            {
+                                ProductID = Convert.ToInt64(idr["ProductID"]),
+                                ProductName = Convert.ToString(idr["ProductName"]),
+                                TypeID = Convert.ToInt32(idr["TypeID"]),
+                                TypeName = Convert.ToString(idr["TypeName"]).Trim(),
+                                Model = Convert.ToString(idr["Model"]).Trim(),
+                                GoodsCode = Convert.ToString(idr["GoodsCode"]).Trim(),
+                                Figure = Convert.ToString(idr["Figure"]).Trim(),
+                                Specs = Convert.ToString(idr["Specs"]).Trim(),
+                                TreadWidth = Convert.ToInt32(idr["TreadWidth"]),
+                                FlatRatio = Convert.ToInt32(idr["FlatRatio"]),
+                                Meridian = Convert.ToString(idr["Meridian"]).Trim(),
+                                HubDiameter = Convert.ToInt32(idr["HubDiameter"]),
+                                LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                                SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                                SpeedMax = Convert.ToInt32(idr["SpeedMax"]),
+                                Size = Convert.ToString(idr["Size"]),
+                                PackageNum = Convert.ToInt32(idr["Piece"]),//在库件数
+                                Weight = Convert.ToDecimal(idr["Weight"]),
+                                UnitPrice = Convert.ToDecimal(idr["UnitPrice"]),
+                                Numbers = Convert.ToInt32(idr["InPiece"]),//入库数量
+                                FinalCostPrice = Convert.ToDecimal(idr["FinalCostPrice"]),
+                                InHousePrice = Convert.ToDecimal(idr["InHousePrice"]),
+                                CostPrice = Convert.ToDecimal(idr["CostPrice"]),
+                                TaxCostPrice = Convert.ToDecimal(idr["TaxCostPrice"]),
+                                NoTaxCostPrice = Convert.ToDecimal(idr["NoTaxCostPrice"]),
+                                TradePrice = Convert.ToDecimal(idr["TradePrice"]),
+                                SalePrice = Convert.ToDecimal(idr["SalePrice"]),
+                                ParentID = Convert.ToInt32(idr["ParentID"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                FirstAreaName = Convert.ToString(idr["FirstAreaName"]),
+                                ParentName = Convert.ToString(idr["ParentName"]).Trim(),
+                                Batch = Convert.ToString(idr["Batch"]),
+                                ContainerCode = Convert.ToString(idr["ContainerCode"]),
+                                InCargoStatus = Convert.ToString(idr["InCargoStatus"]).Trim(),
+                                InHouseTime = string.IsNullOrEmpty(Convert.ToString(idr["InHouseTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["InHouseTime"]),
+                                Source = Convert.ToString(idr["Source"]).Trim(),
+                                SourceName = Convert.ToString(idr["SourceName"]).Trim(),
+                                SourceOrderNo = Convert.ToString(idr["SourceOrderNo"]).Trim(),
+                                BelongMonth = Convert.ToString(idr["BelongMonth"]).Trim(),
+                                IsModifyPrice = Convert.ToString(idr["IsModifyPrice"]).Trim(),
+                                BelongDepart = Convert.ToString(idr["BelongDepart"]).Trim(),
+                                Supplier = Convert.ToString(idr["Supplier"]).Trim(),
+                                PurchaseOrderID = Convert.ToString(idr["PurchaseOrderID"]).Trim(),
+                                InHouseType = Convert.ToString(idr["InHouseType"]).Trim(),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                            });
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        /// <summary>
+        /// 批量修改产品单价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void savePriceModify(CargoProductEntity entity)
+        {
+            //string strSQL = @"UPDATE Tbl_Cargo_Product set TradePrice=@TradePrice,SalePrice=@SalePrice where ProductID=@ProductID";
+            string strSQL = @"UPDATE Tbl_Cargo_Product set TradePrice=@TradePrice,SalePrice=@SalePrice where Specs=@Specs and Figure=@Figure and HouseID=@HouseID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    //conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                    conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                    conn.AddInParameter(cmd, "@TradePrice", DbType.Decimal, entity.TradePrice);
+                    conn.AddInParameter(cmd, "@SalePrice", DbType.Decimal, entity.SalePrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        /// <summary>
+        /// 修改销售价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateWebProductSalePrice(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set SalePrice=@SalePrice,InHousePrice=@InHousePrice where ProductID=@ProductID";
+            //string strSQL = @"UPDATE Tbl_Cargo_Product set TradePrice=@TradePrice,SalePrice=@SalePrice where Specs=@Specs and Figure=@Figure and HouseID=@HouseID";,SalePrice=@SalePrice
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    //conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    //conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                    //conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                    //conn.AddInParameter(cmd, "@TradePrice", DbType.Decimal, entity.TradePrice);
+                    conn.AddInParameter(cmd, "@InHousePrice", DbType.Decimal, entity.InHousePrice);
+                    conn.AddInParameter(cmd, "@SalePrice", DbType.Decimal, entity.SalePrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        /// <summary>
+        /// 修改批发价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductTradePrice(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set TradePrice=@TradePrice where ProductID=@ProductID";
+            //string strSQL = @"UPDATE Tbl_Cargo_Product set TradePrice=@TradePrice,SalePrice=@SalePrice where Specs=@Specs and Figure=@Figure and HouseID=@HouseID";,SalePrice=@SalePrice
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    //conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    //conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                    //conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                    conn.AddInParameter(cmd, "@TradePrice", DbType.Decimal, entity.TradePrice);
+                    //conn.AddInParameter(cmd, "@SalePrice", DbType.Decimal, entity.SalePrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+                //修改工厂订单导入批发价和销售价
+                //strSQL = @"UPDATE Tbl_Cargo_FactoryOrder set TradePrice=@TradePrice,SalePrice=@SalePrice,SaleMoney=(select InPiece from Tbl_Cargo_FactoryOrder where ProductID=@ProductID) * @SalePrice where ProductID=@ProductID";
+                //using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                //{
+                //    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                //    conn.AddInParameter(cmd, "@TradePrice", DbType.Decimal, entity.TradePrice);
+                //    conn.AddInParameter(cmd, "@SalePrice", DbType.Decimal, entity.SalePrice);
+                //    conn.ExecuteNonQuery(cmd);
+                //}
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改产品最终成本价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductFinalCostPrice(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set FinalCostPrice=@FinalCostPrice where ProductID=@ProductID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@FinalCostPrice", DbType.Decimal, entity.FinalCostPrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+                ////修改工厂订单导入表成本价
+                //strSQL = @"UPDATE Tbl_Cargo_FactoryOrder set FinalCostPrice=@FinalCostPrice where ProductID=@ProductID";
+                //using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                //{
+                //    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                //    conn.AddInParameter(cmd, "@FinalCostPrice", DbType.Decimal, entity.FinalCostPrice);
+                //    conn.ExecuteNonQuery(cmd);
+                //}
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改产品成本价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductCostPrice(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set CostPrice=@CostPrice,IsModifyPrice='1' where ProductID=@ProductID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@CostPrice", DbType.Decimal, entity.CostPrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+
+                //修改工厂订单导入表成本价
+                strSQL = @"UPDATE Tbl_Cargo_FactoryOrder set CostPrice=@CostPrice where ProductID=@ProductID";
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@CostPrice", DbType.Decimal, entity.CostPrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 导入修改成本价
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void ImportUpdateProductCostPrice(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set CostPrice=@CostPrice,FinalCostPrice=@FinalCostPrice,IsModifyPrice='1' where ProductID=@ProductID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@CostPrice", DbType.Decimal, entity.CostPrice);
+                    conn.AddInParameter(cmd, "@FinalCostPrice", DbType.Decimal, entity.FinalCostPrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+
+                //修改工厂订单导入表成本价
+                strSQL = @"UPDATE Tbl_Cargo_FactoryOrder set CostPrice=@CostPrice where ProductID=@ProductID";
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@CostPrice", DbType.Decimal, entity.CostPrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改产品单价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductUnitPrice(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set UnitPrice=@UnitPrice where ProductID=@ProductID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@UnitPrice", DbType.Decimal, entity.UnitPrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+                //修改工厂订单导入表单价
+                strSQL = @"UPDATE Tbl_Cargo_FactoryOrder set UnitPrice=@UnitPrice where ProductID=@ProductID";
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@UnitPrice", DbType.Decimal, entity.UnitPrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        public void UpdateProductTaxCostPrice(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set TaxCostPrice=@TaxCostPrice where ProductID=@ProductID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@TaxCostPrice", DbType.Decimal, entity.TaxCostPrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+                ////修改工厂订单导入表成本价
+                //strSQL = @"UPDATE Tbl_Cargo_FactoryOrder set TaxCostPrice=@TaxCostPrice where ProductID=@ProductID";
+                //using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                //{
+                //    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                //    conn.AddInParameter(cmd, "@TaxCostPrice", DbType.Decimal, entity.TaxCostPrice);
+                //    conn.ExecuteNonQuery(cmd);
+                //}
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        public void UpdateProductNoTaxCostPrice(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set NoTaxCostPrice=@NoTaxCostPrice where ProductID=@ProductID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@NoTaxCostPrice", DbType.Decimal, entity.NoTaxCostPrice);
+                    conn.ExecuteNonQuery(cmd);
+                }
+                ////修改工厂订单导入表不含税成本价
+                //strSQL = @"UPDATE Tbl_Cargo_FactoryOrder set NoTaxCostPrice=@NoTaxCostPrice where ProductID=@ProductID";
+                //using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                //{
+                //    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                //    conn.AddInParameter(cmd, "@NoTaxCostPrice", DbType.Decimal, entity.NoTaxCostPrice);
+                //    conn.ExecuteNonQuery(cmd);
+                //}
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        public void AllocateFreightToNoTaxCostPrice(CargoProductEntity entity, decimal Freight)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set CostPrice=CostPrice+@Freight,TaxCostPrice=TaxCostPrice+@Freight,NoTaxCostPrice=NoTaxCostPrice+@Freight where ProductID=@ProductID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                    conn.AddInParameter(cmd, "@Freight", DbType.Decimal, Freight);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 促销规则库数据查询
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryRuleBankData(int pIndex, int pNum, CargoRuleBankEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            Hashtable resHT = new Hashtable();
+            CargoProductManager pro = new CargoProductManager();
+            try
+            {
+                entity.EnSafe();
+                #region 组装查询SQL语句
+                string strSQL = @" SELECT TOP " + pNum + " *  FROM ";
+                strSQL += "(SELECT TOP 100 PERCENT ROW_NUMBER() OVER (ORDER BY a.OP_DATE DESC) AS RowNumber,a.*,b.Name as HouseName From Tbl_Cargo_RuleBank as a inner join Tbl_Cargo_House as b on a.HouseID=b.HouseID Where (1=1) ";
+                //规则名称
+                if (!string.IsNullOrEmpty(entity.Title)) { strSQL += " and a.Title like '%" + entity.Title + "%'"; }
+                //有效日期范围
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.EndDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.StartDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                if (!entity.SuppClientNum.Equals(0))
+                {
+                    strSQL += " and a.SuppClientNum = " + entity.SuppClientNum;
+                }
+
+                //规则类型
+                strSQL += " and a.CouponType = " + entity.CouponType;
+                //所属仓库ID
+                if (!entity.HouseID.Equals(0)) { strSQL += " and a.HouseID =" + entity.HouseID; }
+                strSQL += " order by OP_DATE desc ) A ";
+                strSQL += " WHERE RowNumber > (" + pNum + "* (" + pIndex + "-1)) order by OP_DATE desc ";
+
+                #endregion
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            #region 获取数据
+                            string batch = string.Empty;
+                            string StartBatch = Convert.ToString(idr["StartBatch"]);
+                            string EndBatch = Convert.ToString(idr["EndBatch"]);
+                            if (!string.IsNullOrEmpty(StartBatch) && !StartBatch.Equals("0"))
+                            {
+                                string aB = StartBatch.Substring(0, 2);
+                                string bB = StartBatch.Substring(2, StartBatch.Length - 2);
+                                batch = bB + aB;
+                            }
+                            if (!string.IsNullOrEmpty(EndBatch) && !EndBatch.Equals("0"))
+                            {
+                                string aB = EndBatch.Substring(0, 2);
+                                string bB = EndBatch.Substring(2, EndBatch.Length - 2);
+                                batch += "---" + bB + aB;
+                            }
+                            result.Add(new CargoRuleBankEntity
+                            {
+                                ID = Convert.ToInt64(idr["ID"]),
+                                //ProductID = Convert.ToInt64(idr["ProductID"]),
+                                Title = Convert.ToString(idr["Title"]),
+                                RuleName = Convert.ToString(idr["RuleName"]),
+                                RuleType = Convert.ToString(idr["RuleType"]),
+                                StartDate = Convert.ToDateTime(idr["StartDate"]),
+                                EndDate = Convert.ToDateTime(idr["EndDate"]),
+                                TypeID = Convert.ToInt32(idr["TypeID"]),
+                                LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                                Specs = Convert.ToString(idr["Specs"]).Trim(),
+                                Figure = Convert.ToString(idr["Figure"]).Trim(),
+                                SpeedLevel = Convert.ToString(idr["SpeedLevel"]).Trim(),
+                                StartBatch = Convert.ToInt32(idr["StartBatch"]),
+                                EndBatch = Convert.ToInt32(idr["EndBatch"]),
+                                FullEntry = Convert.ToInt32(idr["FullEntry"]),
+                                CutEntry = Convert.ToDecimal(idr["CutEntry"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                LimitNum = Convert.ToInt32(idr["LimitNum"]),
+                                Batch = batch,
+                                SaleEntry = Convert.ToDecimal(idr["SaleEntry"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                TypeName = Convert.ToInt32(idr["TypeID"]).Equals(0) ? "" : pro.QueryProductTypeName(new CargoProductTypeEntity { TypeID = Convert.ToInt32(idr["TypeID"]) }),
+                                DelFlag = Convert.ToString(idr["DelFlag"]),
+                                MeetLimit = string.IsNullOrEmpty(Convert.ToString(idr["MeetLimit"])) ? 0 : Convert.ToInt32(idr["MeetLimit"]),
+                                Regular = string.IsNullOrEmpty(Convert.ToString(idr["Regular"])) ? 0 : Convert.ToInt32(idr["Regular"]),
+                                SuitClientNum = Convert.ToString(idr["SuitClientNum"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                                IsSuperPosition = string.IsNullOrEmpty(Convert.ToString(idr["IsSuperPosition"])) ? 0 : Convert.ToInt32(idr["IsSuperPosition"]),
+                                CouponType = string.IsNullOrEmpty(Convert.ToString(idr["CouponType"])) ? 0 : Convert.ToInt32(idr["CouponType"]),
+                                SuppClientNum = string.IsNullOrEmpty(Convert.ToString(idr["SuppClientNum"])) ? 0 : Convert.ToInt32(idr["SuppClientNum"]),
+                                IssueCoupon = string.IsNullOrEmpty(Convert.ToString(idr["IssueCoupon"])) ? 0 : Convert.ToInt32(idr["IssueCoupon"]),
+                                ServiceTime = string.IsNullOrEmpty(Convert.ToString(idr["ServiceTime"])) ? 0 : Convert.ToInt32(idr["ServiceTime"]),
+                                IssueGiveaway = string.IsNullOrEmpty(Convert.ToString(idr["IssueGiveaway"])) ? 0 : Convert.ToInt32(idr["IssueGiveaway"]),
+                                ProductID = string.IsNullOrEmpty(Convert.ToString(idr["ProductID"])) ? 0 : Convert.ToInt64(idr["ProductID"]),
+                                ProductName = Convert.ToInt32(idr["ProductID"]).Equals(0) ? "" : pro.QueryProductInfoByID(Convert.ToInt32(idr["ProductID"])).ProductName,
+                                UseTypeID = Convert.ToString(idr["UseTypeID"]),
+                                UseTypeName = Convert.ToString(idr["UseTypeName"]),
+                            });
+                            #endregion
+                        }
+                    }
+                }
+                resHT["rows"] = result;
+                #region 总数目
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_RuleBank  Where (1=1)";
+                //规则名称
+                if (!string.IsNullOrEmpty(entity.Title)) { strCount += " and Title like '%" + entity.Title + "%'"; }
+                //有效日期范围
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and EndDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and StartDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                //所属仓库ID
+                if (!entity.HouseID.Equals(0)) { strCount += " and HouseID =" + entity.HouseID; }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0) { resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]); }
+                    }
+                }
+                #endregion
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 查询指定仓库的所有可用促销信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public DataTable QueryPriceRuleBankInfo(CargoOrderEntity entity)
+        {
+            DataTable dt = null;
+            string strSQL = "select * from Tbl_Cargo_RuleBank where 1=1";
+            if (!entity.HouseID.Equals(0))
+            {
+                strSQL += " and HouseID=@HouseID";
+            }
+            if (!entity.TypeID.Equals(0))
+            {
+                strSQL += " and TypeID=@TypeID";
+            }
+            if (!string.IsNullOrEmpty(entity.RuleType))
+            {
+                strSQL += " and RuleType=@RuleType";
+            }
+            strSQL += " and StartDate <= GETDATE() and EndDate >= GETDATE() -1 order by OP_DATE desc";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                if (!entity.HouseID.Equals(0))
+                {
+                    conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                }
+                if (!entity.TypeID.Equals(0))
+                {
+                    conn.AddInParameter(command, "@TypeID", DbType.Int32, entity.TypeID);
+                }
+                if (!string.IsNullOrEmpty(entity.RuleType))
+                {
+                    conn.AddInParameter(command, "@RuleType", DbType.String, entity.RuleType);
+                }
+                //conn.AddInParameter(command, "@Specs", DbType.String, entity.Specs);
+                //conn.AddInParameter(command, "@Batch", DbType.Int32, entity.Batch);
+                dt = conn.ExecuteDataTable(command);
+            }
+            return dt;
+        }
+        /// <summary>
+        /// 查询指定客户在指定仓库所购买的产品信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public DataTable QueryClientOrderInfo(CargoOrderEntity entity)
+        {
+            DataTable dt = null;
+            string strSQL = "select o.OrderID,o.OrderNo,og.ProductID,og.HouseID,og.Piece,p.Specs,p.Figure,convert(varchar(10),p.BatchYear) + convert(varchar(10),p.BatchWeek) as Batch,p.TypeID from Tbl_Cargo_Order o inner join Tbl_Cargo_OrderGoods og on o.OrderNo=og.OrderNo inner join Tbl_Cargo_Product p on og.ProductID=p.ProductID where o.ClientNum=@ClientNum and og.HouseID=@HouseID and p.TypeID=@TypeID and o.CreateDate >= @StartDate and o.CreateDate < @EndDate";
+            if (!string.IsNullOrEmpty(entity.OrderNo))
+            {
+                strSQL += " and o.OrderNo!='" + entity.OrderNo + "'";
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@ClientNum", DbType.Int32, entity.ClientNum);
+                conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(command, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(command, "@StartDate", DbType.DateTime, entity.StartDate);
+                conn.AddInParameter(command, "@EndDate", DbType.DateTime, entity.EndDate);
+                if (!string.IsNullOrEmpty(entity.OrderNo))
+                {
+                    conn.AddInParameter(command, "@OrderNo", DbType.String, entity.OrderNo);
+                }
+                dt = conn.ExecuteDataTable(command);
+            }
+            return dt;
+        }
+        /// <summary>
+        /// 根据ID查询指定优惠规则信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryPriceRuleBankInfoToID(RuleBankReturnEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            string strSQL = "select * from Tbl_Cargo_RuleBank where ID=@ID and DelFlag=0 order by OP_DATE desc";
+            string[] RuleIDs = entity.RuleID.Split(',');
+            foreach (var RuleID in RuleIDs)
+            {
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(command, "@ID", DbType.Int32, RuleID);
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoRuleBankEntity
+                            {
+                                ID = Convert.ToInt32(idr["ID"]),
+                                Title = Convert.ToString(idr["Title"]).Trim(),
+                                RuleName = Convert.ToString(idr["RuleName"]).Trim(),
+                                RuleType = Convert.ToString(idr["RuleType"]).Trim(),
+                                StartDate = Convert.ToDateTime(idr["StartDate"]),
+                                EndDate = Convert.ToDateTime(idr["EndDate"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                TypeID = Convert.ToInt32(idr["TypeID"]),
+                                Specs = Convert.ToString(idr["Specs"]).Trim(),
+                                Figure = Convert.ToString(idr["Figure"]).Trim(),
+                                LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                                SpeedLevel = Convert.ToString(idr["SpeedLevel"]).Trim(),
+                                StartBatch = Convert.ToInt32(idr["StartBatch"]),
+                                EndBatch = Convert.ToInt32(idr["EndBatch"]),
+                                FullEntry = Convert.ToInt32(idr["FullEntry"]),
+                                CutEntry = Convert.ToDecimal(idr["CutEntry"]),
+                                SaleEntry = Convert.ToDecimal(idr["SaleEntry"]),
+                                LimitNum = Convert.ToInt32(idr["LimitNum"]),
+                                Regular = Convert.ToInt32(idr["Regular"]),
+                                ProductID = Convert.ToInt32(idr["ProductID"])
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询某品牌所有规格
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllSpesc(CargoRuleBankEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            string strSQL = "select Specs , ProductID From Tbl_Cargo_Product where TypeID=@TypeID and HouseID =@HouseID group by Specs , ProductID order by Specs , ProductID";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoRuleBankEntity { Specs = Convert.ToString(idr["Specs"]), ProductID = Convert.ToInt32(idr["ProductID"]) });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询某品牌的品类
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllTypeIDToProductID(CargoRuleBankEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            string strSQL = "select ProductID,TypeID,Specs From Tbl_Cargo_Product where ProductID=@ProductID";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@ProductID", DbType.Int32, entity.ProductID);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoRuleBankEntity
+                        {
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            ProductID = Convert.ToInt32(idr["ProductID"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询某品牌所有花纹
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllFigureToTypeID(CargoRuleBankEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            string strSQL = "select Figure From Tbl_Cargo_Product where TypeID=@TypeID and HouseID =@HouseID group by Figure order by Figure";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoRuleBankEntity { Figure = Convert.ToString(idr["Figure"]) });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询该规格 下的轮胎花纹
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllFigure(CargoRuleBankEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            string strSQL = "select Figure From Tbl_Cargo_Product where TypeID=@TypeID and HouseID =@HouseID and Specs=@Specs group by Figure order by Figure";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(command, "@Specs", DbType.String, entity.Specs);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoRuleBankEntity { Figure = Convert.ToString(idr["Figure"]) });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询该规格 下的货品代码
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllGoodsCode(CargoRuleBankEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            string strSQL = "select GoodsCode From Tbl_Cargo_Product where TypeID=@TypeID and HouseID =@HouseID and Specs=@Specs group by GoodsCode order by GoodsCode";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(command, "@Specs", DbType.String, entity.Specs);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoRuleBankEntity { GoodsCode = Convert.ToString(idr["GoodsCode"]) });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询该规格 下的速度级别
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllSpeedLevel(CargoRuleBankEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            string strSQL = "select SpeedLevel From Tbl_Cargo_Product where TypeID=@TypeID and HouseID =@HouseID and Specs=@Specs group by SpeedLevel order by SpeedLevel";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(command, "@Specs", DbType.String, entity.Specs);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoRuleBankEntity { SpeedLevel = Convert.ToString(idr["SpeedLevel"]) });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询该规格 下的载重指数
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllLoadIndex(CargoRuleBankEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            string strSQL = "select LoadIndex From Tbl_Cargo_Product where TypeID=@TypeID and HouseID =@HouseID and Specs=@Specs group by LoadIndex order by LoadIndex";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(command, "@Specs", DbType.String, entity.Specs);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoRuleBankEntity { LoadIndex = Convert.ToString(idr["LoadIndex"]) });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 新增规则
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddRuleBank(CargoRuleBankEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = "  INSERT INTO Tbl_Cargo_RuleBank(Title,RuleName,RuleType,StartDate,EndDate,HouseID,TypeID,Specs,Figure,LoadIndex,SpeedLevel,StartBatch,EndBatch,FullEntry,CutEntry,SaleEntry,ProductID,LimitNum,OP_DATE,DelFlag,MeetLimit,Regular,SuitClientNum,IsSuperPosition,CouponType,SuppClientNum,IssueCoupon,ServiceTime,IssueGiveaway,UseTypeID,UseTypeName,IsFollowQuantity) VALUES (@Title,@RuleName,@RuleType,@StartDate,@EndDate,@HouseID,@TypeID,@Specs,@Figure,@LoadIndex,@SpeedLevel,@StartBatch,@EndBatch,@FullEntry,@CutEntry,@SaleEntry,@ProductID,@LimitNum,@OP_DATE,@DelFlag,@MeetLimit,@Regular,@SuitClientNum,@IsSuperPosition,@CouponType,@SuppClientNum,@IssueCoupon,@ServiceTime,@IssueGiveaway,@UseTypeID,@UseTypeName,@IsFollowQuantity)";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@RuleName", DbType.String, entity.RuleName);
+                conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                conn.AddInParameter(cmd, "@RuleType", DbType.String, entity.RuleType);
+                conn.AddInParameter(cmd, "@StartDate", DbType.DateTime, entity.StartDate);
+                conn.AddInParameter(cmd, "@EndDate", DbType.DateTime, entity.EndDate);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                conn.AddInParameter(cmd, "@StartBatch", DbType.Int32, entity.StartBatch);
+                conn.AddInParameter(cmd, "@EndBatch", DbType.Int32, entity.EndBatch);
+                conn.AddInParameter(cmd, "@FullEntry", DbType.Int32, entity.FullEntry);
+                conn.AddInParameter(cmd, "@CutEntry", DbType.Double, entity.CutEntry);
+                conn.AddInParameter(cmd, "@SaleEntry", DbType.Decimal, entity.SaleEntry);
+                conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                conn.AddInParameter(cmd, "@LimitNum", DbType.Int32, entity.LimitNum);
+                conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                conn.AddInParameter(cmd, "@MeetLimit", DbType.Int32, entity.MeetLimit);
+                conn.AddInParameter(cmd, "@Regular", DbType.Int32, entity.Regular);
+                conn.AddInParameter(cmd, "@SuitClientNum", DbType.String, entity.SuitClientNum);
+                conn.AddInParameter(cmd, "@IsSuperPosition", DbType.Int32, entity.IsSuperPosition);
+                conn.AddInParameter(cmd, "@IsFollowQuantity", DbType.Int32, entity.IsFollowQuantity);
+                
+                conn.AddInParameter(cmd, "@CouponType", DbType.Int32, entity.CouponType);
+                conn.AddInParameter(cmd, "@SuppClientNum", DbType.Int32, entity.SuppClientNum);
+                conn.AddInParameter(cmd, "@IssueCoupon", DbType.Int32, entity.IssueCoupon);
+                conn.AddInParameter(cmd, "@ServiceTime", DbType.Int32, entity.ServiceTime);
+                conn.AddInParameter(cmd, "@IssueGiveaway", DbType.Int32, entity.IssueGiveaway);
+                conn.AddInParameter(cmd, "@UseTypeID", DbType.String, entity.UseTypeID);
+                conn.AddInParameter(cmd, "@UseTypeName", DbType.String, entity.UseTypeName);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 修改规则
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateRuleBank(CargoRuleBankEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = "UPDATE Tbl_Cargo_RuleBank set Title=@Title,RuleName=@RuleName,RuleType=@RuleType,StartDate=@StartDate,EndDate=@EndDate,HouseID=@HouseID,TypeID=@TypeID,Specs=@Specs,Figure=@Figure,LoadIndex=@LoadIndex,SpeedLevel=@SpeedLevel,StartBatch=@StartBatch,EndBatch=@EndBatch,FullEntry=@FullEntry,CutEntry=@CutEntry,SaleEntry=@SaleEntry,ProductID=@ProductID,LimitNum=@LimitNum,DelFlag=@DelFlag,OP_DATE=@OP_DATE,MeetLimit=@MeetLimit,Regular=@Regular,SuitClientNum=@SuitClientNum ,IsSuperPosition=@IsSuperPosition,CouponType=@CouponType,SuppClientNum=@SuppClientNum,IssueCoupon=@IssueCoupon,ServiceTime=@ServiceTime,IssueGiveaway=@IssueGiveaway,UseTypeID=@UseTypeID,UseTypeName=@UseTypeName,IsFollowQuantity=@IsFollowQuantity where ID=@ID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                conn.AddInParameter(cmd, "@RuleName", DbType.String, entity.RuleName);
+                conn.AddInParameter(cmd, "@RuleType", DbType.String, entity.RuleType);
+                conn.AddInParameter(cmd, "@StartDate", DbType.DateTime, entity.StartDate);
+                conn.AddInParameter(cmd, "@EndDate", DbType.DateTime, entity.EndDate);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(cmd, "@Specs", DbType.String, entity.Specs);
+                conn.AddInParameter(cmd, "@Figure", DbType.String, entity.Figure);
+                conn.AddInParameter(cmd, "@LoadIndex", DbType.String, entity.LoadIndex);
+                conn.AddInParameter(cmd, "@SpeedLevel", DbType.String, entity.SpeedLevel);
+                conn.AddInParameter(cmd, "@StartBatch", DbType.Int32, entity.StartBatch);
+                conn.AddInParameter(cmd, "@EndBatch", DbType.Int32, entity.EndBatch);
+                conn.AddInParameter(cmd, "@FullEntry", DbType.Int32, entity.FullEntry);
+                conn.AddInParameter(cmd, "@CutEntry", DbType.Double, entity.CutEntry);
+                conn.AddInParameter(cmd, "@SaleEntry", DbType.Decimal, entity.SaleEntry);
+                conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
+                conn.AddInParameter(cmd, "@LimitNum", DbType.Int32, entity.LimitNum);
+                conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                conn.AddInParameter(cmd, "@MeetLimit", DbType.Int32, entity.MeetLimit);
+                conn.AddInParameter(cmd, "@Regular", DbType.Int32, entity.Regular);
+                conn.AddInParameter(cmd, "@SuitClientNum", DbType.String, entity.SuitClientNum);
+                conn.AddInParameter(cmd, "@ID", DbType.String, entity.ID);
+                conn.AddInParameter(cmd, "@IsSuperPosition", DbType.Int32, entity.IsSuperPosition);
+                conn.AddInParameter(cmd, "@IsFollowQuantity", DbType.Int32, entity.IsFollowQuantity);
+                conn.AddInParameter(cmd, "@CouponType", DbType.Int32, entity.CouponType);
+                conn.AddInParameter(cmd, "@SuppClientNum", DbType.Int32, entity.SuppClientNum);
+                conn.AddInParameter(cmd, "@IssueCoupon", DbType.Int32, entity.IssueCoupon);
+                conn.AddInParameter(cmd, "@ServiceTime", DbType.Int32, entity.ServiceTime);
+                conn.AddInParameter(cmd, "@IssueGiveaway", DbType.Int32, entity.IssueGiveaway);
+                conn.AddInParameter(cmd, "@UseTypeID", DbType.String, entity.UseTypeID);
+                conn.AddInParameter(cmd, "@UseTypeName", DbType.String, entity.UseTypeName);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 查询可用的规则
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryRuleBank(CargoRuleBankEntity entity)
+        {
+            List<CargoRuleBankEntity> result = new List<CargoRuleBankEntity>();
+            string strSQL = "select * From Tbl_Cargo_RuleBank where HouseID=" + entity.HouseID + " and StartDate<=GETDATE() and EndDate>=GETDATE()";
+            if (!entity.TypeID.Equals(0)) { strSQL += " and TypeID=" + entity.TypeID; }
+            if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and Specs='" + entity.Specs + "'"; }
+            if (!string.IsNullOrEmpty(entity.Figure)) { strSQL += " and Figure='" + entity.Figure + "'"; }
+            if (!string.IsNullOrEmpty(entity.DelFlag)) { strSQL += " and DelFlag='" + entity.DelFlag + "'"; }
+            if (!string.IsNullOrEmpty(entity.RuleType)) { strSQL += " and RuleType='" + entity.RuleType + "'"; }
+            if (!entity.StartBatch.Equals(0)) { strSQL += " and StartBatch<=" + entity.StartBatch; }
+            if (!entity.StartBatch.Equals(0)) { strSQL += " and EndBatch>=" + entity.StartBatch; }
+            if (!entity.SuppClientNum.Equals(0)) { strSQL += " and SuppClientNum=" + entity.SuppClientNum; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoRuleBankEntity
+                        {
+                            ID = Convert.ToInt64(idr["ID"]),
+                            ProductID = Convert.ToInt64(idr["ProductID"]),
+                            Title = Convert.ToString(idr["Title"]),
+                            RuleName = Convert.ToString(idr["RuleName"]),
+                            RuleType = Convert.ToString(idr["RuleType"]),
+                            StartDate = Convert.ToDateTime(idr["StartDate"]),
+                            EndDate = Convert.ToDateTime(idr["EndDate"]),
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                            Specs = Convert.ToString(idr["Specs"]).Trim(),
+                            Figure = Convert.ToString(idr["Figure"]).Trim(),
+                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]).Trim(),
+                            StartBatch = Convert.ToInt32(idr["StartBatch"]),
+                            EndBatch = Convert.ToInt32(idr["EndBatch"]),
+                            FullEntry = Convert.ToInt32(idr["FullEntry"]),
+                            CutEntry = Convert.ToDecimal(idr["CutEntry"]),
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            LimitNum = Convert.ToInt32(idr["LimitNum"]),
+                            SaleEntry = Convert.ToDecimal(idr["SaleEntry"]),
+                            DelFlag = Convert.ToString(idr["DelFlag"]),
+                            SuitClientNum = Convert.ToString(idr["DelFlag"]),
+                            MeetLimit = string.IsNullOrEmpty(Convert.ToString(idr["MeetLimit"])) ? 0 : Convert.ToInt32(idr["MeetLimit"]),
+                            Regular = string.IsNullOrEmpty(Convert.ToString(idr["Regular"])) ? 0 : Convert.ToInt32(idr["Regular"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                            IsSuperPosition = string.IsNullOrEmpty(Convert.ToString(idr["IsSuperPosition"])) ? 0 : Convert.ToInt32(idr["IsSuperPosition"]),
+                            CouponType = string.IsNullOrEmpty(Convert.ToString(idr["CouponType"])) ? 0 : Convert.ToInt32(idr["CouponType"]),
+                            SuppClientNum = string.IsNullOrEmpty(Convert.ToString(idr["SuppClientNum"])) ? 0 : Convert.ToInt32(idr["SuppClientNum"]),
+                            IssueCoupon = string.IsNullOrEmpty(Convert.ToString(idr["IssueCoupon"])) ? 0 : Convert.ToInt32(idr["IssueCoupon"]),
+                            ServiceTime = string.IsNullOrEmpty(Convert.ToString(idr["ServiceTime"])) ? 0 : Convert.ToInt32(idr["ServiceTime"]),
+                            IssueGiveaway = string.IsNullOrEmpty(Convert.ToString(idr["IssueGiveaway"])) ? 0 : Convert.ToInt32(idr["IssueGiveaway"]),
+                            IsFollowQuantity= string.IsNullOrEmpty(Convert.ToString(idr["IsFollowQuantity"])) ? 0 : Convert.ToInt32(idr["IsFollowQuantity"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 根据ID查询规则
+        /// </summary>
+        /// <param name="RuleID"></param>
+        /// <returns></returns>
+        public CargoRuleBankEntity QueryRuleBank(long RuleID, string RuleType)
+        {
+            CargoRuleBankEntity result = new CargoRuleBankEntity();
+            string strSQL = "Select * From Tbl_Cargo_RuleBank Where ID=@ID";
+            if (!string.IsNullOrEmpty(RuleType))
+            {
+                strSQL += " and RuleType=@RuleType";
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@ID", DbType.Int64, RuleID);
+                if (!string.IsNullOrEmpty(RuleType))
+                {
+                    conn.AddInParameter(command, "@RuleType", DbType.String, RuleType);
+                }
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.ID = Convert.ToInt64(idr["ID"]);
+                        result.ProductID = Convert.ToInt64(idr["ProductID"]);
+                        result.Title = Convert.ToString(idr["Title"]);
+                        result.RuleName = Convert.ToString(idr["RuleName"]);
+                        result.RuleType = Convert.ToString(idr["RuleType"]);
+                        result.StartDate = Convert.ToDateTime(idr["StartDate"]);
+                        result.EndDate = Convert.ToDateTime(idr["EndDate"]);
+                        result.TypeID = Convert.ToInt32(idr["TypeID"]);
+                        result.LoadIndex = Convert.ToString(idr["LoadIndex"]);
+                        result.Specs = Convert.ToString(idr["Specs"]).Trim();
+                        result.Figure = Convert.ToString(idr["Figure"]).Trim();
+                        result.SpeedLevel = Convert.ToString(idr["SpeedLevel"]).Trim();
+                        result.StartBatch = Convert.ToInt32(idr["StartBatch"]);
+                        result.EndBatch = Convert.ToInt32(idr["EndBatch"]);
+                        result.FullEntry = Convert.ToInt32(idr["FullEntry"]);
+                        result.CutEntry = Convert.ToDecimal(idr["CutEntry"]);
+                        result.HouseID = Convert.ToInt32(idr["HouseID"]);
+                        result.LimitNum = Convert.ToInt32(idr["LimitNum"]);
+                        result.SaleEntry = Convert.ToDecimal(idr["SaleEntry"]);
+                        result.DelFlag = Convert.ToString(idr["DelFlag"]);
+                        result.UseTypeID = Convert.ToString(idr["UseTypeID"]);
+                        result.UseTypeName = Convert.ToString(idr["UseTypeName"]);
+                        result.OP_DATE = Convert.ToDateTime(idr["OP_DATE"]);
+                        result.MeetLimit = string.IsNullOrEmpty(Convert.ToString(idr["MeetLimit"])) ? 0 : Convert.ToInt32(idr["MeetLimit"]);
+                        result.Regular = string.IsNullOrEmpty(Convert.ToString(idr["Regular"])) ? 0 : Convert.ToInt32(idr["Regular"]);
+                        result.SuitClientNum = Convert.ToString(idr["SuitClientNum"]);
+                        result.IsSuperPosition = string.IsNullOrEmpty(Convert.ToString(idr["IsSuperPosition"])) ? 0 : Convert.ToInt32(idr["IsSuperPosition"]);
+                        result.IsFollowQuantity = string.IsNullOrEmpty(Convert.ToString(idr["IsFollowQuantity"])) ? 0 : Convert.ToInt32(idr["IsFollowQuantity"]); 
+                        result.CouponType = string.IsNullOrEmpty(Convert.ToString(idr["CouponType"])) ? 0 : Convert.ToInt32(idr["CouponType"]);
+                        result.SuppClientNum = string.IsNullOrEmpty(Convert.ToString(idr["SuppClientNum"])) ? 0 : Convert.ToInt32(idr["SuppClientNum"]);
+                        result.IssueCoupon = string.IsNullOrEmpty(Convert.ToString(idr["IssueCoupon"])) ? 0 : Convert.ToInt32(idr["IssueCoupon"]);
+                        result.ServiceTime = string.IsNullOrEmpty(Convert.ToString(idr["ServiceTime"])) ? 0 : Convert.ToInt32(idr["ServiceTime"]);
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 删除 规则
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelRuleBank(List<CargoRuleBankEntity> entity)
+        {
+            foreach (var it in entity)
+            {
+                string strSQL = @"Delete from Tbl_Cargo_RuleBank where ID=@ID ";
+
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ID", DbType.Int64, it.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+        }
+        #region 富添盛产品价格维护
+        /// <summary>
+        /// 查询基础数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductPriceEntity> QueryCargoProductPrice(CargoProductPriceEntity entity)
+        {
+            List<CargoProductPriceEntity> result = new List<CargoProductPriceEntity>();
+            string strSQL = "select * from Tbl_Cargo_ProductPrice a where (1=1) ";
+            if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and a.ProductCode = '" + entity.ProductCode + "'"; }
+            if (!string.IsNullOrEmpty(entity.ProductName)) { strSQL += " and a.ProductName = '" + entity.ProductName + "'"; }
+            if (!string.IsNullOrEmpty(entity.PriceType)) { strSQL += " and a.PriceType = '" + entity.PriceType + "'"; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        #region 获取运单数据
+                        result.Add(new CargoProductPriceEntity
+                        {
+                            ID = Convert.ToInt32(idr["ID"]),
+                            ProductCode = Convert.ToString(idr["ProductCode"]),
+                            ProductName = Convert.ToString(idr["ProductName"]),
+                            PriceType = Convert.ToString(idr["PriceType"]),
+                            CostPrice = Convert.ToDecimal(idr["CostPrice"]),
+                            SalePriceClient = Convert.ToDecimal(idr["SalePriceClient"]),
+                            CostPriceStore = Convert.ToDecimal(idr["CostPriceStore"]),
+                            OutPackType = Convert.ToString(idr["OutPackType"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                        });
+                        #endregion
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 查询产品价格数据 
+        /// </summary>
+        public Hashtable QueryCargoProductPriceFTS(int pIndex, int pNum, CargoProductPriceEntity entity)
+        {
+            List<CargoProductPriceEntity> result = new List<CargoProductPriceEntity>();
+            Hashtable resHT = new Hashtable();
+            CargoProductManager pro = new CargoProductManager();
+            try
+            {
+                entity.EnSafe();
+                #region 组装查询SQL语句
+                string strSQL = @"SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OP_DATE DESC) AS RowNumber,a.* From Tbl_Cargo_ProductPrice as a Where (1=1) ";
+                //规则名称
+                if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and a.ProductCode like '%" + entity.ProductCode + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ProductName)) { strSQL += " and a.ProductName like '%" + entity.ProductName + "%'"; }
+                strSQL += " ) A WHERE RowNumber > (" + pNum + "* (" + pIndex + "-1)) order by OP_DATE desc ";
+                #endregion
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            #region 获取运单数据
+                            result.Add(new CargoProductPriceEntity
+                            {
+                                ID = Convert.ToInt32(idr["ID"]),
+                                ProductCode = Convert.ToString(idr["ProductCode"]),
+                                ProductName = Convert.ToString(idr["ProductName"]),
+                                PriceType = Convert.ToString(idr["PriceType"]),
+                                CostPrice = Convert.ToDecimal(idr["CostPrice"]),
+                                SalePriceClient = Convert.ToDecimal(idr["SalePriceClient"]),
+                                CostPriceStore = Convert.ToDecimal(idr["CostPriceStore"]),
+                                OutPackType = Convert.ToString(idr["OutPackType"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                            });
+                            #endregion
+                        }
+                    }
+                }
+                resHT["rows"] = result;
+                #region 总数目
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_ProductPrice  Where (1=1)";
+                if (!string.IsNullOrEmpty(entity.ProductCode)) { strCount += " and ProductCode like '%" + entity.ProductCode + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ProductName)) { strCount += " and ProductName like '%" + entity.ProductName + "%'"; }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0) { resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]); }
+                    }
+                }
+                #endregion
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 新增产品价格数据 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddProductPriceFTS(CargoProductPriceEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = @"INSERT INTO Tbl_Cargo_ProductPrice(ProductCode,ProductName,PriceType,CostPrice,SalePriceClient,CostPriceStore,OutPackType) VALUES (@ProductCode,@ProductName,@PriceType,@CostPrice,@SalePriceClient,@CostPriceStore,@OutPackType)";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ProductCode", DbType.String, entity.ProductCode);
+                    conn.AddInParameter(cmd, "@ProductName", DbType.String, entity.ProductName);
+                    conn.AddInParameter(cmd, "@PriceType", DbType.String, entity.PriceType);
+                    conn.AddInParameter(cmd, "@CostPrice", DbType.Decimal, entity.CostPrice);
+                    conn.AddInParameter(cmd, "@SalePriceClient", DbType.Decimal, entity.SalePriceClient);
+                    conn.AddInParameter(cmd, "@CostPriceStore", DbType.Decimal, entity.CostPriceStore);
+                    conn.AddInParameter(cmd, "@OutPackType", DbType.String, entity.OutPackType);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改产品价格
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductPriceFTS(CargoProductPriceEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = @"UPDATE Tbl_Cargo_ProductPrice Set ProductName=@ProductName,ProductCode=@ProductCode,PriceType=@PriceType,CostPrice=@CostPrice,SalePriceClient=@SalePriceClient,CostPriceStore=@CostPriceStore,OutPackType=@OutPackType Where ID=@ID";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                    conn.AddInParameter(cmd, "@ProductCode", DbType.String, entity.ProductCode);
+                    conn.AddInParameter(cmd, "@ProductName", DbType.String, entity.ProductName);
+                    conn.AddInParameter(cmd, "@PriceType", DbType.String, entity.PriceType);
+                    conn.AddInParameter(cmd, "@CostPrice", DbType.Decimal, entity.CostPrice);
+                    conn.AddInParameter(cmd, "@SalePriceClient", DbType.Decimal, entity.SalePriceClient);
+                    conn.AddInParameter(cmd, "@CostPriceStore", DbType.Decimal, entity.CostPriceStore);
+                    conn.AddInParameter(cmd, "@OutPackType", DbType.String, entity.OutPackType);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 判断仓库名是否存在 true:表示存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns>true:表示存在</returns>
+        public bool IsExistProductPrice(CargoProductPriceEntity entity)
+        {
+            string strQ = @"Select ProductCode from Tbl_Cargo_ProductPrice Where ProductCode=@ProductCode and PriceType=@PriceType";
+            using (DbCommand cmdQ = conn.GetSqlStringCommond(strQ))
+            {
+                conn.AddInParameter(cmdQ, "@ProductCode", DbType.String, entity.ProductCode);
+                conn.AddInParameter(cmdQ, "@PriceType", DbType.String, entity.PriceType);
+                using (DataTable idr = conn.ExecuteDataTable(cmdQ))
+                {
+                    if (idr == null)
+                    {
+                        return false;
+                    }
+                    if (idr.Rows.Count <= 0)
+                    {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+        /// <summary>
+        /// 删除产品价格
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelProductPrice(List<CargoProductPriceEntity> entity)
+        {
+            try
+            {
+                foreach (var it in entity)
+                {
+                    string strSQL = @"Delete from Tbl_Cargo_ProductPrice where ID=@ID";
+
+                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    {
+                        conn.AddInParameter(cmd, "@ID", DbType.Int32, it.ID);
+                        conn.ExecuteNonQuery(cmd);
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 保存导入的数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void SaveProductPriceData(List<CargoProductPriceEntity> entity)
+        {
+            foreach (var it in entity)
+            {
+                if (it.CHClientPrice != 0)
+                {
+                    it.PriceType = "5";
+                    it.SalePriceClient = it.CHClientPrice;
+                    it.CostPriceStore = it.CHStorePrice;
+                    DataTable dt = IsExistInputProductPriceData(it);
+                    if (dt.Rows.Count > 0)
+                    {
+                        int ID = Convert.ToInt32(dt.Rows[0]["ID"].ToString());
+                        it.ID = ID;
+                        UpdateProductPriceFTS(it);
+                    }
+                    else
+                    {
+                        AddProductPriceFTS(it);
+                    }
+                }
+                if (it.SMClientPrice != 0)
+                {
+                    it.PriceType = "6";
+                    it.SalePriceClient = it.SMClientPrice;
+                    it.CostPriceStore = it.SMStorePrice;
+                    DataTable dt = IsExistInputProductPriceData(it);
+                    if (dt.Rows.Count > 0)
+                    {
+                        int ID = Convert.ToInt32(dt.Rows[0]["ID"].ToString());
+                        it.ID = ID;
+                        UpdateProductPriceFTS(it);
+                    }
+                    else
+                    {
+                        AddProductPriceFTS(it);
+                    }
+                }
+                if (it.DefaultClientPrice != 0)
+                {
+                    it.PriceType = "7";
+                    it.SalePriceClient = it.DefaultClientPrice;
+                    it.CostPriceStore = it.DefaultStorePrice;
+                    DataTable dt = IsExistInputProductPriceData(it);
+                    if (dt.Rows.Count > 0)
+                    {
+                        int ID = Convert.ToInt32(dt.Rows[0]["ID"].ToString());
+                        it.ID = ID;
+                        UpdateProductPriceFTS(it);
+                    }
+                    else
+                    {
+                        AddProductPriceFTS(it);
+                    }
+                }
+                if (it.QHClientPrice != 0)
+                {
+                    it.PriceType = "10";
+                    it.SalePriceClient = it.QHClientPrice;
+                    it.CostPriceStore = it.QHStorePrice;
+                    DataTable dt = IsExistInputProductPriceData(it);
+                    if (dt.Rows.Count > 0)
+                    {
+                        int ID = Convert.ToInt32(dt.Rows[0]["ID"].ToString());
+                        it.ID = ID;
+                        UpdateProductPriceFTS(it);
+                    }
+                    else
+                    {
+                        AddProductPriceFTS(it);
+                    }
+                }
+            }
+        }
+        /// <summary>
+        /// 查询是否存在当前导入数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public DataTable IsExistInputProductPriceData(CargoProductPriceEntity entity)
+        {
+            string strSQL = "select * from Tbl_Cargo_ProductPrice a where (1=1) ";
+            if (!string.IsNullOrEmpty(entity.ProductCode))
+            {
+                strSQL += " and a.ProductCode = '" + entity.ProductCode + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.ProductName))
+            {
+                strSQL += " and a.ProductName = '" + entity.ProductName + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.PriceType))
+            {
+                strSQL += " and a.PriceType = '" + entity.PriceType + "'";
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                return conn.ExecuteDataTable(command);
+            }
+        }
+        #endregion
+
+        /// <summary>
+        /// 修改产品销售价格
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <remark>根据规格类型SpecsType区分修改"次日达库存产品"或"即日达库存产品"</remark>
+        public void UpdateProductSalePrice(CargoProductEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_Product set SalePrice=@SalePrice,InHousePrice=@InHousePrice where ProductCode=@ProductCode and BatchYear=@BatchYear and SpecsType = @SpecsType and HouseID=@HouseID and SuppClientNum=@SuppClientNum";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@InHousePrice", DbType.Decimal, entity.InHousePrice);
+                    conn.AddInParameter(cmd, "@SalePrice", DbType.Decimal, entity.SalePrice);
+                    conn.AddInParameter(cmd, "@ProductCode", DbType.String, entity.ProductCode);
+                    conn.AddInParameter(cmd, "@BatchYear", DbType.Int32, entity.BatchYear);
+                    conn.AddInParameter(cmd, "@SpecsType", DbType.String, entity.SpecsType);
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@SuppClientNum", DbType.Int64, entity.SuppClientNum);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 查询基础价格和加价比例
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoProductBasicPriceEntity QueryBasicPriceEntity(CargoProductBasicPriceEntity entity)
+        {
+            CargoProductBasicPriceEntity result = new CargoProductBasicPriceEntity();
+            string strSQL = "select a.UnitPrice,a.InHousePrice,ProductCode,ISNULL(b.UpRate,0) as UpRate,ISNULL(b.UpMoney,0) as UpMoney,ISNULL(b.HouseID,0) as HouseID From Tbl_Cargo_ProductBasicPrice as a left join Tbl_Cargo_HouseBrandPrice as b on a.TypeID=b.TypeID and a.CloudHouseType=b.CloudHouseType where (1=1) ";
+            if (!string.IsNullOrEmpty(entity.CloudHouseType)) { strSQL += " and a.CloudHouseType='" + entity.CloudHouseType + "'"; }
+            if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and a.ProductCode='" + entity.ProductCode + "'"; }
+            if (!string.IsNullOrEmpty(entity.ProYear)) { strSQL += " and a.ProYear=" + Convert.ToInt32(entity.ProYear); }
+            if (!string.IsNullOrEmpty(entity.ProMonth)) { strSQL += " and a.ProMonth=" + Convert.ToInt32(entity.ProMonth); }
+            //if (!entity.HouseID.Equals(0)) { strSQL += " and b.HouseID=" + entity.HouseID; }
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(cmd))
+                {
+                    if (dd.Rows.Count > 0)
+                    {
+                        //先判断有没有本仓库的加价策略数据，有按本仓库的加价进行加价，没有则按默认的千分之9加价
+                        //表明存在该仓库的加价策略数据
+                        //按比例加价不等于0 按比例进行加价，再加上按固定金额加价。如果二者都等于0则按默认千分之9加价
+                        DataRow[] drArray = dd.Select("HouseID=" + entity.HouseID + "");
+                        if (drArray.Length > 0)
+                        {
+                            result.UnitPrice = Convert.ToDouble(drArray[0]["UnitPrice"]);
+                            result.InHousePrice = Convert.ToDouble(drArray[0]["InHousePrice"]);
+                            result.ProductCode = Convert.ToString(drArray[0]["ProductCode"]);
+                            result.UpRate = Convert.ToDecimal(drArray[0]["UpRate"]);
+                            result.UpMoney = Convert.ToDecimal(drArray[0]["UpMoney"]);
+                            decimal salePrice = Convert.ToDecimal(Math.Ceiling(Convert.ToDouble(drArray[0]["InHousePrice"]) * (Convert.ToDouble(drArray[0]["UpRate"]) / 100) + Convert.ToDouble(drArray[0]["InHousePrice"])));
+
+                            result.SalePrice = Convert.ToDouble(salePrice + Convert.ToDecimal(drArray[0]["UpMoney"]));
+                        }
+                        else
+                        {
+                            foreach (DataRow idr in dd.Rows)
+                            {
+                                result.UnitPrice = Convert.ToDouble(idr["UnitPrice"]);
+                                result.InHousePrice = Convert.ToDouble(idr["InHousePrice"]);
+                                result.ProductCode = Convert.ToString(idr["ProductCode"]);
+                                result.UpRate = Convert.ToDecimal(idr["UpRate"]);
+                                result.UpMoney = Convert.ToDecimal(idr["UpMoney"]);
+                                result.SalePrice = Convert.ToDouble(Math.Ceiling(Convert.ToDouble(idr["InHousePrice"]) * 1.009));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        #region 价格修改操作方法集合
+        /// <summary>
+        /// 查询价格修改数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        /// <exception cref="ApplicationException"></exception>
+        public Hashtable QueryPriceModifyData(int pIndex, int pNum, CargoPriceModifyEntity entity)
+        {
+            List<CargoPriceModifyEntity> result = new List<CargoPriceModifyEntity>();
+
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OPDate DESC) AS RowNumber,a.*,b.Name as HouseName ,c.Specs,c.Figure,c.GoodsCode,c.LoadIndex,c.SpeedLevel,c.ProductName,d.TypeName,d.TypeParentName From Tbl_Cargo_PriceModify as a inner join \r\nTbl_Cargo_House as b on a.HouseID=b.HouseID inner join Tbl_Cargo_ProductSpec as c on a.ProductCode=c.ProductCode inner join Tbl_Cargo_ProductType as d on c.TypeID=d.TypeID WHERE (1=1)";
+
+                if (!string.IsNullOrEmpty(entity.UserName)) { strSQL += " and a.UserName like '%" + entity.UserName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.PriceType)) { strSQL += " and a.PriceType = '" + entity.PriceType + "'"; }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and a.HouseID=" + entity.HouseID; }
+
+                //规格
+                if (!string.IsNullOrEmpty(entity.Specs))
+                {
+                    //strSQL += " and a.Specs like '%" + entity.Specs + "%'";
+                    string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "");
+                    if (res.Length <= 3)
+                    {
+                        if (!string.IsNullOrEmpty(res)) { strSQL += " and c.Specs like '%" + res + "%'"; }
+                    }
+                    if (res.Length > 3 && res.Length <= 5)
+                    {
+                        strSQL += " and (c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or c.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
+                    }
+                    if (res.Length > 5)
+                    {
+                        strSQL += " and (c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
+                    }
+                }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.OPDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.OPDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoPriceModifyEntity
+                            {
+                                MID = Convert.ToInt64(idr["MID"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                LoginName = Convert.ToString(idr["LoginName"]),
+                                UserName = Convert.ToString(idr["UserName"]),
+                                ModifySource = Convert.ToString(idr["ModifySource"]),
+                                PriceType = Convert.ToString(idr["PriceType"]),
+                                OldPrice = Convert.ToDecimal(idr["OldPrice"]),
+                                NewPrice = Convert.ToDecimal(idr["NewPrice"]),
+                                ProductCode = Convert.ToString(idr["ProductCode"]),
+                                ProductName = Convert.ToString(idr["ProductName"]),
+                                Specs = Convert.ToString(idr["Specs"]),
+                                Figure = Convert.ToString(idr["Figure"]),
+                                GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                                LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                                SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                                ParentName = Convert.ToString(idr["ParentName"]),
+                                TypeName = Convert.ToString(idr["TypeName"]),
+                                OPDate = Convert.ToDateTime(idr["OPDate"])
+                            });
+                        }
+                    }
+                }
+
+                resHT["rows"] = result;
+
+                string strCount = @"Select Count(*) as TotalCount from From Tbl_Cargo_PriceModify as a inner join 
+Tbl_Cargo_House as b on a.HouseID=b.HouseID inner join Tbl_Cargo_ProductSpec as c on a.ProductCode=c.ProductCode inner join Tbl_Cargo_ProductType as d on c.TypeID=d.TypeID Where (1=1)";
+
+                if (!string.IsNullOrEmpty(entity.UserName)) { strCount += " and a.UserName like '%" + entity.UserName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.PriceType)) { strCount += " and a.PriceType = '" + entity.PriceType + "'"; }
+                if (!entity.HouseID.Equals(0)) { strCount += " and a.HouseID=" + entity.HouseID; }
+
+                //规格
+                if (!string.IsNullOrEmpty(entity.Specs))
+                {
+                    //strSQL += " and a.Specs like '%" + entity.Specs + "%'";
+                    string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "");
+                    if (res.Length <= 3)
+                    {
+                        if (!string.IsNullOrEmpty(res)) { strCount += " and c.Specs like '%" + res + "%'"; }
+                    }
+                    if (res.Length > 3 && res.Length <= 5)
+                    {
+                        strCount += " and (c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or c.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
+                    }
+                    if (res.Length > 5)
+                    {
+                        strCount += " and (c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
+                    }
+                }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.OPDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.OPDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+
+        /// <summary>
+        /// 新增产品价格修改异常记录数据表
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddPriceModify(CargoPriceModifyEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = "  INSERT INTO Tbl_Cargo_PriceModify(OPDate,HouseID,LoginName,UserName,ModifySource,ProductCode,OldPrice,NewPrice,PriceType) VALUES (@OPDate,@HouseID,@LoginName,@UserName,@ModifySource,@ProductCode,@OldPrice,@NewPrice,@PriceType)";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@OPDate", DbType.DateTime, DateTime.Now);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@LoginName", DbType.String, entity.LoginName);
+                conn.AddInParameter(cmd, "@UserName", DbType.String, entity.UserName);
+                conn.AddInParameter(cmd, "@ModifySource", DbType.Int32, entity.ModifySource);
+                conn.AddInParameter(cmd, "@ProductCode", DbType.String, entity.ProductCode);
+                conn.AddInParameter(cmd, "@OldPrice", DbType.Double, entity.OldPrice);
+                conn.AddInParameter(cmd, "@NewPrice", DbType.Double, entity.NewPrice);
+                conn.AddInParameter(cmd, "@PriceType", DbType.Int32, entity.PriceType);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+
+        #endregion
+
+    }
+}

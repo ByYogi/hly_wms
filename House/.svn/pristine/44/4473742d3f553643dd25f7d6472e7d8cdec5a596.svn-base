@@ -1,0 +1,49 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    public class NoticeEntity
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public int code { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public NoticeInfo data { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string msg { get; set; }
+    }
+    public class NoticeInfo
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public List<NoticeListInfo> dataList { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string title { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string content { get; set; }
+    }
+    public class NoticeListInfo
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public int id { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string title { get; set; }
+    }
+}

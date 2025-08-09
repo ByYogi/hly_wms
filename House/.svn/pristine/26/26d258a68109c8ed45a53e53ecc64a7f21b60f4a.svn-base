@@ -1,0 +1,170 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 采购商数据实体
+    /// </summary>
+    [Serializable]
+    public class CargoPurchaserEntity
+    {
+        [Description("表主键")]
+        public long PurchaserID { get; set; }
+        [Description("订单编号")]
+        public string OrderNo { get; set; }
+        [Description("订单数量")]
+        public string Piece { get; set; }
+        [Description("采购商名称")]
+        public string PurchaserName { get; set; }
+        [Description("采购商简称")]
+        public string PurchaserShortName { get; set; }
+        [Description("采购商类型")]
+        public int PurchaserType { get; set; }
+        public string PurchaserTypeName { get; set; }
+        [Description("采购商地址")]
+        public string Address { get; set; }
+        [Description("采购商电话")]
+        public string Telephone { get; set; }
+        [Description("采购商负责人")]
+        public string Boss { get; set; }
+        [Description("联系手机")]
+        public string Cellphone { get; set; }
+        [Description("删除标识")]
+        public int DelFlag { get; set; }
+        [Description("操作人员")]
+        public string OP_ID { get; set; }
+        [Description("操作时间")]
+        public DateTime OP_DATE { get; set; }
+        [Description("备注")]
+        public string Remark { get; set; }
+        public string PurchaserStatus { get; set; }
+        /// <summary>
+        /// 所在城市
+        /// </summary>
+        public string City { get; set; }
+        /// <summary>
+        /// 所在省份
+        /// </summary>
+        public string Province { get; set; }
+        /// <summary>
+        /// 所在区
+        /// </summary>
+        public string Country { get; set; }
+        /// <summary>
+        /// 所在仓库
+        /// </summary>
+        public int HouseID { get; set; }
+        public string HouseIDStr { get; set; }
+        /// <summary>
+        /// 所在仓库名称
+        /// </summary>
+        public string HouseName { get; set; }
+        public decimal LogisFee { get; set; }
+        [Description("地址经度")]
+        public string Longitude { get; set; }
+        [Description("地址纬度")]
+        public string Latitude { get; set; }
+        public int CheckOutType { get; set; }
+        public string CheckOutName { get; set; }
+        /// <summary>
+        /// 新增时间
+        /// </summary>
+        public string AddData { get; set; }
+        /// <summary>
+        /// 营业执照(统一社会信息代码)
+        /// </summary>
+        public string SocialCreditCode { get; set; }
+        /// <summary>
+        /// 法人
+        /// </summary>
+        public string LegalPerson { get; set; }
+        /// <summary>
+        /// 供应商评价
+        /// </summary>
+        public string SupplierEvaluation { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+    /// <summary>
+    /// 采购商提货地址实体
+    /// </summary>
+    [Serializable]
+    public class CargoPurchaserDeliveryAddressEntity
+    {
+        [Description("表主键")]
+        public long DAID { get; set; }
+        [Description("采购商ID")]
+        public long PurchaserID { get; set; }
+        [Description("采购商名称")]
+        public string PurchaserName { get; set; }
+        [Description("提货单位")]
+        public string DeliveryName { get; set; }
+        [Description("提货地址")]
+        public string DeliveryAddress { get; set; }
+        [Description("提货手机")]
+        public string DeliveryTelephone { get; set; }
+        [Description("提货联系人")]
+        public string DeliveryBoss { get; set; }
+        [Description("提货电话")]
+        public string DeliveryCellphone { get; set; }
+        [Description("备注")]
+        public string DeliveryRemark { get; set; }
+        [Description("提货城市")]
+        public string DeliveryCity { get; set; }
+        [Description("提货区县")]
+        public string DeliveryCountry { get; set; }
+        [Description("提货省份")]
+        public string DeliveryProvince { get; set; }
+        [Description("地址经度")]
+        public string Longitude { get; set; }
+        [Description("地址纬度")]
+        public string Latitude { get; set; }
+        [Description("删除标识")]
+        public int DelFlag { get; set; }
+        [Description("操作时间")]
+        public DateTime OP_DATE { get; set; }
+        [Description("采购商负责人")]
+        public string Boss { get; set; }
+        [Description("联系手机")]
+        public string Cellphone { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

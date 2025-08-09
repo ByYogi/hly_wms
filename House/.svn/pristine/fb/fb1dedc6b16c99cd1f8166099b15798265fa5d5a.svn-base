@@ -1,0 +1,82 @@
+﻿using House.Entity.Cargo.Product;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 1.4.29.	Tbl_Cargo_SuppClientAccountGoods（供应商账单明细数据表）
+    /// </summary>
+    [Serializable]
+    public class CargoSuppClientAccountGoodsEntity
+    {
+        [Description("表主键")]
+        public long ID { get; set; }
+
+        [Description("账单号")]
+        public string AccountNO { get; set; }
+
+        [Description("订单号")]
+        public string OrderNo { get; set; }
+
+        [Description("产品ID")]
+        public int ProductID { get; set; }
+
+        [Description("金额")]
+        public decimal Total { get; set; }
+
+        [Description("优惠卷金额")]
+        public decimal InsuranceFee { get; set; }
+
+        [Description("仓库超期费")]
+        public decimal OverDueFee { get; set; }
+
+        [Description("出仓费")]
+        public decimal OutStorageFee { get; set; }
+
+        [Description("物流费用")]
+        public decimal DeliveryFee { get; set; }
+
+        [Description("退仓费")]
+        public decimal StoReleaseFee { get; set; }
+        [Description("其他费用")]
+        public decimal OtherFee { get; set; }
+        public decimal OtherExpensesFee { get; set; }
+        /// <summary>
+        /// 配送费
+        /// </summary>
+        public decimal TransitFee { get; set; }
+        public string OrderModel { get; set; }
+        public int ClientID { get; set; }
+        public string ClientNum { get; set; }
+        public int HouseID { get; set; }
+        public string HouseName { get; set; }
+        public int IsSupplierType { get; set; }
+        public int IsHouseType { get; set; }
+        public string Memo { get; set; }
+
+        public List<string> OrderNoList { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

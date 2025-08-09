@@ -1,0 +1,2577 @@
+﻿using System;
+using House.Business;
+using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Drawing.Design;
+using Senparc.Weixin.MP.TenPayLibV3;
+using Org.BouncyCastle.Asn1.Ocsp;
+using NPOI.HSSF.Record.Formula.Functions;
+
+namespace Cargo.Report
+{
+    public partial class reportApi : BasePage
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            string methodName = string.Empty;
+            try
+            {
+                methodName = Request["method"];
+                if (String.IsNullOrEmpty(methodName)) return;
+                Type type = this.GetType();
+                MethodInfo method = type.GetMethod(methodName);
+                method.Invoke(this, null);
+            }
+            catch (Exception ex)
+            {
+                LogBus bus = new LogBus();
+                LogEntity log = new LogEntity();
+                log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+                log.Operate = "";
+                log.Moudle = "";
+                log.Status = "1";
+                log.NvgPage = "";
+                log.UserID = UserInfor.LoginName.Trim();
+                log.Memo = methodName + " " + ex.Message + " " + ex.StackTrace;
+                bus.InsertLog(log);
+            }
+        }
+
+        #region 仓库盘点操作方法集合
+        /// <summary>
+        /// 仓库盘点数据查询
+        /// </summary>
+        public void QueryHouseStocktaking()
+        {
+            CargoStocktakingEntity queryEntity = new CargoStocktakingEntity();
+            if (!string.IsNullOrEmpty(Request["HID"]))
+            {
+                //queryEntity.HouseID = Convert.ToInt32(Request["HID"]);
+                queryEntity.CargoPermisID = Convert.ToString(Request["HID"]);
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoStocktakingEntity> list = bus.QueryHouseStocktaking(queryEntity);
+
+            string str = string.Empty;
+            if (list.Count > 0)
+            {
+                var parList = list.GroupBy(c => c.ParentName, c => c);
+                int total = 0;
+                str += "{\"total\":" + list.Count.ToString() + ",\"rows\":[";
+                foreach (var item in parList)
+                {
+                    List<CargoStocktakingEntity> dd = item.ToList();
+                    str += "{\"id\":" + dd[0].ParentID.ToString() + ",\"region\":\"" + item.Key + "\",\"iconCls\":\"icon-brick\",\"f1\":" + dd.Sum(c => c.InCargoPiece) + "},";
+                    foreach (var it in list)
+                    {
+                        if (it.ParentName.Equals(item.Key))//说明是下面的子区
+                        {
+                            str += "{\"id\":" + it.AreaID.ToString() + ",\"region\":\"" + it.AreaName + "\",\"f1\":" + it.InCargoPiece.ToString() + ",\"_parentId\":" + dd[0].ParentID.ToString() + ",\"iconCls\":\"icon-brick\"},";
+                            total += it.InCargoPiece;
+                        }
+                    }
+                }
+                str = str.Substring(0, str.Length - 1);
+                str += "],\"footer\":[{\"region\":\"总共：\",\"f1\":" + total + ",\"iconCls\":\"icon-brick\"}]";
+                str += "}";
+            }
+
+            //JSON
+            String json = JSON.Encode(str);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 按产品分类统计盘点仓库数量
+        /// </summary>
+        public void QueryHouseStockByType()
+        {
+            CargoStocktakingEntity queryEntity = new CargoStocktakingEntity();
+            if (!string.IsNullOrEmpty(Request["HID"]))
+            {
+                //queryEntity.HouseID = Convert.ToInt32(Request["HID"]);
+                queryEntity.CargoPermisID = Convert.ToString(Request["HID"]);
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoStocktakingEntity> list = bus.QueryHouseStockByType(queryEntity);
+
+            string str = string.Empty;
+            if (list.Count > 0)
+            {
+                var parList = list.GroupBy(c => c.ParentName, c => c);
+                int total = 0;
+                str += "{\"total\":" + list.Count.ToString() + ",\"rows\":[";
+                foreach (var item in parList)
+                {
+                    List<CargoStocktakingEntity> dd = item.ToList();
+                    str += "{\"id\":" + dd[0].ParentID.ToString() + ",\"TypeName\":\"" + item.Key + "\",\"iconCls\":\"icon-brick\",\"InPiece\":" + dd.Sum(c => c.InCargoPiece) + "},";
+                    foreach (var it in list)
+                    {
+                        if (it.ParentName.Equals(item.Key))//说明是下面的子区
+                        {
+                            str += "{\"id\":" + it.TypeID.ToString() + ",\"TypeName\":\"" + it.TypeName + "\",\"InPiece\":" + it.InCargoPiece.ToString() + ",\"_parentId\":" + dd[0].ParentID.ToString() + ",\"iconCls\":\"icon-brick\"},";
+                            total += it.InCargoPiece;
+                        }
+                    }
+                }
+                str = str.Substring(0, str.Length - 1);
+                str += "],\"footer\":[{\"TypeName\":\"总共：\",\"InPiece\":" + total + ",\"iconCls\":\"icon-brick\"}]";
+                str += "}";
+            }
+
+            //JSON
+            String json = JSON.Encode(str);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        #endregion
+        #region 每日进出库报表查询
+        /// <summary>
+        /// 查询每日的入库报表
+        /// </summary>
+        public void QueryInDailyReport()
+        {
+            CargoDailyReportEntity queryEntity = new CargoDailyReportEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            //所属仓库ID
+            if (!string.IsNullOrEmpty(Request["HouseID"]))
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//所属仓库ID
+            }
+            if (!string.IsNullOrEmpty(Request["PID"]))
+            {
+                queryEntity.FirstAreaID = Convert.ToInt32(Request["PID"]);
+            }
+            if (Convert.ToString(Request["InHouseType"]) != "-1")
+            {
+                queryEntity.InHouseType = Convert.ToString(Request["InHouseType"]);
+            }
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);//花纹
+            queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);
+            queryEntity.SourceOrderNo = Convert.ToString(Request["SourceOrderNo"]);
+            if (!string.IsNullOrEmpty(Request["APID"]))//一级分类
+            {
+                queryEntity.TypeParentID = Convert.ToInt32(Request["APID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ASID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["ASID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ProductName"]))//产品名称
+            {
+                queryEntity.ProductName = Convert.ToString(Request["ProductName"]);
+            }
+            //2021-01-21 添加公司类型查询条件
+            if (Convert.ToString(Request["BelongHouse"]) != "-1")
+            {
+                queryEntity.BelongHouse = Convert.ToString(Request["BelongHouse"]);
+            }
+            //2021-11-04 添加所属部门查询条件
+            if (Convert.ToString(Request["BelongDepart"]) != "-1")
+            {
+                queryEntity.BelongDepart = Convert.ToString(Request["BelongDepart"]);
+            }
+            //queryEntity.AwbStatus = Convert.ToString(Request["AwbStatus"]);
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDailyReportEntity> list = bus.QueryInDailyReport(queryEntity);
+            List<CargoDailyReportEntity> footlist = new List<CargoDailyReportEntity>();
+            footlist.Add(new CargoDailyReportEntity
+            {
+                InCargoID = "汇总：",
+                Piece = list.Sum(c => c.Piece),
+                Specs = "",
+                GoodsCode = ""
+            });
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = list;
+            resHT["total"] = list.Count();
+            resHT["footer"] = footlist;
+            if (list.Count > 0) { CargoDailyReport = list; }
+            //if (list.Count > 0) { CargoDailyReportType = "入库"; }
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 导出实体
+        /// </summary>
+        public List<CargoDailyReportEntity> CargoDailyReport
+        {
+            get
+            {
+                if (Session["CargoDailyReport"] == null) { Session["CargoDailyReport"] = new List<CargoDailyReportEntity>(); }
+                return (List<CargoDailyReportEntity>)(Session["CargoDailyReport"]);
+            }
+            set
+            {
+                Session["CargoDailyReport"] = value;
+            }
+        }
+        public string CargoDailyReportType
+        {
+            get
+            {
+                if (Session["CargoDailyReportType"] == null)
+                {
+                    Session["CargoDailyReportType"] = null;
+                }
+                return (string)(Session["CargoDailyReportType"]);
+            }
+            set
+            {
+                Session["CargoDailyReportType"] = value;
+            }
+        }
+        /// <summary>
+        /// 查询每日的出库报表
+        /// </summary>
+        public void QueryOutDailyReport()
+        {
+            CargoDailyReportEntity queryEntity = new CargoDailyReportEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//所属仓库ID
+            }
+            if (!string.IsNullOrEmpty(Request["PID"]))
+            {
+                queryEntity.FirstAreaID = Convert.ToInt32(Request["PID"]);
+            }
+            if (Convert.ToString(Request["AwbStatus"]) != "-1")
+            {
+                queryEntity.AwbStatus = Convert.ToString(Request["AwbStatus"]);
+            }
+            if (Convert.ToString(Request["OrderType"]) != "-1")
+            {
+                queryEntity.OrderType = Convert.ToString(Request["OrderType"]);
+            }
+            //2021-01-21 添加公司类型查询条件
+            if (Convert.ToString(Request["BelongHouse"]) != "-1")
+            {
+                queryEntity.BelongHouse = Convert.ToString(Request["BelongHouse"]);
+            }
+            //2021-11-04 添加所属部门查询条件
+            if (Convert.ToString(Request["BelongDepart"]) != "-1")
+            {
+                queryEntity.BelongDepart = Convert.ToString(Request["BelongDepart"]);
+            }
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);//花纹
+            queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);//花纹
+            if (!string.IsNullOrEmpty(Request["APID"]))//一级分类
+            {
+                queryEntity.TypeParentID = Convert.ToInt32(Request["APID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ASID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["ASID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ProductName"]))//产品名称
+            {
+                queryEntity.ProductName = Convert.ToString(Request["ProductName"]);
+            }
+            if (Convert.ToString(Request["TrafficType"]) != "-1")
+            {
+                queryEntity.TrafficType = Convert.ToString(Request["TrafficType"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ClientNum"]))
+            {
+                queryEntity.ClientNum = Convert.ToInt32(Request["ClientNum"]);
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDailyReportEntity> list = bus.QueryOutDailyReport(queryEntity);
+            List<CargoDailyReportEntity> footlist = new List<CargoDailyReportEntity>();
+            footlist.Add(new CargoDailyReportEntity
+            {
+                OutCargoID = "汇总：",
+                Piece = list.Sum(c => c.Piece)
+            });
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = list;
+            resHT["total"] = list.Count();
+            resHT["footer"] = footlist;
+            if (list.Count > 0) { CargoDailyReport = list; }
+            //if (list.Count > 0) { CargoDailyReportType = "出库"; }
+
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QueryOutDailyReportExport()
+        {
+            RuleBankReturnEntity rbrEntity = new RuleBankReturnEntity();
+            rbrEntity.Result = true;
+            try
+            {
+                string StartDate = Request["StartDate"];
+                string EndDate = Request["EndDate"];
+                string AwbStatus = Request["AwbStatus"];
+                string PID = Request["PID"];
+                string APID = Request["APID"];
+                string ASID = Request["ASID"];
+                string Specs = Request["Specs"];
+                string Figure = Request["Figure"];
+                string ProductName = Request["ProductName"];
+                string BelongHouse = Request["BelongHouse"];
+                string HouseID = Request["HouseID"];
+                CargoDailyReportEntity queryEntity = new CargoDailyReportEntity();
+                if (!string.IsNullOrEmpty(StartDate)) { queryEntity.StartDate = Convert.ToDateTime(StartDate); }
+                if (!string.IsNullOrEmpty(EndDate)) { queryEntity.EndDate = Convert.ToDateTime(EndDate); }
+                //queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+                if (!string.IsNullOrEmpty(HouseID) && HouseID != "undefined")//一级分类
+                {
+                    queryEntity.CargoPermisID = HouseID;//所属仓库ID
+                }
+                else
+                {
+                    queryEntity.CargoPermisID = UserInfor.CargoPermisID;//所属仓库ID
+                }
+                if (!string.IsNullOrEmpty(PID))
+                {
+                    queryEntity.FirstAreaID = Convert.ToInt32(PID);
+                }
+                if (AwbStatus != "-1" && AwbStatus != "undefined")
+                {
+                    queryEntity.AwbStatus = AwbStatus;
+                }
+                //2021-01-21 添加公司类型查询条件
+                if (BelongHouse != "-1" && BelongHouse != "undefined")
+                {
+                    queryEntity.BelongHouse = BelongHouse;
+                }
+                if (Specs == null) { Specs = ""; }
+                string spe = Specs.ToUpper();
+                if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+                {
+                    queryEntity.Specs = spe;
+                }
+                else
+                {
+                    if (spe.Length <= 3)
+                    {
+                        queryEntity.Specs = spe;
+                    }
+                    if (spe.Length > 3 && spe.Length <= 5)
+                    {
+                        queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                    }
+                    if (spe.Length > 5)
+                    {
+                        queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                    }
+                }
+                queryEntity.Figure = Figure;//花纹
+                if (!string.IsNullOrEmpty(APID))//一级分类
+                {
+                    queryEntity.TypeParentID = Convert.ToInt32(APID);
+                }
+                if (!string.IsNullOrEmpty(ASID))//二级分类
+                {
+                    queryEntity.TypeID = Convert.ToInt32(ASID);
+                }
+                if (!string.IsNullOrEmpty(ProductName))//产品名称
+                {
+                    queryEntity.ProductName = ProductName;
+                }
+                queryEntity.Size = "导出";
+                if (CargoDailyReportType == "入库")
+                {
+                    CargoReportBus bus = new CargoReportBus();
+                    List<CargoDailyReportEntity> list = bus.QueryInDailyReport(queryEntity);
+                    if (list.Count > 0) { CargoDailyReport = list; }
+                }
+                else if (CargoDailyReportType == "出库")
+                {
+
+                    CargoReportBus bus = new CargoReportBus();
+                    List<CargoDailyReportEntity> list = bus.QueryOutDailyReport(queryEntity);
+                    if (list.Count > 0) { CargoDailyReport = list; }
+                }
+            }
+            catch (Exception ex)
+            {
+                rbrEntity.Result = false;
+            }
+            string res = JSON.Encode(rbrEntity);
+            Response.Write(res);
+
+        }
+
+
+        /// <summary>
+        /// 查询每日出库的预警库存报表
+        /// </summary>
+        public void QueryStockDailyReport()
+        {
+            CargoDailyReportEntity queryEntity = new CargoDailyReportEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//所属仓库ID
+            }
+            if (!string.IsNullOrEmpty(Request["PID"]))
+            {
+                queryEntity.FirstAreaID = Convert.ToInt32(Request["PID"]);
+            }
+            queryEntity.Specs = Convert.ToString(Request["Specs"]);//规格
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);//花纹
+            if (!string.IsNullOrEmpty(Request["APID"]))//一级分类
+            {
+                queryEntity.TypeParentID = Convert.ToInt32(Request["APID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ASID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["ASID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ProductName"]))//产品名称
+            {
+                queryEntity.ProductName = Convert.ToString(Request["ProductName"]);
+            }
+            queryEntity.Meridian = Convert.ToString(Request["Meridian"]);
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDailyReportEntity> list = bus.QueryStockDailyReport(queryEntity);
+            List<CargoDailyReportEntity> footlist = new List<CargoDailyReportEntity>();
+            footlist.Add(new CargoDailyReportEntity
+            {
+                TypeName = "汇总：",
+                Piece = list.Sum(c => c.Piece),
+                TreadWidth = list.Sum(c => c.TreadWidth),
+                //MoveNum = list.Sum(c => c.MoveNum),
+                FlatRatio = list.Sum(c => c.FlatRatio)
+            });
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = list;
+            resHT["total"] = list.Count();
+            resHT["footer"] = footlist;
+            if (list.Count > 0) { CargoDailyReport = list; }
+            //if (list.Count > 0) { CargoDailyReportType = "出库"; }
+
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        /// <summary>
+        /// 根据业务员查询每日报表统计
+        /// </summary>
+        public void QuerySaleManDailyReport()
+        {
+            SaleManReportEntity queryEntity = new SaleManReportEntity();
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["PID"]))//一级分类
+            {
+                queryEntity.ParentTypeID = Convert.ToInt32(Request["PID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["SID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["SID"]);
+            }
+            else if (UserInfor.RoleID == 42)
+            {
+                queryEntity.TypeIDs = "34,345";
+            }
+            //queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//所属仓库ID
+            }
+            if (!string.IsNullOrEmpty(Request["AreaID"]))
+            {
+                queryEntity.FirstAreaID = Convert.ToInt32(Request["AreaID"]);
+            }
+            if (Convert.ToString(Request["OrderType"]) != "-1")
+            {
+                queryEntity.OrderType = Convert.ToString(Request["OrderType"]);
+            }
+            if (Convert.ToString(Request["ThrowGood"]) != "-1")
+            {
+                queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            }
+            queryEntity.SaleManID = Convert.ToString(Request["SaleManID"]);
+            //客户名称
+            queryEntity.ClientName = Convert.ToString(Request["ClientName"]);
+            //花纹
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);
+            queryEntity.AcceptPeople = Convert.ToString(Request["AcceptPeople"]);
+            if (!string.IsNullOrEmpty(Request["ProductID"]))
+            {
+                queryEntity.ProductID = Convert.ToInt32(Request["ProductID"]);
+            }
+
+            if (UserInfor.HouseID.Equals(1) || UserInfor.HouseID.Equals(3) || UserInfor.HouseID.Equals(11) || UserInfor.HouseID.Equals(12) || UserInfor.HouseID.Equals(44) || UserInfor.HouseID.Equals(34) || UserInfor.HouseID.Equals(44) || UserInfor.HouseID.Equals(45) || UserInfor.HouseID.Equals(46))
+            {
+                //如果不是管理员就只能查询自己的销售报表数据
+                if (UserInfor.IsAdmin.Equals("0"))
+                {
+                    queryEntity.SaleManID = UserInfor.LoginName;
+                }
+            }
+            //2021-01-21 添加公司类型查询条件
+            if (Convert.ToString(Request["BelongHouse"]) != "-1")
+            {
+                queryEntity.BelongHouse = Convert.ToString(Request["BelongHouse"]);
+            }
+            //2023-04-29 添加订单类型查询条件
+            if (Convert.ToString(Request["TrafficType"]) != "-1")
+            {
+                queryEntity.TrafficType = Convert.ToString(Request["TrafficType"]);
+            }
+            //如果是马牌人员不查询来源为26的产品
+            if (UserInfor.RoleCName.Contains("马牌"))
+            {
+                queryEntity.Source = "14,44";
+            }
+            if (!string.IsNullOrEmpty(Request["CreateAwb"]))
+            {
+                queryEntity.CreateAwb = Convert.ToString(Request["CreateAwb"]);
+            }
+            CargoReportBus bus = new CargoReportBus();
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            Hashtable list = bus.QuerySaleManDailyReport(pageIndex, pageSize, queryEntity);
+            Hashtable list2 = new Hashtable
+            {
+                { "total", Convert.ToInt32(list.OfType<DictionaryEntry>().First(x => x.Key.ToString() == "total").Value) }
+            };
+            List<SaleManReportEntity> result = new List<SaleManReportEntity>();
+
+            foreach (var item in (List<SaleManReportEntity>)list["rows"])
+            {
+                if (UserInfor.UserName != item.SaleManName && (UserInfor.LoginName != "2422" && UserInfor.LoginName != "2421" && UserInfor.LoginName != "2076"))
+                {
+                    item.Gross = 0;
+                }
+                result.Add(item);
+            }
+            list2.Add("rows", result);
+            //JSON
+            String json = JSON.Encode(list2);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 业务员日报表查询统计导出
+        /// </summary>
+        public void QuerySaleManDailyReportForExport()
+        {
+            SaleManReportEntity queryEntity = new SaleManReportEntity();
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+
+            if (!string.IsNullOrEmpty(Request["PID"]))//一级分类
+            {
+                queryEntity.ParentTypeID = Convert.ToInt32(Request["PID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["SID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["SID"]);
+            }
+            else if (UserInfor.RoleID == 42)
+            {
+                queryEntity.TypeIDs = "34,345";
+            }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//所属仓库ID
+            }
+            if (!string.IsNullOrEmpty(Request["AreaID"]))
+            {
+                queryEntity.FirstAreaID = Convert.ToInt32(Request["AreaID"]);
+            }
+            if (Convert.ToString(Request["OrderType"]) != "-1")
+            {
+                queryEntity.OrderType = Convert.ToString(Request["OrderType"]);
+            }
+            if (Convert.ToString(Request["ThrowGood"]) != "-1")
+            {
+                queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            }
+            queryEntity.SaleManID = Convert.ToString(Request["SaleManID"]);
+            //收货人
+            queryEntity.AcceptPeople = Convert.ToString(Request["AcceptPeople"]);
+            //花纹
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);
+            //客户名称
+            queryEntity.ClientName = Convert.ToString(Request["ClientName"]);
+            //花纹
+            //2021-01-21 添加公司类型查询条件
+            if (Convert.ToString(Request["BelongHouse"]) != "-1")
+            {
+                queryEntity.BelongHouse = Convert.ToString(Request["BelongHouse"]);
+            }
+            //2023-04-29 添加订单类型查询条件
+            if (Convert.ToString(Request["TrafficType"]) != "-1")
+            {
+                queryEntity.TrafficType = Convert.ToString(Request["TrafficType"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ProductID"]))
+            {
+                queryEntity.ProductID = Convert.ToInt32(Request["ProductID"]);
+            }
+            if (UserInfor.HouseID.Equals(1) || UserInfor.HouseID.Equals(3) || UserInfor.HouseID.Equals(11) || UserInfor.HouseID.Equals(12) || UserInfor.HouseID.Equals(44) || UserInfor.HouseID.Equals(34) || UserInfor.HouseID.Equals(44) || UserInfor.HouseID.Equals(45) || UserInfor.HouseID.Equals(46))
+            {
+                //如果不是管理员就只能查询自己的销售报表数据
+                if (UserInfor.IsAdmin.Equals("0"))
+                {
+                    queryEntity.SaleManID = UserInfor.LoginName;
+                }
+            }
+            //如果是马牌人员不查询来源为26的产品
+            if (UserInfor.RoleCName.Contains("马牌"))
+            {
+                queryEntity.Source = "14,44";
+            }
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]) == 0 ? 1 : Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]) == 0 ? 50000 : Convert.ToInt32(Request["rows"]);
+            CargoReportBus bus = new CargoReportBus();
+            Hashtable list = bus.QuerySaleManDailyReport(pageIndex, pageSize, queryEntity);
+            string err = "OK";
+            List<SaleManReportEntity> awbList = (List<SaleManReportEntity>)list["rows"];
+            if (awbList.Count > 0) { CarProfit = awbList; }
+            else { err = "没有数据可以进行导出，请重新查询！"; }
+            //JSON
+            String json = JSON.Encode(err);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 导出实体
+        /// </summary>
+        public List<SaleManReportEntity> CarProfit
+        {
+            get
+            {
+                if (Session["SaleManReport"] == null)
+                {
+                    Session["SaleManReport"] = new List<SaleManReportEntity>();
+                }
+                return (List<SaleManReportEntity>)(Session["SaleManReport"]);
+            }
+            set
+            {
+                Session["SaleManReport"] = value;
+            }
+        }
+        /// <summary>
+        /// 查询每日移库报表
+        /// </summary>
+        public void QueryMoveContainerReport()
+        {
+            CargoReportMoveContainerEntity queryEntity = new CargoReportMoveContainerEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//所属仓库ID
+            }
+            if (!string.IsNullOrEmpty(Request["FirstAreaID"]))//一级分类
+            {
+                queryEntity.FirstAreaID = Convert.ToInt32(Request["FirstAreaID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ParentAreaID"]))//一级分类
+            {
+                queryEntity.ParentID = Convert.ToInt32(Request["ParentAreaID"]);
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoReportMoveContainerEntity> list = bus.QueryMoveContainerReport(queryEntity);
+            if (list.Count > 0) { MoveContainerReport = list; }
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public List<CargoReportMoveContainerEntity> MoveContainerReport
+        {
+            get
+            {
+                if (Session["MoveContainerReport"] == null)
+                {
+                    Session["MoveContainerReport"] = new List<CargoReportMoveContainerEntity>();
+                }
+                return (List<CargoReportMoveContainerEntity>)(Session["MoveContainerReport"]);
+            }
+            set
+            {
+                Session["MoveContainerReport"] = value;
+            }
+        }
+        /// <summary>
+        /// 查询轮胎销售平均尺寸
+        /// </summary>
+        public void QueryAveraHub()
+        {
+            CargoDailyReportEntity queryEntity = new CargoDailyReportEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //所属仓库ID
+            if (!string.IsNullOrEmpty(Request["HouseID"])) { queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]); }
+            if (!string.IsNullOrEmpty(Request["APID"]))//一级分类
+            {
+                queryEntity.TypeParentID = Convert.ToInt32(Request["APID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ASID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["ASID"]);
+            }
+            //queryEntity.AwbStatus = Convert.ToString(Request["AwbStatus"]);
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDailyReportEntity> list = bus.QueryAveraHub(queryEntity);
+            List<CargoDailyReportEntity> footlist = new List<CargoDailyReportEntity>();
+            footlist.Add(new CargoDailyReportEntity
+            {
+                HouseName = "平均尺寸：",
+                Specs = Convert.ToDecimal(Convert.ToDecimal(list.Sum(c => c.Numbers)) / Convert.ToDecimal(list.Sum(c => c.Piece))).ToString("F2")
+            });
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = list;
+            resHT["total"] = list.Count();
+            resHT["footer"] = footlist;
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 毛利查询
+        /// </summary>
+        public void QueryGrossReport()
+        {
+            SaleManReportEntity queryEntity = new SaleManReportEntity();
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //if (!string.IsNullOrEmpty(Request["PID"]))//一级分类
+            //{
+            //    queryEntity.ParentID = Convert.ToInt32(Request["PID"]);
+            //}
+            if (!string.IsNullOrEmpty(Request["SID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["SID"]);
+            }
+            //queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//所属仓库ID
+            }
+            if (!string.IsNullOrEmpty(Request["PID"]))
+            {
+                queryEntity.FirstAreaID = Convert.ToInt32(Request["PID"]);
+            }
+            if (Convert.ToString(Request["OrderType"]) != "-1")
+            {
+                queryEntity.OrderType = Convert.ToString(Request["OrderType"]);
+            }
+            if (Convert.ToString(Request["ThrowGood"]) != "-1")
+            {
+                queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            }
+            queryEntity.SaleManID = Convert.ToString(Request["SaleManID"]);
+            queryEntity.AcceptPeople = Convert.ToString(Request["AcceptPeople"]);
+            queryEntity.OrderModel = "0";
+            CargoReportBus bus = new CargoReportBus();
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            Hashtable ht = new Hashtable();
+            //所有的
+            List<SaleManReportEntity> list = bus.QueryGrossReport(queryEntity);
+            //脚页
+            List<SaleManReportEntity> footlist = new List<SaleManReportEntity>();
+            //当前页
+            List<SaleManReportEntity> curentPageList = new List<SaleManReportEntity>();
+            curentPageList = list.Where(c => c.RowNumber > (pageSize * (pageIndex - 1)) && c.RowNumber < pageSize * pageIndex + 1).ToList();
+            decimal gross = 0.00M, totalGross = 0.00M;
+            foreach (var it in list)
+            {
+                gross += it.Gross;
+                totalGross += it.Gross * it.Piece;
+            }
+            footlist.Add(new SaleManReportEntity
+            {
+                TypeName = "总计：",
+                Gross = gross,
+                TotalGross = totalGross
+
+            });
+            ht["footer"] = footlist;
+            ht["rows"] = curentPageList;
+            ht["total"] = list.Count;
+            //JSON
+            String json = JSON.Encode(ht);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 毛利导出
+        /// </summary>
+        public void QueryGrossReportForExport()
+        {
+            SaleManReportEntity queryEntity = new SaleManReportEntity();
+            //查询条件
+            string key = Request["key"];
+            if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return; }
+            string[] arr = key.Split(',');
+            for (int i = 0; i < arr.Length; i++)
+            {
+                switch (i)
+                {
+                    case 0:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.StartDate = Convert.ToDateTime(arr[i].Trim()); }
+                        break;
+                    case 1:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.EndDate = Convert.ToDateTime(arr[i].Trim()); }
+                        break;
+                    case 2:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.SaleManID = Convert.ToString(arr[i].Trim()); }
+                        break;
+                    case 3://所属仓库ID
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.CargoPermisID = Convert.ToString(arr[i].Trim()); }
+                        else { queryEntity.CargoPermisID = UserInfor.CargoPermisID; }
+                        break;
+                    case 4:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.FirstAreaID = Convert.ToInt32(arr[i].Trim()); }
+                        break;
+                    case 5:
+                        if (!string.IsNullOrEmpty(arr[i]))
+                        {
+                            string spe = Convert.ToString(arr[i]).ToUpper();
+                            if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+                            {
+                                queryEntity.Specs = spe;
+                            }
+                            else
+                            {
+                                if (spe.Length <= 3)
+                                {
+                                    queryEntity.Specs = spe;
+                                }
+                                if (spe.Length > 3 && spe.Length <= 5)
+                                {
+                                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                                }
+                                if (spe.Length > 5)
+                                {
+                                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                                }
+                            }
+                        }
+                        break;
+                    case 6:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.AcceptPeople = Convert.ToString(arr[i].Trim()); }
+                        break;
+                    case 7:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.TypeID = Convert.ToInt32(arr[i].Trim()); }
+                        break;
+                    case 8: if (arr[i] != "-1") { queryEntity.OrderType = Convert.ToString(arr[i]); } break;
+                    case 9: if (arr[i] != "-1") { queryEntity.ThrowGood = Convert.ToString(arr[i]); } break;
+                    default:
+                        break;
+                }
+            }
+            CargoReportBus bus = new CargoReportBus();
+            //所有的
+            List<SaleManReportEntity> list = bus.QueryGrossReport(queryEntity);
+            string err = "OK";
+            if (list.Count > 0) { CarProfit = list; }
+            else { err = "没有数据可以进行导出，请重新查询！"; }
+            //JSON
+            String json = JSON.Encode(err);
+            Response.Clear();
+            Response.Write(json);
+        }
+        #endregion
+        #region 领导驾驶舱
+        /// <summary>
+        /// 按产品分类查询统计
+        /// </summary>
+        public void QueryByProductType()
+        {
+            CargoLeaderCookpitEntity queryEntity = new CargoLeaderCookpitEntity();
+            queryEntity.StartDate = DateTime.Now;
+            queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoLeaderCookpitEntity> list = bus.QueryByProductType(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 按销售业务人员查询统计
+        /// </summary>
+        public void QueryBySaleMan()
+        {
+            CargoLeaderCookpitEntity queryEntity = new CargoLeaderCookpitEntity();
+            queryEntity.StartDate = DateTime.Now;
+            queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoLeaderCookpitEntity> list = bus.QueryBySaleMan(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        /// <summary>
+        /// 按客户查询统计
+        /// </summary>
+        public void QueryByClient()
+        {
+            CargoLeaderCookpitEntity queryEntity = new CargoLeaderCookpitEntity();
+            queryEntity.StartDate = DateTime.Now;
+            queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoLeaderCookpitEntity> list = bus.QueryByClient(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 按月份统计仓库总销售数据 
+        /// </summary>
+        public void QueryByMonthStatis()
+        {
+            CargoLeaderCookpitEntity queryEntity = new CargoLeaderCookpitEntity();
+            queryEntity.StatisType = Convert.ToString(Request["StatisType"]);
+            if (!string.IsNullOrEmpty(Request["HouseID"]))
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);
+            }
+            if (Request["Year"] != "-1")
+            {
+                queryEntity.Year = Convert.ToInt32(Request["Year"]);
+
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoLeaderCookpitEntity> list = bus.QueryByMonthStatis(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        #endregion
+        #region 销售库存表查询
+        /// <summary>
+        /// 销售库存表查询
+        /// </summary>
+        public void QuerySaleStockData()
+        {
+            CargoSaleStockStatisEntity queryEntity = new CargoSaleStockStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"])))
+            {
+                queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]).AddMonths(1).AddDays(-1);
+            }
+            //queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            if (!string.IsNullOrEmpty(Request["HouseID"]))
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//所属仓库ID
+            }
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            //queryEntity.Specs = Convert.ToString(Request["Specs"]);
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);
+
+            if (!string.IsNullOrEmpty(Request["PID"]))//一级分类
+            {
+                queryEntity.ParentID = Convert.ToInt32(Request["PID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["SID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["SID"]);
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoSaleStockStatisEntity> list = bus.QuerySaleStockData(queryEntity);
+            List<CargoSaleStockStatisEntity> footlist = new List<CargoSaleStockStatisEntity>();
+            footlist.Add(new CargoSaleStockStatisEntity
+            {
+                Specs = "汇总：",
+                CurrentNum = list.Sum(c => c.CurrentNum),
+                InTotalNum = list.Sum(c => c.InTotalNum),
+                OutTotalNum = list.Sum(c => c.OutTotalNum),
+                In1 = list.Sum(c => c.In1),
+                In2 = list.Sum(c => c.In2),
+                In3 = list.Sum(c => c.In3),
+                In4 = list.Sum(c => c.In4),
+                In5 = list.Sum(c => c.In5),
+                In6 = list.Sum(c => c.In6),
+                In7 = list.Sum(c => c.In7),
+                In8 = list.Sum(c => c.In8),
+                Out1 = list.Sum(c => c.Out1),
+                Out2 = list.Sum(c => c.Out2),
+                Out3 = list.Sum(c => c.Out3),
+                Out4 = list.Sum(c => c.Out4),
+                Out5 = list.Sum(c => c.Out5),
+                Out6 = list.Sum(c => c.Out6),
+                Out7 = list.Sum(c => c.Out7),
+                Out8 = list.Sum(c => c.Out8)
+            });
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = list;
+            resHT["total"] = list.Count();
+            resHT["footer"] = footlist;
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 导出销售库存 表数据 
+        /// </summary>
+        public void QuerySaleStockDataForExport()
+        {
+            CargoSaleStockStatisEntity queryEntity = new CargoSaleStockStatisEntity();
+            //查询条件
+            string key = Request["key"];
+            if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return; }
+            string[] arr = key.Split(',');
+            for (int i = 0; i < arr.Length; i++)
+            {
+                switch (i)
+                {
+                    case 0:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.StartDate = Convert.ToDateTime(arr[i].Trim()); }
+                        break;
+                    case 1:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.EndDate = Convert.ToDateTime(arr[i].Trim()).AddMonths(1).AddDays(-1); }
+                        break;
+                    case 2:
+                        if (!string.IsNullOrEmpty(arr[i]))
+                        {
+                            //queryEntity.Specs = Convert.ToString(arr[i].Trim());
+                            string spe = Convert.ToString(arr[i].Trim()).ToUpper();
+                            if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+                            {
+                                queryEntity.Specs = spe;
+                            }
+                            else
+                            {
+                                if (spe.Length <= 3)
+                                {
+                                    queryEntity.Specs = spe;
+                                }
+                                if (spe.Length > 3 && spe.Length <= 5)
+                                {
+                                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                                }
+                                if (spe.Length > 5)
+                                {
+                                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                                }
+                            }
+                        }
+                        break;
+                    case 3:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.Figure = Convert.ToString(arr[i].Trim()); }
+                        break;
+                    case 4:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.ParentID = Convert.ToInt32(arr[i].Trim()); }
+                        break;
+                    case 5:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.TypeID = Convert.ToInt32(arr[i].Trim()); }
+                        break;
+                    case 6://所属仓库ID
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.HouseID = Convert.ToInt32(arr[i].Trim()); }
+                        else { queryEntity.HouseID = UserInfor.HouseID; }
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoSaleStockStatisEntity> awbList = bus.QuerySaleStockData(queryEntity);
+            string err = "OK";
+            if (awbList.Count > 0) { CarSaleStock = awbList; }
+            else { err = "没有数据可以进行导出，请重新查询！"; }
+            //JSON
+            String json = JSON.Encode(err);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public List<CargoSaleStockStatisEntity> CarSaleStock
+        {
+            get
+            {
+                if (Session["CarSaleStock"] == null)
+                {
+                    Session["CarSaleStock"] = new List<CargoSaleStockStatisEntity>();
+                }
+                return (List<CargoSaleStockStatisEntity>)(Session["CarSaleStock"]);
+            }
+            set
+            {
+                Session["CarSaleStock"] = value;
+            }
+        }
+        #endregion
+        #region 微信商城数据统计集合
+        /// <summary>
+        /// 各仓库轮胎微信商城销售数据统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public void QueryWeixinMalReportData()
+        {
+            CargoWeixinMallReportEntity queryEntity = new CargoWeixinMallReportEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoWeixinMallReportEntity> list = bus.QueryWeixinMalReportData(queryEntity);
+            List<CargoWeixinMallReportEntity> footlist = new List<CargoWeixinMallReportEntity>();
+            footlist.Add(new CargoWeixinMallReportEntity
+            {
+                ReportDate = "汇总：",
+                HNOrderClientNum = list.Sum(c => c.HNOrderClientNum),
+                HNOrderNum = list.Sum(c => c.HNOrderNum),
+                HNSaleTyreNum = list.Sum(c => c.HNSaleTyreNum),
+                HNSaleTotalCharge = list.Sum(c => c.HNSaleTotalCharge),
+                HBOrderClientNum = list.Sum(c => c.HBOrderClientNum),
+                HBOrderNum = list.Sum(c => c.HBOrderNum),
+                HBSaleTotalCharge = list.Sum(c => c.HBSaleTotalCharge),
+                HBSaleTyreNum = list.Sum(c => c.HBSaleTyreNum),
+                HASaleTyreNum = list.Sum(c => c.HASaleTyreNum),
+                HASaleTotalCharge = list.Sum(c => c.HASaleTotalCharge),
+                HAOrderClientNum = list.Sum(c => c.HAOrderClientNum),
+                HAOrderNum = list.Sum(c => c.HAOrderNum),
+                XBOrderClientNum = list.Sum(c => c.XBOrderClientNum),
+                XBOrderNum = list.Sum(c => c.XBOrderNum),
+                XBSaleTotalCharge = list.Sum(c => c.XBSaleTotalCharge),
+                XBSaleTyreNum = list.Sum(c => c.XBSaleTyreNum),
+                MZOrderClientNum = list.Sum(c => c.MZOrderClientNum),
+                MZOrderNum = list.Sum(c => c.MZOrderNum),
+                MZSaleTotalCharge = list.Sum(c => c.MZSaleTotalCharge),
+                MZSaleTyreNum = list.Sum(c => c.MZSaleTyreNum),
+                GZOrderClientNum = list.Sum(c => c.GZOrderClientNum),
+                GZOrderNum = list.Sum(c => c.GZOrderNum),
+                GZSaleTotalCharge = list.Sum(c => c.GZSaleTotalCharge),
+                GZSaleTyreNum = list.Sum(c => c.GZSaleTyreNum),
+                JYOrderClientNum = list.Sum(c => c.JYOrderClientNum),
+                JYSaleTyreNum = list.Sum(c => c.JYSaleTyreNum),
+                JYSaleTotalCharge = list.Sum(c => c.JYSaleTotalCharge),
+                JYOrderNum = list.Sum(c => c.JYOrderNum),
+                DayOrderClientNum = list.Sum(c => c.DayOrderClientNum),
+                DayOrderNum = list.Sum(c => c.DayOrderNum),
+                DaySaleTotalCharge = list.Sum(c => c.DaySaleTotalCharge),
+                DaySaleTyreNum = list.Sum(c => c.DaySaleTyreNum)
+            });
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = list;
+            resHT["total"] = list.Count();
+            resHT["footer"] = footlist;
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        #endregion
+        #region 仓储系统总统计
+        /// <summary>
+        /// 按订单统计查询方法
+        /// </summary>
+        public void QueryOrderStatis()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]).AddDays(-Convert.ToDateTime(Request["StartDate"]).Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            queryEntity.OrderModel = "0";
+            //表示要统计内部单 
+            queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QueryOrderStatis(queryEntity);
+            List<CargoDLTDataStatisEntity> footlist = new List<CargoDLTDataStatisEntity>();
+            footlist.Add(new CargoDLTDataStatisEntity
+            {
+                ReportDate = "汇总：",
+                DNOrderNum = result.Sum(c => c.DNOrderNum),
+                DNOrderPiece = result.Sum(c => c.DNOrderPiece),
+                DNOrderCharge = result.Sum(c => c.DNOrderCharge),
+                SCOrderNum = result.Sum(c => c.SCOrderNum),
+                SCOrderCharge = result.Sum(c => c.SCOrderCharge),
+                SCOrderPiece = result.Sum(c => c.SCOrderPiece),
+                QYOrderCharge = result.Sum(c => c.QYOrderCharge),
+                QYOrderPiece = result.Sum(c => c.QYOrderPiece),
+                QYOrderNum = result.Sum(c => c.QYOrderNum),
+                OrderNum = result.Sum(c => c.OrderNum),
+                OrderPiece = result.Sum(c => c.OrderPiece),
+                OrderCharge = result.Sum(c => c.OrderCharge)
+            });
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = result;
+            resHT["total"] = result.Count();
+            resHT["footer"] = footlist;
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QueryStatisticalChart()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            queryEntity.OrderModel = "0";
+            //表示要统计内部单 
+            queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.StatisticalChart(queryEntity);
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 按品牌统计查询
+        /// </summary>
+        public void QueryBrandStatis()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]).AddDays(-Convert.ToDateTime(Request["StartDate"]).Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") && spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            if (!string.IsNullOrEmpty(Request["PID"]))//一级分类
+            {
+                queryEntity.ParentID = Convert.ToInt32(Request["PID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["SID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["SID"]);
+            }
+            //表示要统计内部单 
+            queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            queryEntity.OrderModel = "0";
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);//花纹
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QueryBrandStatis(queryEntity);
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = result;
+            resHT["total"] = result.Count();
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QueryRegionStatistics()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]).AddDays(-Convert.ToDateTime(Request["StartDate"]).Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            queryEntity.OrderModel = "0";
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QueryRegionStatistics(queryEntity);
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 按客户查询统计
+        /// </summary>
+        public void QueryClientStatis()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]).AddDays(-Convert.ToDateTime(Request["StartDate"]).Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+
+            if (Request["Area"] != "-1") { queryEntity.Area = Convert.ToString(Request["Area"]); }
+            queryEntity.Province = Convert.ToString(Request["Province"]);
+            queryEntity.City = Convert.ToString(Request["City"]);
+            queryEntity.ClientName = Convert.ToString(Request["ClientName"]);
+            queryEntity.ShopCode = Convert.ToString(Request["ShopCode"]);
+
+            //表示要统计内部单 
+            queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            queryEntity.OrderModel = "0";
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QueryClientStatis(queryEntity);
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = result;
+            resHT["total"] = result.Count();
+            int OrderCount = 0;
+            foreach (var item in result)
+            {
+                OrderCount += item.OrderPiece;
+            }
+            //脚页
+            List<CargoDLTDataStatisEntity> footlist = new List<CargoDLTDataStatisEntity>();
+            footlist.Add(new CargoDLTDataStatisEntity
+            {
+                Area = "总计：",
+                OrderPiece = OrderCount,
+
+            });
+            resHT["footer"] = footlist;
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QueryProvincialStatistics()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }//
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QueryClientStatis(queryEntity);
+            var results = result.GroupBy(c => new { c.Province }).Select(c => new { Province = c.Key.Province, OrderPiece = c.Sum(t => t.OrderPiece) });
+            String json = JSON.Encode(results);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+
+        public void QueryUrbanStatistics()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]).AddDays(-Convert.ToDateTime(Request["StartDate"]).Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+
+            if (Request["Area"] != "-1") { queryEntity.Area = Convert.ToString(Request["Area"]); }
+            queryEntity.Province = Convert.ToString(Request["Province"]);
+            queryEntity.City = Convert.ToString(Request["City"]);
+            queryEntity.ClientName = Convert.ToString(Request["ClientName"]);
+            queryEntity.ShopCode = Convert.ToString(Request["ShopCode"]);
+
+            //表示要统计内部单 
+            queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            queryEntity.OrderModel = "0";
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QueryUrbanStatistics(queryEntity);
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = result;
+            resHT["total"] = result.Count();
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QuerySalesVolume()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]).AddDays(-Convert.ToDateTime(Request["StartDate"]).Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            string around = Convert.ToString(Request["around"]);
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QuerySalesVolume(queryEntity, around);
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        public void Statisticalheader()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+
+
+            DateTime currentDate = DateTime.Now;
+
+            // 获取当前年份和月份
+            int currentYear = currentDate.Year;
+            int currentMonth = currentDate.Month;
+
+            // 创建一个表示当前年月的 DateTime 对象
+            DateTime currentYearMonth = new DateTime(currentYear, currentMonth, 1);
+
+            // 获取当前年月的第一天是星期几
+            DayOfWeek firstDayOfWeek = currentYearMonth.DayOfWeek;
+            int day = 0;
+            if (firstDayOfWeek.ToString().Equals("Sunday"))
+            {
+                day += 1;
+            }
+            // 确定第一个周一的日期
+            //DateTime firstMonday = currentYearMonth.AddDays(DayOfWeek.Monday - firstDayOfWeek);
+            DateTime StartDate = Convert.ToDateTime(Request["StartDate"]);
+            DateTime EndDate = Convert.ToDateTime(Request["EndDate"]).AddDays(1);
+
+
+            int daysDiff = (EndDate - StartDate).Days;
+
+            // 计算是第几周
+            if ((daysDiff % 7) > 0)
+            {
+                day += 1;
+            }
+            day += daysDiff / 7;
+
+            CargoReportBus bus = new CargoReportBus();
+            CargoDLTDataStatisEntity result = bus.Statisticalheader(queryEntity);
+            result.PunctualityRate = bus.QueryAgeing(queryEntity);
+            result.ReportDate = Convert.ToString(day);
+
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void RegionalpunctualityRate()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.RegionalpunctualityRate(queryEntity);
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void ShopPunctualityrate()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.ShopPunctualityrate(queryEntity);
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QuryTyreType()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QuryTyreType(queryEntity);
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void StatisticalAmountSalesvolume()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+            ArrayList result = bus.StatisticalAmountSalesvolume(queryEntity);
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+
+
+        }
+        public void ProvincePunctualityRate()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.ProvincePunctualityRate(queryEntity);
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        public void Statistics()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+
+            ArrayList list = bus.Statistics(queryEntity);
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+
+        public void HCYCStatistics()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//所属仓库ID
+                //queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+
+            Dictionary<string, object> list = bus.HCYCStatistics(queryEntity);
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        public void HCYCAccessStatistics()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+
+            Dictionary<string, object> list = bus.HCYCAccessStatis(queryEntity);
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        public void QueryHCYC_BrandNum()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+
+            List<CargoDLTDataStatisEntity> list = bus.QueryHCYC_BrandNum(queryEntity);
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QueryHCYC_BrandSpecsNum()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+
+            List<CargoDLTDataStatisEntity> list = bus.QueryHCYC_BrandSpecsNum(queryEntity);
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        public void QueryHCYC_BrandConverRate()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+
+            List<CargoDLTDataStatisEntity> list = bus.QueryHCYC_BrandConverRate(queryEntity);
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QueryHCYC_ClientConverRate()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+
+            List<CargoDLTDataStatisEntity> list = bus.QueryHCYC_ClientConverRate(queryEntity);
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QueryHCYC_DayAccessNum()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); } else { queryEntity.StartDate = DateTime.Now.AddDays(-DateTime.Now.Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //queryEntity.StartDate = DateTime.Now.AddDays(-DateTime.Now.Day + 1);
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+
+            List<CargoDLTDataStatisEntity> list = bus.QueryHCYC_DayAccessNum(queryEntity);
+            if (list.Count > 0) { HCYCReportDataExport = list; }
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 慧采云仓数据统计
+        /// </summary>
+        public List<CargoDLTDataStatisEntity> HCYCReportDataExport
+        {
+            get
+            {
+                if (Session["HCYCReportDataExport"] == null)
+                {
+                    Session["HCYCReportDataExport"] = new List<CargoDLTDataStatisEntity>();
+                }
+                return (List<CargoDLTDataStatisEntity>)(Session["HCYCReportDataExport"]);
+            }
+            set
+            {
+                Session["HCYCReportDataExport"] = value;
+            }
+        }
+
+        public void QueryHCYC_SevenDayOrderInfo()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //queryEntity.StartDate = DateTime.Now.AddDays(-DateTime.Now.Day + 1);
+            //queryEntity.EndDate = DateTime.Now;
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+
+            List<CargoDLTDataStatisEntity> list = bus.QueryHCYC_SevenDayOrderInfo(queryEntity);
+            if (list.Count > 0) { HCYCReportDataExport = list; }
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        /// <summary>
+        /// SKU数据统计
+        /// </summary>
+        public void QueryHCYC_BrandSKUData()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.HouseID = UserInfor.HouseID;//用户所属仓库权限ID
+            }
+            queryEntity.OrderType = "4";//查询小程序订单
+            CargoReportBus bus = new CargoReportBus();
+
+            List<CargoDLTDataStatisEntity> list = bus.QueryHCYC_BrandSKUData(queryEntity);
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        /// <summary>
+        /// 客户查询按品牌统计
+        /// </summary>
+        public void QueryClientStatisByBrand()
+        {
+
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]).AddDays(-Convert.ToDateTime(Request["StartDate"]).Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+
+            queryEntity.ClientNum = Convert.ToInt32(Request["ClientNum"]);
+
+            //表示要统计内部单 
+            queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            queryEntity.OrderModel = "0";
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QueryClientStatisByBrand(queryEntity);
+            Hashtable rse = new Hashtable();
+            rse["rows"] = result;
+            rse["total"] = result.Count();
+            //JSON
+            String json = JSON.Encode(rse);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 客户查询按尺寸统计
+        /// </summary>
+        public void QueryClientStatisByHubDiameter()
+        {
+
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]).AddDays(-Convert.ToDateTime(Request["StartDate"]).Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            queryEntity.ClientNum = Convert.ToInt32(Request["ClientNum"]);
+
+            //表示要统计内部单 
+            queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            queryEntity.OrderModel = "0";
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QueryClientStatisByHubDiameter(queryEntity);
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QueryClientStatisCartype()
+        {
+            CargoDLTDataStatisEntity queryEntity = new CargoDLTDataStatisEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]).AddDays(-Convert.ToDateTime(Request["StartDate"]).Day + 1); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+
+            queryEntity.ClientNum = Convert.ToInt32(Request["ClientNum"]);
+
+            //表示要统计内部单 
+            queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            queryEntity.OrderModel = "0";
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDLTDataStatisEntity> result = bus.QueryClientStatisCartype(queryEntity);
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        #endregion
+        #region 查询订单出库时间
+
+        /// <summary>
+        /// 查询订单出库时间
+        /// </summary>
+        public void QueryOrderOutTime()
+        {
+            CargoOrderOutTimeEntity queryEntity = new CargoOrderOutTimeEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]) && Request["HouseID"] != "undefined") { queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]); }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoOrderOutTimeEntity> result = bus.QueryOrderOutTime(queryEntity);
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        /// <summary>
+        /// 订单出库时间导出
+        /// </summary>
+        public void QueryOrderOutTimeForExport()
+        {
+            CargoOrderOutTimeEntity queryEntity = new CargoOrderOutTimeEntity();
+            //查询条件
+            string key = Request["key"];
+            if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return; }
+            string[] arr = key.Split(',');
+            for (int i = 0; i < arr.Length; i++)
+            {
+                switch (i)
+                {
+                    case 0:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.StartDate = Convert.ToDateTime(arr[i].Trim()); }
+                        break;
+                    case 1:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.EndDate = Convert.ToDateTime(arr[i].Trim()); }
+                        break;
+                    case 2:
+                        if (!string.IsNullOrEmpty(arr[i])) { queryEntity.HouseID = Convert.ToInt32(arr[i].Trim()); }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            CargoReportBus bus = new CargoReportBus();
+            //所有的
+            List<CargoOrderOutTimeEntity> list = bus.QueryOrderOutTime(queryEntity);
+            string err = "OK";
+            if (list.Count > 0) { OrderOutTime = list; }
+            else { err = "没有数据可以进行导出，请重新查询！"; }
+            //JSON
+            String json = JSON.Encode(err);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 导出实体
+        /// </summary>
+        public List<CargoOrderOutTimeEntity> OrderOutTime
+        {
+            get
+            {
+                if (Session["OrderOutTime"] == null)
+                {
+                    Session["OrderOutTime"] = new List<CargoOrderOutTimeEntity>();
+                }
+                return (List<CargoOrderOutTimeEntity>)(Session["OrderOutTime"]);
+            }
+            set
+            {
+                Session["OrderOutTime"] = value;
+            }
+        }
+
+        public void QueryOrderDetailedTime()
+        {
+            CargoOrderOutTimeEntity queryEntity = new CargoOrderOutTimeEntity();
+            //查询条件
+            string key = Request["OrderNo"];
+            if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return; }
+            queryEntity.OrderNo = Convert.ToString(key.Trim());
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoOrderOutTimeEntity> list = bus.QueryOrderDetailedTime(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询时效统计明细
+        /// </summary>
+        public void QueryReportAgeingList()
+        {
+            CargoReportAgeingEntity queryEntity = new CargoReportAgeingEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //if (!string.IsNullOrEmpty(Request["HouseID"]) && Request["HouseID"] != "undefined") { queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            queryEntity.Province = Convert.ToString(Request["Province"]);
+            queryEntity.City = Convert.ToString(Request["City"]);
+            queryEntity.OutHouseName = Convert.ToString(Request["OutHouseName"]);
+            queryEntity.ShopCode = Convert.ToString(Request["ShopCode"]);
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["LineID"])))
+            {
+                queryEntity.LineID = Convert.ToInt32(Request["LineID"]);
+            }
+            if (Convert.ToString(Request["OrderType"]) != "-1")
+            {
+                queryEntity.OrderType = Convert.ToString(Request["OrderType"]);
+            }
+            CargoReportBus bus = new CargoReportBus();
+            //List<CargoReportAgeingEntity> result = new List<CargoReportAgeingEntity>();
+            List<CargoReportAgeingEntity> result = bus.QueryReportAgeingList(queryEntity);
+            int OutNum = 0, SignNum = 0; double OutHour = 0, SignHour = 0, OutSignHour = 0;
+            if (result.Count > 0)
+            {
+                foreach (var res in result)
+                {
+                    //if (Convert.ToDecimal(res.FromCreateToSignAgeing) > 2)
+                    //{
+                    //    continue;
+                    //}
+                    //if (res.SignTime.ToString("yyyy-MM-dd") == "0001-01-01")
+                    //{
+                    //    continue;
+                    //}
+                    if (res.OutCargoTime.ToString("yyyy-MM-dd") != "0001-01-01")
+                    {
+                        OutNum++;
+                        OutHour += Convert.ToDouble(res.OutCargoAgeing);
+                    }
+                    if (res.SignTime.ToString("yyyy-MM-dd") != "0001-01-01")
+                    {
+                        SignNum++;
+                        SignHour += Convert.ToDouble(res.FromCreateToSignAgeing);
+                        OutSignHour += Convert.ToDouble(res.FromOutCargoToSignAgeing);
+                    }
+                    //result.Add(res);
+                }
+            }
+            List<CargoReportAgeingEntity> footlist = new List<CargoReportAgeingEntity>();
+            List<CargoReportAgeingEntity> exportList = new List<CargoReportAgeingEntity>();
+            exportList.AddRange(result);
+            exportList.Add(new CargoReportAgeingEntity
+            {
+                OutHouseName = "平均时效：",
+                Piece = result.Sum(c => c.Piece),
+                OutCargoAgeing = (OutHour / OutNum).ToString("F2"),
+                FromCreateToSignAgeing = (SignHour / SignNum).ToString("F2"),
+                FromOutCargoToSignAgeing = (OutSignHour / SignNum).ToString("F2")
+            });
+            footlist.Add(new CargoReportAgeingEntity
+            {
+                OutHouseName = "平均时效：",
+                Piece = result.Sum(c => c.Piece),
+                OutCargoAgeing = (OutHour / OutNum).ToString("F2"),
+                FromCreateToSignAgeing = (SignHour / SignNum).ToString("F2"),
+                FromOutCargoToSignAgeing = (OutSignHour / SignNum).ToString("F2")
+            });
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = result;
+            resHT["total"] = result.Count();
+            resHT["footer"] = footlist;
+
+            OrderReportAgeingExport = exportList;
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public List<CargoReportAgeingEntity> OrderReportAgeingExport
+        {
+            get
+            {
+                if (Session["OrderReportAgeingExport"] == null)
+                {
+                    Session["OrderReportAgeingExport"] = new List<CargoReportAgeingEntity>();
+                }
+                return (List<CargoReportAgeingEntity>)(Session["OrderReportAgeingExport"]);
+            }
+            set
+            {
+                Session["OrderReportAgeingExport"] = value;
+            }
+        }
+        #endregion
+        #region 每天仓库库存统计
+        /// <summary>
+        /// 查询每天的仓库库存租金统计
+        /// </summary>
+        public void QueryDayStockData()
+        {
+            CargoDayStockEntity queryEntity = new CargoDayStockEntity();
+            queryEntity.Name = Convert.ToString(Request["Name"]);
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["HouseID"])))
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"])))
+            {
+                queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"])))
+            {
+                queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]).AddMonths(1).AddDays(-1);
+            }
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoReportBus bus = new CargoReportBus();
+            Hashtable list = bus.QueryDayStockData(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询每月仓库库存数据
+        /// </summary>
+        public void QueryDayStockListData()
+        {
+            CargoDayStockEntity queryEntity = new CargoDayStockEntity();
+            queryEntity.Name = Convert.ToString(Request["Name"]);
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"])))
+            {
+                string sd = Convert.ToString(Request["StartDate"]);
+                string start = sd.Substring(0, 4) + "-" + sd.Substring(4, 2) + "-01";
+                queryEntity.StartDate = Convert.ToDateTime(start);
+                queryEntity.EndDate = Convert.ToDateTime(start).AddMonths(1).AddDays(-1);
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoDayStockEntity> list = bus.QueryDayStockListData(queryEntity);
+            if (list.Count > 0) { CargoDayStock = list; }
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public List<CargoDayStockEntity> CargoDayStock
+        {
+            get
+            {
+                if (Session["CargoDayStock"] == null)
+                {
+                    Session["CargoDayStock"] = new List<CargoDayStockEntity>();
+                }
+                return (List<CargoDayStockEntity>)(Session["CargoDayStock"]);
+            }
+            set
+            {
+                Session["CargoDayStock"] = value;
+            }
+        }
+        #endregion
+        #region 大数据分析统计
+        /// <summary>
+        /// 所有仓库所有时间的数据统计
+        /// </summary>
+        public void QueryALLBigDataStatis()
+        {
+            CargoBigDataBus bus = new CargoBigDataBus();
+            List<CargoBigDataViewEntity> list = bus.QueryALLBigDataStatis(new CargoBigDataViewEntity { });
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        #endregion
+        #region 订单数据统计
+        public void QueryOrderStatistics()
+        {
+            CargoOrderEntity queryEntity = new CargoOrderEntity();
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            if (Convert.ToString(Request["ThrowGood"]) != "-1")
+            {
+                queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"])))
+            {
+                queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"])))
+            {
+                queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]).AddMonths(1).AddDays(-1);
+            }
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoReportBus bus = new CargoReportBus();
+            Hashtable list = bus.QueryOrderStatistics(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        public void QueryOrderStatisticsChartData()
+        {
+            CargoOrderEntity queryEntity = new CargoOrderEntity();
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            if (Convert.ToString(Request["ThrowGood"]) != "-1")
+            {
+                queryEntity.ThrowGood = Convert.ToString(Request["ThrowGood"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"])))
+            {
+                queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"])))
+            {
+                queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]).AddMonths(1).AddDays(-1);
+            }
+            //分页
+            CargoReportBus bus = new CargoReportBus();
+            Hashtable list = bus.QueryOrderStatistics(1, 10, queryEntity);
+            List<CargoOrderEntity> awbList = list["rows"] as List<CargoOrderEntity>;
+            //JSON
+            String json = JSON.Encode(awbList);
+            Response.Clear();
+            Response.Write(json);
+        }
+        #endregion
+        public void QueryClientArrearsStatistics()
+        {
+            CargoOrderEntity queryEntity = new CargoOrderEntity();
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            //queryEntity.AcceptPeople= Convert.ToString(Request["AcceptPeople"]);
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["AcceptUnit"])))
+            {
+                queryEntity.PayClientNum = Convert.ToInt32(Request["AcceptUnit"]);
+                //queryEntity.AcceptUnit = Convert.ToString(Request["AcceptUnit"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"])))
+            {
+                queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"])))
+            {
+                queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]);
+            }
+            CargoReportBus bus = new CargoReportBus();
+            Hashtable list = bus.QueryClientArrearsStatistics(queryEntity);
+            List<CargoOrderEntity> datalist = (List<CargoOrderEntity>)list["rows"];
+            List<CargoOrderEntity> curentPageList = new List<CargoOrderEntity>();
+            curentPageList = datalist.ToList();
+            if (list != null) { QueryClientArrearsStatisticsList = list; }
+            int OrderCount = 0;
+            Decimal TotalCharge = 0;
+            foreach (var item in (List<CargoOrderEntity>)list["rows"])
+            {
+                OrderCount++;
+                TotalCharge += item.TotalCharge;
+            }
+            //脚页
+            List<CargoOrderEntity> footlist = new List<CargoOrderEntity>();
+            footlist.Add(new CargoOrderEntity
+            {
+                AcceptUnit = "",
+                AcceptPeople = "",
+                AcceptCellphone = "",
+                AcceptAddress = "",
+                SaleManName = "总计：",
+                OrderCount = OrderCount.ToString(),
+                TotalCharge = TotalCharge
+
+            });
+            list["footer"] = footlist;
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public Hashtable QueryClientArrearsStatisticsList
+        {
+            get
+            {
+                if (Session["QueryClientArrearsStatisticsList"] == null)
+                {
+                    Session["QueryClientArrearsStatisticsList"] = new Hashtable();
+                }
+                return (Hashtable)(Session["QueryClientArrearsStatisticsList"]);
+            }
+            set
+            {
+                Session["QueryClientArrearsStatisticsList"] = value;
+            }
+        }
+        public void QueryClientArrearsDetailed()
+        {
+            CargoOrderEntity queryEntity = new CargoOrderEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["ClientNum"]))) { queryEntity.ClientNum = Convert.ToInt32(Request["ClientNum"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoReportBus bus = new CargoReportBus();
+            Hashtable list = bus.QueryClientArrearsDetailed(pageIndex, pageSize, queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public List<CargoOrderEntity> QuerySaleProfitList
+        {
+            get
+            {
+                if (Session["QuerySaleProfitList"] == null)
+                {
+                    Session["QuerySaleProfitList"] = new List<CargoOrderEntity>();
+                }
+                return (List<CargoOrderEntity>)(Session["QuerySaleProfitList"]);
+            }
+            set
+            {
+                Session["QuerySaleProfitList"] = value;
+            }
+        }
+        public void QuerySaleProfitData()
+        {
+            CargoOrderEntity queryEntity = new CargoOrderEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限ID
+            }
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoOrderEntity> list = bus.QuerySaleProfitData(queryEntity);
+            if (list != null) { QuerySaleProfitList = list; }
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+    }
+}

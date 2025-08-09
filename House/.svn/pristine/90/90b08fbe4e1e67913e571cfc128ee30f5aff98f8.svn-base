@@ -1,0 +1,410 @@
+﻿using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using Senparc.Weixin.MP.Containers;
+using Senparc.Weixin.MP.Entities;
+using Senparc.Weixin.MP.Helpers;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.GTMC
+{
+    public partial class GTMCApi : System.Web.UI.Page
+    {
+        public static void WriteTextLog(string strMessage)
+        {
+            string path = AppDomain.CurrentDomain.BaseDirectory + @"System\Log\";
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            string fileFullPath = path + DateTime.Now.ToString("yyyy-MM-dd") + ".System.txt";
+            StringBuilder str = new StringBuilder();
+            str.Append("Time:    " + DateTime.Now.ToString() + "\r\n");
+            str.Append("Message: " + strMessage + "\r\n");
+            str.Append("-----------------------------------------------------------\r\n\r\n");
+            StreamWriter sw;
+            if (!File.Exists(fileFullPath))
+            {
+                sw = File.CreateText(fileFullPath);
+            }
+            else
+            {
+                sw = File.AppendText(fileFullPath);
+            }
+            sw.WriteLine(str.ToString());
+            sw.Close();
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            string methodName = string.Empty;
+            try
+            {
+                methodName = Request["method"];
+                if (String.IsNullOrEmpty(methodName)) return;
+                Type type = this.GetType();
+                MethodInfo method = type.GetMethod(methodName);
+                method.Invoke(this, null);
+            }
+            catch (Exception ex)
+            {
+            }
+        }
+        /// <summary>
+        /// 重新保存订单
+        /// </summary>
+        public void ReSaveGTMCImportData()
+        {
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            CargoOrderBus bus = new CargoOrderBus();
+            CargoFactoryOrderBus factbus = new CargoFactoryOrderBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "微信公众号";
+            log.Status = "0";
+            log.NvgPage = "微信生成订单";
+            log.UserID = "2029";
+            log.Operate = "A";
+            string TID = Convert.ToString(Request["TID"]);
+            if (String.IsNullOrEmpty(TID)) return;
+            CargoInterfaceBus inter = new CargoInterfaceBus();
+            CargoGtmcProOrderEntity gtmcOrder = factbus.QueryGtmcProOrderEntity(new CargoGtmcProOrderEntity { TID = Convert.ToInt32(TID) });
+            if (!string.IsNullOrEmpty(gtmcOrder.OrderNo))
+            {
+                msg.Result = false;
+                msg.Message = "该订单已开单，请刷新后保存";
+                goto ErrEND;
+            }
+            List<CargoGtmcProOrderDetailEntity> list = gtmcOrder.orderDetail;
+
+            //生成系统订单
+            CargoOrderEntity ent = new CargoOrderEntity();
+            List<CargoOrderGoodsEntity> entDest = new List<CargoOrderGoodsEntity>();
+            List<CargoContainerShowEntity> outHouseList = new List<CargoContainerShowEntity>();
+            List<QyOrderUpdateGoodsEntity> goods = new List<QyOrderUpdateGoodsEntity>();
+            int HouseID = gtmcOrder.HouseID;
+            try
+            {
+                if (msg.Result)
+                {
+                    #region 赋值
+                    ent.HAwbNo = gtmcOrder.GtmcNo;//关联订单号
+                    ent.LogisAwbNo = gtmcOrder.TakeNo;
+                    if (HouseID.Equals(62))
+                    {
+                        //太石仓库特殊处理
+                        ent.Dest = ent.Dep = "南沙";
+                    }
+                    ent.Piece = 0;
+                    ent.Weight = ent.Volume = ent.InsuranceFee = ent.TransitFee = ent.TransportFee = ent.DeliveryFee = ent.OtherFee = ent.TotalCharge = ent.Rebate = 0;
+                    ent.HouseID = HouseID;
+                    ent.CheckOutType = "";
+                    ent.TrafficType = "0";// 内部订单
+                    ent.DeliveryType = "0";//Convert.ToString(Request["DeliveryType"]);
+                    ent.AcceptAddress = "广丰生产公司";
+                    ent.AcceptPeople = "丰通物流";
+                    ent.AcceptUnit = "丰通物流";
+                    ent.AcceptTelephone = "";
+                    ent.AcceptCellphone = "";
+                    ent.ShopCode = "";
+                    ent.CreateAwb = "";
+                    ent.CreateAwbID = "";
+                    ent.CreateDate = DateTime.Now;// Convert.ToDateTime(Request["CreateDate"]);
+                    ent.OP_ID = "";
+                    ent.ThrowGood = "0";
+                    ent.IsPrintPrice = 0;
+                    ent.TranHouse = "";
+                    ent.PostponeShip = "0";
+                    ent.LogisID = 0;
+                    ent.ClientNum = ent.PayClientNum = 783644;
+                    ent.PayClientName = "丰通物流";
+                    ent.DeliverySettlement = null;
+                    int OrderNum = 0;
+                    ent.OrderNo = Common.GetMaxOrderNumByCurrentDate(HouseID, "GF", out OrderNum); // Convert.ToString(Request["OrderNo"]);//生成最新顺序订单号
+                    ent.OrderNum = OrderNum;//最新订单顺序号
+
+                    #endregion
+                    int pieceSum = 0;
+                    string outID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString();//出库单号
+                    string oS = "1";
+                    foreach (var o in list)
+                    {
+                        int piece = o.Piece;
+                        CargoInterfaceEntity queryEntity = new CargoInterfaceEntity
+                        {
+                            ProductName = "",
+                            HouseID = HouseID,
+                            GoodsCode = o.GoodsCode,
+                            TypeID = o.TypeID,
+                            Model = "",
+                            Specs = "",//o.Specs,
+                            Batch = "",
+                            BatckWeek = 0,
+                            ParentID = 354,
+                            Figure = ""
+                        };
+                        List<CargoInterfaceEntity> stockList = inter.queryCargoStock(queryEntity).Where(c => c.IsAddOrder.Equals("0")).ToList();
+                        List<CargoInterfaceEntity> NostockList = inter.queryCargoStock(queryEntity).Where(c => c.IsAddOrder != "0").ToList();
+                        if (stockList.Count <= 0)
+                        {
+                            oS = "2";
+                            continue;
+                            msg.Result = false;
+                            msg.Message = "公司代码：" + o.SourceCode + "，品番：" + o.GoodsCode + "，背番：" + o.Specs + "出库仓库存为空";
+                            goto ErrEND;
+                        }
+                        if (stockList.Sum(c => c.StockNum) < piece)
+                        {
+                            oS = "2";
+                            //continue;
+                            //msg.Result = false;
+                            //msg.Message = "公司代码：" + o.SourceCode + "，品番：" + o.GoodsCode + "，背番：" + o.Specs + "出库仓库存为：" + stockList.Sum(c => c.StockNum).ToString();
+                            //goto ErrEND;
+                        }
+                        //减库存规则，一周期早的先出先进先出，二数量和库存数刚好一样的先出
+                        foreach (var it in stockList)
+                        {
+                            if (it.StockNum <= 0) { continue; }
+                            if (NostockList.Exists(c => Convert.ToInt32(c.Batch) < Convert.ToInt32(it.Batch)))
+                            {
+                                msg.Result = false;
+                                msg.Message = "存储区有更早周期产品，请优先出库";
+                                break;
+                            }
+                            CargoContainerShowEntity cargo = new CargoContainerShowEntity();
+                            cargo.OrderNo = ent.OrderNo;//订单号
+                            cargo.OutCargoID = outID;
+                            cargo.ContainerID = it.ContainerID;
+                            cargo.TypeID = it.TypeID;
+                            cargo.ProductID = it.ProductID;
+
+                            cargo.ID = it.ContainerGoodsID;//库存表ID
+
+                            cargo.HouseName = "生产物流仓库";
+                            cargo.ProductName = it.ProductName;
+                            cargo.Model = it.Model;
+                            cargo.Specs = it.Specs;
+                            cargo.Figure = it.Figure;
+                            #region 减库存逻辑
+                            if (piece < it.StockNum)
+                            {
+                                //部分出
+                                entDest.Add(new CargoOrderGoodsEntity
+                                {
+                                    OrderNo = ent.OrderNo,
+                                    ProductID = it.ProductID,
+                                    HouseID = ent.HouseID,
+                                    AreaID = it.AreaID,
+                                    Piece = piece,
+                                    ActSalePrice = 0,
+                                    ContainerCode = it.ContainerCode,
+                                    OutCargoID = outID,
+                                    OP_ID = log.UserID
+                                });
+                                cargo.Piece = piece;
+                                cargo.InPiece = it.StockNum;
+
+                                outHouseList.Add(cargo);
+                                pieceSum += cargo.Piece;
+                                break;
+                            }
+                            if (piece.Equals(it.StockNum))
+                            {
+                                //要出库件数和第一条库存件数刚刚好，则就全部出
+                                entDest.Add(new CargoOrderGoodsEntity
+                                {
+                                    OrderNo = ent.OrderNo,
+                                    ProductID = it.ProductID,
+                                    HouseID = ent.HouseID,
+                                    AreaID = it.AreaID,
+                                    Piece = piece,
+                                    ActSalePrice = 0,
+                                    ContainerCode = it.ContainerCode,
+                                    OutCargoID = outID,
+                                    OP_ID = log.UserID
+                                });
+                                cargo.Piece = piece;
+                                cargo.InPiece = it.StockNum;
+
+                                outHouseList.Add(cargo);
+                                pieceSum += cargo.Piece;
+                                break;
+                            }
+                            if (piece > it.StockNum)
+                            {
+                                //全部出
+                                entDest.Add(new CargoOrderGoodsEntity
+                                {
+                                    OrderNo = ent.OrderNo,
+                                    ProductID = it.ProductID,
+                                    HouseID = ent.HouseID,
+                                    AreaID = it.AreaID,
+                                    Piece = it.StockNum,
+                                    ActSalePrice = 0,
+                                    ContainerCode = it.ContainerCode,
+                                    OutCargoID = outID,
+                                    OP_ID = log.UserID
+                                });
+                                cargo.Piece = it.StockNum;
+                                cargo.InPiece = it.StockNum;
+
+                                outHouseList.Add(cargo);
+                                pieceSum += cargo.Piece;
+                                piece = piece - it.StockNum;
+                                continue;
+                            }
+                            #endregion
+                        }
+                    }
+                    ent.Piece = pieceSum;
+                    ent.OutHouseName = "生产物流仓库";
+                    ent.TransportFee = 0;
+                    ent.TotalCharge = 0;
+                    ent.AwbStatus = "0";
+                    ent.OrderType = "0";
+                    ent.HouseID = HouseID;
+                    ent.HouseName = "生产物流仓库";
+                    ent.goodsList = entDest;
+                    ent.ModifyPriceStatus = "0";
+                    if (outHouseList.Count <= 0)
+                    {
+                        msg.Message = "订单库存不足"; msg.Result = false;
+                    }
+                    if (msg.Result)
+                    {
+                        //仓库同步缓存
+                        CargoHouseBus house = new CargoHouseBus();
+                        foreach (CargoContainerShowEntity time in outHouseList) {
+                            CargoProductEntity syncProduct = house.SyncTypeProduct(time.ProductID.ToString());
+                            //34 马牌  1 同步马牌  2 同步全部品牌
+                            if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+                            {
+                                RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
+                            }
+                        }
+                        
+                       
+                        bus.AddOrderInfo(ent, outHouseList, log);
+                        if (pieceSum < gtmcOrder.Piece)
+                        {
+                            oS = "2";
+                            msg.Result = false;
+                            msg.Message = "缺货订单，请查找库存或移库";
+                            goto ErrEND;
+
+                        }
+                        gtmcOrder.OrderNo = ent.OrderNo;
+                        gtmcOrder.OrderStatus = oS;
+                        factbus.UpdateGtmcProOrderStatus(gtmcOrder);
+                        //推送好来运系统
+                        bus.InsertCargoOrderPush(new CargoOrderPushEntity
+                        {
+                            OrderNo = ent.OrderNo,
+                            Dep = ent.Dep,
+                            Dest = ent.Dest,
+                            Piece = ent.Piece,
+                            TransportFee = ent.TransportFee,
+                            ClientNum = ent.ClientNum.ToString(),
+                            AcceptAddress = ent.AcceptAddress,
+                            AcceptCellphone = ent.AcceptCellphone,
+                            AcceptTelephone = ent.AcceptTelephone,
+                            AcceptPeople = ent.AcceptPeople,
+                            AcceptUnit = ent.AcceptUnit,
+                            HouseID = ent.HouseID.ToString(),
+                            HouseName = ent.OutHouseName,
+                            OP_ID = "太石仓",
+                            PushType = "0",
+                            PushStatus = "0",
+                            LogisID = ent.LogisID
+                        }, log);
+                    }
+                }
+            }
+            catch (ApplicationException ex) { msg.Message = ex.Message; msg.Result = false; }
+
+        ErrEND:
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        public void QueryGTMCOrderByID()
+        {
+            CargoGtmcProOrderEntity queryEntity = new CargoGtmcProOrderEntity();
+            //查询条件
+            string key = Request["TakeNo"];
+            if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return; }
+            queryEntity.TakeNo = key;
+            CargoInterfaceBus inter = new CargoInterfaceBus();
+            CargoFactoryOrderBus bus = new CargoFactoryOrderBus();
+            CargoGtmcProOrderEntity result = bus.QueryGtmcProOrderEntity(queryEntity);
+            if (result.TID.Equals(0))
+            {
+                Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return;
+            }
+            //查询库存
+            foreach (var o in result.orderDetail)
+            {
+                CargoInterfaceEntity qEntity = new CargoInterfaceEntity
+                {
+                    ProductName = "",
+                    HouseID = result.HouseID,
+                    GoodsCode = o.GoodsCode,
+                    TypeID = o.TypeID,
+                    Model = "",
+                    Specs = "",// o.Specs,
+                    Batch = "",
+                    BatckWeek = 0,
+                    ParentID = 354,
+                    Figure = ""
+                };
+                int tn = inter.queryCargoStock(qEntity).Sum(c => c.StockNum);
+                o.Stock = inter.queryCargoStock(qEntity).Where(c => c.IsAddOrder.Equals("0")).Sum(c => c.StockNum);
+                o.NoStock = tn - o.Stock;
+            }
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void configJssdk()
+        {
+
+
+            //2.获取Token
+            //AccessTokenResult token = CommonApi.GetToken(Common.GetQYCorpID(), secret);
+            //JsApiTicketResult apiTicket= CommonApi.GetTicket(Common.GetQYCorpID(), secret);
+            //string titck = JsApiTicketContainer.GetJsApiTicket(Common.GetdltAPPID());
+
+            JsApiTicketResult jtr = Senparc.Weixin.MP.CommonAPIs.CommonApi.GetTicket("wx7ca8004e0bbc67a4", "9186ef459c9ac50765efff5be3866ea9", "jsapi");
+            string titck = jtr.ticket;
+
+
+            string Url = Request["Url"].ToString();
+            string appId = "wx7ca8004e0bbc67a4";//System.Configuration.ConfigurationManager.AppSettings["CorpID"];
+            string appSecret = "9186ef459c9ac50765efff5be3866ea9";//System.Configuration.ConfigurationManager.AppSettings["EncodingAESKey"];
+            bool debug = true;
+            JSSDK sdk = new JSSDK(appId, appSecret, debug);
+            SignPackage config = sdk.GetSignPackage(Url, JsApiEnum.scanQRCode);
+            Dictionary<string, object> result = new Dictionary<string, object>();
+            //appId = config.appId;
+            result.Add("appId", config.appId);
+            result.Add("timestamp", config.timestamp);
+            result.Add("nonceStr", config.nonceStr);
+            result.Add("signature", JSSDKHelper.GetSignature(titck, config.nonceStr, config.timestamp.ToString(), Url));
+
+            Response.ContentType = "text/plain";
+
+            string resultString = Newtonsoft.Json.JsonConvert.SerializeObject(result);
+            Response.Write(resultString);
+            Response.End();
+        }
+    }
+}

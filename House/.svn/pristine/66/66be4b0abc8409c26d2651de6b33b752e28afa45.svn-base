@@ -1,0 +1,986 @@
+﻿<%@ Page Title="云仓数据" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="huiCaiWarehouseStatistics.aspx.cs" Inherits="Cargo.HuiCai.huiCaiWarehouseStatistics" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <link href="../JS/FloatNavi/base.css" rel="stylesheet" />
+    <script src="../JS/FloatNavi/common.js" type="text/javascript"></script>
+    <script src="../JS/EChart/chart.umd.js" type="text/javascript"></script>
+    <script src="../JS/EChart/chartjs-plugin-datalabels.min.js" type="text/javascript"></script>
+    <style type="text/css">
+        .btn-group .easyui-linkbutton {
+            margin-right: 0 !important; /* 消除按钮间距 */
+            border-radius: 0 !important; /* 去除圆角 */
+        }
+        /* 第一个按钮左侧圆角 */
+        .btn-group a:first-child {
+            border-top-left-radius: 3px !important;
+            border-bottom-left-radius: 3px !important;
+        }
+        /* 最后一个按钮右侧圆角 */
+        .btn-group a:last-child {
+            border-top-right-radius: 3px !important;
+            border-bottom-right-radius: 3px !important;
+        }
+
+        @media (max-width: 480px) {
+            .btn-group a {
+                padding: 0 10px !important;
+            }
+        }
+    </style>
+
+    <script type="text/javascript">
+        $(function () {
+            //InitTab();
+            $('#dgHouseAim').datagrid({
+                width: '100%',
+                height: '570px',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'TypeName',
+                url: null,
+                rownumbers: true,
+                showFooter: true,
+                columns: [[
+                    { title: '仓库名称', field: 'HouseName', width: '70px' },
+                    {
+                        title: '年月', field: 'AimMonth', width: '60px', align: 'right', formatter: function (val, item) {
+                            if (item.AimMonth == 0) {
+                                return ''
+                            }
+                            return item.AimYear + "-" + item.AimMonth
+                        }
+                    },
+                    { title: '销售数量', field: 'Piece', width: '60px', align: 'right' },
+                    { title: '销售目标（月）', field: 'AimQuantity', width: '90px', align: 'right' },
+                    {
+                        title: '完成百分比', field: 'PercentComplete', width: '80px', align: 'right', formatter: function (val) {
+                            if (val == 0) {
+                                return ''
+                            }
+                            return val + "%"
+                        }
+                    },
+                ]],
+                onClickRow: function (index, row) {
+                    $('#dgHouseAim').datagrid('clearSelections');
+                    $('#dgHouseAim').datagrid('selectRow', index);
+                },
+            });
+            $('#dgOrderDayStatistics').datagrid({
+                width: '100%',
+                height: '600px',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'TypeName',
+                url: null,
+                rownumbers: true,
+                showFooter: true,
+                columns: [[
+                    {
+                        title: '品牌名称', field: 'TypeName', width: '110px', formatter: function (val, item) {
+                            //if (item.TypeName == "footer") return '';
+                            return val
+                        }
+                    },
+                    {
+                        title: '仓库名称', field: 'HouseName', width: '110px', formatter: function (val, item) {
+                            if (item.TypeName == "footer") return '';
+                            return val
+                        }
+                    },
+                    {
+                        title: '销量', field: 'Piece', width: '110px', align: 'right', formatter: function (val, item) {
+                            if (item.TypeName == "footer") return '';
+                            return val
+                        }
+                    },
+                    {
+                        title: '销售SKU', field: 'DayStatisticsCount', width: '110px', align: 'right', formatter: function (val, item) {
+                            if (item.TypeName == "footer") return '';
+                            return val
+                        }
+                    },
+                    {
+                        title: '目标SKU', field: 'StockNum', width: '110px', align: 'right', formatter: function (val, item) {
+                            if (item.TypeName == "footer") return '';
+                            return val
+                        }
+                    },
+                    {
+                        title: '在库SKU', field: 'ProCount', width: '110px', align: 'right', formatter: function (val, item) {
+                            if (item.TypeName == "footer") return '';
+                            return val
+                        }
+                    },
+                    {
+                        title: '库存', field: 'ProPiece', width: '110px', align: 'right', formatter: function (val, item) {
+                            if (item.TypeName == "footer") return '';
+                            return val
+                        }
+                    },
+                    {
+                        title: 'SKU满足率', field: 'SatisfactionRate', width: '110px', align: 'right', formatter: function (val, item) {
+                            if (item.HouseName == "汇总：") return '';
+                            return val + "%"
+                        }
+                    },
+                    {
+                        title: '动销率', field: 'SalesRate', width: '110px', align: 'right', formatter: function (val, item) {
+                            if (item.HouseName == "汇总：") return '';
+                            return val + "%"
+                        }
+                    },
+                    {
+                        title: '库存周转数', field: 'InventoryTurnover', width: '110px', align: 'right', formatter: function (val, item) {
+                            if (item.HouseName == "汇总：") return '';
+                            return val
+                        }
+                    },
+                    {
+                        title: '点击转化率', field: 'ClickConversionRate', width: '110px', align: 'right', formatter: function (val, item) {
+                            if (item.HouseName == "汇总：") return '';
+                            return val + "%"
+                        }
+                    },
+
+                ]],
+                onClickRow: function (index, row) {
+                    $('#dgOrderDayStatistics').datagrid('clearSelections');
+                    $('#dgOrderDayStatistics').datagrid('selectRow', index);
+                },
+            });
+
+            var url = '../Order/orderApi.aspx?method=QueryALLBrandType&type=edit';
+            $('#TypeID').combobox('reload', url);
+        });
+
+
+
+
+    </script>
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div style="font-size: 30px; font-weight: bold; background-color: white;">
+        <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+            <table id="saPanelTab">
+                <tr>
+                    <td style="text-align: right;">订单时间:
+                    </td>
+                    <td>
+                        <input id="StartDate" class="easyui-datebox" style="width: 100px" />~<input id="EndDate" class="easyui-datebox" style="width: 100px" />
+                    </td>
+                    <td style="text-align: right;">订单类型:
+                    </td>
+                    <td>
+                        <select class="easyui-combobox" id="OrderType" style="width: 100px" panelheight="auto">
+                            <option value="0">全部</option>
+                            <option value="22">即日达</option>
+                            <option value="23">次日达</option>
+                        </select>
+                    </td>
+                    <td><a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="DoSearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div id="saPanel" style="font-weight: bold; background-color: white; padding-bottom: 3px; padding-top: 3px; margin-top: 5px;">
+        <table style="text-align: center;">
+            <tr>
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">新增用户数</span>
+                    <br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1ea7f7;" id="UserCount">15</span>
+                </td>
+
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">新增门店数</span>
+                    <br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1ea7f7;" id="StoresCount">15</span>
+
+                </td>
+
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">注册用户数</span>
+                    <br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1ea7f7;" id="RegisterUserCount">15</span>
+
+                </td>
+
+
+                <td>
+                    <div class="boxDid">
+                        <span style="font-weight: lighter; font-size: 15px; color: #808080">销量(条)</span><br />
+                        <span style="font-size: 30px; font-weight: bold; color: #ed2323;" id="MonthOrderSalesVolume">0</span>
+                        <br style="line-height: 5px;" />
+                        <span style="font-weight: lighter; font-size: 13px; color: #808080">目标完成:<span style="font-size: 15px; font-weight: bold; color: #ed2323;" id="DayOrderSalesVolume">0</span></span>
+
+                    </div>
+                </td>
+                <td><span style="font-weight: lighter; font-size: 15px; color: #808080">销售额(万)</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #2E8B57;" id="MonthOrderRevenue">0</span>
+                    <br style="line-height: 5px;" />
+                    <%--<span style="font-weight: lighter; font-size: 13px; color: #808080">日销额:<span style="font-size: 15px; font-weight: bold; color: #2E8B57;" id="DayOrderRevenue">0</span></span>--%>
+                </td>
+
+                <td>
+                    <div class="boxDid">
+                        <span style="font-weight: lighter; font-size: 15px; color: #808080">退货量(条)</span><br />
+                        <span style="font-size: 30px; font-weight: bold; color: #ff6a00;" id="ReturnPiece">0</span>
+                        <br style="line-height: 5px;" />
+                        <%--<span style="font-weight: lighter; font-size: 13px; color: #808080">日退货量:<span style="font-size: 15px; font-weight: bold; color: #ff6a00;" id="OESSaleOrderDayPiece">0</span></span>--%>
+                    </div>
+                </td>
+                <td><span style="font-weight: lighter; font-size: 15px; color: #808080">退货额(万)</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #ff6a00;" id="ReturnTotalCharge">0</span>
+                    <br style="line-height: 5px;" />
+                    <%--<span style="font-weight: lighter; font-size: 13px; color: #808080">日销额:<span style="font-size: 15px; font-weight: bold; color: #ff6a00;" id="OESSaleOrderDayCharge">0</span></span>--%>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080;">访问用户数</span>
+                    <br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1ea7f7;" id="DayUserCount">0</span>
+                </td>
+
+                <td><span style="font-weight: lighter; font-size: 15px; color: #808080">访问门店数</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #ed2323;" id="DayClientCount">0</span>
+                </td>
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">注册门店数</span>
+                    <br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1ea7f7;" id="RegisterStoresCount">15</span>
+
+                </td>
+
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">交易用户数</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #2E8B57;" id="DayClickCount">0</span>
+                </td>
+
+                <td>
+                    <div class="boxDid">
+                        <span style="font-weight: lighter; font-size: 15px; color: #808080">交易门店数</span><br />
+                        <span style="font-size: 30px; font-weight: bold; color: #ff6a00;" id="StoresUniqueClientCount">0</span>
+                        <br style="line-height: 5px;" />
+                        <%--<span style="font-weight: lighter; font-size: 13px; color: #808080">交易门店数:<span style="font-size: 15px; font-weight: bold; color: #ff6a00;" id="ReturnOrderDayPiece">0</span></span>--%>
+                    </div>
+                </td>
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">浏览数(次)</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1cdb14;" id="MonthClickCount">0</span>
+
+                </td>
+                <td><span style="font-weight: lighter; font-size: 15px; color: #808080">总销量(条)</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1cdb14;" id="TotalPiece">0</span></td>
+            </tr>
+        </table>
+
+
+    </div>
+    <div style="width: 100%; height: 100%;" id="ChartBox">
+        <div style="width: 100%; display: flex; align-items: center;">
+            <div style="width: 24%;" id="pn23" data-options="tools:'#tl1'" class="easyui-panel" title="仓库交易数据">
+
+                <table id="dgHouseAim" class="easyui-datagrid">
+                </table>
+                <div id="tl1">
+                    <%--<span href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="DayStatisticsExportV2()" id="btnExportV2">&nbsp;导&nbsp;出&nbsp;</span>--%>&nbsp;&nbsp;
+                    <a href="javascript:void(0)" class="icon-application_get" onclick="DayStatisticsExportV2()" title="导出"></a>
+                </div>
+            </div>
+            <div style="width: 76%;">
+                <canvas id="canvBrandBar"></canvas>
+            </div>
+        </div>
+        <div style="width: 100%; display: flex;">
+            <%-- <div class="btn-group">
+                <a id="btn-month" class="easyui-linkbutton" data-options="selected:true">按月</a>
+                <a id="btn-day" class="easyui-linkbutton" data-options="selected:false">按日</a>
+            </div>--%>
+            <div style="width: 100%;">
+                <canvas id="TotalMonthBar"></canvas>
+            </div>
+
+
+
+        </div>
+        <div style="width: 100%; display: flex;">
+            <%-- <div class="btn-group">
+                <a id="btn-month" class="easyui-linkbutton" data-options="selected:true">按月</a>
+                <a id="btn-day" class="easyui-linkbutton" data-options="selected:false">按日</a>
+            </div>--%>
+
+            <div style="width: 100%;">
+                <canvas id="TotalDayBar"></canvas>
+            </div>
+
+        </div>
+        <div style="width: 100%; display: flex;">
+            <div style="width: 100%;" id="pn23" class="easyui-panel" title="品牌月销售排名统计数">
+                <table id="saPanelTab">
+                    <tr>
+                        <td style="text-align: right;">日期:
+                        </td>
+                        <td>
+                            <input id="TypeStartDate" class="easyui-datebox" style="width: 100px" />~<input id="TypeEndDate" class="easyui-datebox" style="width: 100px" />
+                        </td>
+                        <td style="text-align: right;">品牌:
+                        </td>
+                        <td>
+                            <input id="TypeID" name="TypeID" class="easyui-combobox" style="width: 100px;" data-options="valueField:'TypeID',textField:'TypeName',editable:true,required:true" />
+                        </td>
+                        <td style="text-align: right;">供应商:
+                        </td>
+                        <td>
+                            <input id="ASettleHouseID" class="easyui-combobox" style="width: 100px;" />
+                        </td>
+                        <td><span href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="DoSearchBrand()">&nbsp;查&nbsp;询&nbsp;</span>&nbsp;&nbsp;</td>
+                        <td><span href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="DayStatisticsExport()" id="btnExport">&nbsp;导&nbsp;出&nbsp;</span>&nbsp;&nbsp;
+                             <form runat="server" id="Form2">
+                                 <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived_Click" />
+                                 <asp:Button ID="btnDerived2" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived2_Click" />
+                             </form>
+
+                        </td>
+                    </tr>
+                </table>
+                <table id="dgOrderDayStatistics" class="easyui-datagrid">
+                </table>
+            </div>
+
+        </div>
+
+
+        <script type="text/javascript">
+            var CharTable = $(".CharTable")
+            $(CharTable[0]).css("display", "")
+
+
+
+            Chart.register(ChartDataLabels);
+
+            //交易柱状图
+            var canvBrandBar = document.getElementById('canvBrandBar');
+            var canvBrandBarChart = new Chart(canvBrandBar, {
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '交易量',
+                        data: [],
+                        type: 'bar',
+                    }]
+                },
+                options: {
+                    plugins: {
+                        datalabels: {
+                            color: 'Black',
+                            font: {
+                                weight: 'bold',
+                                size: 15,
+                            },
+                            anchor: 'end', // 设置标签的锚点位置（位置相对于数据点）
+                            //align: 'top', // 设置标签的对齐位置（相对于锚点）
+                            //formatter: function (value) {
+                            //    return value;
+                            //}
+                        },
+                        //legend: {
+                        //    position: 'top',
+                        //},
+                        title: {
+                            display: true,
+                            text: '仓库交易数据',
+                            font: {
+                                size: 15
+                            }
+                        }
+
+                    },
+
+                }
+            });
+
+            //月总销售柱状图
+            var canvTotalMonthBar = document.getElementById('TotalMonthBar');
+            var canvTotalMonthChart = new Chart(canvTotalMonthBar, {
+
+                data: {
+                    labels: [],
+                    datasets: [
+                        //{
+                        //    label: '销售条数',
+                        //    data: [],
+                        //    type: 'bar',
+                        //    yAxisID: 'y',      // 绑定主Y轴 
+                        //    borderColor: 'rgb(255, 99, 132)',
+                        //    backgroundColor: 'rgba(255, 99, 132, 0.5)'
+                        //},
+                        //{
+                        //    label: '完成比',
+                        //    data: [],
+                        //    yAxisID: 'y1',     // 绑定次Y轴
+                        //    type: 'line',
+                        //    borderColor: 'rgb(54, 162, 235)',
+                        //    backgroundColor: 'rgba(54, 162, 235, 0.5)'
+                        //}
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // 关键配置：解除比例约束
+                    aspectRatio: 1, // 可自定义比例（如 2 表示宽度是高度的2倍）
+                    plugins: {
+                        datalabels: {
+                            color: 'Black',
+                            font: {
+                                weight: 'bold',
+                                size: 15,
+                            },
+                            anchor: 'end', // 设置标签的锚点位置（位置相对于数据点）
+                            //align: 'top', // 设置标签的对齐位置（相对于锚点）
+                            formatter: function (value, item) {
+                                if (value == 0) {
+                                    return null;
+                                }
+                                if (item.dataset.label == "完成比") {
+                                    return value + "%";
+                                } else {
+                                    return value;
+                                }
+
+                            }
+                        },
+                        //legend: {
+                        //    position: 'top',
+                        //},
+                        title: {
+                            display: true,
+                            text: '月总销售数据',
+                            font: {
+                                size: 15
+                            }
+                        },
+
+                    },
+                    interaction: {
+                        mode: 'index',      // 悬停时同时显示两组数据
+                        intersect: false
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: '销售条数' },
+                            stacked: true
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: '完成比' },
+                            weight: 2,  // 主Y轴优先显示（权重更高）
+                            min: 0,  // 固定刻度范围
+                            ticks: {
+                                callback: function (value) {
+                                    return value + '%';
+                                }
+                            },
+                            stacked: true, // 启用堆叠 
+                            grid: { drawOnChartArea: false },  // 次Y轴网格线不绘制 
+                        },
+                    },
+
+                }
+            });
+
+            //日总销售柱状图
+            var canvTotalDayBar = document.getElementById('TotalDayBar');
+            var canvTotalDayChart = new Chart(canvTotalDayBar, {
+                data: {
+                    labels: [],
+                    datasets: [
+                        //{
+                        //    label: '销售条数',
+                        //    data: [],
+                        //    type: 'bar',
+                        //    yAxisID: 'y',      // 绑定主Y轴 
+                        //    borderColor: 'rgb(255, 99, 132)',
+                        //    backgroundColor: 'rgba(255, 99, 132, 0.5)'
+                        //},
+                        //{
+                        //    label: '完成比',
+                        //    data: [],
+                        //    yAxisID: 'y1',     // 绑定次Y轴
+                        //    type: 'line',
+                        //    borderColor: 'rgb(54, 162, 235)',
+                        //    backgroundColor: 'rgba(54, 162, 235, 0.5)'
+                        //}
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false, // 关键配置：解除比例约束
+                    aspectRatio: 1, // 可自定义比例（如 2 表示宽度是高度的2倍）
+                    plugins: {
+                        datalabels: {
+                            color: 'Black',
+                            font: {
+                                weight: 'bold',
+                                size: 15,
+                            },
+                            anchor: 'end', // 设置标签的锚点位置（位置相对于数据点）
+                            //align: 'top', // 设置标签的对齐位置（相对于锚点）
+                            formatter: function (value, item) {
+                                if (value == 0) {
+                                    return null;
+                                }
+                                if (item.dataset.label == "完成比") {
+                                    return value + "%";
+                                } else {
+                                    return value;
+                                }
+
+                            }
+                        },
+                        //legend: {
+                        //    position: 'top',
+                        //},
+                        title: {
+                            display: true,
+                            text: '日总销售数据',
+                            font: {
+                                size: 15
+                            }
+                        }
+
+                    },
+                    interaction: {
+                        mode: 'index',      // 悬停时同时显示两组数据
+                        intersect: false
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: '销售条数' },
+                            stacked: true
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: { display: true, text: '完成比' },
+                            min: 0,  // 固定刻度范围
+                            weight: 2,  // 主Y轴优先显示（权重更高）
+                            ticks: {
+                                callback: function (value) {
+                                    return value + '%';
+                                }
+                            },
+                            stacked: true, // 启用堆叠 
+                            grid: { drawOnChartArea: false },  // 次Y轴网格线不绘制 
+                        },
+                    }
+                }
+            });
+
+
+            $(function () {
+
+                $('#btn-month, #btn-day').click(function () {
+                    var isMonth = $(this).attr('id') === 'btn-month';
+
+                    // 切换选中状态
+                    $('#btn-month').linkbutton({ selected: isMonth });
+                    $('#btn-day').linkbutton({ selected: !isMonth });
+
+                    // 触发业务逻辑 
+                    console.log(isMonth ? '切换到按月模式' : '切换到按日模式');
+                    // 此处可补充数据加载逻辑（如调用不同API）
+                });
+
+                var windowHeight = $(window).height() - 150;
+                //$(".Chart").css("height", windowHeight)
+                var datenow = new Date();
+
+                $('#StartDate').datebox('setValue', getNowFormatDate(datenow.getFullYear().toString() + "-" + (datenow.getMonth() + 1).toString() + "-01"));
+                $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
+
+                $('#TypeStartDate').datebox('setValue', getNowFormatDate(datenow.getFullYear().toString() + "-" + (datenow.getMonth() + 1).toString() + "-01"));
+                $('#TypeEndDate').datebox('setValue', getNowFormatDate(datenow));
+
+                $('#ASettleHouseID').combobox({
+                    url: '../Client/clientApi.aspx?method=AutoCompleteClient&SettleHouseID=1', valueField: 'ClientNum', textField: 'ClientShortName', AddField: 'PinyinName',
+                    filter: function (q, row) {
+                        var opts = $(this).combobox('options');
+                        return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                    },
+                });
+                $('#OrderType').combobox('textbox').bind('focus', function () { $('#OrderType').combobox('showPanel'); });
+                //$('#HouseID').combobox({
+                //    url: '../House/houseApi.aspx?method=CargoPermisionHouse', valueField: 'HouseID', textField: 'Name'
+                //});
+                RELOAD();
+            });
+            function RELOAD() {
+                var alternatingColors = ['rgba(174,238,238,05)', 'rgba(118,238,198,0.5)'];
+                var StoresalternatingColors = ['rgba(175,238,238,0.5)', 'rgba(64,224,208,0.5)'];
+
+                var DayOrderalternatingColors = ['rgba(255,106,106,0.5)', 'rgba(238,99,99,0.5)'];
+                //var DayOrderSalesVolumealternatingColors = ['rgba(224,255,255,0.5)', 'rgba(127,255,212,0.5)'];
+                var DayOrderSalesVolumealternatingColors = ['#ff7f50', '#87cefa', '#da70d6', '#32cd32', '#6495ed', '#ff69b4', '#ba55d3', '#cd5c5c', '#ffa500'
+                    , '#40e0d0', '#1e90ff', '#ff6347', '#7b68ee', '#00fa9a', '#ffd700', '#6699FF', '#ff6666', '#3cb371', '#b8860b', '#30e0e0', '#ff7f50'
+                    , '#87cefa', '#da70d6', '#32cd32', '#6495ed', '#ff69b4', '#ba55d3', '#cd5c5c', '#ffa500', '#40e0d0', '#1e90ff', '#ff6347', '#7b68ee'
+                    , '#00fa9a', '#ffd700', '#6699FF', '#ff6666', '#3cb371', '#b8860b', '#30e0e0', '#ff7f50'
+                    , '#87cefa', '#da70d6', '#32cd32', '#6495ed', '#ff69b4', '#ba55d3', '#cd5c5c', '#ffa500', '#40e0d0', '#1e90ff', '#ff6347', '#7b68ee'
+                    , '#00fa9a', '#ffd700', '#6699FF', '#ff6666', '#3cb371', '#b8860b', '#30e0e0', '#ff7f50'
+                    , '#87cefa', '#da70d6', '#32cd32', '#6495ed', '#ff69b4', '#ba55d3', '#cd5c5c', '#ffa500', '#40e0d0', '#1e90ff', '#ff6347', '#7b68ee'
+                    , '#00fa9a', '#ffd700', '#6699FF', '#ff6666', '#3cb371', '#b8860b', '#30e0e0', '#ff7f50'
+                    , '#87cefa', '#da70d6', '#32cd32', '#6495ed', '#ff69b4', '#ba55d3', '#cd5c5c', '#ffa500', '#40e0d0', '#1e90ff', '#ff6347', '#7b68ee'
+                    , '#00fa9a', '#ffd700', '#6699FF', '#ff6666', '#3cb371', '#b8860b', '#30e0e0', '#ff7f50'
+                    , '#87cefa', '#da70d6', '#32cd32', '#6495ed', '#ff69b4', '#ba55d3', '#cd5c5c', '#ffa500', '#40e0d0', '#1e90ff', '#ff6347', '#7b68ee'
+                    , '#00fa9a', '#ffd700', '#6699FF', '#ff6666', '#3cb371', '#b8860b', '#30e0e0'];
+
+                var DayOrderRevenuealternatingColors = ['rgba(135,206,250,0.5)', 'rgba(127,255,212,0.5)'];
+
+                $.ajax({
+                    type: 'post',
+                    url: "huiCaiApi.aspx?method=HCYCStatisticsData",
+                    data: {
+                        //HouseID: $('#HouseID').combobox('getValue'),
+                        StartDate: $('#StartDate').datebox('getValue'),
+                        EndDate: $('#EndDate').datebox('getValue'),
+                    },
+                    success: function (data) {
+                        var newData = JSON.parse(data);
+                        $("#UserCount").text(newData.Users.Count)
+                        $("#RegisterUserCount").text(newData.Users.RegisterUserCount)
+
+                        $("#StoresCount").text(newData.Stores.Count)
+                        $("#RegisterStoresCount").text(newData.Stores.RegisterStoresCount)
+
+                        $("#MonthOrderRevenue").text((newData.Order.SalesTotalCharge / 10000).toFixed(2))
+                        var ttoal = 0;
+                        if (parseInt(newData.Order.SalesPiece) == 0 || parseInt(newData.Order.MonthHouseTotalPiece) == 0) {
+                            ttoal = 0;
+                        } else {
+                            ttoal = parseInt(newData.Order.SalesPiece) / parseInt(newData.Order.MonthHouseTotalPiece) * 100
+                        }
+                        console.log(parseInt(newData.Order.SalesPiece), parseInt(newData.Order.MonthHouseTotalPiece))
+                        $("#DayOrderSalesVolume").text(newData.Order.MonthHouseTotalPiece + "(" + ttoal.toFixed(2) + "%)")
+                        $("#MonthOrderSalesVolume").text(newData.Order.SalesPiece)
+                        $("#ReturnPiece").text(newData.Order.ReturnPiece)
+                        $("#ReturnTotalCharge").text((newData.Order.ReturnTotalCharge / 10000).toFixed(2))
+                        $("#TotalPiece").text((newData.Order.TotalPiece))
+
+                        $("#TotalNum").text(newData.Order.TotalNum)
+
+                        $("#ReturnOrderDayPiece").text(newData.Order.ReturnOrderDayPiece)
+                    }
+                });
+                $.ajax({
+                    type: 'post',
+                    url: "huiCaiApi.aspx?method=HCYCAccessStatisticsData",
+                    data: {
+                        //HouseID: $('#HouseID').combobox('getValue'),
+                        StartDate: $('#StartDate').datebox('getValue'),
+                        EndDate: $('#EndDate').datebox('getValue'),
+                    },
+                    success: function (data) {
+                        var newData = JSON.parse(data);
+                        $("#DayUserCount").text(newData.Users.DayUserCount);
+                        $("#DayClientCount").text(newData.Users.DayClientCount);
+                        $("#DayClickCount").text(newData.Users.DayClickCount);
+                        $("#MonthClickCount").text(newData.Users.MonthClickCount);
+                        $("#StoresUniqueClientCount").text(newData.Users.StoresUniqueClientCount)
+                    }
+                });
+                $.ajax({
+                    type: 'post',
+                    url: "huiCaiApi.aspx?method=QueryHCYC_House",
+                    data: {
+                        StartDate: $('#StartDate').datebox('getValue'),
+                        EndDate: $('#EndDate').datebox('getValue'),
+                        OrderType: $('#OrderType').combobox('getValue'),
+                    },
+                    success: function (dt) {
+                        var data = JSON.parse(dt);
+                        console.log(data)
+                        $('#dgHouseAim').datagrid('loadData', data);
+                        var dRows = data.rows
+                        dRows.length = dRows.length - 1;
+                        var brandLabels = [];
+                        var brandSalesVolumedatas = {
+                            data: [],
+                            label: '仓库交易数',
+                            type: 'bar',
+                            borderColor: [],
+                            backgroundColor: [],
+                        }
+                        var sum = 0;
+                        for (var j = 0; j < dRows.length; j++) {
+                            //sum += data[j].OrderPiece
+                        }
+                        for (var i = 0; i < dRows.length; i++) {
+                            brandLabels.push(dRows[i].HouseName);
+                            brandSalesVolumedatas.data.push(dRows[i].Piece);
+                            brandSalesVolumedatas.backgroundColor.push(DayOrderSalesVolumealternatingColors[i]);
+                            brandSalesVolumedatas.borderColor.push(DayOrderSalesVolumealternatingColors[i]);
+                        }
+                        canvBrandBarChart.data.datasets.pop();
+                        canvBrandBarChart.data.labels = brandLabels;
+                        canvBrandBarChart.data.datasets.push(brandSalesVolumedatas);
+                        canvBrandBarChart.update();
+
+                    }
+                });
+                $.ajax({
+                    type: 'post',
+                    url: "huiCaiApi.aspx?method=QueryHCYC_TotalDays",
+                    data: {
+                        StartDate: $('#StartDate').datebox('getValue'),
+                        EndDate: $('#EndDate').datebox('getValue'),
+                        OrderType: $('#OrderType').combobox('getValue'),
+                    },
+                    success: function (dt) {
+                        var data = eval(dt);
+                        var Month_brandLabels = [];
+                        var Month_datestr = new Date($('#EndDate').datebox('getValue'));
+                        var Month_MonthStr = Month_datestr.getMonth() + 1
+                        var Month_brandSalesVolumedatasBar = {
+                            data: [],
+                            label: '销售条数',
+                            type: 'bar',
+                            yAxisID: 'y',      // 绑定主Y轴 
+                            borderColor: [],
+                            backgroundColor: [],
+                            stacked: true,
+                        }
+                        var Month_brandSalesVolumedatasLine = {
+                            data: [],
+                            label: '完成比',
+                            type: 'line',
+                            yAxisID: 'y1',
+                            borderColor: [],
+                            backgroundColor: [],
+                            stack: 'sales', // 指定堆叠组 
+                            fill: false,
+                        }
+                        for (var i = 0; i < data.length; i++) {
+                            Month_brandLabels.push(data[i].Day + '日');
+                            Month_brandSalesVolumedatasBar.data.push(data[i].Piece);
+                            Month_brandSalesVolumedatasBar.backgroundColor.push(DayOrderSalesVolumealternatingColors[i]);
+                            Month_brandSalesVolumedatasBar.borderColor.push(DayOrderSalesVolumealternatingColors[i]);
+
+                            Month_brandSalesVolumedatasLine.data.push(data[i].CompletionRate);
+                            Month_brandSalesVolumedatasLine.backgroundColor.push('rgba(54, 162, 235, 0.5)');
+                            Month_brandSalesVolumedatasLine.borderColor.push('rgb(54, 162, 235)');
+                        }
+                        canvTotalDayChart.data.datasets.pop();
+                        canvTotalDayChart.data.datasets = [];
+                        canvTotalDayChart.data.labels = Month_brandLabels;
+                        canvTotalDayChart.data.datasets.push(Month_brandSalesVolumedatasBar);
+                        canvTotalDayChart.data.datasets.push(Month_brandSalesVolumedatasLine);
+                        canvTotalDayChart.update();
+
+
+                    }
+                });
+                $.ajax({
+                    type: 'post',
+                    url: "huiCaiApi.aspx?method=QueryHCYC_TotalMonths",
+                    data: {
+                        StartDate: $('#StartDate').datebox('getValue'),
+                        EndDate: $('#EndDate').datebox('getValue'),
+                        OrderType: $('#OrderType').combobox('getValue'),
+                    },
+                    success: function (dt) {
+                        var data = eval(dt);
+                        console.log(data)
+                        var Month_brandLabels = [];
+                        var Month_datestr = new Date($('#EndDate').datebox('getValue'));
+                        var Month_MonthStr = Month_datestr.getMonth() + 1
+                        var Month_brandSalesVolumedatasBar = {
+                            data: [],
+                            label: '销售条数',
+                            type: 'bar',
+                            yAxisID: 'y',      // 绑定主Y轴 
+                            borderColor: [],
+                            backgroundColor: [],
+                            stacked: true,
+                        }
+                        var Month_brandSalesVolumedatasLine = {
+                            data: [],
+                            label: '完成比',
+                            type: 'line',
+                            yAxisID: 'y1',
+                            borderColor: [],
+                            backgroundColor: [],
+                            stack: 'sales', // 指定堆叠组 
+                            fill: false,
+                        }
+                        for (var i = 0; i < data.length; i++) {
+                            Month_brandLabels.push(data[i].Month + '月');
+                            Month_brandSalesVolumedatasBar.data.push(data[i].Piece);
+                            Month_brandSalesVolumedatasBar.backgroundColor.push(DayOrderSalesVolumealternatingColors[i]);
+                            Month_brandSalesVolumedatasBar.borderColor.push(DayOrderSalesVolumealternatingColors[i]);
+
+                            Month_brandSalesVolumedatasLine.data.push(data[i].CompletionRate);
+                            Month_brandSalesVolumedatasLine.backgroundColor.push('rgba(54, 162, 235, 0.5)');
+                            Month_brandSalesVolumedatasLine.borderColor.push('rgb(54, 162, 235)');
+                        }
+                        canvTotalMonthChart.data.datasets.pop();
+                        canvTotalMonthChart.data.datasets = [];
+                        canvTotalMonthChart.data.labels = Month_brandLabels;
+                        canvTotalMonthChart.data.datasets.push(Month_brandSalesVolumedatasBar);
+                        canvTotalMonthChart.data.datasets.push(Month_brandSalesVolumedatasLine);
+                        canvTotalMonthChart.update();
+
+                    }
+                });
+
+
+            }
+            function IsEmpty(value) {
+                // 检查 null/undefined
+                if (value == null) return true;
+
+                // 检查空字符串/纯空格
+                if (typeof value === 'string' && value.trim() === '') return true;
+
+                // 检查空数组
+                if (Array.isArray(value) && value.length === 0) return true;
+
+                // 检查空对象
+                if (value.constructor === Object && Object.keys(value).length === 0) return true;
+
+                return false;
+
+            }
+            function DoSearch() {
+                var StartDate = $('#StartDate').datebox('getValue')
+                var EndDate = $('#EndDate').datebox('getValue')
+                if (IsEmpty(StartDate) || IsEmpty(EndDate)) {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '日期不能为空！', 'warning'); return;
+                }
+                var time1 = new Date(StartDate)
+                var time2 = new Date(EndDate)
+                if (time1 > time2) {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '开始日期不能大于结束日期！', 'warning'); return;
+                }
+                RELOAD();
+            }
+            function DoSearchBrand() {
+                var StartDate = $('#TypeStartDate').datebox('getValue')
+                var EndDate = $('#TypeEndDate').datebox('getValue')
+                var time1 = new Date(StartDate)
+                var time2 = new Date(EndDate)
+                if (time1 > time2) {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '开始日期不能大于结束日期！', 'warning'); return;
+                }
+                showLoading();
+                GetBrandData();
+            }
+            function GetBrandData() {
+                var typeid = $('#TypeID').combobox('getValue')
+                if (typeid == "" || typeid == null) {
+                    hideLoading();
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择品牌！', 'warning'); return;
+                }
+                //showLoading();
+                $.ajax({
+                    type: 'post',
+                    url: "huiCaiApi.aspx?method=QueryHCYC_BrandData",
+                    data: {
+                        StartDate: $('#TypeStartDate').datebox('getValue'),
+                        EndDate: $('#TypeEndDate').datebox('getValue'),
+                        TypeID: typeid,
+                        SuppClientNum: $('#ASettleHouseID').combobox('getValue'),
+                        OrderType: $('#OrderType').combobox('getValue'),
+                    },
+                    success: function (dt) {
+                        hideLoading();
+                        var data = JSON.parse(dt);
+                        console.log(data)
+                        $('#dgOrderDayStatistics').datagrid('loadData', data);
+                    }
+                });
+            }
+            function DayStatisticsExport() {
+                var key = {
+                    StartDate: $('#TypeStartDate').datebox('getValue'),
+                    EndDate: $('#TypeEndDate').datebox('getValue'),
+                    TypeID: $('#TypeID').combobox('getValue'),
+                    SuppClientNum: $('#ASettleHouseID').combobox('getValue'),
+                    OrderType: $('#OrderType').combobox('getValue'),
+                }
+
+                $.ajax({
+                    url: "huiCaiApi.aspx?method=DayStatisticsExport",
+                    type: 'post', data: key,
+                    success: function (text) {
+                        console.log(text)
+                        if (text == "OK") {
+                            var obj = document.getElementById("<%=btnDerived.ClientID %>");
+                            obj.click();
+                        }
+                        else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
+                    }
+                });
+            }
+            function DayStatisticsExportV2() {
+                var key = {
+                    StartDate: $('#StartDate').datebox('getValue'),
+                    EndDate: $('#EndDate').datebox('getValue'),
+                    OrderType: $('#OrderType').combobox('getValue'),
+                }
+
+                $.ajax({
+                    url: "huiCaiApi.aspx?method=DayStatisticsExportV2",
+                    type: 'post', data: key,
+                    success: function (text) {
+                        console.log(text)
+                        if (text == "OK") {
+                            var obj = document.getElementById("<%=btnDerived2.ClientID %>");
+                            obj.click();
+                        }
+                        else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
+                    }
+                });
+            }
+            function showLoading() {
+                $.messager.progress({
+                    title: '请稍候',
+                    msg: '正在加载数据...',
+                    text: ''
+                });
+            }
+            // 隐藏加载动画
+            function hideLoading() {
+                $.messager.progress('close');
+            }
+
+        </script>
+</asp:Content>

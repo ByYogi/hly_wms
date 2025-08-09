@@ -1,0 +1,1706 @@
+﻿using House.Entity;
+using House.Entity.Cargo;
+using House.Entity.Cargo.Product;
+using House.Entity.House;
+using House.Manager;
+using House.Manager.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Transactions;
+
+namespace House.Business.Cargo
+{
+    /// <summary>
+    /// 客户管理业务逻辑类
+    /// </summary>
+    public class CargoClientBus
+    {
+        private CargoClientManager man = new CargoClientManager();
+        #region 客户管理操作方法集合
+        /// <summary>
+        /// 客户查询
+        /// </summary>
+        /// <param name="pIndex">当前页数</param>
+        /// <param name="pNum">每页多少条数据</param>
+        /// <param name="strWhere">查询条件</param>
+        /// <param name="strCountWhere">查询总数的查询条件</param>
+        /// <returns></returns>
+        public Hashtable QueryCargoClient(int pIndex, int pNum, CargoClientEntity entity)
+        {
+            return man.QueryCargoClient(pIndex, pNum, entity);
+        }
+        public CargoClientEntity QueryCargoClientEntity(CargoClientEntity entity)
+        {
+            return man.QueryCargoClientEntity(entity);
+        }
+
+        /// <summary>
+        /// 删除客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoClient(List<CargoClientEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientEntity> lw = new LogWrite<CargoClientEntity>();
+            try
+            {
+                man.DelCargoClient(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除客户：客户ID：" + it.ClientID.ToString() + "，客户编码：" + it.ClientNum.ToString() + "，客户简称：" + it.ClientShortName.Trim() + "，客户名称：" + it.ClientName.Trim() + "，客户类型：" + it.ClientType.Trim() + "，负责人：" + it.Boss.Trim() + "，联系手机：" + it.Cellphone.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 判断是否存在相同的客户名称
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoClient(CargoClientEntity entity)
+        {
+            return man.IsExistCargoClient(entity);
+        }
+        /// <summary>
+        /// 判断是否存在相同的客户编码
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoClientNum(CargoClientEntity entity)
+        {
+            return man.IsExistCargoClientNum(entity);
+        }
+        /// <summary>
+        /// 新增客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoClient(CargoClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientEntity> lw = new LogWrite<CargoClientEntity>();
+            try
+            {
+                man.AddCargoClient(entity);
+                log.Memo = "新增客户";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoClient(CargoClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientEntity> lw = new LogWrite<CargoClientEntity>();
+            try
+            {
+                man.UpdateCargoClient(entity);
+                log.Memo = "修改客户";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+        public void UpdateClentMoney(CargoClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientEntity> lw = new LogWrite<CargoClientEntity>();
+            try
+            {
+                man.UpdateClentMoney(entity);
+                log.Memo = "修改客户额度 客户编码：" + entity.ClientNum + "，调整额度：" + entity.LimitMoney.ToString("F2");
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改客户经纬度坐标
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoClientClientity(CargoClientAcceptAddressEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientAcceptAddressEntity> lw = new LogWrite<CargoClientAcceptAddressEntity>();
+            try
+            {
+                man.UpdateCargoClientClientity(entity);
+                log.Memo = "修改客户";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public void UpdateCargoClientBookCheck(CargoClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientEntity> lw = new LogWrite<CargoClientEntity>();
+            try
+            {
+                man.UpdateCargoClientBookCheck(entity);
+                log.Memo = "审核客户资料：客户ID：" + entity.ClientID + ",审核状态：" + entity.BookCheck;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 查询客户数据用于缓存
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<ClientSessionEntity> QueryClientSession(CargoClientEntity entity)
+        {
+            return man.QueryClientSession(entity);
+        }
+        /// <summary>
+        /// 查询客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoClientEntity QueryCargoClient(CargoClientEntity entity)
+        {
+            return man.QueryCargoClient(entity);
+        }
+        /// <summary>
+        /// 修改客户的返利
+        /// </summary>
+        /// <param name="ClientID"></param>
+        /// <param name="Money"></param>
+        public void UpdateCargoClientRebateMoney(List<CargoClientEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientPreRecordEntity> lw = new LogWrite<CargoClientPreRecordEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.UpdateCargoClientRebateMoney(it);
+                        log.Memo = "客户ID：" + it.ClientID.ToString() + ",客户编码：" + it.ClientNum + ",客户姓名:" + it.ClientName + ",返利金额:" + it.RebateMoney.ToString();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 冻结当月未结清账款客户的额度付款权限
+        /// </summary>
+        public void UpdateClientQuotaLimit(string checkStatus)
+        {
+            man.UpdateClientQuotaLimit(checkStatus);
+        }
+        public void SaveData(List<CargoClientEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientEntity> lw = new LogWrite<CargoClientEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.SaveData(entity);
+                    log.Memo = "";
+                    foreach (var it in entity)
+                    {
+                        lw.WriteLog(it, log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "导入客户失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        public void SaveRebateData(List<CargoClientPreRecordEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientPreRecordEntity> lw = new LogWrite<CargoClientPreRecordEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.AddClientPreRecord(it);
+                        log.Memo = "品牌：" + it.TypeID.ToString() + ",马牌代码：" + it.TryeClientCode + ",返利月份:" + it.RebateMonth + ",返利类型：" + it.RebateType + ",返利金额:" + it.Money.ToString();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "导入返利失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 根据客户名称、电话、仓库查询客户是否存在
+        /// </summary>
+        /// <param name="Boss"></param>
+        /// <param name="Cellphone"></param>
+        /// <param name="HouseID"></param>
+        /// <returns></returns>
+        public bool QueryCargoClientNum(string Boss, string Cellphone, int HouseID)
+        {
+            return man.QueryCargoClientNum(Boss, Cellphone, HouseID);
+        }
+        /// <summary>
+        /// 根据客户编码复制为指定仓库的客户
+        /// </summary>
+        /// <param name="OldClientNum"></param>
+        /// <param name="NewClientNum"></param>
+        /// <param name="NewHouseID"></param>
+        public void CopyCargoClientData(int OldClientNum, int NewClientNum, int NewHouseID)
+        {
+            man.CopyCargoClientData(OldClientNum, NewClientNum, NewHouseID);
+        }
+        /// <summary>
+        /// 查询客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoClientEntity> QueryCargoClientList(CargoClientEntity entity)
+        {
+            return man.QueryCargoClientList(entity);
+        }
+        public void AddClientCredenFile(List<CargoClientFileEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientFileEntity> lw = new LogWrite<CargoClientFileEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.AddClientCredenFile(it);
+                    log.Memo = "新增客户资料，客户ID：" + it.ClientID.ToString() + ",文件名：" + it.FileName + ",文件类型：" + it.FileType + ",客户编码:" + it.ClientNum.ToString() + "，客户名称：" + it.ClientName;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public void DeleteClientCredenFile(List<CargoClientFileEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientFileEntity> lw = new LogWrite<CargoClientFileEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.DeleteClientCredenFile(it);
+                    log.Memo = "删除客户资料，客户ID：" + it.ClientID.ToString() + ",文件名：" + it.FileName + ",文件类型：" + it.FileType;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public List<CargoClientFileEntity> QueryClientCredenFileByID(CargoClientFileEntity entity)
+        {
+            return man.QueryClientCredenFileByID(entity);
+        }
+        /// <summary>
+        /// 修改客户登录密码
+        /// </summary>
+        /// <param name="entity"></param>
+        public int ChangeClientPwd(CargoClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientEntity> lw = new LogWrite<CargoClientEntity>();
+            try
+            {
+                int i = man.ChangeClientPwd(entity);
+                switch (i)
+                {
+                    case 0:
+                        log.Memo = "修改客户登录密码";
+                        lw.WriteLog(entity, log);
+                        break;
+                    case 1:
+                        log.Status = "1";
+                        log.Memo = "客户不存在";
+                        lw.WriteLog(log);
+                        break;
+                    default:
+                        break;
+                }
+                return i;
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改客户密码失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 处理云仓客户已经开过两单的，关闭货到付款权限
+        /// </summary>
+        public void UpdateClientArriveLimit()
+        {
+            man.UpdateClientArriveLimit();
+        }
+
+        #endregion
+        #region 收货地址操作方法集合
+        /// <summary>
+        /// 查询客户收货地址数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryAcceptAddress(int pIndex, int pNum, CargoClientAcceptAddressEntity entity)
+        {
+            return man.QueryAcceptAddress(pIndex, pNum, entity);
+        }
+        public List<CargoClientAcceptAddressEntity> QueryAcceptAddress(CargoClientAcceptAddressEntity entity)
+        {
+            return man.QueryAcceptAddress(entity);
+        }
+
+        public List<CargoUpClientEntity>  QueryBusinessID(int ClientID)
+        {
+            return man.QueryBusinessID(ClientID);
+        }
+
+        public List<CargoUpClientEntity> QueryBusinessIDDefault(CargoUpClientEntity entity)
+        {
+            return man.QueryBusinessIDDefault(entity);
+        }
+        
+        public List<CargoUpClientEntity> QueryUpClientDep(CargoUpClientEntity entity)
+        {
+            return man.QueryUpClientDep(entity);
+        }
+        public List<CargoUpClientEntity> QueryUpClientDepName(string DepName)
+        {
+            return man.QueryUpClientDepName(DepName);
+        }
+        
+        /// <summary>
+        /// 查询收货人信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoClientAcceptAddressEntity QueryAcceptAddressInfo(CargoClientAcceptAddressEntity entity)
+        {
+            return man.QueryAcceptAddressInfo(entity);
+        }
+        /// <summary>
+        /// 删除客户收货地址
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelAcceptAddress(List<CargoClientAcceptAddressEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientAcceptAddressEntity> lw = new LogWrite<CargoClientAcceptAddressEntity>();
+            try
+            {
+                man.DelAcceptAddress(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除收货地址：客户ID：" + it.ClientID.ToString() + "，客户编码：" + it.ClientNum.ToString() + "，客户名称：" + it.AcceptPeople.Trim() + "，收货地址：" + it.AcceptAddress.Trim() + "，联系手机：" + it.AcceptCellphone.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 新增客户收货地址
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddAcceptAddress(CargoClientAcceptAddressEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientAcceptAddressEntity> lw = new LogWrite<CargoClientAcceptAddressEntity>();
+            try
+            {
+                man.AddAcceptAddress(entity);
+                log.Memo = "新增收货地址：客户编码:" + entity.ClientNum.ToString() + ",收货人:" + entity.AcceptPeople + ",收货单位:" + entity.AcceptCompany + ",收货地址:" + entity.AcceptAddress + ",手机号码:" + entity.AcceptCellphone + ",电话:" + entity.AcceptTelephone + ",省市区:" + entity.AcceptProvince + entity.AcceptCity + entity.AcceptCountry + ",轮胎公司编码:" + entity.TryeClientCode + ",门店类型:" + entity.TryeClientType + ",轮胎公司:" + entity.TryeCompany + ",目标销量:" + entity.TargetNum.ToString() + ",所属仓库:" + entity.HouseID.ToString();
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增收货地址，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改客户收货地址
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateAcceptAddress(CargoClientAcceptAddressEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientAcceptAddressEntity> lw = new LogWrite<CargoClientAcceptAddressEntity>();
+            try
+            {
+                man.UpdateAcceptAddress(entity);
+                log.Memo = "修改收货地址：客户编码:" + entity.ClientNum.ToString() + ",收货人:" + entity.AcceptPeople + ",收货单位:" + entity.AcceptCompany + ",收货地址:" + entity.AcceptAddress + ",手机号码:" + entity.AcceptCellphone + ",电话:" + entity.AcceptTelephone + ",省市区:" + entity.AcceptProvince + entity.AcceptCity + entity.AcceptCountry + ",轮胎公司编码:" + entity.TryeClientCode + ",门店类型:" + entity.TryeClientType + ",轮胎公司:" + entity.TryeCompany + ",目标销量:" + entity.TargetNum.ToString() + ",所属仓库:" + entity.HouseID.ToString();
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增收货地址，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public void RemoveDefaultAcceptAddress(CargoClientAcceptAddressEntity entity)
+        {
+            man.RemoveDefaultAcceptAddress(entity);
+        }
+        /// <summary>
+        /// 是否存在相同的收货地址
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistAcceptAddress(CargoClientAcceptAddressEntity entity)
+        {
+            return man.IsExistAcceptAddress(entity);
+        }
+        #endregion
+        #region 客户发票管理方法集合
+        /// <summary>
+        /// 查询发票数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        /// <exception cref="ApplicationException"></exception>
+        public Hashtable QueryClientInvoiceHeader(int pIndex, int pNum, CargoClientInvoiceHeaderEntity entity)
+        {
+            return man.QueryClientInvoiceHeader(pIndex, pNum, entity);
+        }
+        public void DelClientInvoiceHeader(List<CargoClientInvoiceHeaderEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientInvoiceHeaderEntity> lw = new LogWrite<CargoClientInvoiceHeaderEntity>();
+            try
+            {
+                man.DelClientInvoiceHeader(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除发票抬头：客户编码：" + it.ClientNum.ToString() + "，抬头内容：" + it.HeaderInfo.Trim() + "，发票类型：" + it.InvoiceType.Trim() + "，统一社会信用代码：" + it.SocialCode.Trim() + "，基本账号：" + it.BankNumber;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddClientInvoiceHeader(CargoClientInvoiceHeaderEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientInvoiceHeaderEntity> lw = new LogWrite<CargoClientInvoiceHeaderEntity>();
+            try
+            {
+                man.AddClientInvoiceHeader(entity);
+                log.Memo = "新增发票抬头：客户编码:" + entity.ClientNum.ToString() + ",抬头内容:" + entity.HeaderInfo + ",抬头类型:" + entity.HeaderType + ",发票类型:" + entity.InvoiceType + ",统一社会信用代码:" + entity.SocialCode + ",基本账号:" + entity.BankNumber + ",开启银行名称:" + entity.BankName + ",注册公司地址:" + entity.RegisAddress + ",注册电话:" + entity.RegisTelephone;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateClientInvoiceHeader(CargoClientInvoiceHeaderEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientInvoiceHeaderEntity> lw = new LogWrite<CargoClientInvoiceHeaderEntity>();
+            try
+            {
+                man.UpdateClientInvoiceHeader(entity);
+                log.Memo = "修改发票抬头：客户编码:" + entity.ClientNum.ToString() + ",抬头内容:" + entity.HeaderInfo + ",抬头类型:" + entity.HeaderType + ",发票类型:" + entity.InvoiceType + ",统一社会信用代码:" + entity.SocialCode + ",基本账号:" + entity.BankNumber + ",开启银行名称:" + entity.BankName + ",注册公司地址:" + entity.RegisAddress + ",注册电话:" + entity.RegisTelephone;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistClientInvoiceHeader(CargoClientInvoiceHeaderEntity entity)
+        {
+            return man.IsExistClientInvoiceHeader(entity);
+        }
+        public Hashtable QueryClientPostAddress(int pIndex, int pNum, CargoClientPostAddressEntity entity)
+        {
+            return man.QueryClientPostAddress(pIndex, pNum, entity);
+        }
+        public void DelClientPostAddress(List<CargoClientPostAddressEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientPostAddressEntity> lw = new LogWrite<CargoClientPostAddressEntity>();
+            try
+            {
+                man.DelClientPostAddress(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除发票邮寄地址：客户编码：" + it.ClientNum.ToString() + "，收件人：" + it.AcceptPeople.Trim() + "，电话号码：" + it.AcceptCellphone.Trim() + "，收件地址：" + it.AcceptAddress.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        public void AddClientPostAddress(CargoClientPostAddressEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientPostAddressEntity> lw = new LogWrite<CargoClientPostAddressEntity>();
+            try
+            {
+                man.AddClientPostAddress(entity);
+                log.Memo = "新增发票邮寄地址：客户编码:" + entity.ClientNum.ToString() + "，收件人：" + entity.AcceptPeople.Trim() + "，电话号码：" + entity.AcceptCellphone.Trim() + "，收件地址：" + entity.AcceptAddress.Trim();
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+        public void UpdateClientPostAddress(CargoClientPostAddressEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientPostAddressEntity> lw = new LogWrite<CargoClientPostAddressEntity>();
+            try
+            {
+                man.UpdateClientPostAddress(entity);
+                log.Memo = "修改发票抬头：客户编码:" + entity.ClientNum.ToString() + "，收件人：" + entity.AcceptPeople.Trim() + "，电话号码：" + entity.AcceptCellphone.Trim() + "，收件地址：" + entity.AcceptAddress.Trim();
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public bool IsExistClientPostAddress(CargoClientPostAddressEntity entity)
+        {
+            return man.IsExistClientPostAddress(entity);
+        }
+
+        #endregion
+        #region VIP编码操作方法集合
+        /// <summary>
+        /// 查询所有的VIP编码 
+        /// </summary>
+        /// <param name="pIndex">当前页数</param>
+        /// <param name="pNum">每页多少条数据</param>
+        /// <param name="strWhere">查询条件</param>
+        /// <param name="strCountWhere">查询总数的查询条件</param>
+        /// <returns></returns>
+        public Hashtable QuerySpecialCode(int pIndex, int pNum, CargoSpecialVIPNumEntity entity)
+        {
+            return man.QuerySpecialCode(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 保存特殊的客户编码
+        /// </summary>
+        /// <param name="entity"></param>
+        public void SaveSpecialCode(CargoSpecialVIPNumEntity entity, LogEntity log)
+        {
+            LogWrite<CargoSpecialVIPNumEntity> lw = new LogWrite<CargoSpecialVIPNumEntity>();
+            try
+            {
+                man.SaveSpecialCode(entity);
+                log.Memo = "新增客户编码";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增客户编码，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 判断是否存在相同的客户编码
+        /// </summary>
+        /// <param name="entity">True:存在，False:不存在</param>
+        /// <returns></returns>
+        public bool IsExistSpecialCode(CargoSpecialVIPNumEntity entity)
+        {
+            return man.IsExistSpecialCode(entity) || man.IsExistCargoClientNum(new CargoClientEntity { ClientNum = entity.ClientNum });
+        }
+        /// <summary>
+        /// 删除特殊的客户编码
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelSpecialCode(List<CargoSpecialVIPNumEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoSpecialVIPNumEntity> lw = new LogWrite<CargoSpecialVIPNumEntity>();
+            try
+            {
+                man.DelSpecialCode(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除客户编码：ID：" + it.ID.ToString() + "，客户编码：" + it.ClientNum.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除客户编码，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 解绑客户编码
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void CancelSpecialCode(List<CargoSpecialVIPNumEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoSpecialVIPNumEntity> lw = new LogWrite<CargoSpecialVIPNumEntity>();
+            try
+            {
+                man.CancelSpecialCode(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "解绑客户编码：ID：" + it.ID.ToString() + "，客户编码：" + it.ClientNum.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "解绑客户编码，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 查询客户地址信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoClientEntity> QueryClientAddress(CargoClientEntity entity)
+        {
+            return man.QueryClientAddress(entity);
+        }
+        /// <summary>
+        /// 根据客户ID查询客户信息
+        /// </summary>
+        /// <param name="cargoid"></param>
+        /// <returns></returns>
+        public CargoClientEntity QueryCargoClient(Int64 cargoid)
+        {
+            return man.QueryCargoClient(cargoid);
+        }
+        /// <summary>
+        /// 根据客户代码查询客户信息
+        /// </summary>
+        /// <param name="cargoid"></param>
+        /// <returns></returns>
+        public CargoClientEntity QueryCargoClient(int clientNum, int HouseID = 0)
+        {
+            return man.QueryCargoClient(clientNum, HouseID);
+        }
+        public CargoClientEntity QueryCargoClientTarget(CargoClientEntity entity)
+        {
+            return man.QueryCargoClientTarget(entity);
+        }
+        public void ClearClentQuota(CargoClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientEntity> lw = new LogWrite<CargoClientEntity>();
+            try
+            {
+                man.ClearClentQuota(entity);
+                log.Memo = "清零客户优惠额度：HouseID：" + entity.HouseID.ToString();
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "清零客户优惠额度，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        #endregion
+        #region 客户预收款操作方法集合
+        /// <summary>
+        /// 查询客户预收款
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryPreRecord(int pIndex, int pNum, CargoClientPreRecordEntity entity)
+        {
+            return man.QueryPreRecord(pIndex, pNum, entity);
+        }
+        #endregion
+        #region 微信服务号用户管理方法集合
+        /// <summary>
+        /// 查询微信服务号用户数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryWxClientCheckData(int pIndex, int pNum, WXUserEntity entity)
+        {
+            return man.QueryWxClientCheckData(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 绑定微信用户的店代码
+        /// </summary>
+        /// <param name="entity"></param>
+        public void saveWxUserBind(WXUserEntity entity, LogEntity log)
+        {
+            LogWrite<WXUserEntity> lw = new LogWrite<WXUserEntity>();
+            try
+            {
+                man.saveWxUserBind(entity);
+                log.Memo = "微信用户绑定店代码：微信用户ID:" + entity.ID.ToString() + "，店代码：" + entity.ClientNum.ToString() + "，用户姓名：" + entity.Name;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "微信用户绑定，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 解绑微信用户的店代码
+        /// </summary>
+        /// <param name="entity"></param>
+        public void saveWxUserUnBind(List<WXUserEntity> entity, LogEntity log)
+        {
+            LogWrite<WXUserEntity> lw = new LogWrite<WXUserEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.saveWxUserBind(it);
+                    log.Memo = "解绑店代码：微信用户ID:" + it.ID.ToString() + "，WxOpenID：" + it.wxOpenID + "，用户姓名：" + it.Name + "，微信名：" + it.wxName;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "解绑店代码，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 保存拒审原因
+        /// </summary>
+        /// <param name="entity"></param>
+        public void saveDenyReason(WXUserEntity entity, LogEntity log)
+        {
+            LogWrite<WXUserEntity> lw = new LogWrite<WXUserEntity>();
+            try
+            {
+                man.saveDenyReason(entity);
+                log.Memo = "微信用户拒审：微信用户ID:" + entity.ID.ToString() + "，微信名：" + entity.wxName + "，OPENID：" + entity.wxOpenID;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "微信用户拒审，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改用户的管理员属性
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateWxClientManager(WXUserEntity entity, LogEntity log)
+        {
+            LogWrite<WXUserEntity> lw = new LogWrite<WXUserEntity>();
+            try
+            {
+                man.UpdateWxClientManager(entity);
+                log.Memo = "修改管理员：微信用户ID:" + entity.ID.ToString() + "，是否管理员：" + entity.IsManager;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        #endregion
+        #region 客户来款数据记录集合
+        /// <summary>
+        /// 新增客户来款记录
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddClientIncome(CargoClientIncomeEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientIncomeEntity> lw = new LogWrite<CargoClientIncomeEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddClientIncome(entity);
+                    log.Memo = "新增客户来款，客户ID:" + entity.ClientID.ToString() + ",客户编码：" + entity.ClientNum.ToString() + ",来款金额：" + entity.Money.ToString() + ",来款时间：" + entity.CreateDate.ToString("yyyy-MM-dd") + ",入账账号ID：" + entity.BasicID.ToString() + ",所在仓库：" + entity.HouseID.ToString() + ",操作人：" + entity.OP_ID;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增客户来款失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改客户来款记录
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateClientIncome(CargoClientIncomeEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientIncomeEntity> lw = new LogWrite<CargoClientIncomeEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateClientIncome(entity);
+                    log.Memo = "修改客户来款，来款数据ID:" + entity.IncomeID.ToString() + ",客户编码：" + entity.ClientNum.ToString() + ",来款金额：" + entity.Money.ToString() + ",来款时间：" + entity.CreateDate.ToString("yyyy-MM-dd") + ",入账账号ID：" + entity.BasicID.ToString() + ",所在仓库：" + entity.HouseID.ToString() + ",操作人：" + entity.OP_ID;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改客户来款失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 删除 客户来款记录
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelClientIncome(List<CargoClientIncomeEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientIncomeEntity> lw = new LogWrite<CargoClientIncomeEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelClientIncome(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "删除客户来款，来款数据ID:" + it.IncomeID.ToString() + ",客户编码：" + it.ClientNum.ToString() + ",来款金额：" + it.Money.ToString() + ",来款时间：" + it.CreateDate.ToString("yyyy-MM-dd") + ",入账账号ID：" + it.BasicID.ToString() + ",所在仓库：" + it.HouseID.ToString() + ",操作人：" + it.OP_ID;
+                        lw.WriteLog(log);
+                    }
+
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除客户来款失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询客户来款数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryClientIncome(int pIndex, int pNum, CargoClientIncomeEntity entity)
+        {
+            return man.QueryClientIncome(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询客户来款 数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoClientIncomeEntity> QueryClientIncome(CargoClientIncomeEntity entity)
+        {
+            return man.QueryClientIncome(entity);
+        }
+        #endregion
+        #region 客户账单管理
+        /// <summary>
+        /// 查询当前日期当前仓库账单表中最大顺序号
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public int GetMaxAccountNumByCurDate(CargoClientAccountEntity entity)
+        {
+            return man.GetMaxAccountNumByCurDate(entity);
+        }
+        /// <summary>
+        /// 新增账单
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoAccount(CargoClientAccountEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientAccountEntity> lw = new LogWrite<CargoClientAccountEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddCargoAccount(entity);
+                    if (entity.OrderNoList.Count > 0)
+                    {
+                        foreach (var it in entity.OrderNoList)
+                        {
+                            man.UpdateOrderAccountNo(new CargoClientAccountEntity { AccountID = entity.AccountID, OrderNo = it });
+                        }
+                    }
+                    log.Memo = "新增客户账单,账单号:" + entity.AccountID + ",账单名称:" + entity.AccountTitle + ",客户编码：" + entity.ClientNum.ToString() + ",客户名：" + entity.ClientName + "，应收金额:" + entity.ARMoney.ToString() + ",账单 金额:" + entity.Total.ToString() + "操作人:" + entity.OPID;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改账单
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoAccount(CargoClientAccountEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientAccountEntity> lw = new LogWrite<CargoClientAccountEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateCargoAccount(entity);
+                    man.DeleteOrderAccountNo(entity.AccountID);
+                    if (entity.OrderNoList.Count > 0)
+                    {
+                        foreach (var it in entity.OrderNoList)
+                        {
+                            man.UpdateOrderAccountNo(new CargoClientAccountEntity { AccountID = entity.AccountID, OrderNo = it });
+                        }
+                    }
+                    log.Memo = "修改客户账单,账单号:" + entity.AccountID + ",账单名称:" + entity.AccountTitle + ",客户编码：" + entity.ClientNum.ToString() + ",客户名：" + entity.ClientName + "，应收金额:" + entity.ARMoney.ToString() + ",账单 金额:" + entity.Total.ToString() + "操作人:" + entity.OPID;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询客户账单 
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryBillManager(int pIndex, int pNum, CargoClientAccountEntity entity)
+        {
+            return man.QueryBillManager(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询客户账单
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoClientAccountEntity QueryCargoClientAccount(CargoClientAccountEntity entity)
+        {
+            return man.QueryCargoClientAccount(entity);
+        }
+        /// <summary>
+        /// 删除客户账单
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoAccount(List<CargoClientAccountEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientAccountEntity> lw = new LogWrite<CargoClientAccountEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.DelCargoAccount(it);
+                        log.Memo = "删除客户账单,账单号:" + it.AccountID + ",账单名称:" + it.AccountTitle + ",客户编码：" + it.ClientNum.ToString() + ",客户名：" + it.ClientName + ",账单金额:" + it.Total.ToString() + "操作人:" + it.OPID + ",所属仓库:" + it.HouseName;
+                        lw.WriteLog(log);
+                        man.DeleteOrderAccountNo(it.AccountID);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询客户本月账单
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<APPClientAccountEntity> QueryClientAccountAPP(int pIndex, int pNum, APPClientAccountEntity entity)
+        {
+            return man.QueryClientAccountAPP(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询客户账单明细列表
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public APPClientAccountEntity QueryClientAccountInfo(APPClientAccountEntity entity)
+        {
+            return man.QueryClientAccountInfo(entity);
+        }
+        /// <summary>
+        /// 保存客户的账单签名照片
+        /// </summary>
+        /// <param name="entity"></param>
+        public void SaveAccountElecSign(CargoClientAccountEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientAccountEntity> lw = new LogWrite<CargoClientAccountEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.SaveAccountElecSign(entity);
+                    log.Memo = "客户账单签名,账单号:" + entity.AccountID + ",签名照片:" + entity.ElecSignImg + ",签名状态：" + entity.ElecSign + ",签名时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询客户的账单还款情况
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoClientAccountEntity> QueryClientAccountPay(CargoClientAccountEntity entity)
+        {
+            return man.QueryClientAccountPay(entity);
+        }
+        /// <summary>
+        /// 查询客户的账单还款情况
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<APPClientAccountEntity> QueryClientPayInfoAPP(APPClientAccountEntity entity)
+        {
+            return man.QueryClientPayInfoAPP(entity);
+        }
+        #endregion
+        #region 上游客户管理
+        /// <summary>
+        /// 客户查询
+        /// </summary>
+        /// <param name="pIndex">当前页数</param>
+        /// <param name="pNum">每页多少条数据</param>
+        /// <param name="strWhere">查询条件</param>
+        /// <param name="strCountWhere">查询总数的查询条件</param>
+        /// <returns></returns>
+        public Hashtable QueryUpClientData(int pIndex, int pNum, CargoUpClientEntity entity)
+        {
+            return man.QueryUpClientData(pIndex, pNum, entity);
+        }
+        public List<CargoUpClientEntity> QueryUpClientData(string UpClientID)
+        {
+            return man.QueryUpClientData(UpClientID);
+        }
+        /// <summary>
+        /// 删除上游客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelUpClientData(List<CargoUpClientEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoUpClientEntity> lw = new LogWrite<CargoUpClientEntity>();
+            try
+            {
+                man.DelUpClientData(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除上游客户：上游客户ID：" + it.UpClientID.ToString() + "，客户编码：" + it.UpClientName.ToString() + "，客户简称：" + it.UpClientShortName.Trim() + "，客户类型：" + it.ClientType + "，负责人：" + it.Boss.Trim() + "，联系手机：" + it.Cellphone.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除上游客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 判断是否存在相同的上游客户名称
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistUpClient(CargoUpClientEntity entity)
+        {
+            return man.IsExistUpClient(entity);
+        }
+        /// <summary>
+        /// 新增上游客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddUpClient(CargoUpClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoUpClientEntity> lw = new LogWrite<CargoUpClientEntity>();
+            try
+            {
+                man.AddUpClient(entity);
+                log.Memo = "新增上游客户";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增上游客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改上游客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateUpClient(CargoUpClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoUpClientEntity> lw = new LogWrite<CargoUpClientEntity>();
+            try
+            {
+                man.UpdateUpClient(entity);
+                log.Memo = "修改上游客户";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改上游客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 客户查询
+        /// </summary>
+        /// <param name="pIndex">当前页数</param>
+        /// <param name="pNum">每页多少条数据</param>
+        /// <param name="strWhere">查询条件</param>
+        /// <param name="strCountWhere">查询总数的查询条件</param>
+        /// <returns></returns>
+        public Hashtable QueryUpClientDepData(int pIndex, int pNum, CargoUpClientEntity entity)
+        {
+            return man.QueryUpClientDepData(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 删除上游客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelUpClientDep(List<CargoUpClientEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoUpClientEntity> lw = new LogWrite<CargoUpClientEntity>();
+            try
+            {
+                man.DelUpClientDep(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除上游客户：上游客户ID：" + it.UpClientID.ToString() + "，客户编码：" + it.UpClientName.ToString() + "，客户简称：" + it.UpClientShortName.Trim() + "，客户类型：" + it.ClientType + "，负责人：" + it.Boss.Trim() + "，联系手机：" + it.Cellphone.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除上游客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 判断是否存在相同的上游客户名称
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistUpClientDep(CargoUpClientEntity entity)
+        {
+            return man.IsExistUpClientDep(entity);
+        }
+        /// <summary>
+        /// 新增上游客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddUpClientDep(CargoUpClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoUpClientEntity> lw = new LogWrite<CargoUpClientEntity>();
+            try
+            {
+                man.AddUpClientDep(entity);
+                log.Memo = "新增上游客户";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增上游客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改上游客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateUpClientDep(CargoUpClientEntity entity, LogEntity log)
+        {
+            LogWrite<CargoUpClientEntity> lw = new LogWrite<CargoUpClientEntity>();
+            try
+            {
+                man.UpdateUpClientDep(entity);
+                log.Memo = "修改上游客户";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改上游客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 查询所有公司部门
+        /// </summary>
+        /// <returns></returns>
+        public List<CargoUpClientEntity> QueryAllUpClientDep(CargoUpClientEntity entity)
+        {
+            return man.QueryAllUpClientDep(entity);
+        }
+        #endregion
+        #region 采购商管理
+        public Hashtable QueryDeliveryAddress(int pIndex, int pNum, CargoPurchaserDeliveryAddressEntity entity)
+        {
+            return man.QueryDeliveryAddress(pIndex, pNum, entity);
+        }
+        public void AddDeliveryAddress(CargoPurchaserDeliveryAddressEntity entity, LogEntity log)
+        {
+            LogWrite<CargoPurchaserDeliveryAddressEntity> lw = new LogWrite<CargoPurchaserDeliveryAddressEntity>();
+            try
+            {
+                man.AddDeliveryAddress(entity);
+                log.Memo = "新增采购商提货地址：采购商编码:" + entity.PurchaserID.ToString() + ",提货人:" + entity.DeliveryBoss + ",提货单位:" + entity.PurchaserName + ",提货地址:" + entity.DeliveryAddress + ",手机号码:" + entity.DeliveryTelephone + ",电话:" + entity.DeliveryTelephone + ",省市区:" + entity.DeliveryProvince + entity.DeliveryCity + entity.DeliveryCountry;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增收货地址，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public void UpdateDeliveryAddress(CargoPurchaserDeliveryAddressEntity entity, LogEntity log)
+        {
+            LogWrite<CargoPurchaserDeliveryAddressEntity> lw = new LogWrite<CargoPurchaserDeliveryAddressEntity>();
+            try
+            {
+                man.UpdateDeliveryAddress(entity);
+                log.Memo = "修改采购商提货地址：采购商编码:" + entity.PurchaserID.ToString() + ",提货人:" + entity.DeliveryBoss + ",提货单位:" + entity.PurchaserName + ",提货地址:" + entity.DeliveryAddress + ",手机号码:" + entity.DeliveryTelephone + ",电话:" + entity.DeliveryTelephone + ",省市区:" + entity.DeliveryProvince + entity.DeliveryCity + entity.DeliveryCountry;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增收货地址，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public void DelDeliveryAddress(List<CargoPurchaserDeliveryAddressEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoPurchaserDeliveryAddressEntity> lw = new LogWrite<CargoPurchaserDeliveryAddressEntity>();
+            try
+            {
+                man.DelDeliveryAddress(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除采购商提货地址：采购商编码：" + it.PurchaserID.ToString() + "，采购商名称：" + it.PurchaserName.ToString() + "，提货联系人：" + it.DeliveryBoss.Trim() + "，提货地址：" + it.DeliveryAddress.Trim() + "，提货手机：" + it.DeliveryCellphone.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        public List<CargoPurchaserEntity> AutoCompletePurchaser(CargoPurchaserEntity entity)
+        {
+            return man.AutoCompletePurchaser(entity);
+        }
+        /// <summary>
+        /// 客户查询
+        /// </summary>
+        /// <param name="pIndex">当前页数</param>
+        /// <param name="pNum">每页多少条数据</param>
+        /// <param name="strWhere">查询条件</param>
+        /// <param name="strCountWhere">查询总数的查询条件</param>
+        /// <returns></returns>
+        public Hashtable QueryCargoPurchaser(int pIndex, int pNum, CargoPurchaserEntity entity)
+        {
+            return man.QueryCargoPurchaser(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 判断是否存在相同的客户名称
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoPurchaser(CargoPurchaserEntity entity)
+        {
+            return man.IsExistCargoPurchaser(entity);
+        }
+        /// <summary>
+        /// 新增客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoPurchaser(CargoPurchaserEntity entity, LogEntity log)
+        {
+            LogWrite<CargoPurchaserEntity> lw = new LogWrite<CargoPurchaserEntity>();
+            try
+            {
+                man.AddCargoPurchaser(entity);
+                log.Memo = "新增采购商";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增采购商，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoPurchaser(CargoPurchaserEntity entity, LogEntity log)
+        {
+            LogWrite<CargoPurchaserEntity> lw = new LogWrite<CargoPurchaserEntity>();
+            try
+            {
+                man.UpdateCargoPurchaser(entity);
+                log.Memo = "修改采购商";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改采购商，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 删除客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoPurchaser(List<CargoPurchaserEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoPurchaserEntity> lw = new LogWrite<CargoPurchaserEntity>();
+            try
+            {
+                man.DelCargoPurchaser(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除采购商：采购商ID：" + it.PurchaserID.ToString() + "，采购商名称：" + it.PurchaserName.Trim() + "，采购商类型：" + it.PurchaserType + "，负责人：" + it.Boss.Trim() + "，联系手机：" + it.Cellphone.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除采购商，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        #endregion
+        #region 优惠券
+        public List<WXCouponEntity> QueryWXClient(WXCouponEntity entity)
+        {
+            return man.QueryWXClient(entity);
+        }
+        public Hashtable QueryCouponList(int pIndex, int pNum, WXCouponEntity entity)
+        {
+            return man.QueryCouponList(pIndex, pNum, entity);
+        }
+        public void AddCoupon(WXCouponEntity entity, LogEntity log)
+        {
+            LogWrite<WXCouponEntity> lw = new LogWrite<WXCouponEntity>();
+            try
+            {
+                man.AddCoupon(entity);
+                log.Memo = $"新增优惠券，WXID：{entity.WXID}，金额：{entity.Money}，数量：{entity.Piece}，有效时间：{entity.StartDate}-{entity.EndDate}";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增优惠券，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public void UpdateCoupon(WXCouponEntity entity, LogEntity log)
+        {
+            LogWrite<WXCouponEntity> lw = new LogWrite<WXCouponEntity>();
+            try
+            {
+                man.UpdateCoupon(entity);
+                log.Memo = $"修改优惠券，WXID：{entity.WXID}，金额：{entity.Money}，有效时间：{entity.StartDate}-{entity.EndDate}";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改优惠券，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public void DelCoupon(List<WXCouponEntity> entity, LogEntity log)
+        {
+            LogWrite<WXCouponEntity> lw = new LogWrite<WXCouponEntity>();
+            try
+            {
+                man.DelCoupon(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除优惠券：优惠券ID：" + it.ID.ToString() + "，金额：" + it.Money;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除优惠券，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        #endregion
+        #region 
+
+        public List<CargoSettleHouseEntity> QuerySettleHouseList(CargoSettleHouseEntity entity)
+        {
+            return man.QuerySettleHouseList(entity);
+        }
+        public List<CargoProductSpecEntity> QueryProductSpecList(CargoProductEntity entity)
+        {
+            return man.QueryProductSpecList(entity);
+        }
+        public CargoSettleHouseEntity QuerySettleHouseInfo(CargoSettleHouseEntity entity)
+        {
+            return man.QuerySettleHouseInfo(entity);
+        }
+        public void UpdateClientSettleHouse(CargoSettleHouseEntity entity)
+        {
+            man.UpdateClientSettleHouse(entity);
+        }
+        public Hashtable QuerySettleHouseList(int pIndex, int pNum, CargoSettleHouseEntity entity)
+        {
+            return man.QuerySettleHouseList(pIndex, pNum, entity);
+        }
+        public void AddSettleHouse(CargoSettleHouseEntity entity, List<CargoSupplierProductPrice> productPrices, LogEntity log)
+        {
+            LogWrite<CargoSettleHouseEntity> lw = new LogWrite<CargoSettleHouseEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddSettleHouse(entity, productPrices);
+                    log.Memo = "新增入驻仓库";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增入驻仓库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        public void UpdateSettleHouse(CargoSettleHouseEntity entity, CargoSettleHouseUpdateEntity updateEntity, LogEntity log)
+        {
+            LogWrite<CargoSettleHouseEntity> lw = new LogWrite<CargoSettleHouseEntity>();//使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateSettleHouse(entity, updateEntity);
+                    log.Memo = "修改入驻仓库";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改入驻仓库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        public void DelSettleHouse(List<CargoSettleHouseEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoSettleHouseEntity> lw = new LogWrite<CargoSettleHouseEntity>();//使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelSettleHouse(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "删除入驻仓库：客户编码：" + it.ClientNum.ToString() + "，入驻仓库：" + it.SettleHouseID;
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除入驻仓库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        #endregion
+    }
+}

@@ -1,0 +1,611 @@
+﻿using House.Business.Cargo;
+using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Report
+{
+    public partial class reportDaily : BasePage
+    {
+        /// <summary>
+        /// 导出实体
+        /// </summary>
+        public List<CargoDailyReportEntity> CargoDailyReport
+        {
+            get
+            {
+                if (Session["CargoDailyReport"] == null) { Session["CargoDailyReport"] = new List<CargoDailyReportEntity>(); }
+                return (List<CargoDailyReportEntity>)(Session["CargoDailyReport"]);
+            }
+            set
+            {
+                Session["CargoDailyReport"] = value;
+            }
+        }
+        //List<CargoUpClientEntity> upClientList = new List<CargoUpClientEntity>();
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (CargoDailyReport.Count <= 0) { return; }
+            var RoleCName = UserInfor.RoleCName;
+            CargoClientBus bus = new CargoClientBus();
+            //upClientList = bus.QueryAllUpClientDep(new CargoUpClientEntity { });
+
+            DataTable table = new DataTable();
+            if (hiddenID.Value.Equals("0"))
+            {
+                if (hiddenHouseID.Value == "47")
+                {
+                    table.Columns.Add("序号", typeof(int));
+                    table.Columns.Add("入库时间", typeof(string));
+                    table.Columns.Add("入库单号", typeof(string));
+                    table.Columns.Add("入库数量", typeof(int));
+                    table.Columns.Add("产品名称", typeof(string));
+                    table.Columns.Add("规格", typeof(string));
+                    table.Columns.Add("品牌", typeof(string));
+                    table.Columns.Add("富添盛编码", typeof(string));
+                    table.Columns.Add("商贸编码", typeof(string));
+                    table.Columns.Add("长和编码", typeof(string));
+                    table.Columns.Add("祺航编码", typeof(string));
+                    table.Columns.Add("批次", typeof(string));
+                    table.Columns.Add("成本价", typeof(decimal));
+                    table.Columns.Add("入库类型", typeof(string));
+                    table.Columns.Add("入库货位", typeof(string));
+                    table.Columns.Add("入库区域", typeof(string));
+                    table.Columns.Add("入库仓库", typeof(string));
+                }
+                else if (hiddenHouseID.Value == "62")
+                {
+                    table.Columns.Add("序号", typeof(int));
+                    table.Columns.Add("入库时间", typeof(string));
+                    table.Columns.Add("入库单号", typeof(string));
+                    table.Columns.Add("入库数量", typeof(int));
+                    table.Columns.Add("产品名称", typeof(string));
+                    table.Columns.Add("品番", typeof(string));
+                    table.Columns.Add("背番", typeof(string));
+                    table.Columns.Add("批次", typeof(string));
+                    table.Columns.Add("产品来源", typeof(string));
+                    table.Columns.Add("入库类型", typeof(string));
+                    table.Columns.Add("入库货位", typeof(string));
+                    table.Columns.Add("入库区域", typeof(string));
+                    table.Columns.Add("入库仓库", typeof(string));
+                    table.Columns.Add("来货单号", typeof(string));
+                }
+                else
+                {
+                    table.Columns.Add("序号", typeof(int));
+                    table.Columns.Add("入库时间", typeof(string));
+                    table.Columns.Add("入库单号", typeof(string));
+                    table.Columns.Add("入库数量", typeof(int));
+                    if (hiddenHouseID.Value != "64")
+                    {
+                        table.Columns.Add("产品名称", typeof(string));
+                    }
+                    table.Columns.Add("品牌", typeof(string));
+                    table.Columns.Add("产品ID", typeof(string));
+                    table.Columns.Add("型号", typeof(string));
+                    table.Columns.Add("规格", typeof(string));
+                    table.Columns.Add("花纹", typeof(string));
+                    table.Columns.Add("批次", typeof(string));
+                    table.Columns.Add("货品代码", typeof(string));
+                    if (RoleCName.Contains("汕头科矿"))
+                    {
+                        table.Columns.Add("尺寸", typeof(string));
+                        table.Columns.Add("销售价", typeof(decimal));
+                        table.Columns.Add("供应商", typeof(string));
+                        table.Columns.Add("入库类型", typeof(string));
+                        table.Columns.Add("入库货位", typeof(string));
+                        table.Columns.Add("入库区域", typeof(string));
+                        table.Columns.Add("入库仓库", typeof(string));
+                        table.Columns.Add("来货单号", typeof(string));
+                    }
+                    else
+                    {
+                        table.Columns.Add("载重指数", typeof(string));
+                        table.Columns.Add("速度级别", typeof(string));
+                        if (UserInfor.IsHeadHouse.Equals("0"))
+                        {
+                            table.Columns.Add("单价", typeof(decimal));
+                            table.Columns.Add("销售价", typeof(decimal));
+                        }
+                        if (UserInfor.IsCostPrice.Equals("1"))
+                        {
+                            table.Columns.Add("成本价", typeof(decimal));
+                        }
+                        //table.Columns.Add("门店价", typeof(decimal));
+                        table.Columns.Add("供应商", typeof(string));
+                        table.Columns.Add("入库类型", typeof(string));
+                        table.Columns.Add("入库货位", typeof(string));
+                        table.Columns.Add("入库区域", typeof(string));
+                        table.Columns.Add("入库仓库", typeof(string));
+                        table.Columns.Add("来货单号", typeof(string));
+                        table.Columns.Add("产品来源", typeof(string));
+                        if (hiddenHouseID.Value != "64")
+                        {
+                            table.Columns.Add("归属部门", typeof(string));
+                            table.Columns.Add("规格类型", typeof(string));
+                        }
+                    }
+
+                }
+            }
+            else if (hiddenID.Value.Equals("1"))
+            {
+                if (hiddenHouseID.Value == "47")
+                {
+                    table.Columns.Add("序号", typeof(int));
+                    table.Columns.Add("出库时间", typeof(string));
+                    table.Columns.Add("出库单号", typeof(string));
+                    table.Columns.Add("出库数量", typeof(int));
+                    table.Columns.Add("客户名称", typeof(string));
+                    table.Columns.Add("产品名称", typeof(string));
+                    table.Columns.Add("规格", typeof(string));
+                    table.Columns.Add("品牌", typeof(string));
+                    table.Columns.Add("富添盛编码", typeof(string));
+                    table.Columns.Add("商贸编码", typeof(string));
+                    table.Columns.Add("长和编码", typeof(string));
+                    table.Columns.Add("祺航编码", typeof(string));
+                    table.Columns.Add("批次", typeof(string));
+                    table.Columns.Add("成本价", typeof(decimal));
+                    table.Columns.Add("入手价", typeof(decimal));
+                    table.Columns.Add("对店价", typeof(decimal));
+                    table.Columns.Add("销售价", typeof(decimal));
+                    table.Columns.Add("订单号", typeof(string));
+                    table.Columns.Add("订单状态", typeof(string));
+                    table.Columns.Add("出库货位", typeof(string));
+                    table.Columns.Add("出库区域", typeof(string));
+                    table.Columns.Add("出库仓库", typeof(string));
+                    table.Columns.Add("备注", typeof(string));
+                }
+                else if (hiddenHouseID.Value == "62")
+                {
+                    table.Columns.Add("序号", typeof(int));
+                    table.Columns.Add("出库时间", typeof(string));
+                    table.Columns.Add("出库单号", typeof(string));
+                    table.Columns.Add("出库数量", typeof(int));
+                    table.Columns.Add("产品名称", typeof(string));
+                    table.Columns.Add("品牌", typeof(string));
+                    table.Columns.Add("品番", typeof(string));
+                    table.Columns.Add("背番", typeof(string));
+                    table.Columns.Add("批次", typeof(string));
+                    table.Columns.Add("产品来源", typeof(string));
+                    table.Columns.Add("订单号", typeof(string));
+                    table.Columns.Add("订单状态", typeof(string));
+                    table.Columns.Add("出库货位", typeof(string));
+                    table.Columns.Add("出库区域", typeof(string));
+                    table.Columns.Add("出库仓库", typeof(string));
+                }
+                else
+                {
+                    table.Columns.Add("序号", typeof(int));
+                    table.Columns.Add("出库时间", typeof(string));
+                    table.Columns.Add("出库单号", typeof(string));
+                    table.Columns.Add("出库数量", typeof(int));
+                    if (hiddenHouseID.Value != "64")
+                    {
+                        table.Columns.Add("产品名称", typeof(string));
+                    }
+                    table.Columns.Add("品牌", typeof(string));
+                    table.Columns.Add("产品ID", typeof(string));
+                    table.Columns.Add("型号", typeof(string));
+                    table.Columns.Add("规格", typeof(string));
+                    table.Columns.Add("花纹", typeof(string));
+                    table.Columns.Add("货品代码", typeof(string));
+                    table.Columns.Add("批次", typeof(string));
+                    if (RoleCName.Contains("汕头科矿"))
+                    {
+                        table.Columns.Add("尺寸", typeof(string));
+                        table.Columns.Add("销售价", typeof(decimal));
+                        table.Columns.Add("供应商", typeof(string));
+                        table.Columns.Add("客户名称", typeof(string));
+                        table.Columns.Add("订单号", typeof(string));
+                        table.Columns.Add("订单状态", typeof(string));
+                        table.Columns.Add("出库货位", typeof(string));
+                        table.Columns.Add("出库区域", typeof(string));
+                        table.Columns.Add("出库仓库", typeof(string));
+                        table.Columns.Add("备注", typeof(string));
+                    }
+                    else
+                    {
+                        table.Columns.Add("载重指数", typeof(string));
+                        table.Columns.Add("速度级别", typeof(string));
+                        table.Columns.Add("产品来源", typeof(string));
+                        if (hiddenHouseID.Value != "64")
+                        {
+                            table.Columns.Add("归属部门", typeof(string));
+                            table.Columns.Add("规格类型", typeof(string));
+                        }
+                        if (UserInfor.IsHeadHouse.Equals("0"))
+                        {
+                            table.Columns.Add("单价", typeof(decimal));
+                        }
+                        table.Columns.Add("销售价", typeof(decimal));
+                        if (UserInfor.IsCostPrice.Equals("1"))
+                        {
+                            table.Columns.Add("成本价", typeof(decimal));
+                        }
+                        table.Columns.Add("供应商", typeof(string));
+                        //table.Columns.Add("成本价", typeof(decimal));
+                        //table.Columns.Add("门店价", typeof(decimal));
+                        table.Columns.Add("订单号", typeof(string));
+                        table.Columns.Add("订单状态", typeof(string));
+                        table.Columns.Add("下单方式", typeof(string));
+                        table.Columns.Add("出库货位", typeof(string));
+                        table.Columns.Add("出库区域", typeof(string));
+                        table.Columns.Add("出库仓库", typeof(string));
+                        table.Columns.Add("备注", typeof(string));
+                        if (hiddenHouseID.Value != "64")
+                        {
+                            if (UserInfor.IsHeadHouse.Equals("0"))
+                            {
+                                table.Columns.Add("物流单号", typeof(string));
+                            }
+                            if (UserInfor.IsHeadHouse.Equals("0"))
+                            {
+                                table.Columns.Add("出库轮胎码", typeof(string));
+                            }
+                        }
+                    }
+
+
+                }
+            }
+            else
+            {
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("所属仓库", typeof(string));
+                table.Columns.Add("品牌", typeof(string));
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("花纹", typeof(string));
+                table.Columns.Add("载重指数", typeof(string));
+                table.Columns.Add("速度级别", typeof(string));
+                table.Columns.Add("货品代码", typeof(string));
+                table.Columns.Add("出库数量", typeof(int));
+                table.Columns.Add("移库数量", typeof(int));
+                table.Columns.Add("库存数量", typeof(int));
+                table.Columns.Add("预警数量", typeof(int));
+                table.Columns.Add("补货数量", typeof(int));
+            }
+
+            // table.Columns.Add("速度级别", typeof(string));
+            //table.Columns.Add("最高速度", typeof(string));
+
+            int i = 0;
+            if (hiddenID.Value.Equals("0"))
+            {
+                int inSum = 0;
+                foreach (var it in CargoDailyReport)
+                {
+                    i++;
+                    inSum += it.Piece;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["入库时间"] = it.InHouseTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.InHouseTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.InHouseTime.ToString("yyyy-MM-dd HH:mm:ss");
+                    newRows["入库单号"] = it.InCargoID.Trim();
+                    newRows["入库数量"] = it.Piece;
+                    if (hiddenHouseID.Value != "64")
+                    {
+                        newRows["产品名称"] = it.ProductName.Trim();
+                    }
+                    if (hiddenHouseID.Value == "47")
+                    {
+                        newRows["规格"] = it.Specs.Trim();
+                        newRows["品牌"] = it.TypeName.Trim();
+                        newRows["富添盛编码"] = it.GoodsCode;
+                        newRows["商贸编码"] = it.Model.Trim();
+                        newRows["长和编码"] = it.Figure.Trim();
+                        newRows["祺航编码"] = it.Size.Trim();
+                        newRows["批次"] = it.Batch;
+                        newRows["成本价"] = it.TradePrice;
+                    }
+                    else if (hiddenHouseID.Value == "62")
+                    {
+                        newRows["品番"] = it.GoodsCode;
+                        newRows["背番"] = it.Specs.Trim();
+                        newRows["批次"] = it.Batch;
+                        newRows["产品来源"] = it.Source.Trim();
+                    }
+                    else
+                    {
+                        newRows["品牌"] = it.TypeName.Trim();
+                        newRows["产品ID"] = it.ProductID;
+                        newRows["型号"] = it.Model.Trim();
+                        newRows["规格"] = it.Specs.Trim();
+                        newRows["花纹"] = it.Figure.Trim();
+                        newRows["批次"] = it.Batch;
+                        newRows["货品代码"] = it.GoodsCode;
+                        if (RoleCName.Contains("汕头科矿"))
+                        {
+                            newRows["尺寸"] = it.HubDiameter.ToString();
+                            newRows["销售价"] = it.SalePrice;
+                        }
+                        else
+                        {
+                            newRows["载重指数"] = it.LoadIndex;
+                            newRows["速度级别"] = it.SpeedLevel;
+                            if (UserInfor.IsHeadHouse.Equals("0"))
+                            {
+                                newRows["单价"] = it.UnitPrice;
+                                newRows["销售价"] = it.SalePrice;
+                            }
+                            if (UserInfor.IsCostPrice.Equals("1"))
+                            {
+                                newRows["成本价"] = it.CostPrice;
+                            }
+                            //newRows["门店价"] = it.TradePrice;
+                            if (hiddenHouseID.Value != "64")
+                            {
+                                newRows["产品来源"] = it.Source.Trim();
+                                newRows["归属部门"] = GetText(it.BelongDepart, "BelongDepart");
+                                newRows["规格类型"] = GetText(it.SpecsType, "SpecsType");
+                            }
+                        }
+                    }
+                    newRows["供应商"] = it.Supplier;
+                    newRows["入库类型"] = GetText(it.InHouseType, "InHouseType");
+                    newRows["入库货位"] = it.ContainerCode;
+                    newRows["入库区域"] = it.AreaName;
+                    newRows["入库仓库"] = it.FirstAreaName;
+                    newRows["来货单号"] = it.SourceOrderNo;
+                    table.Rows.Add(newRows);
+                }
+                DataRow footRows = table.NewRow();
+                footRows["入库单号"] = "汇总：";
+                footRows["入库数量"] = inSum;
+                table.Rows.Add(footRows);
+            }
+            else if (hiddenID.Value.Equals("1"))
+            {
+                int outSum = 0;
+                foreach (var it in CargoDailyReport)
+                {
+                    i++;
+                    outSum += it.Piece;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["出库时间"] = it.OutHouseTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.OutHouseTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.OutHouseTime.ToString("yyyy-MM-dd HH:mm:ss");
+                    newRows["出库单号"] = it.OutCargoID;
+                    newRows["出库数量"] = it.Piece;
+
+                    if (hiddenHouseID.Value == "47")
+                    {
+                        newRows["客户名称"] = it.AcceptUnit.Trim();
+                        newRows["产品名称"] = it.ProductName.Trim();
+                        newRows["规格"] = it.Specs.Trim();
+                        newRows["品牌"] = it.TypeName.Trim();
+                        newRows["富添盛编码"] = it.GoodsCode;
+                        newRows["商贸编码"] = it.Model.Trim();
+                        newRows["长和编码"] = it.Figure.Trim();
+                        newRows["祺航编码"] = it.Size.Trim();
+                        newRows["批次"] = it.Batch;
+                        newRows["成本价"] = it.CostPriceStore;
+                        newRows["入手价"] = it.SalePriceClient;
+                        newRows["对店价"] = it.CostPriceStore;
+                        newRows["销售价"] = it.SalePrice;
+                        newRows["订单号"] = it.OrderNo;
+                        newRows["订单状态"] = GetText(it.AwbStatus, "AwbStatus");
+                        newRows["出库货位"] = it.ContainerCode.Trim();
+                        newRows["出库区域"] = it.AreaName.Trim();
+                        newRows["出库仓库"] = it.FirstAreaName;
+                        newRows["备注"] = it.Remark.Trim();
+                    }
+                    else if (hiddenHouseID.Value == "62")
+                    {
+                        newRows["产品名称"] = it.ProductName.Trim();
+                        newRows["品牌"] = it.TypeName.Trim();
+                        newRows["品番"] = it.GoodsCode.Trim();
+                        newRows["背番"] = it.Specs.Trim();
+                        newRows["批次"] = it.Batch;
+                        newRows["产品来源"] = it.Source.Trim();
+                        newRows["订单号"] = it.OrderNo;
+                        newRows["订单状态"] = GetText(it.AwbStatus, "AwbStatus");
+                        newRows["出库货位"] = it.ContainerCode.Trim();
+                        newRows["出库区域"] = it.AreaName.Trim();
+                        newRows["出库仓库"] = it.FirstAreaName;
+                    }
+                    else
+                    {
+                        if (hiddenHouseID.Value != "64")
+                        {
+                            newRows["产品名称"] = it.ProductName.Trim();
+                        }
+                        newRows["品牌"] = it.TypeName.Trim();
+                        newRows["产品ID"] = it.ProductID;
+                        newRows["型号"] = it.Model.Trim();
+                        newRows["规格"] = it.Specs.Trim();
+
+                        newRows["花纹"] = it.Figure.Trim();
+                        newRows["货品代码"] = it.GoodsCode.Trim();
+                        newRows["批次"] = it.Batch;
+                        if (RoleCName.Contains("汕头科矿"))
+                        {
+                            newRows["尺寸"] = it.HubDiameter.ToString();
+                            newRows["销售价"] = it.SalePrice;
+                            newRows["供应商"] = it.Supplier;
+                            newRows["客户名称"] = it.AcceptUnit;
+                            newRows["订单号"] = it.OrderNo;
+                            newRows["订单状态"] = GetText(it.AwbStatus, "AwbStatus");
+                            newRows["出库货位"] = it.ContainerCode.Trim();
+                            newRows["出库区域"] = it.AreaName.Trim();
+                            newRows["出库仓库"] = it.FirstAreaName;
+                            newRows["备注"] = it.Remark.Trim();
+                        }
+                        else
+                        {
+                            newRows["载重指数"] = it.LoadIndex.ToString();
+                            newRows["速度级别"] = it.SpeedLevel;
+                            newRows["产品来源"] = it.Source.Trim();
+                            if (hiddenHouseID.Value != "64")
+                            {
+                                newRows["归属部门"] = GetText(it.BelongDepart, "BelongDepart");
+                                newRows["规格类型"] = GetText(it.SpecsType, "SpecsType");
+                            }
+                            if (UserInfor.IsHeadHouse.Equals("0"))
+                            {
+                                newRows["单价"] = it.UnitPrice;
+                            }
+                            newRows["销售价"] = it.SalePrice;
+                            if (UserInfor.IsCostPrice.Equals("1"))
+                            {
+                                newRows["成本价"] = it.CostPrice;
+                            }
+                            //newRows["门店价"] = it.TradePrice;
+                            newRows["供应商"] = it.Supplier;
+                            newRows["订单号"] = it.OrderNo;
+                            newRows["订单状态"] = GetText(it.AwbStatus, "AwbStatus");
+                            newRows["下单方式"] = GetText(it.OrderType, "OrderType");
+                            newRows["出库货位"] = it.ContainerCode.Trim();
+                            newRows["出库区域"] = it.AreaName.Trim();
+                            newRows["出库仓库"] = it.FirstAreaName;
+                            newRows["备注"] = it.Remark.Trim();
+                            if (hiddenHouseID.Value != "64")
+                            {
+                                if (UserInfor.IsHeadHouse.Equals("0"))
+                                {
+                                    newRows["物流单号"] = it.LogisAwbNo;
+                                }
+                                if (UserInfor.IsHeadHouse.Equals("0"))
+                                {
+                                    newRows["出库轮胎码"] = it.TyreCode;
+                                }
+                            }
+
+                        }
+                    }
+                    table.Rows.Add(newRows);
+                }
+                DataRow footRows = table.NewRow();
+                footRows["出库单号"] = "汇总：";
+                footRows["出库数量"] = outSum;
+                table.Rows.Add(footRows);
+            }
+            else
+            {
+                int outSum = 0;
+                int TreadWidth = 0;
+                foreach (var it in CargoDailyReport)
+                {
+                    i++;
+                    outSum += it.Piece;
+                    TreadWidth += it.TreadWidth;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["所属仓库"] = it.FirstAreaName.Trim();
+                    newRows["品牌"] = it.TypeName.Trim();
+                    newRows["规格"] = it.Specs.Trim();
+                    newRows["花纹"] = it.Figure.Trim();
+                    newRows["载重指数"] = it.LoadIndex.ToString();
+                    newRows["速度级别"] = it.SpeedLevel;
+                    newRows["货品代码"] = it.GoodsCode.Trim();
+                    newRows["出库数量"] = it.Piece;
+                    //newRows["移库数量"] = it.MoveNum;
+                    newRows["库存数量"] = it.FlatRatio;
+                    newRows["安全库存"] = it.Numbers;
+                    newRows["补货数量"] = it.TreadWidth;
+
+
+                    table.Rows.Add(newRows);
+                }
+                DataRow footRows = table.NewRow();
+                footRows["所属仓库"] = "汇总：";
+                footRows["出库数量"] = outSum;
+                footRows["补货数量"] = TreadWidth;
+                table.Rows.Add(footRows);
+            }
+            string dt = string.Empty;
+            if (CargoDailyReport[0].StartDate.Equals(CargoDailyReport[0].EndDate))
+            {
+                dt = CargoDailyReport[0].StartDate.ToString("yyyy-MM-dd");
+            }
+            else
+            {
+                dt = CargoDailyReport[0].StartDate.ToString("yyyy-MM-dd") + "--" + CargoDailyReport[0].EndDate.ToString("yyyy-MM-dd");
+            }
+            if (hiddenID.Value.Equals("0"))
+            {
+                ToExcel.DataTableToExcel(table, "", dt + "入库报表统计");
+            }
+            else if (hiddenID.Value.Equals("1"))
+            {
+                ToExcel.DataTableToExcel(table, "", dt + "出库报表统计");
+            }
+            else
+            {
+                ToExcel.DataTableToExcel(table, "", "出库补货库存报表统计");
+            }
+        }
+        /// <summary>
+        /// 格式化
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        private string GetText(string value, string id)
+        {
+            string retStr = string.Empty;
+            if (id.Contains("OrderModel"))
+            {
+                if (value.Trim() == "0") retStr = "发货单";
+                else if (value.Trim() == "1") retStr = "退货单";
+            }
+            else if (id.Contains("AwbStatus"))
+            {
+                if (value.Trim() == "0") retStr = "已下单";
+                else if (value.Trim() == "1") retStr = "正在备货";
+                else if (value.Trim() == "2") retStr = "已出库";
+                else if (value.Trim() == "3") retStr = "运输在途";
+                else if (value.Trim() == "4") retStr = "已到达";
+                else if (value.Trim() == "5") retStr = "已签收";
+                else if (value.Trim() == "6") retStr = "已拣货";
+            }
+            else if (id.Contains("InHouseType"))
+            {
+                if (value.Trim() == "0") retStr = "正常进货入库";
+                else if (value.Trim() == "1") retStr = "退货入库";
+                else if (value.Trim() == "2") retStr = "订单删除入库";
+                else if (value.Trim() == "3") retStr = "拉下订单入库";
+                else if (value.Trim() == "4") retStr = "复盘入库";
+                else if (value.Trim() == "5") retStr = "移库入库";
+            }
+            else if (id.Contains("BelongDepart"))
+            {
+                //var list = upClientList.Find(x => x.ID.ToString().Equals(value));
+                //if (list != null)
+                //{
+                //    retStr = list.DepName;
+                //}
+                if (value.Trim() == "0") retStr = "RE渠道销售部";
+                else if (value.Trim() == "1") retStr = "OE渠道销售部";
+            }
+            else if (id.Contains("SpecsType"))
+            {
+                if (value.Trim() == "0") retStr = "分配规格";
+                else if (value.Trim() == "1") retStr = "普通规格";
+                else if (value.Trim() == "2") retStr = "特价分配规格";
+                else if (value.Trim() == "3") retStr = "手工单";
+            }
+            else if (id.Contains("OrderType"))
+            {
+                if (value.Trim() == "0") retStr = "电脑单";
+                else if (value.Trim() == "1") retStr = "企业微信单";
+                else if (value.Trim() == "2") retStr = "微信商城单";
+                else if (value.Trim() == "3") retStr = "APP单";
+                else if (value.Trim() == "4") retStr = "小程序单";
+            }
+            return retStr;
+        }
+    }
+}

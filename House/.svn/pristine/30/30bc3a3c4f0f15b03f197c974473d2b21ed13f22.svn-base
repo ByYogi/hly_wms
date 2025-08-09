@@ -1,0 +1,139 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 系统统计数据实体
+    /// </summary>
+    [Serializable]
+    public class CargoDLTDataStatisEntity
+    {
+        public int HouseID { get; set; }
+        public string HouseName { get; set; }
+
+        public string Area { get; set; }
+        public string Province { get; set; }
+        public string City { get; set; }
+        public string ClientName { get; set; }
+        public string Address { get; set; }
+
+        public int ClientNum { get; set; }
+        public string ShopCode { get; set; }
+        public string ShopName { get; set; }
+
+        public string ReportDate { get; set; }
+        public int TypeID { get; set; }
+        public string TypeName { get; set; }
+        public string Specs { get; set; }
+        public string Figure { get; set; }
+        public string SpeedLevel { get; set; }
+        public string LoadIndex { get; set; }
+        public string Cellphone { get; set; }
+        public string CompanyName { get; set; }
+        public string Name { get; set; }
+        public int ParentID { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string OrderModel { get; set; }
+        public string CargoPermisID { get; set; }
+
+        public int DNOrderNum { get; set; }
+        public int DNOrderPiece { get; set; }
+        public decimal DNOrderCharge { get; set; }
+        public string DNScale { get; set; }
+
+        public int SCOrderNum { get; set; }
+        public int SCOrderPiece { get; set; }
+        public decimal SCOrderCharge { get; set; }
+        public string SCScale { get; set; }
+
+
+        public int QYOrderNum { get; set; }
+        public int QYOrderPiece { get; set; }
+        public decimal QYOrderCharge { get; set; }
+        public string QYScale { get; set; }
+
+        public int APPOrderNum { get; set; }
+        public int APPOrderPiece { get; set; }
+        public decimal APPOrderCharge { get; set; }
+        public string APPScale { get; set; }
+         
+        public int OrderNum { get; set; }
+        public int OrderPiece { get; set; }
+        public decimal OrderCharge { get; set; }
+        public decimal UnitCharge { get; set; }
+
+        public string OrderType { get; set; }
+        public string ThrowGood { get; set; }
+        public int _parentId { get; set; }
+        public int id { get; set; }
+        public string state { get; set; }
+        public string CarModel { get; set; }
+        public string Salesproportion { get; set; }
+        public double NumSalesproportion { get; set; }
+        public DateTime CreateDate { get; set; }
+        public DateTime AccessDate { get; set; }
+        public DateTime SignTime { get; set; }
+        public int BrowseNum { get; set; }
+        public int SKUTotalNum { get; set; }
+        public int InCargoSKUNum { get; set; }
+        public int SKUStockNum { get; set; }
+        public int SaledSKUNum { get; set; }
+        /// <summary>
+        /// 动销率商品动销率 = (动销品种数 / 仓库总品种数) × 100%
+        /// </summary>
+        public string SaledRatio { get; set; }
+        public string DeadTime { get; set; }
+        public int IsPunctuality { get; set; }
+        public int ApartDay { get; set; }
+        public double PunctualityRate { get; set; }
+        public int IsPunctualityCount { get; set; }
+        public string TyreType { get; set; }
+        public string WxOpenID { get; set; }
+        /// <summary>
+        /// 回访状态
+        /// </summary>
+        public string FeedBackStatus { get; set; }
+
+        public int SaleOrderTotalNum { get; set; }
+        public int SaleOrderTotalPiece { get; set; }
+        public decimal SaleOrderTotalCharge { get; set; }
+
+        public int SaleOrderDayNum { get; set; }
+        public int SaleOrderDayPiece { get; set; }
+        public decimal SaleOrderDayCharge { get; set; }
+
+        public int SaleOrderMonthNum { get; set; }
+        public int SaleOrderMonthPiece { get; set; }
+        public decimal SaleOrderMonthCharge { get; set; }
+
+        public int OESSaleOrderDayNum { get; set; }
+        public int OESSaleOrderDayPiece { get; set; }
+        public decimal OESSaleOrderDayCharge { get; set; }
+
+        public int OESSaleOrderMonthNum { get; set; }
+        public int OESSaleOrderMonthPiece { get; set; }
+        public decimal OESSaleOrderMonthCharge { get; set; }
+
+        public int ReturnOrderMonthNum { get; set; }
+        public int ReturnOrderMonthPiece { get; set; }
+        public decimal ReturnOrderMonthCharge { get; set; }
+
+        public int ReturnOrderDayNum { get; set; }
+        public int ReturnOrderDayPiece { get; set; }
+        public decimal ReturnOrderDayCharge { get; set; }
+        public int SalesPiece { get; set; }
+        public int ReturnPiece { get; set; }
+        public decimal SalesTotalCharge { get; set; }
+        public decimal ReturnTotalCharge { get; set; }
+        public int TotalPiece { get; set; }
+        public int MonthHouseTotalPiece { get; set; }
+        public int UserUniqueClientCount { get; set; }
+        public int StoresUniqueClientCount { get; set; }
+        public int UserCount { get; set; }
+        public int ClientCount { get; set; }
+    }
+}

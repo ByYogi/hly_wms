@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title></title>
+    <link href="../JS/FloatNavi/base.css" rel="stylesheet" />
+    <script src="../JS/FloatNavi/jquery-1.7.min.js" type="text/javascript"></script>
+    <script src="../JS/FloatNavi/common.js" type="text/javascript"></script>
+    <style type="text/css">
+        body {
+            margin: 5px;
+            background-color: #f1f1f1;
+        }
+
+        #saPanel {
+            width: 100%;
+            padding: 0px;
+            background: #fafafa;
+        }
+
+            #saPanel table {
+                width: 100%;
+                padding: 0px;
+            }
+
+                #saPanel table td {
+                    border-color: #ccc;
+                    border-style: dotted;
+                    border-width: 0 1px 1px 0;
+                }
+    </style>
+</head>
+<body>
+    <div style="font-size: 30px; font-weight: bold; background-color: white; padding-left: 20px; padding-bottom: 3px; padding-top: 3px;">
+        狄乐汽服第四周周报<span style="font-size:15px;color:#808080">(2023-09-25--2023-10-01)</span>
+    </div>
+    <div id="saPanel" style="font-weight: bold; background-color: white; padding-bottom: 3px; padding-top: 3px; margin-top: 5px;">
+        <table style="text-align: center;">
+            <tr>
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">周订单数(个)</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1ea7f7;">585</span>
+                </td>
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">周销售量(条)</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1ea7f7;">1425</span>
+                </td>
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">月订单数(个)</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #ed2323;">1235</span>
+                </td>
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">月销售量(个)</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #ed2323;">4298</span>
+                </td>
+                <td>
+                    <span style="font-weight: lighter; font-size: 15px; color: #808080">客户总数</span><br />
+                    <br style="line-height: 5px;" />
+                    <span style="font-size: 30px; font-weight: bold; color: #1cdb14;">232</span>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div id="saPanel" style="font-weight: bold; background-color: white; padding-bottom: 3px; padding-top: 3px; margin-top: 5px; float: left; width: 50%">
+        销售量统计柱状图
+    </div>
+    <div id="saPanel" style="font-weight: bold; background-color: white; padding-bottom: 3px; padding-top: 3px; margin-top: 5px;">
+        销售量统计柱状图
+    </div>
+
+
+    <script type="text/javascript">
+        var saveMessageUrl = "http://www.17sucai.com";//提交留言
+        //Dialog icon base path
+        function showInfoTip(content, type, onhide) {
+            var icons = { success: 'success.png', info: 'info.png' };
+            var icon = icons[type] || 'error.png';
+            return ds.dialog({
+                title: '消息提示',
+                content: content,
+                onhide: onhide,
+                onyes: true,
+                icon: icon,
+                timeout: 3,
+                width: 200
+            });
+        }
+
+        //创建DOM
+        var
+            quickHTML = '<div class="quick_links_panel"><div id="quick_links" class="quick_links"><a href="#top" class="return_top"><i class="top"></i><span>返回顶部</span></a><a href="#" class="leave_message"><i class="setting"></i><span>切换条件</span></a></div><div class="quick_toggle"><a href="javascript:;" class="toggle" title="展开/收起">×</a></div></div><div id="quick_links_pop" class="quick_links_pop hide"></div>',
+            quickShell = $(document.createElement('div')).html(quickHTML).addClass('quick_links_wrap'),
+            quickLinks = quickShell.find('.quick_links');
+        quickPanel = quickLinks.parent();
+        quickShell.appendTo('body');
+
+        //具体数据操作
+        var
+            quickPopXHR,
+            loadingTmpl = '<div class="loading" style="padding:30px 80px"><i></i><span>Loading...</span></div>',
+            popTmpl = '<div class="title"><h3><i></i><%=title%></h3></div><div class="pop_panel"><%=content%></div><div class="arrow"><i></i></div><div class="fix_bg"></div>',
+
+            quickPop = quickShell.find('#quick_links_pop'),
+            quickDataFns = {
+                //给客服留言
+                leave_message: {
+                    title: '给客服留言',
+                    content: '<form action="./" method="post"><div class="types"><input type="radio" name="type" id="type_1" value="1" checked /><label for="type_1">联系客服</label><input type="radio" name="type" id="type_3" value="2" /><label for="type_3">我要投诉</label><input type="radio" name="type" id="type_4" value="3"/><label for="type_4">不良信息举报</label></div><div class="txt"><textarea name="msg" id="msg" cols="30" rows="10" placeholder="客服你好，我想问一下..."></textarea></div><div class="token"><span id="code_img"></span></div><div class="btns"><button type="submit" class="btn"><span>确定</span></button></div></form>',
+                    init: function (ops) {
+                        setTimeout(function () {
+                            quickPop.find('textarea').focus();
+                        }, 100);
+
+
+                        //效验 & 提交数据
+                        var form = quickPop.find('form');
+                        form.attr("action", saveMessageUrl);
+                        form.bind('submit', function (e) {
+                            e.preventDefault();
+                            var data = form.serialize();
+                            if (!checkMessageForm()) {
+                                return false;
+                            }
+                            var type = quickPop.find(':radio:checked').val();
+                            jQuery.ajax({
+                                type: 'post',
+                                url: saveMessageUrl,
+                                data: { "message_style": type, "message_content": $("#msg").val(), "checkcode": $("#token_txt").val() },
+                                dataType: "json",
+                                error: function (value) {
+                                    ds.dialog.alert('留言失败');
+                                },
+                                success: function (value) {
+                                    var success = value.success;
+                                    var info = value.info;
+                                    if (success == 1) {
+                                        hideQuickPop();
+                                        showInfoTip(info, 'success');
+                                    } else {
+                                        ds.dialog.alert(info);
+                                    }
+                                }
+                            });
+                        });
+                    }
+                }
+            };
+
+        //showQuickPop
+        var
+            prevPopType,
+            prevTrigger,
+            doc = $(document),
+            popDisplayed = false,
+            hideQuickPop = function () {
+                if (prevTrigger) {
+                    prevTrigger.removeClass('current');
+                }
+                popDisplayed = false;
+                prevPopType = '';
+                quickPop.hide();
+            },
+            showQuickPop = function (type) {
+                if (quickPopXHR && quickPopXHR.abort) {
+                    quickPopXHR.abort();
+                }
+                if (type !== prevPopType) {
+                    var fn = quickDataFns[type];
+                    quickPop.html(ds.tmpl(popTmpl, fn));
+                    fn.init.call(this, fn);
+                }
+                doc.unbind('click.quick_links').one('click.quick_links', hideQuickPop);
+
+                quickPop[0].className = 'quick_links_pop quick_' + type;
+                popDisplayed = true;
+                prevPopType = type;
+                quickPop.show();
+            };
+        quickShell.bind('click.quick_links', function (e) {
+            e.stopPropagation();
+        });
+
+        //通用事件处理
+        var
+            view = $(window),
+            quickLinkCollapsed = !!ds.getCookie('ql_collapse'),
+            getHandlerType = function (className) {
+                return className.replace(/current/g, '').replace(/\s+/, '');
+            },
+            showPopFn = function () {
+                var type = getHandlerType(this.className);
+                if (popDisplayed && type === prevPopType) {
+                    return hideQuickPop();
+                }
+                showQuickPop(this.className);
+                if (prevTrigger) {
+                    prevTrigger.removeClass('current');
+                }
+                prevTrigger = $(this).addClass('current');
+            },
+            quickHandlers = {
+                //购物车，最近浏览，商品咨询
+                my_qlinks: showPopFn,
+                message_list: showPopFn,
+                history_list: showPopFn,
+                leave_message: showPopFn,
+                //返回顶部
+                return_top: function () {
+                    ds.scrollTo(0, 0);
+                    hideReturnTop();
+                },
+                toggle: function () {
+                    quickLinkCollapsed = !quickLinkCollapsed;
+
+                    quickShell[quickLinkCollapsed ? 'addClass' : 'removeClass']('quick_links_min');
+                    ds.setCookie('ql_collapse', quickLinkCollapsed ? '1' : '', 30);
+                }
+            };
+        quickShell.delegate('a', 'click', function (e) {
+            var type = getHandlerType(this.className);
+            if (type && quickHandlers[type]) {
+                quickHandlers[type].call(this);
+                e.preventDefault();
+            }
+        });
+
+        //Return top
+        var scrollTimer, resizeTimer, minWidth = 1350;
+
+        function resizeHandler() {
+            clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(checkScroll, 160);
+        }
+        function checkResize() {
+            quickShell[view.width() > 1340 ? 'removeClass' : 'addClass']('quick_links_dockright');
+        }
+        function scrollHandler() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(checkResize, 160);
+        }
+        function checkScroll() {
+            view.scrollTop() > 100 ? showReturnTop() : hideReturnTop();
+        }
+        function showReturnTop() {
+            quickPanel.addClass('quick_links_allow_gotop');
+        }
+        function hideReturnTop() {
+            quickPanel.removeClass('quick_links_allow_gotop');
+        }
+
+        view.bind('scroll.go_top', resizeHandler).bind('resize.quick_links', scrollHandler);
+        quickLinkCollapsed && quickShell.addClass('quick_links_min');
+        resizeHandler();
+        scrollHandler();
+
+
+    </script>
+</body>
+</html>

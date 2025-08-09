@@ -1,0 +1,73 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.House
+{
+    public partial class InhouseManager : BasePage
+    {
+        /// <summary>
+        /// 库存数据导出实体
+        /// </summary>
+        public List<CargoContainerShowEntity> StatisData
+        {
+            get
+            {
+                if (Session["StatisData"] == null)
+                {
+                    Session["StatisData"] = new List<CargoContainerShowEntity>();
+                }
+                return (List<CargoContainerShowEntity>)(Session["StatisData"]);
+            }
+            set
+            {
+                Session["StatisData"] = value;
+            }
+        }
+        public string IsModifyInNum = string.Empty;
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            IsModifyInNum = UserInfor.IsModifyInNum;
+        }
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (StatisData.Count <= 0) { return; }
+
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("分类名称", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("型号", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("货位数", typeof(int));
+            table.Columns.Add("库存数", typeof(int));
+            int i = 0;
+            foreach (var it in StatisData)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["分类名称"] = it.TypeName.Trim();
+                newRows["规格"] = it.Specs.Trim();
+                newRows["型号"] = it.Model.Trim();
+                newRows["花纹"] = it.Figure;
+                newRows["货位数"] = it.ContainerNum;
+                newRows["库存数"] = it.InPiece;
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "库存产品所占货位数统计表");
+
+        }
+    }
+}

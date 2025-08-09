@@ -1,0 +1,655 @@
+﻿using House.Entity;
+using House.Entity.Cargo;
+using House.Manager;
+using House.Manager.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Transactions;
+using System.Data;
+
+namespace House.Business.Cargo
+{
+    /// <summary>
+    /// 价格管理模块业务逻辑类
+    /// </summary>
+    public class CargoPriceBus
+    {
+        private CargoPriceManager man = new CargoPriceManager();
+        /// <summary>
+        /// 查询在库产品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryInCargoProductInfo(CargoProductEntity showEnt)
+        {
+            return man.QueryInCargoProductInfo(showEnt);
+        }
+        /// <summary>
+        /// 查询基础数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductPriceEntity> QueryCargoProductPrice(CargoProductPriceEntity entity)
+        {
+            return man.QueryCargoProductPrice(entity);
+        }
+        /// <summary>
+        /// 查询在库产品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryInHouseProduct(CargoProductEntity entity)
+        {
+            return man.QueryInHouseProduct(entity);
+        }
+        /// <summary>
+        /// 批量修改产品批发销售价格
+        /// </summary>
+        /// <param name="entity"></param>
+        public void savePriceModify(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.savePriceModify(it);
+                    log.Memo = "批量修改产品批发销售价格：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，修改前销售价：" + it.CostPrice.ToString() + "，修改后销售价：" + it.SalePrice.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "批量修改产品销售价失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 修改产品最终成本价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductFinalCostPrice(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.UpdateProductFinalCostPrice(it);
+                    log.Memo = "修改产品最终成本价：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，修改前最终成本价：" + it.SalePrice.ToString() + "，修改后最终成本价：" + it.FinalCostPrice.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品最终成本价失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 修改产品成本价
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateProductCostPrice(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.UpdateProductCostPrice(it);
+                    log.Memo = "修改产品成本价：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，修改前成本价：" + it.SalePrice.ToString() + "，修改后成本价：" + it.CostPrice.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品成本价失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 导入修改成本价
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void ImportUpdateProductCostPrice(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoRuleBankEntity> lw = new LogWrite<CargoRuleBankEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.ImportUpdateProductCostPrice(it);
+                        log.Memo = "导入修改产品成本价：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，修改前成本价：" + it.OldCostPrice.ToString() + "，修改后成本价：" + it.CostPrice.ToString() + "，修改前最终成本价：" + it.OldFinalCostPrice.ToString() + "，修改后最终成本价：" + it.FinalCostPrice.ToString();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "导入修改产品成本价失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 修改产品单价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductUnitPrice(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.UpdateProductUnitPrice(it);
+                    log.Memo = "修改产品单价：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，修改前单价：" + it.SalePrice.ToString() + "，修改后单价：" + it.UnitPrice.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品单价失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 修改销售价
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateWebProductSalePrice(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.UpdateWebProductSalePrice(it);
+                    log.Memo = "修改产品批发销售价格：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，修改前销售价：" + it.UnitPrice.ToString() + "，修改后销售价：" + it.SalePrice.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 修改批发价和销售价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductTradePrice(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.UpdateProductTradePrice(it);
+                    log.Memo = "修改产品批发销售价格：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，修改前门店价：" + it.UnitPrice.ToString() + "，修改后门店价：" + it.TradePrice.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 修改含税成本 价
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateProductTaxCostPrice(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.UpdateProductTaxCostPrice(it);
+                    log.Memo = "修改产品含税成本价：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，修改前含税成本价：" + it.SalePrice.ToString() + "，修改后含税成本价：" + it.TaxCostPrice.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品含税成本价失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 修改不含税成本 价
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateProductNoTaxCostPrice(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.UpdateProductNoTaxCostPrice(it);
+                    log.Memo = "修改产品不含税成本价：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，修改前不含税成本价：" + it.SalePrice.ToString() + "，修改后不含税成本价：" + it.NoTaxCostPrice.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品不含税成本价失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        public void AllocateFreightToNoTaxCostPrice(List<CargoProductEntity> entity, decimal Freight, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.AllocateFreightToNoTaxCostPrice(it, Freight);
+                    log.Memo = "分摊物流费用至不含税成本价：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，分摊前不含税成本价：" + it.SalePrice.ToString() + "，分摊成本价：" + Freight.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "分摊物流费用至不含税成本价，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 促销规则库数据查询
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryRuleBankData(int pIndex, int pNum, CargoRuleBankEntity entity)
+        {
+            return man.QueryRuleBankData(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询指定仓库的所有可用促销信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public DataTable QueryPriceRuleBankInfo(CargoOrderEntity entity)
+        {
+            return man.QueryPriceRuleBankInfo(entity);
+        }
+        /// <summary>
+        /// 查询指定客户在指定仓库所购买的产品信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public DataTable QueryClientOrderInfo(CargoOrderEntity entity)
+        {
+            return man.QueryClientOrderInfo(entity);
+        }
+        /// <summary>
+        /// 根据ID查询指定优惠规则信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryPriceRuleBankInfoToID(RuleBankReturnEntity entity)
+        {
+            return man.QueryPriceRuleBankInfoToID(entity);
+        }
+        /// <summary>
+        /// 查询某品牌所有规格
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllSpesc(CargoRuleBankEntity entity)
+        {
+            return man.QueryAllSpesc(entity);
+        }
+        /// <summary>
+        /// 查询某品牌所有花纹
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllFigureToTypeID(CargoRuleBankEntity entity)
+        {
+            return man.QueryAllFigureToTypeID(entity);
+        }
+        /// <summary>
+        /// 查询该规格 下的轮胎花纹
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllFigure(CargoRuleBankEntity entity)
+        {
+            return man.QueryAllFigure(entity);
+        }
+        /// <summary>
+        /// 查询该规格 下的货品代码
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllGoodsCode(CargoRuleBankEntity entity)
+        {
+            return man.QueryAllGoodsCode(entity);
+        }
+        /// <summary>
+        /// 查询该规格 下的载重指数
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllLoadIndex(CargoRuleBankEntity entity)
+        {
+            return man.QueryAllLoadIndex(entity);
+        }
+        /// <summary>
+        /// 查询该规格 下的速度级别
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryAllSpeedLevel(CargoRuleBankEntity entity)
+        {
+            return man.QueryAllSpeedLevel(entity);
+        }
+        /// <summary>
+        /// 新增规则
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddRuleBank(List<CargoRuleBankEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoRuleBankEntity> lw = new LogWrite<CargoRuleBankEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.AddRuleBank(it);
+                        lw.WriteLog(it, log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增规则失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改规则
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateRuleBank(List<CargoRuleBankEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoRuleBankEntity> lw = new LogWrite<CargoRuleBankEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.UpdateRuleBank(it);
+                        lw.WriteLog(it, log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增规则失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询可用的规则
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRuleBankEntity> QueryRuleBank(CargoRuleBankEntity entity)
+        {
+            return man.QueryRuleBank(entity);
+        }
+        /// <summary>
+        /// 删除 规则
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelRuleBank(List<CargoRuleBankEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoRuleBankEntity> lw = new LogWrite<CargoRuleBankEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelRuleBank(entity);
+                    log.Memo = "";
+                    foreach (var it in entity)
+                    {
+                        log.Memo += "规则名称：" + it.Title + ",规则类型：" + it.RuleType + ",所属仓库：" + it.HouseID.ToString() + ",ID:" + it.ID.ToString();
+                    }
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除规则失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 根据ID查询规则
+        /// </summary>
+        /// <param name="RuleID"></param>
+        /// <returns></returns>
+        public CargoRuleBankEntity QueryRuleBank(long RuleID, string RuleType = null)
+        {
+            return man.QueryRuleBank(RuleID, RuleType);
+        }
+        #region 富添盛产品价格维护
+        /// <summary>
+        /// 查询产品价格数据 
+        /// </summary>
+        public Hashtable QueryCargoProductPriceFTS(int pIndex, int pNum, CargoProductPriceEntity entity)
+        {
+            return man.QueryCargoProductPriceFTS(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 新增产品价格数据 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddProductPriceFTS(List<CargoProductPriceEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductPriceEntity> lw = new LogWrite<CargoProductPriceEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.AddProductPriceFTS(it);
+                        log.Memo = "产品编码:" + it.ProductCode + ",产品名称:" + it.ProductName + ",价格类型:" + it.PriceType + ",入手价:" + it.SalePriceClient + ",对店价:" + it.CostPriceStore;
+                        lw.WriteLog(log);
+                    }
+
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改产品价格数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateProductPriceFTS(List<CargoProductPriceEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductPriceEntity> lw = new LogWrite<CargoProductPriceEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.UpdateProductPriceFTS(it);
+                        log.Memo = "产品编码:" + it.ProductCode + ",产品名称:" + it.ProductName + ",价格类型:" + it.PriceType + ",入手价:" + it.SalePriceClient + ",对店价:" + it.CostPriceStore;
+                        lw.WriteLog(log);
+                    }
+
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 删除产品价格
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelProductPrice(List<CargoProductPriceEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductPriceEntity> lw = new LogWrite<CargoProductPriceEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelProductPrice(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "产品编码:" + it.ProductCode + ",产品名称:" + it.ProductName + ",ID:" + it.ID.ToString();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 判断仓库名是否存在 true:表示存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns>true:表示存在</returns>
+        public bool IsExistProductPrice(CargoProductPriceEntity entity)
+        {
+            return man.IsExistProductPrice(entity);
+        }
+        /// <summary>
+        /// 保存导入数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void SaveProductPriceData(List<CargoProductPriceEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductPriceEntity> lw = new LogWrite<CargoProductPriceEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.SaveProductPriceData(entity);
+                    log.Memo = "";
+                    foreach (var it in entity)
+                    {
+                        lw.WriteLog(it, log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "导入产品价格失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        #endregion
+        /// <summary>
+        /// 修改产品销售价
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        /// <remark>根据规格类型区分修改"次日达库存产品"或"即日达库存产品"</remark>
+        public void UpdateProductSalePrice(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.UpdateProductSalePrice(it);
+                    log.Memo = "修改产品销售价：产品编码：" + it.ProductCode + "，批次年：" + it.BatchYear + "规格类型：" + it.SpecsType + "，修改前销售价：" + it.CostPrice.ToString() + "，修改后销售价：" + it.SalePrice.ToString() + ",客户编码：" + it.SuppClientNum;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品销售价失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+
+        /// <summary>
+        /// 查询基础价格和加价比例
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoProductBasicPriceEntity QueryBasicPriceEntity(CargoProductBasicPriceEntity entity)
+        {
+            return man.QueryBasicPriceEntity(entity);
+        }
+
+    }
+}

@@ -1,0 +1,540 @@
+﻿using House.Entity.Cargo;
+using iText.Kernel.XMP.Impl.XPath;
+
+using NPOI.HSSF.Util;
+using Org.BouncyCastle.Crypto.Parameters;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Security;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Web;
+using Org.BouncyCastle.OpenSsl;
+using System.Drawing;
+using NPOI.HSSF.Record.Formula.Functions;
+using System.Web.Util;
+using Newtonsoft.Json;
+using System.Threading.Tasks;
+using System.Security.Policy;
+using Senparc.Weixin.MP.TenPayLibV3;
+using System.Reflection;
+
+namespace Cargo
+{
+    public static class wxHttpUtility
+    {
+        /// <summary>
+        /// 发送请求
+        /// </summary>
+        /// <param name="url">Url地址</param>
+        /// <param name="data">数据</param>
+        public static string SendHttpRequest(string url, string data,string contentType = null)
+        {
+            if (string.IsNullOrEmpty(contentType))
+            {
+                contentType = "application/x-www-form-urlencoded";
+            }
+            return SendPostHttpRequest(url, contentType, data);
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        public static string GetData(string url)
+        {
+            return SendGetHttpRequest(url, "application/x-www-form-urlencoded");
+        }
+        /// <summary>
+        /// byte [] 转化为Iamge
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
+        public static Image ByteArrayConvertToImage(byte[] buffer)
+        {
+
+            using (MemoryStream ms = new MemoryStream(buffer))
+            {
+                // 直接调用Image库类中自带的方法使用MemoryStream实例对象获取Image
+                Image image = Image.FromStream(ms);
+                image.Save("D://Public/test.jpg");
+                return image;
+            }
+        }
+        /// <summary>
+        /// 将文件数据流转为二进制byte[]字节流
+        /// </summary>
+        /// <param name="stream">文件流</param>
+        /// <returns></returns>
+        public static byte[] StreamToBytes(Stream stream)
+        {
+            List<byte> bytes = new List<byte>();
+            int temp = stream.ReadByte();
+            while (temp != -1)
+            {
+                bytes.Add((byte)temp);
+                temp = stream.ReadByte();
+            }
+            return bytes.ToArray();
+        }
+        /// <summary>
+        /// HttpPost请求转换为Base64图片返回 
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="contentType"></param>
+        /// <param name="requestData"></param>
+        /// <returns></returns>
+        public static string SendPostHttpRequestForBase64Image(string url, string contentType, string requestData)
+        {
+            //HttpWebRequest request = (WebRequest)HttpWebRequest.Create(url);
+            HttpWebRequest request =(HttpWebRequest)WebRequest.Create(url);
+            request.Method = "POST";
+            byte[] postBytes = null;
+            request.ContentType = contentType;
+            postBytes = Encoding.UTF8.GetBytes(requestData);
+            request.ContentLength = postBytes.Length;
+            using (Stream outstream = request.GetRequestStream())
+            {
+                outstream.Write(postBytes, 0, postBytes.Length);
+                outstream.Close();
+            }
+            string result = string.Empty;
+            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        byte[] imageBuffer = StreamToBytes(stream);
+                        //string modifyFileName = "MiniPro" + DateTime.Now.Year.ToString() + DateTime.Now.Month.ToString() + DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString() + DateTime.Now.Second.ToString() + DateTime.Now.Millisecond.ToString() + ".jpg";
+
+                        //string savePath = System.Web.HttpContext.Current.Server.MapPath("../upload/MiniProQrImg/" + modifyFileName);
+                        //File.WriteAllBytes(savePath, imageBuffer);
+
+                        //保存到文件
+                        //using (FileStream fs = new FileStream(savePath, FileMode.Create))
+                        //{
+                        //    byte[] buffer = new byte[1024];
+                        //    int bytesRead = 0;
+                        //    while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) != 0)
+                        //    {
+                        //        fs.Write(buffer, 0, bytesRead);
+                        //    }
+                        //    fs.Flush();
+                        //}
+                       
+
+                        //using (Image image= Image.FromStream(new MemoryStream(imageBuffer)))
+                        //{
+                        //    image.Save("../upload/SignImage/");
+                        //}
+
+                        //ByteArrayConvertToImage(imageBuffer);
+                        result = Convert.ToBase64String(imageBuffer);
+                        //result = "https://dlt.neway5.com/upload/MiniProQrImg/" + modifyFileName;
+                    }
+
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 发送请求
+        /// </summary>
+        /// <param name="url">Url地址</param>
+        /// <param name="method">方法（post或get）</param>
+        /// <param name="method">数据类型</param>
+        /// <param name="requestData">数据</param>
+        public static string SendPostHttpRequest(string url, string contentType, string requestData)
+        {
+            WebRequest request = (WebRequest)HttpWebRequest.Create(url);
+            request.Method = "POST";
+            byte[] postBytes = null;
+            request.ContentType = contentType;
+            postBytes = Encoding.UTF8.GetBytes(requestData);
+            request.ContentLength = postBytes.Length;
+            using (Stream outstream = request.GetRequestStream())
+            {
+                outstream.Write(postBytes, 0, postBytes.Length);
+            }
+            string result = string.Empty;
+            using (WebResponse response = request.GetResponse())
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                        }
+                    }
+
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 发送请求
+        /// </summary>
+        /// <param name="url">Url地址</param>
+        /// <param name="method">方法（post或get）</param>
+        /// <param name="method">数据类型</param>
+        /// <param name="requestData">数据</param>
+        public static string SendGetHttpRequest(string url, string contentType)
+        {
+            WebRequest request = (WebRequest)HttpWebRequest.Create(url);
+            request.Method = "GET";
+            request.ContentType = contentType;
+            string result = string.Empty;
+            using (WebResponse response = request.GetResponse())
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 带有证书的Https的PostForm请求
+        /// </summary>
+        /// <param name="requestUri"></param>
+        /// <param name="postData"></param>
+        /// <param name="cookie"></param>
+        /// <returns></returns>
+        public static string PostForm(string requestUri, NameValueCollection postData, CookieContainer cookie)
+        {
+            ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(CheckValidationResult);
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(requestUri);
+            request.Method = "post";
+            request.ContentType = "application/x-www-form-urlencoded";
+            request.CookieContainer = cookie;
+
+            StringBuilder stringBuilder = new StringBuilder();
+            foreach (string key in postData.Keys)
+            {
+                stringBuilder.AppendFormat("&{0}={1}", key, postData.Get(key));
+            }
+            byte[] buffer = Encoding.UTF8.GetBytes(stringBuilder.ToString().Trim('&'));
+            Stream requestStream = request.GetRequestStream();
+            requestStream.Write(buffer, 0, buffer.Length);
+            requestStream.Close();
+
+            WebResponse response = request.GetResponse();
+            StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+            return reader.ReadToEnd();
+
+        }
+        private static bool CheckValidationResult(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors errors)
+        {
+            return true; //总是接受 
+        }
+
+        // 对请求参数进行计算获取参数签名
+        private static String digest(String paramStr, String body, String timestamp, String nonce, String secret)
+        {
+            paramStr = "(" + paramStr + ")(" + (body == null ? "" : body) + ")(" + timestamp + ")(" + nonce + ")(" + secret + ")";
+            //paramStr = "";
+            byte[] bytes = Encoding.UTF8.GetBytes(paramStr);
+            byte[] hash = SHA256Managed.Create().ComputeHash(bytes);
+
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < hash.Length; i++)
+            {
+                //int tempInt = ((int)hash[i]) & 0xff;
+                //if (tempInt < 16)
+                //{
+                //    builder.Append("0");
+                //}
+                //builder.Append(hash[i].ToString("x6"));
+                builder.Append(hash[i].ToString("x2"));
+                //builder.Append(Convert.ToString(hash[i], 16));
+            }
+            return builder.ToString();
+        }
+
+        private static string appid = Common.GetHCYCAppID();
+        private static string appsecret = Common.GetHCYCAppSecret();
+        private static string _key = Common.GetHCYCWxPayKey();
+        public static string _mch_id = Common.GetHCYCMachID();
+        /// <summary>
+        /// 微信退款
+        /// </summary>
+        /// <param name="transaction_id">支付订单流水号</param>
+        /// <param name="out_refund_no">订单号</param>
+        /// <param name="refund">退款金额(分)</param>
+        /// <param name="total">总金额(分)</param>
+        /// <returns></returns>
+        public static string WxHttpPost(string transaction_id,string out_refund_no, decimal refund, decimal total)
+        {
+            DateTime dateTime = DateTime.UtcNow;
+            long millisecondsTimestamp = (long)(dateTime - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+            TimeSpan timeSpan = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            Dictionary<string, object> keyValuePairs = new Dictionary<string, object>()
+            {
+                {"transaction_id",transaction_id },
+                {"out_refund_no",out_refund_no },
+                {"notify_url","https://dlt.neway5.com/Interface/MiniPayRefundSuccess.aspx" },
+                {"amount",new Dictionary<string,object>(){
+                    {"refund",Convert.ToInt32(refund) },
+                {"total",Convert.ToInt32(total) },
+                {"currency","CNY" },
+                } },
+            };
+            string nonce_str = GetRandomString(32);
+
+            string sortedRequestBody = JsonConvert.SerializeObject(keyValuePairs, Formatting.None, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
+            sortedRequestBody = sortedRequestBody.Replace(" ", "").Replace("\r\n", "").Replace(".0","");
+
+            // 读取商户私钥
+            string privateKey = File.ReadAllText("D:/Project/Diletai/DltSSL/apiclient_key.pem");
+        
+            // 构造待签名字符串
+            string message = $"Post\n/wechatpay/refund\n\nhost:api.mch.weixin.qq.com\ncontent-type:application/json\nwechatpay-timestamp:{Convert.ToInt64(timeSpan.TotalSeconds).ToString()}\nwechatpay-noncestr:{nonce_str}\n{sortedRequestBody}\n";
+            string Message = "POST\n/v3/refund/domestic/refunds\n" + Convert.ToInt64(timeSpan.TotalSeconds).ToString() + "\n" + nonce_str + "\n" + sortedRequestBody + "\n";
+
+            // 对待签名字符串进行签名
+            var signatureBytes = SignWithPrivateKey(Message, privateKey);
+            string signature = Convert.ToBase64String(signatureBytes);
+
+            // 构造Authorization头部
+            string authorization = $"WECHATPAY2-SHA256-RSA2048 mchid=\"{_mch_id}\",nonce_str=\"{nonce_str}\",timestamp=\"{Convert.ToInt64(timeSpan.TotalSeconds).ToString()}\",serial_no=\"5DDE2F8DDC979B39C2588D8AD658F84F524DE7D7\",signature=\"{signature}\"";
+            string appName = Assembly.GetExecutingAssembly().GetName().Name;
+            string result=string.Empty;
+            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create("https://api.mch.weixin.qq.com/v3/refund/domestic/refunds");
+            request.Method = "POST";
+            request.UserAgent = appName+"/1.1.0";
+            request.Accept = "application/json";
+            request.Headers.Add("Authorization", authorization);
+            request.ContentType = "application/json";
+            byte[] postBytes = null;
+            postBytes = Encoding.UTF8.GetBytes(sortedRequestBody);
+            request.ContentLength = postBytes.Length;
+            using (Stream outstream = request.GetRequestStream())
+            {
+                outstream.Write(postBytes, 0, postBytes.Length);
+            }
+            using (WebResponse response = request.GetResponse())
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                        }
+                    }
+
+                }
+            }
+            return result;
+
+
+        }
+
+
+        public static byte[] SignWithPrivateKey(string data, string privateKey)
+        {
+            var pemReader = new PemReader(new StringReader(privateKey));
+            RsaPrivateCrtKeyParameters rsaParams = (RsaPrivateCrtKeyParameters)pemReader.ReadObject();
+
+            ISigner signer = SignerUtilities.GetSigner("SHA-256withRSA");
+            signer.Init(true, rsaParams);
+            byte[] dataBytes = Encoding.UTF8.GetBytes(data);
+            signer.BlockUpdate(dataBytes, 0, dataBytes.Length);
+            return signer.GenerateSignature();
+        }
+
+        static string GetSHA256Hash(string input)
+        {
+            using (SHA256 sha256 = SHA256.Create())
+            {
+                byte[] inputBytes = Encoding.UTF8.GetBytes(input);
+                byte[] hashBytes = sha256.ComputeHash(inputBytes);
+
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < hashBytes.Length; i++)
+                {
+                    sb.Append(hashBytes[i].ToString("x2"));
+                }
+
+                return sb.ToString();
+            }
+        }
+
+        /// <summary>
+        /// 生成随机串  
+        /// </summary>
+        /// <param name="length">字符串长度</param>
+        /// <returns></returns>
+        private static string GetRandomString(int length)
+        {
+            const string key = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            if (length < 1)
+                return string.Empty;
+
+            Random rnd = new Random();
+            byte[] buffer = new byte[8];
+
+            ulong bit = 31;
+            ulong result = 0;
+            int index = 0;
+            StringBuilder sb = new StringBuilder((length / 5 + 1) * 5);
+
+            while (sb.Length < length)
+            {
+                rnd.NextBytes(buffer);
+
+                buffer[5] = buffer[6] = buffer[7] = 0x00;
+                result = BitConverter.ToUInt64(buffer, 0);
+
+                while (result > 0 && sb.Length < length)
+                {
+                    index = (int)(bit & result);
+                    sb.Append(key[index]);
+                    result = result >> 5;
+                }
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// 发送请求
+        /// </summary>
+        /// <param name="url">Url地址</param>
+        /// <param name="method">方法（post或get）</param>
+        /// <param name="method">数据类型</param>
+        /// <param name="requestData">数据</param>
+        public static string ContiSendPostHttpRequest(string url, string contentType, string requestData)
+        {
+            ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(CheckValidationResult);
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+            WebRequest request = (WebRequest)HttpWebRequest.Create(url);
+            request.Method = "POST";
+            TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            string tms = Convert.ToInt64(ts.TotalMilliseconds).ToString();
+            //WebHeaderCollection whc = new WebHeaderCollection();
+            //whc.Add("ext-app-id", "mp0182394");
+            //whc.Add("ext-app-secret", "58d99b2acb7e45209997967fe730adb3");
+            //whc.Add("ext-app-id", "DGZDLT001");
+            //whc.Add("ext-app-secret", "9f810688923c4f7a887b281b32688ebf");
+            //whc.Add("System-Code", "o_sync");
+            //whc.Add("Timestamp", tms);
+            //string nonce = System.Guid.NewGuid().ToString();
+            string nonce = "ContiDLQF";
+            //whc.Add("Nonce", nonce);
+            //whc.Add("Signature", digest("", requestData, tms, nonce, "9f810688923c4f7a887b281b32688ebf"));
+            //whc.Add("Content-Type", contentType);
+            //request.Headers = whc;
+            request.Headers.Add("ext-app-id", "DGZDLT001");//DGZDLT001 正式环境  GZDLT001 测试环境 
+            request.Headers.Add("Timestamp", tms);
+            request.Headers.Add("Nonce", nonce);
+            string signature = digest("", requestData, tms, nonce, "9f810688923c4f7a887b281b32688ebf");//0124a7d1d26f4bf7a95a802dd2d7bd5a
+            request.Headers.Add("Signature", signature);
+            //request.ContentType = "application/json";
+            request.ContentType = contentType;
+
+            byte[] postBytes = null;
+            postBytes = Encoding.UTF8.GetBytes(requestData);
+            request.ContentLength = postBytes.Length;
+            using (Stream outstream = request.GetRequestStream())
+            {
+                outstream.Write(postBytes, 0, postBytes.Length);
+            }
+            string result = string.Empty;
+            using (WebResponse response = request.GetResponse())
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                        }
+                    }
+
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 云配开思推送配置
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="contentType"></param>
+        /// <param name="Data"></param>
+        /// <returns></returns>
+        public static string PostHttpRequest(string url, string contentType, string Data)
+        {
+            string result = string.Empty;
+            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+            TimeSpan timeSpan = DateTime.UtcNow.AddMinutes(-5) - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            DateTime dateTime = DateTime.Now;
+            long timestamp = (long)(dateTime.Subtract(new DateTime(1970, 1, 1))).TotalMilliseconds;
+            string sign = "38476BFFE6274DBCAB38647884D467C6" + "cassec.sand.passive.data" + "gzshly60be866dbe52" + "67d89f8d06ca4360ae0358279b7d283c" + timestamp;
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] inputBytes = Encoding.UTF8.GetBytes(sign);
+                byte[] hashBytes = md5.ComputeHash(inputBytes);
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < hashBytes.Length; i++)
+                {
+                    sb.Append(hashBytes[i].ToString("x2"));
+                }
+                sign = sb.ToString().ToUpper();
+            }
+            request.Headers.Add("apiName", "cassec.sand.passive.data");
+            request.Headers.Add("appKey", "gzshly60be866dbe52");
+            request.Headers.Add("sign", sign);
+            request.Headers.Add("session", "67d89f8d06ca4360ae0358279b7d283c");
+            request.Headers.Add("timestamp", timestamp.ToString());
+            request.Method = "POST";
+            request.ContentType = contentType;
+            byte[] postBytes = null;
+            postBytes = Encoding.UTF8.GetBytes(Data);
+            request.ContentLength = postBytes.Length;
+            using (Stream outstream = request.GetRequestStream())
+            {
+                outstream.Write(postBytes, 0, postBytes.Length);
+            }
+            using (WebResponse response = request.GetResponse())
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                        }
+                    }
+
+                }
+            }
+            return result;
+
+
+        }
+
+    }
+}

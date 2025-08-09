@@ -1,0 +1,25 @@
+/* pages/my/wx-userinfo.wxss */
+.avatar-wrapper{
+  height: 130px;
+  width: 150px;
+}
+.avatar{
+width: 100%;
+height: 100%;
+}
+.text1{
+  width: 80px;
+  float: left;
+  font-size: 15px;
+  color: rgb(63, 61, 61);
+  margin-top: 8px;
+}
+.weui-input{
+  width: 60%;
+  border:1px solid rgb(226, 222, 222) ;
+  border-radius: 10px;
+  font-size: 16px;
+  margin-top: 10px;
+  padding-left: 10px;
+  height: 35px;
+}

@@ -1,0 +1,1368 @@
+﻿<%@ Page Title="仓库管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="houseManager.aspx.cs" Inherits="Cargo.House.houseManager" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script src="../JS/Lodop/LodopFuncs.js" type="text/javascript"></script>
+    <script src="../JS/Rotate/jQueryRotate.2.2.js" type="text/javascript"></script>
+    <style type="text/css">
+        #saveClass {
+            position: absolute;
+            right: 12px;
+            height: 19px;
+        }
+
+            #saveClass .l-btn-text {
+                line-height: 20px;
+            }
+
+        .InputHide {
+        }
+    </style>
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        //页面加载时执行
+        window.onload = function () {
+            $("#eBelongHouse").combobox({
+                //相当于html >> select >> onChange事件  
+                onChange: function () {
+                    var HouseID = $('#eBelongHouse').combobox('getValue');
+                    if (HouseID == 0) {
+                        $("#eCargoDepart").textbox('options').required = true;
+                        $("#eCargoDepart").textbox('textbox').validatebox('options').required = true;
+                        $("#eCargoDepart").textbox('validate');
+                    } else {
+                        $("#eCargoDepart").textbox('options').required = false;
+                        $("#eCargoDepart").textbox('textbox').validatebox('options').required = false;
+                        $("#eCargoDepart").textbox('validate');
+                    }
+                }
+            });
+            adjustment();
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'HouseID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [[
+                    { title: '', field: '', checkbox: true, width: '3%' },
+                    {
+                        title: '仓库ID', field: 'HouseID', width: '50px'
+                    },
+                    {
+                        title: '仓库名称', field: 'Name', width: '5%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '仓库代码', field: 'HouseCode', width: '3%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '仓库类型', field: 'BelongHouse', width: '5%',
+                        formatter: function (value) {
+                            if (value == "0") { return "<span title='迪乐泰'>迪乐泰</span>"; }
+                            else if (value == "1") { return "<span title='好来运'>好来运</span>"; }
+                            else if (value == "2") { return "<span title='富添盛'>富添盛</span>"; }
+                            else if (value == "3") { return "<span title='科技公司'>科技公司</span>"; }
+                            else if (value == "4") { return "<span title='一二三轮胎'>一二三轮胎</span>"; }
+                            else if (value == "5") { return "<span title='采购商'>采购商</span>"; }
+                            else if (value == "6") { return "<span title='云仓'>云仓</span>"; }
+                        }
+                    },
+                    {
+                        title: '负责人', field: 'Person', width: '5%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '手机号码', field: 'Cellphone', width: '6%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '开始营业', field: 'StartBusHours', width: '5%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '结束营业', field: 'EndBusHours', width: '5%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '急送运费标准', field: 'LogisFee', width: '5%', formatter: function (value, row) {
+                            return "<span title='" + row.LogisFee + "-" + row.TwoLogisFee + "-" + row.ThreeLogisFee + "'>" + row.LogisFee + "-" + row.TwoLogisFee + "-" + row.ThreeLogisFee + "</span>";
+                        }
+                    },
+                    {
+                        title: '次日达运费', field: 'NextDayLogisFee', width: '5%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '超期天数(天)', field: 'OverDayNum', width: '5%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '超期单价(元/天/条)', field: 'OverDueUnitPrice', width: '7%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '仓库部门', field: 'CargoDepart', width: '8%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: 'OES仓库部门', field: 'OESCargoDepart', width: '8%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '拣货表头', field: 'PickTitle', width: '10%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '发货表头', field: 'SendTitle', width: '15%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '发货城市', field: 'DepCity', width: '5%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '配送区域', field: 'DeliveryArea', width: '10%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '仓库地址', field: 'Address', width: '20%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '备注', field: 'Remark', width: '15%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '启用状态', field: 'DelFlag', width: '5%',
+                        formatter: function (val, row, index) {
+                            if (val == "0") { return "启用"; }
+                            else if (val == "1") { return "停用"; }
+                            else { return "启用"; }
+                        }
+                    },
+                    {
+                        title: '企微标签', field: 'HCYCOrderPushTagID', width: '3%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    { title: '操作时间', field: 'OP_DATE', width: '10%', formatter: DateTimeFormatter }
+                ]],
+                onClickRow: function (index, row) {
+                    $('#dg').datagrid('clearSelections');
+                    $('#dg').datagrid('selectRow', index);
+                },
+                onLoadSuccess: function (data) { },
+                onDblClickRow: function (index, row) { editItemByID(index); }
+            });
+            $('#dFlag').combobox('textbox').bind('focus', function () { $('#dFlag').combobox('showPanel'); });
+            $('#DelFlag').combobox('textbox').bind('focus', function () { $('#DelFlag').combobox('showPanel'); });
+            $('#StockShareHouseID').combobox({
+                url: 'houseApi.aspx?method=QueryDLTHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            $('#StockShareHouseID').combobox('clear');
+        });
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'houseApi.aspx?method=QueryCargoHouse';
+            $('#dg').datagrid('load', {
+                Name: $('#Name').val(),
+                HouseCode: $('#HouseCode').val(),
+                Person: $("#Person").val(),
+                Cellphone: $("#Cellphone").val(),
+                dFlag: $("#dFlag").combobox('getValue'),
+                BelongHouse: $("#BelongHouse").combobox('getValue')
+            });
+        }
+    </script>
+</asp:Content>
+
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">仓库名称:
+                </td>
+                <td style="width: 10%">
+                    <input id="Name" class="easyui-textbox" data-options="prompt:'请输入仓库名称'" style="width: 100%" />
+                </td>
+                <td style="text-align: right;">仓库代码:
+                </td>
+                <td style="width: 10%">
+                    <input id="HouseCode" class="easyui-textbox" data-options="prompt:'请输入仓库代码'" style="width: 100%" />
+                </td>
+                <td style="text-align: right;">仓库负责人:
+                </td>
+                <td style="width: 10%">
+                    <input id="Person" class="easyui-textbox" data-options="prompt:'请输入仓库负责人'" style="width: 100%" />
+                </td>
+                <td style="text-align: right;">手机号码:
+                </td>
+                <td style="width: 10%">
+                    <input id="Cellphone" class="easyui-textbox" data-options="prompt:'请输入手机号码'" style="width: 100%" />
+                </td>
+                <td style="text-align: right;">状态:
+                </td>
+                <td style="width: 10%">
+                    <select class="easyui-combobox" id="dFlag" style="width: 100%;" panelheight="auto">
+                        <option value="0">启用</option>
+                        <option value="1">停用</option>
+                        <option value="-1">全部</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">仓库类型:
+                </td>
+                <td style="width: 10%">
+                    <select class="easyui-combobox" id="BelongHouse" style="width: 100%;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="1">好来运</option>
+                        <option value="0">迪乐泰</option>
+                        <option value="2">富添盛</option>
+                        <option value="3">科技公司</option>
+                        <option value="4">一二三轮胎</option>
+                        <option value="5">采购商</option>
+                        <option value="6">云仓</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addItem()">
+            &nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-edit"
+                plain="false" onclick="editItem()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-picture_add" plain="false" onclick="UpHousePicture()">上传轮播图</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-page_edit" plain="false" onclick="HouseMonthlySales()">仓库目标规划</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-application_cascade" plain="false" onclick="BrandHouseShared()">品牌仓库共享</a>&nbsp;&nbsp;
+    </div>
+    <div id="dlg" class="easyui-dialog" style="width: 980px; height: 600px; padding: 0px"
+        closed="true" buttons="#dlg-buttons">
+        <form id="fm" class="easyui-form" method="post">
+            <input type="hidden" name="HouseID" />
+            <div id="saPanel">
+                <table>
+                    <tr>
+                        <td style="text-align: right;">仓库名称:
+                        </td>
+                        <td>
+                            <input name="Name" class="easyui-textbox" data-options="prompt:'请输入仓库名称',required:true"
+                                style="width: 250px;" />
+                        </td>
+                        <td style="text-align: right;">仓库负责人:
+                        </td>
+                        <td>
+                            <input name="Person" class="easyui-textbox" data-options="prompt:'请输入仓库负责人',required:true"
+                                style="width: 250px;" />
+                        </td>
+
+                    </tr>
+                    <tr>
+
+                        <td style="text-align: right;">仓库代码:
+                        </td>
+                        <td>
+                            <input name="HouseCode" class="easyui-textbox" data-options="prompt:'请输入仓库代码',required:true"
+                                style="width: 250px;" />
+                        </td>
+
+                        <td style="text-align: right;">负责人手机:
+                        </td>
+                        <td>
+                            <input name="Cellphone" class="easyui-textbox" style="width: 250px;" />
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="text-align: right;">仓库部门:
+                        </td>
+                        <td>
+                            <input name="CargoDepart" id="eCargoDepart" class="easyui-textbox" data-options="prompt:'请输入仓库部门',required:true"
+                                style="width: 250px;" />
+                        </td>
+
+
+                        <td style="text-align: right;">仓库类型:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" name="BelongHouse" id="eBelongHouse" editable="false" style="width: 250px;"
+                                panelheight="auto" required="true">
+                                <option value="0">迪乐泰</option>
+                                <option value="1">好来运</option>
+                                <option value="2">富添盛</option>
+                                <option value="3">科技公司</option>
+                                <option value="4">一二三轮胎</option>
+                                <option value="5">采购商</option>
+                                <option value="6">云仓</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">OES仓库部门:
+                        </td>
+                        <td>
+                            <input name="OESCargoDepart" id="eOESCargoDepart" class="easyui-textbox" data-options="prompt:'请输入OES仓库部门',required:true"
+                                style="width: 250px;" />
+                        </td>
+                        <td style="text-align: right;">发货城市:
+                        </td>
+                        <td>
+                            <input name="DepCity" id="eDepCity" class="easyui-textbox" data-options="prompt:'请输入发货城市',required:true"
+                                style="width: 250px;" />
+                        </td>
+
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">发货单表头:
+                        </td>
+                        <td>
+                            <input name="SendTitle" class="easyui-textbox" style="width: 250px;" />
+                        </td>
+                        <td style="text-align: right;">配送区域:
+                        </td>
+                        <td>
+                            <input name="DeliveryArea" class="easyui-combobox" style="width: 250px;"
+                                data-options="url:'houseApi.aspx?method=QueryCityData',valueField:'City',textField:'City',multiple:true" />
+                        </td>
+
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">拣货单表头:
+                        </td>
+                        <td>
+                            <input name="PickTitle" class="easyui-textbox" style="width: 250px;" />
+                        </td>
+
+                        <td style="text-align: right;">状态标识:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="DelFlag" name="DelFlag" style="width: 250px;"
+                                panelheight="auto" required="true">
+                                <option value="0">启用</option>
+                                <option value="1">停用</option>
+                            </select>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="text-align: right;">营业开始:
+                        </td>
+                        <td>
+                            <input name="StartBusHours" class="easyui-textbox" style="width: 250px;" />
+                        </td>
+                        <td style="text-align: right;">超期天数:
+                        </td>
+                        <td>
+                            <input name="OverDayNum" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" />
+                        </td>
+
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">营业结束:
+                        </td>
+                        <td>
+                            <input name="EndBusHours" class="easyui-textbox" style="width: 250px;" />
+                        </td>
+
+                        <td style="text-align: right;">超期单价:
+                        </td>
+                        <td>
+                            <input name="OverDueUnitPrice" class="easyui-numberbox" data-options="min:0,precision:2" style="width: 250px;" />
+                        </td>
+
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">企微标签:
+                        </td>
+                        <td>
+                            <input name="HCYCOrderPushTagID" class="easyui-textbox" style="width: 250px;" />
+                        </td>
+                        <td style="text-align: right;">次日达运费:
+                        </td>
+                        <td>
+                            <input name="NextDayLogisFee" class="easyui-textbox" style="width: 250px;" />
+                        </td>
+
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">运费标准:
+                        </td>
+                        <td colspan="3">一条：
+                            <input name="LogisFee" class="easyui-textbox" style="width: 100px;" />
+                            两条：
+                            <input name="TwoLogisFee" class="easyui-textbox" style="width: 100px;" />
+                            三条及以上：
+                            <input name="ThreeLogisFee" class="easyui-textbox" style="width: 100px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">仓库地址:
+                        </td>
+                        <td colspan="3">
+                            <input name="Address" id="Address" class="easyui-textbox" data-options="prompt:'请输入仓库地址'"
+                                style="width: 700px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">入驻品牌:
+                        </td>
+                        <td colspan="3">
+                            <textarea id="OperaBrand" rows="4" name="OperaBrand" style="width: 700px;"></textarea>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">仓库备注:
+                        </td>
+                        <td colspan="3">
+                            <textarea id="Remark" rows="4" name="Remark" style="width: 700px;"></textarea>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">慧采云仓:</td>
+                        <td colspan="3">
+                            <input type="checkbox" class="easyui-checkbox" id="IsCanRush" name="IsCanRush" onclick="checkbox(this)" />
+                            <label for="IsCanRush">急送</label>&nbsp;&nbsp;
+                            <input type="checkbox" class="easyui-checkbox" id="IsCanPickUp" name="IsCanPickUp" onclick="checkbox(this)" />
+                            <label for="IsCanPickUp">自提</label>&nbsp;&nbsp;
+                            <input type="checkbox" class="easyui-checkbox" id="IsCanNextDay" name="IsCanNextDay" onclick="checkbox(this)" />
+                            <label for="IsCanNextDay">次日达</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">共享仓库:</td>
+                        <td>
+                            <input id="StockShareHouseID" name="StockShareHouseID" class="easyui-combobox" style="width: 250px;" />
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </form>
+    </div>
+    <div id="dlg-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItem()">&nbsp;&nbsp;保&nbsp;存&nbsp;&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;&nbsp;取&nbsp;消&nbsp;&nbsp;</a>
+    </div>
+
+    <%-- 上传来货单照片 --%>
+    <div id="dlgUploadPic" class="easyui-dialog" style="width: 500px; height: 400px; padding: 1px 1px" closed="true" buttons="#dlgUploadPic-buttons">
+        <form id="fmUploadPic" class="easyui-form" method="post" enctype="multipart/form-data">
+            <input type="hidden" id="FFacOrderNo" />
+            <input type="hidden" id="FHouseID" />
+            <table>
+                <tr>
+                    <td>
+                        <input style="width: 250px; height: 30px;" id="InsurePic" name="InsurePic" class="easyui-filebox" data-options="prompt:'照片',buttonText:'点击选择',onChange:change_photo" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div id="InsureImgdiv">
+                            <img id="InsureImg" width="100px" height="100px" />
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            <table id="dgInsurcePicture" class="easyui-datagrid">
+            </table>
+        </form>
+    </div>
+    <div id="dlgUploadPic-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelPic()">&nbsp;&nbsp;删&nbsp;除&nbsp;&nbsp;</a>&nbsp;&nbsp;
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconcls="icon-ok" onclick="savePic()">&nbsp;&nbsp;保&nbsp;存&nbsp;&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgUploadPic').dialog('close')">&nbsp;&nbsp;关&nbsp;闭&nbsp;&nbsp;</a>
+    </div>
+    <%-- 上传来货单照片 --%>
+    <div id="dgViewImg" class="easyui-dialog" closed="true" style="width: 1000px; height: 600px; overflow: hidden; display: flex; justify-content: center; align-items: center;" buttons="#dgViewImg-buttons">
+        <img id="simg" style="max-width: 100%; max-height: 170%;" />
+    </div>
+    <div id="dgViewImg-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+            onclick="javascript:$('#dgViewImg').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <%-- 仓库目标 --%>
+    <div id="dlgXS" class="easyui-dialog" style="width: 700px; height: 360px; padding: 0px"
+        closed="true" buttons="#dlgXS-buttons">
+        <form id="fmXS" class="easyui-form" method="post">
+            <input type="hidden" id="XSHouseID" />
+            <table>
+                <tr>
+                    <td style="text-align: right;">日期范围:
+                    </td>
+                    <td>
+                        <input name="BStartDate" id="BStartDate" class="easyui-datebox" data-options="required:true" style="width: 150px;" />
+                    </td>
+                    <td style="text-align: right;">目标条数:
+                    </td>
+                    <td>
+                        <input name="AimQuantity" id="AimQuantity" class="easyui-numberbox" data-options="required:true" style="width: 150px;" />
+                        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveHouseAim()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+                    </td>
+                </tr>
+                <table id="HouseAimTable" class="easyui-datagrid"></table>
+
+            </table>
+        </form>
+    </div>
+    <div id="dlgXS-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" onclick="DelHouseAim()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgXS').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+
+    <%-- 品牌共享 --%>
+    <div id="dlgGX" class="easyui-dialog" style="width: 800px; height: 360px; padding: 0px"
+        closed="true" buttons="#dlgGX-buttons">
+        <form id="fmGX" class="easyui-form" method="post">
+            <input type="hidden" id="GXHouseID" />
+            <input type="hidden" id="GXHouseName" />
+            <table id="HouseShareTable" class="easyui-datagrid"></table>
+        </form>
+    </div>
+    <div id="dlgGX-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="OpenHouseShare()">新增绑定</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-edit" onclick="UpdateHouseShare()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" onclick="DelHouseShare()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgGX').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+
+    <div id="dlgGXDetail" class="easyui-dialog" style="width: 320px; height: 280px; padding: 0px"
+        closed="true" buttons="#dlgGXDetail-buttons">
+        <form id="fmGXDetail" class="easyui-form" method="post">
+            <input type="hidden" id="GXDetailHouseID" />
+            <input type="hidden" id="DetailID" />
+            <table>
+                <tr>
+                    <td style="text-align: right;">当前仓库:</td>
+                    <td>
+                        <input id="MainHouseID" name="MainHouseID" readonly disabled class="easyui-combobox" style="width: 100%;" />
+                    </td>
+
+
+                </tr>
+                <tr>
+                    <td style="text-align: right;">品牌名称:</td>
+                    <td>
+                        <input id="BrandID" name="BrandID" class="easyui-combobox" data-options="required:true" style="width: 100%;" />
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">共享仓库:</td>
+                    <td>
+                        <input id="ShareHouseID" name="ShareHouseID" class="easyui-combobox" data-options="required:true" style="width: 100%;" />
+                    </td>
+
+
+                </tr>
+                <tr>
+                    <td style="text-align: right;">加价类型:</td>
+                    <td>
+                        <input name="UpPriceType" id="UpPriceType1" type="radio" checked="checked" value="0" /><label for="UpPriceType1">按固定金额加价</label>
+                        <input name="UpPriceType" id="UpPriceType2" type="radio" value="1" /><label for="UpPriceType2">按比例加价</label>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">固定金额:</td>
+                    <td>
+                        <input name="FixMoney" id="FixMoney" class="easyui-numberbox" data-options="min:0,precision:2,required:true" style="width: 100%;">
+                    </td>
+
+
+
+                </tr>
+                <tr>
+                    <td style="text-align: right;">按比例比值:</td>
+                    <td>
+                        <input name="RatePrice" id="RatePrice" class="easyui-numberbox" data-options="min:0,precision:2,required:true" style="width: 100%;">
+                    </td>
+                </tr>
+
+            </table>
+        </form>
+    </div>
+    <div id="dlgGXDetail-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveHouseShare()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgGXDetail').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+
+    <script type="text/javascript">
+        function checkbox(obj) {
+            if (obj.checked) {
+                obj.value = 0;
+            } else {
+                obj.value = 1;
+            }
+        }
+        //新增仓库信息
+        function addItem() {
+            $('#dlg').dialog('open').dialog('setTitle', '新增仓库信息');
+            $('#fm').form('clear');
+            $('#DelFlag').combobox('select', '0');
+            $('#StockShareHouseID').combobox({
+                url: 'houseApi.aspx?method=QueryDLTHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+        }
+        //修改仓库信息
+        function editItem() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#dlg').dialog('open').dialog('setTitle', '修改仓库信息');
+                var IsCanRush = document.getElementById("IsCanRush");
+                if ($("#IsCanRush").prop('checked', 'checked')) { IsCanRush.value = 0; } else { IsCanRush.value = 1; }
+                var IsCanPickUp = document.getElementById("IsCanPickUp");
+                if ($("#IsCanPickUp").prop('checked', 'checked')) { IsCanPickUp.value = 0; } else { IsCanPickUp.value = 1; }
+                var IsCanNextDay = document.getElementById("IsCanNextDay");
+                if ($("#IsCanNextDay").prop('checked', 'checked')) { IsCanNextDay.value = 0; } else { IsCanNextDay.value = 1; }
+
+                $('#fm').form('load', row);
+                if (row.IsCanRush == "0") { $("#IsCanRush").prop('checked', 'checked'); }
+                if (row.IsCanPickUp == "0") { $("#IsCanPickUp").prop('checked', 'checked'); }
+                if (row.IsCanNextDay == "0") { $("#IsCanNextDay").prop('checked', 'checked'); }
+
+                $('#StockShareHouseID').combobox('setValue', row.StockShareHouseID);
+                if (row.StockShareHouseID == 0) {
+                    $('#StockShareHouseID').combobox('clear');
+                }
+
+            }
+        }
+        //修改仓库信息
+        function editItemByID(Did) {
+            var row = $("#dg").datagrid('getData').rows[Did];
+            if (row) {
+                $('#dlg').dialog('open').dialog('setTitle', '修改仓库信息');
+                var IsCanRush = document.getElementById("IsCanRush");
+                if ($("#IsCanRush").prop('checked', 'checked')) { IsCanRush.value = 0; } else { IsCanRush.value = 1; }
+                var IsCanPickUp = document.getElementById("IsCanPickUp");
+                if ($("#IsCanPickUp").prop('checked', 'checked')) { IsCanPickUp.value = 0; } else { IsCanPickUp.value = 1; }
+                var IsCanNextDay = document.getElementById("IsCanNextDay");
+                if ($("#IsCanNextDay").prop('checked', 'checked')) { IsCanNextDay.value = 0; } else { IsCanNextDay.value = 1; }
+                $('#fm').form('load', row);
+
+                if (row.IsCanRush == "0") { $("#IsCanRush").prop('checked', 'checked'); }
+                if (row.IsCanPickUp == "0") { $("#IsCanPickUp").prop('checked', 'checked'); }
+                if (row.IsCanNextDay == "0") { $("#IsCanNextDay").prop('checked', 'checked'); }
+            }
+        }
+        //删除仓库信息
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'houseApi.aspx?method=DelCargoHouse',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        var value2 = 0
+        $("#simg").rotate({ bind: { click: function () { value2 += 90; $(this).rotate({ animateTo: value2 }) } } });
+        //保存照片
+        function savePic() {
+            $('#fmUploadPic').form('submit', {
+                url: 'houseApi.aspx?method=SaveHousePic',
+                onSubmit: function (param) {
+                    console.log(param)
+                    param.FacOrderNo = $('#FFacOrderNo').val();
+                    param.HouseID = $('#FHouseID').val();
+                    var trd = $(this).form('enableValidation').form('validate');
+                    return trd;
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dgInsurcePicture').datagrid('reload');
+                        //$('#dlgUploadPic').dialog('close'); 	// close the dialog
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            });
+        }
+        function DelPic() {
+            var rows = $('#dgInsurcePicture').datagrid('getSelections').filter(a => a.DelFlag == "0");;
+            if (rows.length == 0) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的图片数据', 'warning');
+                return
+            }
+
+            var json = JSON.stringify(rows)
+            $.ajax({
+                url: 'houseApi.aspx?method=DelHousePic',
+                type: 'post', dataType: 'json', data: { DelData: json },
+                success: function (text) {
+                    //var result = eval('(' + msg + ')');
+                    if (text.Result == true) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                        $('#dgInsurcePicture').datagrid('reload');
+                    }
+                    else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                    }
+                }
+            });
+
+        }
+        //上传轮播图图片
+        function UpHousePicture() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要操作的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#InsurePic').filebox('clear');
+                document.getElementById("InsureImg").setAttribute("src", "");
+
+                $('#dlgUploadPic').dialog('open').dialog('setTitle', '仓库名称：' + row.Name + ' 上传照片');
+                $('#FHouseID').val(row.HouseID);
+
+                //显示DG
+                showdgInsurcePicture();
+                $('#dgInsurcePicture').datagrid('clearSelections');
+                var gridOpts = $('#dgInsurcePicture').datagrid('options');
+                gridOpts.url = 'houseApi.aspx?method=QueryHouseFile&HouseID=' + row.HouseID;
+            }
+        }
+        //曾经上传的来货订单照片
+        function showdgInsurcePicture() {
+            $('#dgInsurcePicture').datagrid({
+                width: '100%',
+                height: '180px',
+                //iconCls: 'icon-view',//标题图标
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                //striped: true, //奇偶行使用不同背景色
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                rownumbers: true, //行号
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                //ctrlSelect:true,
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'BID',
+                url: null,
+                toolbar: '',
+                columns: [[
+                    { title: '', field: 'BID', checkbox: true, width: '30px' },
+                    { title: '单据照片', field: 'PicName', width: '200px', formatter: imgFormatter },
+                    {
+                        title: '启用否', field: 'DelFlag', width: '50px', formatter: function (val) {
+                            if (val == "0") {
+                                return "启用";
+                            }
+                            return "删除";
+                        }
+                    },
+                    //{ title: '证件类型', field: 'FileType', width: '100px', formatter: function (val, row, index) { if (val == "0") { return "身份证正面"; } else if (val == "1") { return "身份证反面"; } else if (val == "2") { return "营业执照"; } else if (val == "3") { return "签订合同"; } else if (val == "4") { return "门头照片"; } else { return ""; } } },
+                    { title: '上传时间', field: 'OPDATE', width: '130px', formatter: DateTimeFormatter }
+                ]]
+            });
+
+        }
+        //图片添加路径  
+        function imgFormatter(value, row, index) {
+            if ('' != value && null != value) {
+                var rvalue = "";
+                rvalue += "<img onclick=ViewImage(\"" + value + "\") style='width:66px; height:60px;margin-left:1px;' src='" + value + "' title='点击查看图片'/>";
+                return rvalue;
+            }
+        }
+        function ViewImage(img) {
+            $('#dgViewImg').dialog('open').dialog('setTitle', '预览');
+            $("#simg").attr("src", img);
+        }
+        function change_photo() {
+            PreviewImage($("input[name='InsurePic']")[0], 'InsureImg', 'InsureImgdiv');
+        }
+        function PreviewImage(fileObj, imgPreviewId, divPreviewId) {
+            if (fileObj.files.length <= 0) {
+                return;
+            }
+            var allowExtention = ".jpg,.bmp,.gif,.png";//允许上传文件的后缀名document.getElementById("hfAllowPicSuffix").value;  
+            var extention = fileObj.value.substring(fileObj.value.lastIndexOf(".") + 1).toLowerCase();
+            var browserVersion = window.navigator.userAgent.toUpperCase();
+            if (allowExtention.indexOf(extention) > -1) {
+                if (fileObj.files) {//HTML5实现预览，兼容chrome、火狐7+等  
+                    if (window.FileReader) {
+                        var reader = new FileReader();
+                        reader.onload = function (e) {
+                            document.getElementById(imgPreviewId).setAttribute("src", e.target.result);
+                        }
+                        reader.readAsDataURL(fileObj.files[0]);
+                    } else if (browserVersion.indexOf("SAFARI") > -1) {
+                        alert("不支持Safari6.0以下浏览器的图片预览!");
+                    }
+                } else if (browserVersion.indexOf("MSIE") > -1) {
+                    if (browserVersion.indexOf("MSIE 6") > -1) {//ie6  
+                        document.getElementById(imgPreviewId).setAttribute("src", fileObj.value);
+                    } else {//ie[7-9]  
+                        fileObj.select();
+                        if (browserVersion.indexOf("MSIE 9") > -1)
+                            fileObj.blur();//不加上document.selection.createRange().text在ie9会拒绝访问  
+                        var newPreview = document.getElementById(divPreviewId + "New");
+                        if (newPreview == null) {
+                            newPreview = document.createElement("div");
+                            newPreview.setAttribute("id", divPreviewId + "New");
+                            newPreview.style.width = document.getElementById(imgPreviewId).width + "px";
+                            newPreview.style.height = document.getElementById(imgPreviewId).height + "px";
+                            newPreview.style.border = "solid 1px #d2e2e2";
+                        }
+                        newPreview.style.filter = "progid:DXImageTransform.Microsoft.AlphaImageLoader(sizingMethod='scale',src='" + document.selection.createRange().text + "')";
+                        var tempDivPreview = document.getElementById(divPreviewId);
+                        tempDivPreview.parentNode.insertBefore(newPreview, tempDivPreview);
+                        tempDivPreview.style.display = "none";
+                    }
+                } else if (browserVersion.indexOf("FIREFOX") > -1) {//firefox  
+                    var firefoxVersion = parseFloat(browserVersion.toLowerCase().match(/firefox\/([\d.]+)/)[1]);
+                    if (firefoxVersion < 7) {//firefox7以下版本  
+                        document.getElementById(imgPreviewId).setAttribute("src", fileObj.files[0].getAsDataURL());
+                    } else {//firefox7.0+                      
+                        document.getElementById(imgPreviewId).setAttribute("src", window.URL.createObjectURL(fileObj.files[0]));
+                    }
+                } else {
+                    document.getElementById(imgPreviewId).setAttribute("src", fileObj.value);
+                }
+            } else {
+                alert("仅支持" + allowExtention + "为后缀名的文件!");
+                fileObj.value = "";//清空选中文件  
+                if (browserVersion.indexOf("MSIE") > -1) {
+                    fileObj.select();
+                    document.selection.clear();
+                }
+                fileObj.outerHTML = fileObj.outerHTML;
+            }
+        }
+        //仓库目标规划
+        function HouseMonthlySales() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要操作的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#dlgXS').dialog('open').dialog('setTitle', '仓库名称：' + row.Name + ' 仓库目标');
+                $('#fmXS').form('clear');
+                var curr_time = new Date();
+
+                //设置前当月
+                $("#BStartDate").datebox("setValue", myformatter(curr_time));
+
+                $('#XSHouseID').val(row.HouseID);
+
+                showdgHouseAim()
+                $('#HouseAimTable').datagrid('clearSelections');
+                var gridOpts = $('#HouseAimTable').datagrid('options');
+                gridOpts.url = 'houseApi.aspx?method=QueryHouseAimList&HouseID=' + row.HouseID;
+            }
+        }
+
+
+        //仓库目标列表
+        function showdgHouseAim() {
+            $('#HouseAimTable').datagrid({
+                width: '100%',
+                height: '250px',
+                //iconCls: 'icon-view',//标题图标
+                loadMsg: '数据加载中请稍候...',
+                title: '历史仓库目标',
+                autoRowHeight: false, //行高是否自动
+                //striped: true, //奇偶行使用不同背景色
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                rownumbers: true, //行号
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                //ctrlSelect:true,
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '',
+                columns: [[
+                    { title: '', field: 'ID', checkbox: true, width: '30px' },
+                    { title: '年', field: 'AimYear', width: '100px' },
+                    { title: '月', field: 'AimMonth', width: '100px' },
+                    { title: '目标条数', field: 'AimQuantity', width: '100px' },
+                    //{ title: '证件类型', field: 'FileType', width: '100px', formatter: function (val, row, index) { if (val == "0") { return "身份证正面"; } else if (val == "1") { return "身份证反面"; } else if (val == "2") { return "营业执照"; } else if (val == "3") { return "签订合同"; } else if (val == "4") { return "门头照片"; } else { return ""; } } },
+                    { title: '上传时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter }
+                ]]
+            });
+
+        }
+        //保存仓库信息
+        function saveItem() {
+            $('#fm').form('submit', {
+                url: 'houseApi.aspx?method=SaveCargoHouse',
+                onSubmit: function (param) {
+
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlg').dialog('close'); 	// close the dialog
+                        dosearch();
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+        //保存仓库目标信息
+        function saveHouseAim() {
+            $('#fmXS').form('submit', {
+                url: 'houseApi.aspx?method=SaveCargoHouseAim',
+                onSubmit: function (param) {
+                    var date = $("#BStartDate").datebox("getValue");
+                    if (date) {
+                        param.AimYear = date.split('-')[0];
+                        param.AimMonth = date.split('-')[1];
+                    }
+                    param.HouseID = $("#XSHouseID").val();
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        ////////$.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        //$('#dlgXS').dialog('close'); 	// close the dialog
+                        $('#HouseAimTable').datagrid('reload');
+                        //dosearch();
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+
+        //保存仓库目标信息
+        function DelHouseAim() {
+            var rows = $('#HouseAimTable').datagrid('getSelections');
+            console.log(rows)
+            if (rows.length == 0) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据', 'warning');
+                return
+            }
+
+            var json = JSON.stringify(rows)
+            $.ajax({
+                url: 'houseApi.aspx?method=DelHouseAim',
+                type: 'post', dataType: 'json', data: { DelData: json },
+                success: function (text) {
+                    //var result = eval('(' + msg + ')');
+                    if (text.Result == true) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                        $('#HouseAimTable').datagrid('reload');
+                    }
+                    else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                    }
+                }
+            });
+        }
+        /* 月度日历JS代码 */
+        $(function () {
+
+            $('#BStartDate').datebox({
+                //显示日趋选择对象后再触发弹出月份层的事件，初始化时没有生成月份层
+                onShowPanel: function () {
+                    //触发click事件弹出月份层
+                    span.trigger('click');
+                    if (!tds)
+                        //延时触发获取月份对象，因为上面的事件触发和对象生成有时间间隔
+                        setTimeout(function () {
+                            tds = p.find('div.calendar-menu-month-inner td');
+                            tds.click(function (e) {
+                                //禁止冒泡执行easyui给月份绑定的事件
+                                e.stopPropagation();
+                                //得到年份
+                                var year = /\d{4}/.exec(span.html())[0],
+                                    //月份
+                                    //之前是这样的month = parseInt($(this).attr('abbr'), 10) + 1; 
+                                    month = parseInt($(this).attr('abbr'), 10);
+
+                                //隐藏日期对象                     
+                                $('#BStartDate').datebox('hidePanel')
+                                    //设置日期的值
+                                    .datebox('setValue', year + '-' + month);
+                            });
+                        }, 0);
+                },
+                //配置parser，返回选择的日期
+                parser: function (s) {
+                    if (!s) return new Date();
+                    var arr = s.split('-');
+                    return new Date(parseInt(arr[0], 10), parseInt(arr[1], 10) - 1, 1);
+                },
+                //配置formatter，只返回年月 之前是这样的d.getFullYear() + '-' +(d.getMonth()); 
+                formatter: function (d) {
+                    var currentMonth = (d.getMonth() + 1);
+                    var currentMonthStr = currentMonth < 10 ? ('0' + currentMonth) : (currentMonth + '');
+                    return d.getFullYear() + '-' + currentMonthStr;
+                }
+            });
+
+            //日期选择对象
+            var p = $('#BStartDate').datebox('panel'),
+                //日期选择对象中月份
+                tds = false,
+                //显示月份层的触发控件
+                span = p.find('span.calendar-text');
+
+
+            $('input:radio[name="UpPriceType"]').click(function () {
+                var checkValue = $('input:radio[name="UpPriceType" ]:checked').val();
+                console.log($("#FixMoney").next().find("input[type='text']"))
+                toggleBtn(checkValue)
+            })
+        })
+        function toggleBtn(checkValue) {
+            if (checkValue == '0') {
+                //$("#xxid").attr("readOnly",true);
+                $("#FixMoney").next().find("input[type='text']").prop("readOnly", false);
+                $("#RatePrice").next().find("input[type='text']").prop("readOnly", true);
+
+                $("#FixMoney").next().find("input[type='text']").prop("disabled", false);
+                $("#RatePrice").next().find("input[type='text']").prop("disabled", true);
+
+                $("#RatePrice").next().find("input[type='text']").css("background", "#ddddddab")
+                $("#FixMoney").next().find("input[type='text']").css("background", "white")
+
+                $("#FixMoney").textbox("setValue", '0.00')
+                $("#RatePrice").textbox("setValue", '')
+            } else {
+                $("#RatePrice").next().find("input[type='text']").prop("readOnly", false);
+                $("#FixMoney").next().find("input[type='text']").prop("readOnly", true);
+
+                $("#RatePrice").next().find("input[type='text']").prop("disabled", false);
+                $("#FixMoney").next().find("input[type='text']").prop("disabled", true);
+
+                $("#FixMoney").next().find("input[type='text']").css("background", "#ddddddab")
+                $("#RatePrice").next().find("input[type='text']").css("background", "white")
+
+                $("#FixMoney").textbox("setValue", '')
+                $("#RatePrice").textbox("setValue", '0.00')
+            }
+        }
+        //格式化日期
+        function myformatter(date) {
+            //获取年份
+            var y = date.getFullYear();
+            //获取月份
+            var m = date.getMonth() + 1;
+            return y + '-' + m;
+        }
+
+        //品牌仓库共享
+        function BrandHouseShared() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要操作的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#dlgGX').dialog('open').dialog('setTitle', '仓库名称：' + row.Name + ' 品牌仓库共享');
+                $('#fmGX').form('clear');
+
+                $('#GXHouseID').val(row.HouseID);
+                $('#GXHouseName').val(row.Name);
+
+                showdgHouseShare()
+                $('#HouseShareTable').datagrid('clearSelections');
+                var gridOpts = $('#HouseShareTable').datagrid('options');
+                gridOpts.url = 'houseApi.aspx?method=QueryHouseShareList&HouseID=' + row.HouseID;
+            }
+        }
+        //仓库目标列表
+        function showdgHouseShare() {
+            $('#HouseShareTable').datagrid({
+                width: '100%',
+                height: '250px',
+                //iconCls: 'icon-view',//标题图标
+                loadMsg: '数据加载中请稍候...',
+                title: '已共享品牌仓库',
+                autoRowHeight: false, //行高是否自动
+                //striped: true, //奇偶行使用不同背景色
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                rownumbers: true, //行号
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                //ctrlSelect:true,
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '',
+                columns: [[
+                    { title: '', field: 'ID', checkbox: true, width: '30px' },
+                    { title: '当前仓库', field: 'MainHouseName', width: '100px' },
+                    { title: '品牌', field: 'BrandName', width: '100px' },
+                    { title: '共享仓库', field: 'ShareHouseName', width: '100px' },
+                    {
+                        title: '加价类型', field: 'UpPriceType', width: '100px', formatter: function (val, item) {
+                            if (val == 0) {
+                                return '按固定金额加价';
+                            } else {
+                                return '按比例加价';
+                            }
+                        }
+                    },
+                    { title: '固定金额', field: 'FixMoney', width: '100px' },
+                    { title: '按比例比值', field: 'RatePrice', width: '100px' },
+                    { title: '创建时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter }
+                ]]
+            });
+
+        }
+        //打开品牌仓库共享信息
+        function OpenHouseShare() {
+            var houseId = $("#GXHouseID").val()
+            var houseName = $("#GXHouseName").val()
+            $('#dlgGXDetail').dialog('open').dialog('setTitle', '新增绑定：' + houseName + ' 品牌仓库共享');
+            $('#fmGXDetail').form('clear');
+
+            $("#FixMoney").next().find("input[type='text']").prop("readOnly", false);
+            $("#RatePrice").next().find("input[type='text']").prop("readOnly", true);
+
+            $("#FixMoney").next().find("input[type='text']").prop("disabled", false);
+            $("#RatePrice").next().find("input[type='text']").prop("disabled", true);
+
+            $("#RatePrice").next().find("input[type='text']").css("background", "#ddddddab")
+            $("#FixMoney").next().find("input[type='text']").css("background", "white")
+
+            $("#FixMoney").textbox("setValue", '0.00')
+            $("#RatePrice").textbox("setValue", '')
+
+            $('#ShareHouseID').combobox({
+                url: 'houseApi.aspx?method=QueryALLHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+
+            $('#MainHouseID').combobox({
+                url: 'houseApi.aspx?method=QueryALLHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+
+            $('#MainHouseID').combobox('setValue', houseId);
+            $("#UpPriceType1").prop('checked', true);
+
+            $('#BrandID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLProductType',
+                valueField: 'TypeID', textField: 'TypeName'
+            });
+
+            $('#GXDetailHouseID').val(houseId);
+            $('#DetailID').val(0);
+        }
+        //打开品牌仓库共享信息
+        function UpdateHouseShare() {
+            var row = $('#HouseShareTable').datagrid('getSelected');
+
+            console.log(row)
+
+            var houseId = $("#GXHouseID").val()
+            var houseName = $("#GXHouseName").val()
+            $('#dlgGXDetail').dialog('open').dialog('setTitle', '修改绑定：' + houseName + ' 品牌仓库共享');
+            $('#fmGXDetail').form('clear');
+
+            var item = {
+                GXDetailHouseID: houseId,
+                ID: row.ID,
+                MainHouseID: row.MainHouseID,
+                BrandID: row.BrandID,
+                ShareHouseID: row.ShareHouseID,
+                UpPriceType: row.UpPriceType,
+                RatePrice: row.RatePrice,
+                FixMoney: row.FixMoney,
+            }
+
+            $("#FixMoney").next().find("input[type='text']").prop("readOnly", false);
+            $("#RatePrice").next().find("input[type='text']").prop("readOnly", true);
+
+            $("#FixMoney").next().find("input[type='text']").prop("disabled", false);
+            $("#RatePrice").next().find("input[type='text']").prop("disabled", true);
+
+            $("#RatePrice").next().find("input[type='text']").css("background", "#ddddddab")
+            $("#FixMoney").next().find("input[type='text']").css("background", "white")
+
+            $("#FixMoney").textbox("setValue", '0.00')
+            $("#RatePrice").textbox("setValue", '')
+
+            $('#ShareHouseID').combobox({
+                url: 'houseApi.aspx?method=QueryALLHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+
+            $('#MainHouseID').combobox({
+                url: 'houseApi.aspx?method=QueryALLHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+
+            $('#MainHouseID').combobox('setValue', houseId);
+            $("#UpPriceType1").prop('checked', true);
+
+            $('#BrandID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLProductType',
+                valueField: 'TypeID', textField: 'TypeName'
+            });
+
+            $('#GXDetailHouseID').val(houseId);
+            $('#DetailID').val(row.ID);
+
+
+            toggleBtn(row.UpPriceType)
+            $('#fmGXDetail').form('load', item);
+
+
+        }
+        //保存品牌仓库共享信息
+        function saveHouseShare() {
+            var GXDetailHouseID = $('#GXDetailHouseID').val();
+            var UpPriceType = $('input:radio[name="UpPriceType" ]:checked').val()
+            var FixMoney = $("#FixMoney").textbox("getValue")
+            var RatePrice = $("#RatePrice").textbox("getValue")
+            if (UpPriceType == 0 && parseFloat(FixMoney) <= 0) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '固定金额不能小于0！', 'warning');
+                return;
+            } else if (UpPriceType == 1 && parseFloat(RatePrice) <= 0) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '按比例比值不能小于0！', 'warning');
+                return;
+            }
+
+            $('#fmGXDetail').form('submit', {
+                url: 'houseApi.aspx?method=SaveCargoHouseShare',
+                onSubmit: function (param) {
+                    param.MainHouseID = $('#MainHouseID').combobox('getValue');
+                    param.ID = $('#DetailID').val();
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $('#dlgGXDetail').dialog('close'); 	// close the dialog
+                        $('#HouseShareTable').datagrid('reload');
+
+                        $('#HouseShareTable').datagrid('clearSelections');
+                        var gridOpts = $('#HouseShareTable').datagrid('options');
+                        gridOpts.url = 'houseApi.aspx?method=QueryHouseShareList&HouseID=' + GXDetailHouseID;
+
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+
+
+        //删除仓库目标信息
+        function DelHouseShare() {
+            var rows = $('#HouseShareTable').datagrid('getSelections');
+            if (rows.length == 0) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据', 'warning');
+                return
+            }
+
+            var json = JSON.stringify(rows)
+            $.ajax({
+                url: 'houseApi.aspx?method=DelHouseShare',
+                type: 'post', dataType: 'json', data: { DelData: json },
+                success: function (text) {
+                    //var result = eval('(' + msg + ')');
+                    if (text.Result == true) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                        $('#HouseShareTable').datagrid('reload');
+                    }
+                    else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                    }
+                }
+            });
+        }
+    </script>
+
+</asp:Content>

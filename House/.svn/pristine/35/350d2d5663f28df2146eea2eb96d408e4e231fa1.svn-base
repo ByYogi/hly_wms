@@ -1,0 +1,349 @@
+﻿using House.Business;
+using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Reflection;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.SecKill
+{
+    public partial class secKillApi : BasePage
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            string methodName = string.Empty;
+            try
+            {
+                methodName = Request["method"];
+                if (String.IsNullOrEmpty(methodName)) return;
+                Type type = this.GetType();
+                MethodInfo method = type.GetMethod(methodName);
+                method.Invoke(this, null);
+            }
+            catch (Exception ex)
+            {
+                LogBus bus = new LogBus();
+                LogEntity log = new LogEntity();
+                log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+                log.Operate = "";
+                log.Moudle = "";
+                log.Status = "1";
+                log.NvgPage = "";
+                log.UserID = UserInfor.LoginName.Trim();
+                log.Memo = methodName + " " + ex.Message + " " + ex.StackTrace;
+                bus.InsertLog(log);
+            }
+        }
+
+        /// <summary>
+        /// 查询淘宝订单数据
+        /// </summary>
+        public void QueryTaobaoOrderData()
+        {
+            WXTaobaoEntity queryEntity = new WXTaobaoEntity();
+            queryEntity.TaobaoID = Convert.ToString(Request["TaobaoID"]);
+            queryEntity.receiver_mobile = Convert.ToString(Request["receiver_mobile"]);
+            queryEntity.receiver_name = Convert.ToString(Request["receiver_name"]);
+            queryEntity.status = Convert.ToString(Request["status"]);
+            queryEntity.buyer_nick = Convert.ToString(Request["buyer_nick"]);
+            queryEntity.buyer_alipay = Convert.ToString(Request["buyer_alipay"]);
+            queryEntity.wxName = Convert.ToString(Request["wxName"]);
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]).Equals(0) ? 1 : Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]).Equals(0) ? 1000 : Convert.ToInt32(Request["rows"]);
+            CargoSecKillBus bus = new CargoSecKillBus();
+            Hashtable list = bus.QueryCargoHouse(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 导入Excel文件
+        /// </summary>
+        public void saveFile()
+        {
+            System.Web.HttpFileCollection files = this.Request.Files;
+            if (files == null || files.Count == 0) return;
+            string attachmentId = Guid.NewGuid().ToString();
+            DataTable data = ToExcel.ImportExcelData(files);
+            //DataTable result = data.Copy();
+            List<WXTaobaoEntity> tb = new List<WXTaobaoEntity>();
+            for (int i = data.Rows.Count - 1; i >= 0; i--)
+            {
+                if (string.IsNullOrEmpty(Convert.ToString(data.Rows[i][0]).Trim()))
+                {
+                    continue;
+                }
+                string addr = Convert.ToString(data.Rows[i][10]);
+                string[] add = addr.Split(' ');
+                tb.Add(new WXTaobaoEntity
+                {
+                    TaobaoID = Convert.ToString(data.Rows[i][0]),
+                    buyer_nick = Convert.ToString(data.Rows[i][1]),
+                    buyer_alipay = Convert.ToString(data.Rows[i][2]),
+                    num = Convert.ToInt32(data.Rows[i][19]),
+                    total_fee = Convert.ToDecimal(data.Rows[i][5]),
+                    payment = Convert.ToDecimal(data.Rows[i][6]),
+                    status = Convert.ToString(data.Rows[i][7]),
+                    receiver_name = Convert.ToString(data.Rows[i][9]),
+                    receiver_address = Convert.ToString(add[3]),
+                    receiver_state = Convert.ToString(add[0]),
+                    receiver_city = Convert.ToString(add[1]),
+                    receiver_district = Convert.ToString(add[2]),
+                    receiver_phone = !string.IsNullOrEmpty(Convert.ToString(data.Rows[i][11])) ? Convert.ToString(data.Rows[i][11]).Substring(1, Convert.ToString(data.Rows[i][11]).Length - 1) : "",
+                    receiver_mobile = !string.IsNullOrEmpty(Convert.ToString(data.Rows[i][12])) ? Convert.ToString(data.Rows[i][12]).Substring(1, Convert.ToString(data.Rows[i][12]).Length - 1) : "",
+                    created = Convert.ToDateTime(data.Rows[i][13]),
+                    pay_time = string.IsNullOrEmpty(Convert.ToString(data.Rows[i][14])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(data.Rows[i][14]),
+                    Title = Convert.ToString(data.Rows[i][15]),
+                    logicno = Convert.ToString(data.Rows[i][16]),
+                    logicCompany = Convert.ToString(data.Rows[i][17])
+                });
+            }
+            //JSON
+            String json = JSON.Encode(tb);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 保存淘宝订单数据
+        /// </summary>
+        public void SaveTaobaoOrderData()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<WXTaobaoEntity> list = new List<WXTaobaoEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            CargoSecKillBus bus = new CargoSecKillBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "秒杀菌系统";
+            log.Status = "0";
+            log.NvgPage = "淘宝订单管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "A";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new WXTaobaoEntity
+                    {
+                        TaobaoID = Convert.ToString(row["TaobaoID"]),
+                        buyer_nick = Convert.ToString(row["buyer_nick"]),
+                        buyer_alipay = Convert.ToString(row["buyer_alipay"]),
+                        payment = Convert.ToDecimal(row["payment"]),
+                        total_fee = Convert.ToDecimal(row["total_fee"]),
+                        receiver_address = Convert.ToString(row["receiver_address"]),
+                        receiver_name = Convert.ToString(row["receiver_name"]),
+                        receiver_city = Convert.ToString(row["receiver_city"]),
+                        receiver_district = Convert.ToString(row["receiver_district"]),
+                        receiver_mobile = Convert.ToString(row["receiver_mobile"]),
+                        receiver_phone = Convert.ToString(row["receiver_phone"]),
+                        receiver_state = Convert.ToString(row["receiver_state"]),
+                        num = Convert.ToInt32(row["num"]),
+                        status = Convert.ToString(row["status"]),
+                        Title = Convert.ToString(row["Title"]),
+                        Shop = Convert.ToString(row["Title"]).Contains("秒杀菌") ? "0" : "1",
+                        logicCompany = Convert.ToString(row["logicCompany"]),
+                        logicno = Convert.ToString(row["logicno"]),
+                        created = Convert.ToDateTime(row["created"]),
+                        pay_time = Convert.ToDateTime(row["pay_time"])
+                    });
+                }
+                if (msg.Result)
+                {
+                    bus.SaveTaobaoOrderData(list, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 删除淘宝订单
+        /// </summary>
+        public void DelTaobaoOrder()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<WXTaobaoEntity> list = new List<WXTaobaoEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoSecKillBus bus = new CargoSecKillBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "秒杀菌系统";
+            log.Status = "0";
+            log.NvgPage = "淘宝订单管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new WXTaobaoEntity
+                    {
+                        TaobaoID = Convert.ToString(row["TaobaoID"]),
+                        buyer_nick = Convert.ToString(row["buyer_nick"]),
+                        buyer_alipay = Convert.ToString(row["buyer_alipay"])
+                    });
+                }
+                bus.DelTaobaoOrder(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 查询汽修推广数据
+        /// </summary>
+        public void QueryAutoCarSpread()
+        {
+            WXSecKillEntity queryEntity = new WXSecKillEntity();
+            queryEntity.CarNum = Convert.ToString(Request["CarNum"]);
+            queryEntity.Cellphone = Convert.ToString(Request["Cellphone"]);
+            if (Request["UseStatus"] != "-1")
+            {
+                queryEntity.UseStatus = Convert.ToString(Request["UseStatus"]);
+            }
+            switch (UserInfor.LoginName)
+            {
+                case "1600": queryEntity.Company = "1"; break;
+                case "1027": queryEntity.Company = "2"; break;
+                default:
+                    break;
+            }
+            queryEntity.OneWxName = Convert.ToString(Request["OneWxName"]);
+            queryEntity.wxName = Convert.ToString(Request["wxName"]);
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]).Equals(0) ? 1 : Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]).Equals(0) ? 1000 : Convert.ToInt32(Request["rows"]);
+            CargoSecKillBus bus = new CargoSecKillBus();
+            Hashtable list = bus.QueryAutoCarSpread(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 设置为已使用状态
+        /// </summary>
+        public void setUseStatus()
+        {
+            String json = Request["data"];
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            List<WXSecKillEntity> list = new List<WXSecKillEntity>();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "秒杀菌系统";
+            log.NvgPage = "汽修店合作";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            log.Status = "0";
+            log.Memo = "设置使用成功";
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    //使用过的跳过
+                    if (Convert.ToString(row["UseStatus"]).Trim().Equals("1")) { continue; }
+
+                    list.Add(new WXSecKillEntity
+                    {
+                        ID = Convert.ToInt64(row["ID"]),
+                        wxName = Convert.ToString(row["wxName"]),
+                        CarNum = Convert.ToString(row["CarNum"]),
+                        Cellphone = Convert.ToString(row["Cellphone"]),
+                        UseStatus = "1"
+                    });
+                }
+                CargoSecKillBus bus = new CargoSecKillBus();
+                if (msg.Result)
+                {
+                    if (list.Count > 0)
+                    {
+                        bus.setUseStatus(list, log);
+                    }
+                }
+            }
+            catch (ApplicationException ex) { msg.Message = ex.Message; msg.Result = false; }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        public void setUnUseStatus()
+        {
+            String json = Request["data"];
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            List<WXSecKillEntity> list = new List<WXSecKillEntity>();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "秒杀菌系统";
+            log.NvgPage = "汽修店合作";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            log.Status = "0";
+            log.Memo = "设置未使用成功";
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    //使用过的跳过
+                    if (Convert.ToString(row["UseStatus"]).Trim().Equals("0")) { continue; }
+
+                    list.Add(new WXSecKillEntity
+                    {
+                        ID = Convert.ToInt64(row["ID"]),
+                        wxName = Convert.ToString(row["wxName"]),
+                        CarNum = Convert.ToString(row["CarNum"]),
+                        Cellphone = Convert.ToString(row["Cellphone"]),
+                        UseStatus = "0"
+                    });
+                }
+                CargoSecKillBus bus = new CargoSecKillBus();
+                if (msg.Result)
+                {
+                    if (list.Count > 0)
+                    {
+                        bus.setUseStatus(list, log);
+                    }
+                }
+            }
+            catch (ApplicationException ex) { msg.Message = ex.Message; msg.Result = false; }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+    }
+}

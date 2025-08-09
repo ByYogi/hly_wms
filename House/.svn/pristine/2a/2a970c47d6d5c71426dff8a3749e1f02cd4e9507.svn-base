@@ -1,0 +1,171 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 促销规则库数据实体1.8.1.Tbl_Cargo_RuleBank（优惠规则库数据表）
+    /// </summary>
+    [Serializable]
+    public class CargoRuleBankEntity
+    {
+        public long ID { get; set; }
+        [Description("规则名称")]
+        public string RuleName { get; set; }
+        [Description("规则标题")]
+        public string Title { get; set; }
+        [Description("规则类型")]
+        public string RuleType { get; set; }
+        [Description("有效期开始时间")]
+        public DateTime StartDate { get; set; }
+        [Description("有效期结束时间")]
+        public DateTime EndDate { get; set; }
+        [Description("适用仓库")]
+        public int HouseID { get; set; }
+        public string HouseName { get; set; }
+        [Description("适用品牌")]
+        public int TypeID { get; set; }
+        public string TypeName { get; set; }
+        [Description("适用规格")]
+        public string Specs { get; set; }
+        [Description("适用花纹")]
+        public string Figure { get; set; }
+        [Description("货品代码")]
+        public string GoodsCode { get; set; }
+        [Description("载重指数")]
+        public string LoadIndex { get; set; }
+        [Description("速度级别")]
+        public string SpeedLevel { get; set; }
+        [Description("开始周期")]
+        public int StartBatch { get; set; }
+        [Description("结束周期")]
+        public int EndBatch { get; set; }
+        public string Batch { get; set; }
+        [Description("满数量金额")]
+        public int FullEntry { get; set; }
+        [Description("减数量金额")]
+        public decimal CutEntry { get; set; }
+        [Description("折扣")]
+        public decimal SaleEntry { get; set; }
+        [Description("限额")]
+        public int LimitNum { get; set; }
+        [Description("产品ID")]
+        public long ProductID { get; set; }
+        public DateTime OP_DATE { get; set; }
+        [Description("作废标志")]
+        public string DelFlag { get; set; }
+        /// <summary>
+        /// 适用客户
+        /// </summary>
+        [Description("适用客户")]
+        public string SuitClientNum { get; set; }
+        /// <summary>
+        /// 适用客户名称
+        /// </summary>
+        [Description("适用客户名称")]
+        public string SuitClientName { get; set; }
+        /// <summary>
+        /// 满额享受
+        /// </summary>
+        [Description("满额享受")]
+        public int MeetLimit { get; set; }
+        /// <summary>
+        /// 常规促销
+        /// </summary>
+        [Description("常规促销")]
+        public int Regular { get; set; }
+
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+    public class RuleBankReturnEntity 
+    {
+        /// <summary>
+        /// 返回类型
+        /// </summary>
+        public bool Result { get; set; }
+        /// <summary>
+        /// 优惠ID
+        /// </summary>
+        public string RuleID { get; set; }
+        /// <summary>
+        /// 优惠标题
+        /// </summary>
+        public string RuleTitle { get; set; }
+        /// <summary>
+        /// 优惠类型
+        /// </summary>
+        public string RuleType { get; set; }
+        /// <summary>
+        /// 优惠内容
+        /// </summary>
+        public string RuleContent { get; set; }
+    }
+    public class PriceRuleReturnEntity 
+    {
+        /// <summary>
+        /// 返回HTML代码
+        /// </summary>
+        public string Html { get; set; }
+        /// <summary>
+        /// 限购数量
+        /// </summary>
+        public int QuotaNum { get; set; }
+        /// <summary>
+        /// 限购规格
+        /// </summary>
+        public string QuotaSpecs { get; set; }
+        /// <summary>
+        /// 限购花纹
+        /// </summary>
+        public string QuotaFigure { get; set; }
+        /// <summary>
+        /// 限购开始批次
+        /// </summary>
+        public int QuotaStartBatch { get; set; }
+        /// <summary>
+        /// 限购结束批次
+        /// </summary>
+        public int QuotaEndBatch { get; set; }
+        /// <summary>
+        /// 满赠订单数量
+        /// </summary>
+        public int FullDiscountSum { get; set; }
+        /// <summary>
+        /// 满赠规格
+        /// </summary>
+        public string FullDiscountSpecs { get; set; }
+        /// <summary>
+        /// 满赠花纹
+        /// </summary>
+        public string FullDiscountFigure { get; set; }
+        /// <summary>
+        /// 满赠开始批次
+        /// </summary>
+        public int FullDiscountStartBatch { get; set; }
+        /// <summary>
+        /// 满赠结束批次
+        /// </summary>
+        public int FullDiscountEndBatch { get; set; }
+    }
+}

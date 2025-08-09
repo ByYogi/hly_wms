@@ -1,0 +1,667 @@
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="wxRefundConfirmation.aspx.cs" Inherits="Cargo.Weixin.wxRefundConfirmation" %>
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>退款确认</title>
+    <link href="../JS/easy/css/default/easyui.css" rel="stylesheet" />
+    <link href="../JS/easy/css/icon.css" rel="stylesheet" type="text/css" />
+        <script type="text/javascript" src="../JS/vue.js"></script>
+
+        <script src="../JS/easy/js/jquery.min.js" type="text/javascript"></script>
+
+    <script src="../JS/easy/js/jquery.easyui.min.js" type="text/javascript"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f7f7f7;
+            color: #333;
+            line-height: 1.5;
+            padding: 15px;
+        }
+
+        .refund-container {
+            /*max-width: 500px;*/
+            margin: 0 auto;
+        }
+
+        .refund-header {
+            text-align: center;
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+            .refund-header h1 {
+                font-size: 4rem;
+                color: #333;
+                margin-bottom: 5px;
+            }
+
+        .refund-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* margin-bottom: 15px; */
+        }
+
+        .status-icon {
+            width: 20px;
+            height: 20px;
+            background-color: #07C160;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-text {
+            color: #07C160;
+            font-weight: 500;
+            font-size: 2rem;
+        }
+
+        .refund-card {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .refund-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 45px;
+        }
+
+            .refund-item:last-child {
+                margin-bottom: 0;
+            }
+
+        .item-label {
+            color: #999;
+            font-size: 2.5rem;
+        }
+
+        .item-value {
+            color: #333;
+            font-weight: 500;
+            text-align: right;
+            font-size: 2rem;
+        }
+
+        .amount {
+            color: #FF4D4F;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .refund-btn {
+            width: 100%;
+            height: 48px;
+            border: none;
+            border-radius: 24px;
+            background-color: #4dbfff;
+            color: white;
+            font-size: 2rem;
+            font-weight: 500;
+            margin-top: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            bottom: 12px;
+            width: 70%;
+            position: absolute; /* 子元素绝对定位 */
+            width: 60%; /* 子元素宽度 */
+            height: 100px; /* 子元素高度 */
+            left: 50%; /* 水平居中 */
+            transform: translateX(-50%); /* 精确调整水平位置 */
+        }
+
+            .refund-btn:active {
+                background-color: #4dbfff;
+                border-radius: 24px;
+                transition: all 0.3s;
+                /*transform: scale(0.98);*/
+            }
+
+        .divider {
+            height: 1px;
+            background-color: #f0f0f0;
+            margin: 15px 0;
+        }
+    </style>
+
+    <style type="text/css">
+        /* 按钮样式 */
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            margin: 10px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            outline: none;
+            width: calc(100% - 20px);
+            max-width: 300px;
+        }
+
+        .btn-primary {
+            background-color: #07C160;
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: #FF4D4F;
+            color: white;
+        }
+
+        /* 确认框遮罩层 */
+        .confirm-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+            .confirm-mask.show {
+                opacity: 1;
+                pointer-events: auto;
+            }
+
+        /* 确认框容器 */
+        .confirm-container {
+            width: 85%;
+            max-width: 300px;
+            background-color: white;
+            border-radius: 12px;
+            overflow: hidden;
+            transform: translateY(-20px);
+            transition: transform 0.3s;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .confirm-mask.show .confirm-container {
+            transform: translateY(0);
+        }
+
+        /* 确认框头部 */
+        .confirm-header {
+            padding: 18px 15px;
+            border-bottom: 1px solid #eee;
+            text-align: center;
+        }
+
+        .confirm-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* 确认框内容 */
+        .confirm-content {
+            padding: 20px 15px;
+            font-size: 15px;
+            text-align: center;
+            color: #666;
+        }
+
+        /* 确认框底部按钮 */
+        .confirm-footer {
+            display: flex;
+            border-top: 1px solid #eee;
+        }
+
+        .confirm-btn {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 500;
+            background: none;
+            border: none;
+            outline: none;
+            cursor: pointer;
+        }
+
+            .confirm-btn.cancel {
+                color: #333;
+                border-right: 1px solid #eee;
+            }
+
+            .confirm-btn.confirm {
+                color: #07C160;
+                font-weight: 600;
+            }
+    </style>
+    <style>
+
+    /* 消息容器样式 */
+    .message-container {
+      position: fixed;
+      top: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    
+    .message {
+      max-width: 80%;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background-color: #fff;
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
+      display: flex;
+      align-items: center;
+      animation: fadeIn 0.3s ease-out;
+      font-size: 15px;
+      line-height: 1.5;
+      color: #333;
+    }
+    
+    /* 不同类型消息的样式 */
+    .message.success  {
+      background-color: #f0f9eb;
+      color: #67c23a;
+      font-size: 3rem;
+    }
+    
+    .message.error  {
+      background-color: #fef0f0;
+      color: #f56c6c;
+      font-size: 3rem;
+    }
+    
+    .message.warning  {
+      background-color: #fdf6ec;
+      color: #e6a23c;
+      font-size: 3rem;
+    }
+    
+    /* 动画效果 */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* 演示按钮样式 */
+    .demo-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      background-color: #409eff;
+      color: white;
+      font-size: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .demo-btn:active {
+      background-color: #3a8ee6;
+    }
+    
+    .demo-btn.success  {
+      background-color: #67c23a;
+    }
+    
+    .demo-btn.error  {
+      background-color: #f56c6c;
+    }
+    
+    .demo-btn.warning  {
+      background-color: #e6a23c;
+    }
+  </style>
+</head>
+<body>
+    <div id="app" class="refund-container">
+        <div class="refund-header">
+            <h1>退款详情</h1>
+            <div class="refund-status">
+                <div class="status-icon"></div>
+                <span class="status-text">退款申请已提交</span>
+            </div>
+        </div>
+
+        <div class="refund-card">
+            <div class="refund-item">
+                <span class="item-label">订单编号</span>
+                <span class="item-value">{{order.OrderNo}}</span>
+            </div>
+            <div class="refund-item">
+                <span class="item-label">退货数量</span>
+                <span class="item-value amount">{{order.Piece}}</span>
+            </div>
+            <div class="refund-item">
+                <span class="item-label">退款金额</span>
+                <span class="item-value amount">{{order.TotalCharge}}</span>
+            </div>
+            <div class="divider"></div>
+            <div class="refund-item">
+                <span class="item-label">申请时间</span>
+                <span class="item-value">{{DateTimeFormatter(order.RefundDate)}}</span>
+            </div>
+            <div class="refund-item">
+                <span class="item-label">退款原因</span>
+                <span class="item-value">{{RefundReasonStr(order.RefundReason)}}</span>
+            </div>
+            <div class="refund-item">
+                <span class="item-label">退款备注</span>
+                <span class="item-value">{{order.RefundMemo}}</span>
+            </div>
+            <div class="refund-item">
+                <span class="item-label">订单类型</span>
+                <span class="item-value">{{(order.ThrowGood=='22'?"即日达":"次日达")}}</span>
+            </div>
+            <div class="refund-item">
+                <span class="item-label">付款状态</span>
+                <span class="item-value">{{(PayStatusStr(order.PayStatus))}}</span>
+            </div>
+        </div>
+
+        <button class="refund-btn" @click="handleRefund">确认退款</button>
+
+         <!-- 确认框组件 -->
+    <div class="confirm-mask" :class="{show: confirm.visible}"  @click.self="confirm.cancel"> 
+      <div class="confirm-container">
+        <div class="confirm-header">
+          <div class="confirm-title">{{confirm.title}}</div> 
+        </div>
+        <div class="confirm-content">
+          {{confirm.content}} 
+        </div>
+        <div class="confirm-footer">
+          <button class="confirm-btn cancel" @click="confirm.cancel">{{confirm.cancelText}}</button> 
+          <button class="confirm-btn confirm" @click="confirm.ok">{{confirm.okText}}</button> 
+        </div>
+      </div>
+    </div>
+
+        <div class="message-container">
+      <div v-if="message.show"  
+           class="message" 
+           :class="message.type"  
+           @click="hideMessage">
+        {{ message.content  }}
+      </div>
+    </div>
+
+    </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                orderNo:'<%= OrderNo%>',
+                order: {},
+                confirm: {
+                    visible: false,
+                    title: '提示',
+                    content: '确定要执行此操作吗？',
+                    okText: '确定',
+                    cancelText: '取消',
+                    ok: () => { },
+                    cancel: () => { }
+                },
+                message: {
+                    show: false,
+                    content: '',
+                    type: '', // ''(默认), 'success', 'error', 'warning'
+                    timer: null
+                }
+            },
+            mounted() {
+                this.getData();
+            },
+            methods: {
+                PayStatusStr(str) {
+                    var result = "";
+                    switch (str) {
+                        case "0":
+                            result = '未付款'
+                            break;
+                        case "1": result = '未付款'; break;
+                        case "2": result = '申请退款'; break;
+                        case "3": result = '已退款'; break;
+                        default: break;
+                    }
+                    return result
+                },
+                RefundReasonStr(str) {
+                    var result = "";
+                    switch (str) {
+                        case "1":
+                            result = '商品无货'
+                            break;
+                        case "2": result = '发货时间问题'; break;
+                        case "3": result = '不想要了'; break;
+                        case "4": result = '商品错选/多选'; break;
+                        case "5": result = '地址信息错误'; break;
+                        case "6": result = '商品价格太高'; break;
+                        default: break;
+                    }
+                    return result
+                },
+                formatDate(date) {
+                    const year = date.getFullYear();
+                    const month = this.pad(date.getMonth() + 1);
+                    const day = this.pad(date.getDate());
+                    const hour = this.pad(date.getHours());
+                    const minute = this.pad(date.getMinutes());
+                    const second = this.pad(date.getSeconds());
+                    const weekday = date.getDay() === 0 ? 7 : date.getDay();
+
+                    return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+                },
+                pad(num, length = 2, str = '0') {
+                    return num.toString().padStart(length, str);
+                },
+                getData() {
+                    var that = this;
+                    if (this.orderNo) {
+                        $.ajax({
+                            url: '../WeixinPush/wxApi.aspx?method=QueryRefundOrderData',
+                            type: 'post', dataType: 'json', data: { orderNo: that.IsEmpty(that.orderNo) ? '' : that.orderNo },
+                            success: function (text) {
+                                console.log(text)
+                                if (that.IsEmpty(text) == null || text.length==0) {
+                                    that.showMessage('未获取到订单，请联系管理员！', 'error')
+                                } else {
+                                    that.order = text[0];
+                                }
+                                
+                            }
+                        });
+                    } else {
+                        that.showMessage('未获取到订单号！', 'warning')
+                    }
+                },
+                DateTimeFormatter(val) {
+                    if (val == null || val == '') {
+                        return ''
+                    }
+                    var dt = this.formatDate((new Date(val)));
+                    return dt
+                },
+                handleRefund() {
+                    var that = this;
+
+                    if (this.IsEmpty(this.order.PayStatus) || this.order.PayStatus != '2') {
+                        that.showMessage('付款状态有误，请联系管理员处理！', 'warning')
+                        return
+                    }
+
+                    if (this.IsEmpty(this.order.Trxid)) {
+                        that.showMessage('收银宝平台流水为空，请联系管理员处理！', 'warning')
+                        return
+                    }
+                    if (this.IsEmpty(that.order.TotalCharge)) {
+                        that.showMessage('退款金额异常，请联系管理员处理！', 'warning')
+                        return
+                    }
+
+                    var ActRefMoney = parseFloat(that.order.TotalCharge);
+                    that.order.IsTransitFee = this.IsEmpty(that.order.IsTransitFee) ? '0' : that.order.IsTransitFee
+                    if (that.order.IsTransitFee == '0') {
+                        ActRefMoney = parseFloat(that.order.TotalCharge) - parseFloat(that.order.TransitFee)
+                    }
+
+                    this.showConfirm({
+                        title: '重要操作',
+                        content: '确认执行退款操作吗？',
+                        okText: '确认',
+                        cancelText: '放弃',
+                        ok: () => {
+                            //alert('操作已执行');
+
+                            //console.log(that.order.WXPayOrderNo, ActRefMoney, that.order.IsTransitFee, that.order.TransitFee)
+                            //return;
+                            $.ajax({
+                                url: "../Finance/financeApi.aspx?method=refund&WXPayOrderNo=" + that.order.WXPayOrderNo + "&ActRefMoney=" + ActRefMoney,
+                                success: function (data) {
+                                    if (data == "SUCCESS") {
+                                        that.showMessage('信息提示:退款成功！', 'success')
+                                    }
+                                    else if (data == "FAIL") {
+                                        that.showMessage('信息提示:退款异常！', 'error')
+                                    }
+
+                                    //$('#dlgrefund').dialog('close')
+                                }
+                            })
+
+                            that.confirm.visible = false
+                        },
+                        cancel: () => {
+                            //alert('操作已取消');
+                            that.confirm.visible = false
+                        }
+                    });
+
+
+
+                },
+                IsEmpty(value) {
+                    // 检查 null/undefined
+                    if (value == null) return true;
+
+                    // 检查空字符串/纯空格
+                    if (typeof value === 'string' && value.trim() === '') return true;
+
+                    // 检查空数组
+                    if (Array.isArray(value) && value.length === 0) return true;
+
+                    // 检查空对象
+                    if (value.constructor === Object && Object.keys(value).length === 0) return true;
+
+                    return false;
+
+                },
+                // 显示简单确认框
+                showSimpleConfirm() {
+                    this.showConfirm({
+                        title: '操作确认',
+                        content: '确定要删除这条数据吗？',
+                        ok: () => {
+                            alert('你点击了确定');
+                        },
+                        cancel: () => {
+                            alert('你点击了取消');
+                        }
+                    });
+                },
+
+                // 显示自定义确认框 
+                showCustomConfirm() {
+                    var that = this;
+                    this.showConfirm({
+                        title: '重要操作',
+                        content: '此操作不可撤销，确定要继续吗？',
+                        okText: '确认',
+                        cancelText: '放弃',
+                        ok: () => {
+                            //alert('操作已执行');
+                            that.confirm.visible = false
+                        },
+                        cancel: () => {
+                            //alert('操作已取消');
+                            that.confirm.visible = false
+                        }
+                    });
+                },
+
+                // 通用显示确认框方法
+                showConfirm(options) {
+                    this.confirm = {
+                        ...this.confirm,
+                        ...options,
+                        visible: true
+                    };
+                },
+
+                showMessage(content, type = '') {
+                    // 清除之前的定时器 
+                    if (this.message.timer) {
+                        clearTimeout(this.message.timer);
+                    }
+
+                    // 设置新消息 
+                    this.message = {
+                        show: true,
+                        content: content,
+                        type: type,
+                        timer: null
+                    };
+
+                    // 3秒后自动隐藏 
+                    this.message.timer = setTimeout(() => {
+                        this.hideMessage();
+                    }, 3000);
+                },
+                hideMessage() {
+                    this.message.show = false;
+                    if (this.message.timer) {
+                        clearTimeout(this.message.timer);
+                        this.message.timer = null;
+                    }
+                }
+
+            }
+        });
+    </script>
+</body>
+</html>

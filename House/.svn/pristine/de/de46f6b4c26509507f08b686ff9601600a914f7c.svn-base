@@ -1,0 +1,291 @@
+﻿using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using Senparc.Weixin.MP.AdvancedAPIs.TemplateMessage;
+using Senparc.Weixin.MP.Containers;
+using Senparc.Weixin.MP.TenPayLibV3;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Weixin
+{
+    public partial class paySuccess : System.Web.UI.Page
+    {
+        public static void WriteTextLog(string strMessage)
+        {
+            string path = AppDomain.CurrentDomain.BaseDirectory + @"System\Log\";
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            string fileFullPath = path + DateTime.Now.ToString("yyyy-MM-dd") + ".System.txt";
+            StringBuilder str = new StringBuilder();
+            str.Append("Time:    " + DateTime.Now.ToString() + "\r\n");
+            str.Append("Message: " + strMessage + "\r\n");
+            str.Append("-----------------------------------------------------------\r\n\r\n");
+            StreamWriter sw;
+            if (!File.Exists(fileFullPath))
+            {
+                sw = File.CreateText(fileFullPath);
+            }
+            else
+            {
+                sw = File.AppendText(fileFullPath);
+            }
+            sw.WriteLine(str.ToString());
+            sw.Close();
+        }
+        private static TenPayV3Info tenPayV3 = new TenPayV3Info(ConfigurationManager.AppSettings["dltAPPID"], ConfigurationManager.AppSettings["dltAppSecret"], ConfigurationManager.AppSettings["dltMachID"]
+                          , ConfigurationManager.AppSettings["dltWxPayKey"], ConfigurationManager.AppSettings["dltWxPayTranUrl"]);
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            WriteTextLog("1");
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "微信服务号";
+            log.Status = "0";
+            log.NvgPage = "微信付款";
+            log.UserID = "WX";
+            log.Operate = "U";
+            ResponseHandler resHandler = new ResponseHandler(System.Web.HttpContext.Current);
+            RequestHandler reqHandler = new RequestHandler(null);
+            OrderQueryResult orderResult = new OrderQueryResult(resHandler.ParseXML());
+            if (orderResult.return_code != "SUCCESS" || orderResult.result_code != "SUCCESS")
+            {
+                reqHandler.SetParameter("return_code", "SUCCESS");
+                reqHandler.SetParameter("return_msg", "微信支付失败");
+
+                Response.Write(reqHandler.ParseXML());
+                Response.End();
+            }
+            if (string.IsNullOrEmpty(orderResult.transaction_id))
+            {
+                reqHandler.SetParameter("return_code", "FAIL");
+                reqHandler.SetParameter("return_msg", "支付结果中微信订单号不存在");
+                WriteTextLog(reqHandler.ParseXML());
+
+                Response.Write(reqHandler.ParseXML());
+                Response.End();
+            }
+
+            string outno = orderResult.out_trade_no;
+            if (orderResult.out_trade_no.Substring(0, 5).ToUpper().Equals("JSAPI"))
+            {
+                outno = orderResult.out_trade_no.Substring(5, orderResult.out_trade_no.Length - 5);
+            }
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            string out_trade_no = outno;//我的系统生成的订单号
+            //微信支付返回过来 的请求
+            if (string.IsNullOrEmpty(orderResult.attach))
+            {
+                List<WXOrderEntity> orderList = bus.QueryWeixinOrderInfo(1, 100, new WXOrderEntity { AccountNo = out_trade_no });
+
+                if (orderList.Count > 0)
+                {
+                    #region MyRegion
+                    CargoFinanceBus fina = new CargoFinanceBus();
+                    string awbidlist = string.Empty;
+                    List<string> entOrderNo = new List<string>();
+                    //如果客户是微信付款，并已支付成功，则修改订单状态为已结算
+                    CargoCashierEntity ent = new CargoCashierEntity();
+                    ent.WxID = 184;//梅州仓库广州迪乐泰微信商城微信支付收款账号ID
+                    ent.AffectWX = Convert.ToInt32(orderResult.total_fee) / 100;
+                    ent.OP_ID = log.UserID;
+                    ent.UserName = log.UserID;
+                    ent.RType = "0";//收支类型，0收入1支出
+                    ent.FromTO = "0";//按订单号收款
+                    ent.TradeType = "3";//微信商城付款
+                    ent.CheckStatus = "1";
+                    //批量支付的成功返回
+                    foreach (var it in orderList)
+                    {
+                        WriteTextLog(it.OrderNo);
+                        bus.UpdateWeixinOrderPayStatus(new WXOrderEntity { OrderNo = it.OrderNo, WXPayOrderNo = orderResult.transaction_id, PayStatus = "1" }, log);
+
+                        entOrderNo.Add(it.CargoOrderNo);
+                        awbidlist += it.CargoOrderNo + ",";
+                        ent.ClientNum = it.ClientNum;
+                    }
+                    ent.OrderNo = entOrderNo;
+                    ent.AffectAwbNO = awbidlist;
+                    ent.clientPreRecord = new List<CargoClientPreRecordEntity>();
+                    WriteTextLog("开始合并付款" + awbidlist);
+                    fina.SaveCash(ent, log);
+                    WriteTextLog("SOU");
+                    #endregion
+                }
+                else
+                {
+                    WriteTextLog("单个");
+                    #region MyRegion
+                    if (!bus.IsExistWeixinOrderPay(new WXOrderEntity { OrderNo = out_trade_no, PayStatus = "1" }))
+                    {
+                        WriteTextLog("单个000");
+
+                        bus.UpdateWeixinOrderPayStatus(new WXOrderEntity { OrderNo = out_trade_no, WXPayOrderNo = orderResult.transaction_id, PayStatus = "1" }, log);
+                        List<WXOrderEntity> result = bus.QueryWeixinOrderInfo(1, 5, new WXOrderEntity { OrderNo = out_trade_no });
+                        if (result.Count > 0)
+                        {
+                            bus.UpdateWxClientPoint(result[0], log);
+                            try
+                            {
+                                string title = result[0].productList[0].Title;
+                                decimal jg = Convert.ToInt32(orderResult.total_fee) / 100;
+                                //推送客户消息
+                                TemplateMsg tmMsg = new TemplateMsg
+                                {
+                                    first = new TemplateDataItem("尊敬的迪乐泰客户，您的订单已支付成功！~正在秒速为您安排发货，请耐心等待哦~", "#173177"),
+                                    keyword1 = new TemplateDataItem(jg + "元", "#173177"),
+                                    //keyword1 = new TemplateDataItem(result[0].TotalCharge.ToString("F2") + "元", "#173177"),
+                                    keyword2 = new TemplateDataItem(title, "#173177"),
+                                    keyword3 = new TemplateDataItem(result[0].Province + " " + result[0].City + " " + result[0].Country + " " + result[0].Address + "~" + result[0].Cellphone, "#173177"),
+                                    keyword4 = new TemplateDataItem(orderResult.out_trade_no, "#173177"),
+                                    remark = new TemplateDataItem("点击查看订单详情!", "#173177")
+                                };
+                                SendTempleteMessage send = new SendTempleteMessage();
+                                //string token = AccessTokenContainer.TryGetAccessToken(tenPayV3.AppId, tenPayV3.AppSecret, false);
+                                string token = Common.GetWeixinToken(Common.GetdltAPPID(), Common.GetdltAppSecret());
+                                //oo1LEt_z6Yhx-g_qdgrYhLaYaazE//测试
+                                string errmsg = send.SendMessage(token, result[0].wxOpenID, "F6e8g72dWLpVUStvkjv3--ZBhmjheE7wa84bgcQ_c40", "http://dlt.neway5.com/Weixin/OrderInfo.aspx?orderNo=" + out_trade_no, tmMsg);
+                                //string errmsg = send.SendMessage(token, orderResult.openid, "F6e8g72dWLpVUStvkjv3--ZBhmjheE7wa84bgcQ_c40", "http://dlt.neway5.com/Weixin/OrderInfo.aspx?orderNo=" + out_trade_no, tmMsg);
+                            }
+                            catch (ApplicationException ex)
+                            {
+                                WriteTextLog("推送支付成功通知失败" + result[0].wxOpenID + orderResult.out_trade_no + orderResult.result_code);
+                            }
+                        }
+                    }
+                    #endregion
+                }
+            }
+            else
+            {
+                if (orderResult.attach.Equals("1"))
+                {
+                    #region 扫码单个订单支付
+                    if (!bus.IsExistWeixinOrderPay(new WXOrderEntity { OrderNo = out_trade_no, PayStatus = "1" }))
+                    {
+                        WriteTextLog("扫描支付");
+
+                        bus.UpdateWeixinOrderPayStatus(new WXOrderEntity { OrderNo = out_trade_no, WXPayOrderNo = orderResult.transaction_id, PayStatus = "1" }, log);
+                        List<WXOrderEntity> result = bus.QueryWeixinOrderInfo(1, 5, new WXOrderEntity { OrderNo = out_trade_no });
+                        if (result.Count > 0)
+                        {
+                            //扫描运单二维码支付成功返回的请求
+                            //1.修改订单的支付状态
+                            WriteTextLog("扫描支付" + out_trade_no);
+                            CargoFinanceBus fina = new CargoFinanceBus();
+                            //先审核
+                            List<CargoOrderEntity> oeL = new List<CargoOrderEntity>();
+                            oeL.Add(new CargoOrderEntity
+                            {
+                                OrderID = result[0].OrderID,
+                                OrderNo = result[0].CargoOrderNo,
+                                FinanceSecondCheck = "1",
+                                FinanceSecondCheckName = result[0].wxOpenID,
+                                FinanceSecondCheckDate = DateTime.Now
+                            });
+                            fina.plSecondCheckOrder(oeL, log);
+                            //再支付
+                            string awbidlist = string.Empty;
+                            List<string> entOrderNo = new List<string>();
+                            //如果客户是微信付款，并已支付成功，则修改订单状态为已结算
+                            CargoCashierEntity ent = new CargoCashierEntity();
+                            ent.WxID = 184;//梅州仓库广州迪乐泰微信商城微信支付收款账号ID
+                            ent.AffectWX = Convert.ToInt32(orderResult.total_fee) / 100;//微信 支付的金额
+
+                            ent.OP_ID = log.UserID;
+                            ent.UserName = log.UserID;
+                            ent.RType = "0";//收支类型，0收入1支出
+                            ent.FromTO = "0";//按订单号收款
+                            ent.TradeType = "3";//微信商城付款
+                            ent.CheckStatus = "1";
+                            entOrderNo.Add(result[0].CargoOrderNo);
+                            awbidlist += result[0].CargoOrderNo + ",";
+
+                            ent.ClientNum = result[0].ClientNum;
+                            ent.OrderNo = entOrderNo;
+                            ent.AffectAwbNO = awbidlist;
+                            fina.SaveCash(ent, log);
+                            WriteTextLog("扫描支付 收款完成");
+
+                            SendTempleteMessage send = new SendTempleteMessage();
+                            //string token = AccessTokenContainer.TryGetAccessToken(tenPayV3.AppId, tenPayV3.AppSecret, false);
+                            string token = Common.GetWeixinToken(Common.GetdltAPPID(), Common.GetdltAppSecret());
+                            decimal jg = Convert.ToInt32(orderResult.total_fee) / 100;
+                            try
+                            {
+                                //推送客户消息
+                                TemplateMsg tmMsg = new TemplateMsg
+                                {
+                                    first = new TemplateDataItem("订单号：" + result[0].CargoOrderNo + "支付成功！", "#173177"),
+                                    keyword1 = new TemplateDataItem(jg + "元", "#173177"),
+                                    //keyword1 = new TemplateDataItem(result[0].TotalCharge.ToString("F2") + "元", "#173177"),
+                                    keyword2 = new TemplateDataItem("轮胎", "#173177"),
+                                    keyword3 = new TemplateDataItem(result[0].Name + " " + result[0].Cellphone + " " + result[0].Address, "#173177"),
+                                    keyword4 = new TemplateDataItem(orderResult.out_trade_no, "#173177"),
+                                    remark = new TemplateDataItem("点击查看订单支付详情!", "#173177")
+                                };
+
+                                //oo1LEt_z6Yhx-g_qdgrYhLaYaazE//测试
+                                string errmsg = send.SendMessage(token, result[0].wxOpenID, "F6e8g72dWLpVUStvkjv3--ZBhmjheE7wa84bgcQ_c40", "http://dlt.neway5.com/Weixin/ScanQrPayOrder.aspx?OrderNo=" + result[0].CargoOrderNo, tmMsg);
+                                WriteTextLog("扫描支付 推送完成");
+                            }
+                            catch (ApplicationException ex)
+                            {
+                                WriteTextLog("推送支付成功通知失败" + result[0].wxOpenID + orderResult.out_trade_no + orderResult.result_code);
+                            }
+                            string noticeArray = Common.GetdltPayOrderSuccessNotice();//获取接受支付成功的微信 OPENID
+                            if (!string.IsNullOrEmpty(noticeArray))
+                            {
+                                string[] notice = noticeArray.Split('/');
+                                for (int i = 0; i < notice.Length; i++)
+                                {
+                                    try
+                                    {
+                                        if (!string.IsNullOrEmpty(notice[i]))
+                                        {
+                                            //推送客户消息
+                                            TemplateMsg tmMsg = new TemplateMsg
+                                            {
+                                                first = new TemplateDataItem("订单号：" + out_trade_no + "支付成功！", "#173177"),
+                                                keyword1 = new TemplateDataItem(jg + "元", "#173177"),
+                                                //keyword1 = new TemplateDataItem(result[0].TotalCharge.ToString("F2") + "元", "#173177"),
+                                                keyword2 = new TemplateDataItem("轮胎", "#173177"),
+                                                keyword3 = new TemplateDataItem(result[0].Name + " " + result[0].Cellphone + " " + result[0].Address, "#173177"),
+                                                keyword4 = new TemplateDataItem(orderResult.out_trade_no, "#173177"),
+                                                remark = new TemplateDataItem("点击查看订单支付详情!", "#173177")
+                                            };
+                                            string errmsg = send.SendMessage(token, notice[i], "F6e8g72dWLpVUStvkjv3--ZBhmjheE7wa84bgcQ_c40", "http://dlt.neway5.com/Weixin/ScanQrPayOrder.aspx?OrderNo=" + result[0].CargoOrderNo, tmMsg);
+                                        }
+                                    }
+                                    catch (ApplicationException ex) { continue; }
+                                }
+                            }
+                        }
+                    }
+                    #endregion
+                }
+                else if (orderResult.attach.Equals("1"))
+                {
+                    //月账单支付
+                }
+            }
+            WriteTextLog(orderResult.out_trade_no + "|" + orderResult.result_code + "|" + orderResult.appid + "|" + orderResult.openid + "|" + orderResult.total_fee + "|" + orderResult.transaction_id + "|" + orderResult.attach);
+            reqHandler.SetParameter("return_code", "SUCCESS");
+            reqHandler.SetParameter("return_msg", "微信支付成功");
+
+            Response.Write(reqHandler.ParseXML());
+            Response.End();
+            //Response.Redirect("my.aspx");
+            //WriteTextLog(xml);
+        }
+
+    }
+}

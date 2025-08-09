@@ -1,0 +1,267 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace House.Entity
+{
+    /// <summary>
+    /// 仓库管理接口数据实体
+    /// </summary>
+    [Serializable]
+    public class CargoInterfaceEntity
+    {
+        /// <summary>
+        /// 库存表ID
+        /// </summary>
+        public Int64 ContainerGoodsID { get; set; }
+        /// <summary>
+        /// 产品ID
+        /// </summary>
+        public Int64 ProductID { get; set; }
+        /// <summary>
+        /// 产品名称
+        /// </summary>
+        public string ProductName { get; set; }
+        /// <summary>
+        /// 产品分类ID
+        /// </summary>
+        public int TypeID { get; set; }
+        /// <summary>
+        /// 产品分类名称
+        /// </summary>
+        public string TypeName { get; set; }
+        /// <summary>
+        /// 型号
+        /// </summary>
+        public string Model { get; set; }
+        /// <summary>
+        /// 货品代码
+        /// </summary>
+        public string GoodsCode { get; set; }
+        /// <summary>
+        /// 规格 
+        /// </summary>
+        public string Specs { get; set; }
+        /// <summary>
+        /// 花纹
+        /// </summary>
+        public string Figure { get; set; }
+        /// <summary>
+        /// 载重指数
+        /// </summary>
+        public string LoadIndex { get; set; }
+        /// <summary>
+        /// 速度级别
+        /// </summary>
+        public string SpeedLevel { get; set; }
+        /// <summary>
+        /// 最高速度
+        /// </summary>
+        public int SpeedMax { get; set; }
+        /// <summary>
+        /// 尺寸
+        /// </summary>
+        public string Size { get; set; }
+        /// <summary>
+        /// 批次
+        /// </summary>
+        public string Batch { get; set; }
+        /// <summary>
+        /// 入库时间
+        /// </summary>
+        public DateTime InHouseTime { get; set; }
+        /// <summary>
+        /// 入库单号
+        /// </summary>
+        public string InCargoID { get; set; }
+        /// <summary>
+        /// 仓库ID
+        /// </summary>
+        public int HouseID { get; set; }
+        /// <summary>
+        /// 仓库名称
+        /// </summary>
+        public string HouseName { get; set; }
+        /// <summary>
+        /// 区域ID
+        /// </summary>
+        public int AreaID { get; set; }
+        /// <summary>
+        /// 区域名称
+        /// </summary>
+        public string AreaName { get; set; }
+        /// <summary>
+        /// 货位代码
+        /// </summary>
+        public string ContainerCode { get; set; }
+        /// <summary>
+        /// 货位ID
+        /// </summary>
+        public int ContainerID { get; set; }
+        /// <summary>
+        /// 库存数量 
+        /// </summary>
+        public int StockNum { get; set; }
+        /// <summary>
+        /// 扫描数量
+        /// </summary>
+        public int ScanNum { get; set; }
+        /// <summary>
+        /// 周期年
+        /// </summary>
+        public int BatchYear { get; set; }
+        /// <summary>
+        /// 周期周
+        /// </summary>
+        public int BatckWeek { get; set; }
+        public int LastMonth { get; set; }
+        /// <summary>
+        /// 产品分类的父类
+        /// </summary>
+        public int ParentID { get; set; }
+        /// <summary>
+        /// 产品来源
+        /// </summary>
+        public string Source { get; set; }
+        public string SourceName { get; set; }
+
+        public string SourceCode { get; set; }
+        /// <summary>
+        /// 是否允许开单0：可以，1:禁止
+        /// </summary>
+        public string IsAddOrder { get; set; }
+        public string BelongDepart { get; set; }
+        public decimal SalePrice { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal ActSalePrice { get; set; }
+        public decimal SystemSalePrice { get; set; }
+        public decimal InHousePrice { get; set; }
+        /// <summary>
+        /// 规则类型
+        /// </summary>
+        public string RuleType { get; set; }
+        /// <summary>
+        /// 规则ID
+        /// </summary>
+        public string RuleID { get; set; }
+        /// <summary>
+        /// 规则名称
+        /// </summary>
+        public string RuleTitle { get; set; }
+        public string SuitClientNum { get; set; }
+        public int Regular { get; set; }
+
+        public string OrderNo { get; set; }
+        public string LogisAwbNo { get; set; }
+        /// <summary>
+        /// 推送ID
+        /// </summary>
+        public string PushBatchID { get; set; }
+        public bool Urgent { get; set; }
+        /// <summary>
+        /// 产品编码
+        /// </summary>
+        public string ProductCode { get; set; }
+        /// <summary>
+        /// 供应商编码
+        /// </summary>
+        public string SuppClientNum { get; set; }
+        /// <summary>
+        /// 规格类型
+        /// </summary>
+        public string SpecsType { get; set; }
+        public string OrderCode { get; set; }
+        public string OrderDep { get; set; }
+        /// <summary>
+        /// 多个产品编码查询
+        /// </summary>
+        public string ProductCodeStr { get; set; }
+    }
+
+    public class WxRefund 
+    { 
+        public string status { get; set; }
+        public string transaction_id { get; set; }
+        public string funds_account { get; set; }
+        public string mchid { get; set; }
+        public string out_trade_no { get; set; }
+        public string out_refund_no { get; set; }
+        public string refund_id { get; set; }
+        public string refund_status { get; set; }
+        public string success_time { get; set; }
+        public amount amount { get; set; }
+    }
+    public class WxRefundEntity
+    {
+
+        /// <summary>
+        /// 通知的唯一ID
+        /// </summary>
+        public string id { get; set; }
+        /// <summary>
+        /// 通知创建的时间，遵循rfc3339标准格式，
+        /// </summary>
+        public string create_time { get; set; }
+        /// <summary>
+        /// 通知的资源数据类型，支付成功通知为encrypt-resource
+        /// </summary>
+        public string resource_type { get; set; }
+        /// <summary>
+        /// 通知的类型，支付成功通知的类型为TRANSACTION.SUCCESS
+        /// </summary>
+        public string event_type { get; set; }
+        /// <summary>
+        /// 回调摘要:如：支付成功
+        /// </summary>
+        public string summary { get; set; }
+        /// <summary>
+        /// 通知资源数据 json格式，
+        /// </summary>
+        public ResourceModel resource { get; set; }
+    }
+    /// <summary>
+    /// 通知资源数据 json格式，
+    /// </summary>
+    public class ResourceModel
+    {
+        /// <summary>
+        /// 原始回调类型，为transaction
+        /// </summary>
+        public string original_type { get; set; }
+        /// <summary>
+        /// 对开启结果数据进行加密的加密算法，目前只支持AEAD_AES_256_GCM
+        /// </summary>
+        public string algorithm { get; set; }
+        /// <summary>
+        /// Base64编码后的开启/停用结果数据密文
+        /// </summary>
+        public string ciphertext { get; set; }
+        /// <summary>
+        /// 附加数据
+        /// </summary>
+        public string associated_data { get; set; }
+        /// <summary>
+        /// 加密使用的随机串
+        /// </summary>
+        public string nonce { get; set; }
+    }
+    public class amount
+    {
+        public int total { get; set; }
+        public int refund { get; set; }
+        public int payer_total { get; set; }
+        public int payer_refund { get; set; }
+    }
+
+    public class NextChangeStock
+    {
+        public string code { get; set; }
+        public NextChangeStockData data { get; set; }
+        public string msg { get; set; }
+    }
+    public class NextChangeStockData
+    {
+        public int failRow { get; set; }
+    }
+}

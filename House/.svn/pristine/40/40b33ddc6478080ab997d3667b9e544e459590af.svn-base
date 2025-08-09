@@ -1,0 +1,157 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Finance
+{
+    public partial class financeOrderReceiveMonitor : BasePage
+    {
+
+        public List<CargoReceivePayMonitorEntity> receivePayMonitor
+        {
+            get
+            {
+                if (Session["receivePayMonitor"] == null)
+                {
+                    Session["receivePayMonitor"] = new List<CargoReceivePayMonitorEntity>();
+                }
+                return (List<CargoReceivePayMonitorEntity>)(Session["receivePayMonitor"]);
+            }
+            set
+            {
+                Session["receivePayMonitor"] = value;
+            }
+        }
+        public string Un = string.Empty;
+        public string Ln = string.Empty;
+
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            Un = UserInfor.UserName.Trim();
+            Ln = UserInfor.LoginName.Trim();
+        }
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (receivePayMonitor.Count <= 0)
+            {
+                return;
+            }
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("订单号", typeof(string));
+            table.Columns.Add("订单类型", typeof(string));
+            table.Columns.Add("开单时间", typeof(string));
+            table.Columns.Add("付款人", typeof(string));
+            table.Columns.Add("客户名称", typeof(string));//
+            table.Columns.Add("收货人", typeof(string));
+            table.Columns.Add("预收款余额", typeof(string));
+            table.Columns.Add("返利款余额", typeof(string));
+            table.Columns.Add("联系手机", typeof(string));
+            table.Columns.Add("出发站", typeof(string));
+            table.Columns.Add("到达站", typeof(string));
+            table.Columns.Add("件数", typeof(decimal));
+            table.Columns.Add("收入", typeof(decimal));
+            table.Columns.Add("财务审核", typeof(string));
+            table.Columns.Add("应收", typeof(decimal));
+            table.Columns.Add("已收", typeof(decimal));
+            table.Columns.Add("未收", typeof(decimal));
+            table.Columns.Add("操作人", typeof(string));
+            table.Columns.Add("收款时间", typeof(string));
+            table.Columns.Add("结算状态", typeof(string));
+            table.Columns.Add("交易类型", typeof(string));
+            table.Columns.Add("下单方式", typeof(string));
+            table.Columns.Add("业务员", typeof(string));
+            table.Columns.Add("开单员", typeof(string));
+            int i = 0;
+            foreach (var it in receivePayMonitor)
+            {
+                i++;
+                it.EnSafe();
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["订单号"] = it.OrderNo.Trim();
+                newRows["订单类型"] = GetText(it.OrderModel.Trim(), "OrderModel");
+                newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["付款人"] = it.PayClientName;
+                newRows["客户名称"] = it.AcceptUnit.Trim();
+                newRows["收货人"] = it.AcceptPeople.Trim();
+                newRows["预收款余额"] = it.PreReceiveMoney;
+                newRows["返利款余额"] = it.RebateMoney;
+                newRows["联系手机"] = it.AcceptCellphone.Trim();
+                newRows["出发站"] = it.Dep.Trim();
+                newRows["到达站"] = it.Dest.Trim();
+                newRows["件数"] = it.Piece;
+                newRows["收入"] = it.OrderModel.Trim().Equals("1") ? -it.TransportFee : it.TransportFee;
+                newRows["财务审核"] = it.FinanceSecondCheckDate.ToString("yyyy-MM-dd").Equals("0001-01-01") || it.FinanceSecondCheckDate.ToString("yyyy-MM-dd").Equals("1900-01-01") ? "" : it.FinanceSecondCheckDate.ToString("yyyy-MM-dd HH:mm");
+                newRows["应收"] = it.OrderModel.Trim().Equals("1") ? -it.TotalCharge : it.TotalCharge;
+                newRows["已收"] = it.OrderModel.Trim().Equals("1") ? -it.ReceivedMoney : it.ReceivedMoney;
+                newRows["未收"] = it.OrderModel.Trim().Equals("1") ? -it.UncollectMoney : it.UncollectMoney;
+                newRows["操作人"] = it.UserName.Trim();
+                newRows["收款时间"] = it.OP_DATE.ToString("yyyy-MM-dd").Equals("0001-01-01") || it.OP_DATE.ToString("yyyy-MM-dd").Equals("1900-01-01") ? "" : it.OP_DATE.ToString("yyyy-MM-dd HH:mm");
+                newRows["结算状态"] = GetText(it.CheckStatus.Trim(), "CheckStatus");
+                newRows["交易类型"] = GetText(it.TradeType.Trim(), "TradeType");
+                newRows["下单方式"] = GetText(it.OrderType.Trim(), "OrderType");
+                newRows["业务员"] = it.SaleManName.Trim();
+                newRows["开单员"] = it.CreateAwb.Trim();
+                table.Rows.Add(newRows);
+            }
+
+            ToExcel.DataTableToExcel(table, "", "订单收款监督数据表");
+        }
+        private string GetText(string value, string id)
+        {
+            string retStr = string.Empty;
+            if (id.Contains("OrderModel"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "发货单";
+                else if (value.Trim() == "1")
+                    retStr = "退货单";
+                else if (value.Trim() == "2")
+                    retStr = "客户来款";
+            }
+            else if (id.Contains("CheckStatus"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "未结算";
+                else if (value.Trim() == "1")
+                    retStr = "已结清";
+                else if (value.Trim() == "2")
+                    retStr = "未结清";
+            }
+            else if (id.Contains("TradeType"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "账号交易";
+                else if (value.Trim() == "1")
+                    retStr = "预收款交易";
+                else if (value.Trim() == "2")
+                    retStr = "返利款交易";
+                else if (value.Trim() == "3")
+                    retStr = "微信支付";
+            }
+            else if (id.Contains("OrderType"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "电脑下单";
+                else if (value.Trim() == "1")
+                    retStr = "企业号下单";
+                else if (value.Trim() == "2")
+                    retStr = "商城下单";
+                else if (value.Trim() == "4")
+                    retStr = "小程序下单";
+            }
+            return retStr;
+        }
+    }
+}

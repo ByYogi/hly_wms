@@ -1,0 +1,514 @@
+﻿<%@ Page Title="马牌订单同步" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="CreateContiOrder.aspx.cs" Inherits="Cargo.Order.CreateContiOrder" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        var LogiName =<%=UserInfor.LoginName%>;
+        var IsQueryLockStock = null;
+
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = parseInt((Number($(window).height()) - Number($("div[name='SelectDiv1']").outerHeight(true))) / 2 + 150);
+            $('#dg').datagrid({ height: height });
+            $('#outDg').datagrid({ height: (Number($(window).height()) - 50) - height });
+        }
+        $(document).ready(function () {
+            var columns = [];
+            columns.push({ title: '', field: 'OrderID', checkbox: true });
+            columns.push({ title: '马牌订单号', field: 'orderCode', width: '120px' });
+            columns.push({ title: '开单时间', field: 'submitTime', width: '130px', formatter: DateTimeFormatter });
+            columns.push({
+                title: '订单来源', field: 'orderSource', width: '70px',
+                formatter: function (val, row, index) {
+                    if (val == "1") { return "DSR订单"; }
+                    else if (val == "2") { return "EROOS订单"; }
+                    else if (val == "3") { return "CDMS订单"; }
+                    else if (val == "5") { return "系统对接"; }
+                    else if (val == "6") { return "经销商ERP订单"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({
+                title: '订单类型', field: 'orderType', width: '70px',
+                formatter: function (val, row, index) {
+                    if (val == "1") { return "普通订单"; }
+                    else if (val == "3") { return "调拨订单"; }
+                    else if (val == "4") { return "加急配送订单"; }
+                    else if (val == "5") { return "长尾订单"; }
+                    else if (val == "6") { return "NA订单"; }
+                    else if (val == "7") { return "resell订单"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({
+                title: '订单渠道', field: 'orderLabel', width: '70px',
+                formatter: function (val, row, index) {
+                    if (val == "1") { return "普通快配"; }
+                    else if (val == "2") { return "普通T+1"; }
+                    else if (val == "3") { return "京东T+1"; }
+                    else if (val == "4") { return "京东快配"; }
+                    else if (val == "5") { return "途虎T+1"; }
+                    else if (val == "6") { return "途虎快配"; }
+                    else if (val == "7") { return "主机厂快配(BYD)"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({
+                title: '订单状态', field: 'orderStatus', width: '70px',
+                formatter: function (val, row, index) {
+                    if (val == "30") { return "待确认"; }
+                    else if (val == "40") { return "待发货"; }
+                    else if (val == "50") { return "部分发货"; }
+                    else if (val == "60") { return "已发货"; }
+                    else if (val == "80") { return "取消中"; }
+                    else if (val == "90") { return "已取消"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({ title: '订单数量', field: 'OrderPiece', width: '60px', align: 'right' });
+            columns.push({ title: '订单总金额', field: 'nowTotalAmount', width: '70px', align: 'right' });
+            columns.push({ title: '优惠券金额', field: 'couponAmount', width: '70px', align: 'right' });
+            columns.push({ title: '在线支付金额', field: 'onlinePaidAmount', width: '70px', align: 'right' });
+            //columns.push({ title: '所属仓库', field: 'AreaName', width: '100px' });
+            columns.push({ title: '客户名称', field: 'customerName', width: '150px' });
+            columns.push({ title: '收货人', field: 'consigneeName', width: '100px' });
+            columns.push({ title: '联系电话', field: 'consigneeMobile', width: '100px' });
+            columns.push({ title: '收货地址', field: 'consigneeAddress', width: '150px' });
+            columns.push({ title: '出库仓库', field: 'HouseName', width: '100px' });
+            columns.push({
+                title: '订单生成', field: 'InCreateStatus', width: '70px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "未生成"; }
+                    else if (val == "1") { return "已生成"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({ title: '仓库订单号', field: 'CargoOrderNo', width: '80px' });
+            columns.push({ title: '开单员', field: 'CreateAwb', width: '70px' });
+            columns.push({ title: '开单时间', field: 'CreateDate', width: '130px', formatter: DateTimeFormatter });
+
+            columns.push({ title: '同步时间', field: 'OPDATE', width: '130px', formatter: DateTimeFormatter });
+
+            $('#dg').datagrid({
+                width: '100%',
+                //height: '50%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                rownumbers: true, //行号
+                pageSize: Math.floor((Number($(window).height()) / 2 - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) / 2 - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) / 2 - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: true, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'OrderID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [columns],
+                onLoadSuccess: function (data) { },
+                onClickRow: function (index, row) {
+                    $('#dg').datagrid('clearSelections');
+                    $('#outDg').datagrid('clearSelections');
+                    var gridOpts = $('#outDg').datagrid('options');
+                    gridOpts.url = 'orderApi.aspx?method=QueryContiOrderGoods';
+                    $('#outDg').datagrid('load', { OrderID: row.OrderID });
+                    $('#dg').datagrid('selectRow', index);
+                },
+                rowStyler: function (index, row) {
+                    if (row.InCreateStatus == "0") { return "background-color:#FCF3CF"; }
+                },
+                onDblClickRow: function (index, row) { }
+            });
+
+            columns = [];
+            columns.push({ title: '', field: 'GoodsID', checkbox: true });
+            columns.push({ title: '商品名称', field: 'skuName', width: '200px' });
+            columns.push({ title: '货品代码', field: 'skuCode', width: '100px' });
+            columns.push({
+                title: '销售数量', field: 'skuNum', width: '70px', align: 'right'
+            });
+            columns.push({ title: '含税单价', field: 'nowUnitPrice', width: '90px', align: 'right' });
+
+
+            //出库列表
+            $('#outDg').datagrid({
+                width: '100%',
+                //height: '38%',
+                title: '订单明细内容', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                rownumbers: true, //行号
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'GoodsID',
+                url: null,
+                toolbar: '',
+                columns: [columns],
+                onLoadSuccess: function (data) { },
+                onDblClickRow: function (index, row) { }
+            });
+
+            //所在线路
+            $('#AHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name', onSelect: function (rec) {
+                    //$('#AFirstAreaID').combobox('clear');
+                    //var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    //$('#AFirstAreaID').combobox('reload', url);
+                }
+            });
+            //$('#AHouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
+            $('#AHouseID').combobox('textbox').bind('focus', function () { $('#AHouseID').combobox('showPanel'); });
+
+            $('#HouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    $('#AreaID').combobox('clear');
+                    var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    $('#AreaID').combobox('reload', url);
+                    $('#AreaID').combobox('textbox').bind('focus', function () { $('#AreaID').combobox('showPanel'); });
+                }
+            });
+            $('#HouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+            
+            var datenow = new Date();
+            $('#StartDate').datebox('setValue', getLastDayFormatDate(datenow));
+            $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
+            $('#StartDate').datebox('textbox').bind('focus', function () { $('#StartDate').datebox('showPanel'); });
+            $('#EndDate').datebox('textbox').bind('focus', function () { $('#EndDate').datebox('showPanel'); });
+            $('#AorderType').combobox('textbox').bind('focus', function () { $('#AorderType').combobox('showPanel'); });
+            $('#AorderLabel').combobox('textbox').bind('focus', function () { $('#AorderLabel').combobox('showPanel'); });
+            $('#AInCreateStatus').combobox('textbox').bind('focus', function () { $('#AInCreateStatus').combobox('showPanel'); });
+        });
+
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'orderApi.aspx?method=QueryContiOrder';
+            $('#dg').datagrid('load', {
+                HouseID: $("#AHouseID").combobox('getValue'),//线路ID
+                //AreaID: $("#AFirstAreaID").combobox('getValue'),//线路ID
+                orderCode: $('#AorderCode').val(),
+                customerName: $('#AcustomerName').val(),
+                consigneeName: $('#AconsigneeName').val(),
+                orderType: $("#AorderType").combobox('getValue'),
+                orderLabel: $("#AorderLabel").combobox('getValue'),
+                InCreateStatus: $("#AInCreateStatus").combobox('getValue'),
+                StartDate: $('#StartDate').datebox('getValue'),
+                EndDate: $('#EndDate').datebox('getValue'),
+            });
+        }
+    </script>
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">区域大仓:
+                </td>
+                <td>
+                    <input id="AHouseID" class="easyui-combobox" style="width: 100px;" />
+                </td>
+                <td style="text-align: right;">马牌订单号:
+                </td>
+                <td>
+                    <input id="AorderCode" class="easyui-textbox" data-options="prompt:'请输入马牌订单号'" style="width: 100px" />
+                </td>
+                <td style="text-align: right;">客户名称:
+                </td>
+                <td>
+                    <input id="AcustomerName" class="easyui-textbox" data-options="prompt:'请输入客户名称'" style="width: 100px" />
+                </td>
+                <td style="text-align: right;">收货人:
+                </td>
+                <td>
+                    <input id="AconsigneeName" class="easyui-textbox" data-options="prompt:'请输入收货人'" style="width: 100px" />
+                </td>
+                <td style="text-align: right;">订单类型:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="AorderType" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="1">普通订单</option>
+                        <option value="3">调拨订单</option>
+                        <option value="4">加急配送订单</option>
+                        <option value="5">长尾订单</option>
+                        <option value="6">NA订单</option>
+                        <option value="7">resell订单</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">订单渠道:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="AorderLabel" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="1">普通快配</option>
+                        <option value="2">普通T+1</option>
+                        <option value="3">京东T+1</option>
+                        <option value="4">京东快配</option>
+                        <option value="5">途虎T+1</option>
+                        <option value="6">途虎快配</option>
+                        <option value="7">主机厂快配(BYD)</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">是否生成:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="AInCreateStatus" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">未生成</option>
+                        <option value="1">已生成</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">同步时间:
+                </td>
+                <td>
+                    <input id="StartDate" class="easyui-datebox" style="width: 100px" />~
+                    <input id="EndDate" class="easyui-datebox" style="width: 100px" />
+                </td>
+            </tr>
+
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <table id="outDg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-lock_add" onclick="SaveContiOrderOK()">&nbsp;审核订单&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addItem()">
+            &nbsp;生成仓库订单&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton"
+                iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>
+    </div>
+
+    <div id="dlg" class="easyui-dialog" style="width: 400px; height: 400px; padding: 0px"
+        closed="true" buttons="#dlg-buttons">
+        <div id="saPanel">
+            <form id="fm" class="easyui-form" method="post">
+                <input type="hidden" name="SaleManName" id="SaleManName" />
+                <input type="hidden" name="SaleCellPhone" id="SaleCellPhone" />
+                <table>
+                    <tr>
+                        <td style="text-align: right;">客户名称:
+                        </td>
+                        <td>
+                            <input id="ClientNum" name="ClientNum" class="easyui-combobox" style="width: 250px;" data-options="required:true" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">区域大仓:
+                        </td>
+                        <td>
+                            <input id="HouseID" name="HouseID" class="easyui-combobox" style="width: 250px;" panelheight="auto" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">出库仓库:
+                        </td>
+                        <td>
+                            <input id="AreaID" name="AreaID" class="easyui-combobox" style="width: 250px;" data-options="valueField:'AreaID',textField:'Name',required:true"
+                                panelheight="auto" />
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="text-align: right;">到达城市:
+                        </td>
+                        <td>
+                            <input name="Dest" id="ADest" class="easyui-combobox" style="width: 250px;" data-options="valueField:'CityName',textField:'CityName',url:'../systempage/sysService.aspx?method=QueryAllCity',required:true,editable:true " />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">业务员:
+                        </td>
+                        <td>
+                            <input name="SaleManID" id="SaleManID" class="easyui-combobox" style="width: 250px;" data-options="url: 'orderApi.aspx?method=QueryUserByDepCode',valueField: 'LoginName',textField: 'UserName', onSelect: onSaleManIDChanged,required:true" />
+                        </td>
+                    </tr>
+                      <tr>
+                        <td style="text-align: right;">备注:
+                        </td>
+                        <td>
+                              <textarea name="Remark" id="Remark" placeholder="请输入备注" style="width: 250px;height:50px; resize: none"></textarea>
+                        </td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+    </div>
+    <div id="dlg-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItem()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+
+    <script type="text/javascript">
+        //业务员选择方法
+        function onSaleManIDChanged(item) {
+            if (item) {
+                $('#SaleManName').val(item.UserName);
+                $('#SaleCellPhone').val(item.CellPhone);
+            }
+        }
+        //审核马牌订单
+        function SaveContiOrderOK() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要审核的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定审核？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'orderApi.aspx?method=SaveContiOrderOK',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '审核成功!', 'info');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        //生成仓库订单
+        function addItem() {
+            var row = $('#dg').datagrid('getSelections');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要生成订单的数据！', 'warning');
+                return;
+            }
+            $('#dlg').dialog('open').dialog('setTitle', '生成仓库订单');
+            $('#fm').form('clear');
+            $('#ClientNum').combobox({
+                valueField: 'ClientNum', textField: 'Boss',
+                url: '../Client/clientApi.aspx?method=AutoCompleteClient'
+            });
+            if (row[0].orderLabel == "3") {
+                //京东客户
+                $('#ClientNum').combobox('setValue', 241837);
+                $('#Remark').val("打包，带单，京东单号标签随货，保留条码，发快递");
+            }
+            else if (row[0].orderLabel == "7") {
+                //BYD
+                $('#ClientNum').combobox('setValue', 760524);
+                $('#Remark').val("麻烦打包，带PDF，比亚迪急送");
+            }
+            else if (row[0].orderLabel == "1") {
+                //BYD
+                $('#ClientNum').combobox('setValue', 532444);
+                $('#Remark').val("打包，带开思PDF，贴延保标签，急送");
+            }
+            else if (row[0].orderLabel == "5" || row[0].orderLabel == "6") {
+                //BYD
+                $('#ClientNum').combobox('setValue', 876841);
+                $('#Remark').val("打包带PDF，质检完后按PDF地址安排发急送");
+            }
+            
+            $('#ClientNum').combobox('textbox').bind('focus', function () { $('#ClientNum').combobox('showPanel'); });
+            $('#HouseID').combobox('setValue', row[0].HouseID);
+            $('#AreaID').combobox('clear');
+            var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + row[0].HouseID;
+            $('#AreaID').combobox('reload', url);
+            $('#AreaID').combobox('setValue', row[0].AreaID);
+        }
+
+        //删除信息
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'orderApi.aspx?method=DelContiOrder',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        //保存生成仓库订单
+        function saveItem() {
+            var row = $('#dg').datagrid('getSelections');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要生成订单的数据！', 'warning');
+                return;
+            }
+            var goods = $('#outDg').datagrid('getRows');
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定生成仓库订单？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(row)
+                    var sku = JSON.stringify(goods)
+                    $.ajax({
+                        url: 'orderApi.aspx?method=SaveContiOrder&ClientNum=' + escape($('#ClientNum').combobox('getValue')) + '&HouseID=' + $('#HouseID').combobox('getValue') + '&AreaID=' + $('#AreaID').combobox('getValue') + '&Dest=' + $('#ADest').combobox('getValue') + '&SaleManID=' + $('#SaleManID').combobox('getValue') + '&SaleManName=' + $('#SaleManName').val() + '&SaleCellPhone=' + $('#SaleCellPhone').val() + '&Remark=' + escape($('#Remark').val()),
+                        type: 'post', dataType: 'json', data: { data: json, goods: sku },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '生成成功!', 'info');
+                                $('#dlg').dialog('close'); 	// close the dialog
+                                dosearch();
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+
+        }
+    </script>
+</asp:Content>

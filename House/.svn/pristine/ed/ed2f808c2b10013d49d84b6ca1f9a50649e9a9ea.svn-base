@@ -1,0 +1,140 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 每日进出库日报表实体
+    /// </summary>
+    [Serializable]
+    public class CargoDailyReportEntity
+    {
+        public string BusinessID { get; set; }
+        public string ThrowGood { get; set; }
+        /// <summary>
+        /// 进出库件数
+        /// </summary>
+        public int Piece { get; set; }
+        /// <summary>
+        /// 产品类型名称
+        /// </summary>
+        public string TypeName { get; set; }
+        /// <summary>
+        /// 产品类型ID
+        /// </summary>
+        public int TypeID { get; set; }
+        public int TypeParentID { get; set; }
+        /// <summary>
+        /// 查询时间 
+        /// </summary>
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public Int64 ID { get; set; }
+        public int ContainerID { get; set; }
+        public DateTime InHouseTime { get; set; }
+        public DateTime OutHouseTime { get; set; }
+        public DateTime CreateDate { get; set; }
+        public DateTime SignDate { get; set; }
+
+        public DateTime OP_DATE { get; set; }
+        public bool IsPrintInCargo { get; set; }
+        public bool IsPrintOutCargo { get; set; }
+        public string InCargoID { get; set; }
+        public string OutCargoID { get; set; }
+        public Int64 ProductID { get; set; }
+        public string ProductCode { get; set; }
+        public string ProductName { get; set; }
+        public string Model { get; set; }
+        public string Specs { get; set; }
+        public string Figure { get; set; }
+        public string GoodsCode { get; set; }
+        public string ShowGoodsCode { get; set; }
+        public string ShowTypeName { get; set; }
+        public int TreadWidth { get; set; }
+        public int FlatRatio { get; set; }
+        public string Meridian { get; set; }
+        public int HubDiameter { get; set; }
+        public string LoadIndex { get; set; }
+        public string SpeedLevel { get; set; }
+        public int SpeedMax { get; set; }
+        public string Size { get; set; }
+        public decimal Weight { get; set; }
+        public decimal UnitPrice { get; set; }
+        public int Numbers { get; set; }
+        public decimal SalePrice { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal TradePrice { get; set; }
+        public string Package { get; set; }
+        public int PackageNum { get; set; }
+        public decimal PackageWeight { get; set; }
+        public string ContainerCode { get; set; }
+        public int AreaID { get; set; }
+        public string AreaName { get; set; }
+        public string AcceptUnit { get; set; }
+        /// <summary>
+        /// 订单号
+        /// </summary>
+        public string OrderNo { get; set; }
+        /// <summary>
+        /// 仓库ID
+        /// </summary>
+        public int HouseID { get; set; }
+        /// <summary>
+        /// 仓库名称
+        /// </summary>
+        public string HouseName { get; set; }
+        public string ContainerType { get; set; }
+        /// <summary>
+        /// 批次
+        /// </summary>
+        public string Batch { get; set; }
+        /// <summary>
+        /// 批次年
+        /// </summary>
+        public int BatchYear { get; set; }
+        /// <summary>
+        /// 批次周
+        /// </summary>
+        public int BatchWeek { get; set; }
+        /// <summary>
+        /// 入库类型
+        /// </summary>
+        public string InHouseType { get; set; }
+        /// <summary>
+        /// 订单状态
+        /// </summary>
+        public string AwbStatus { get; set; }
+        /// <summary>
+        /// 所属权限仓库
+        /// </summary>
+        public string CargoPermisID { get; set; }
+        public int FirstAreaID { get; set; }
+        public string FirstAreaName { get; set; }
+        public int ParentAreaID { get; set; }
+        public string ParentAreaName { get; set; }
+        public string LogisAwbNo { get; set; }
+        public string Remark { get; set; }
+        public string TyreCode { get; set; }
+        /// <summary>
+        /// 公司类型
+        /// </summary>
+        public string BelongHouse { get; set; }
+        public int OrderModel { get; set; }
+        public int ClientNum { get; set; }
+        public decimal SalePriceClient { get; set; }
+        public decimal CostPriceStore { get; set; }
+        public string SourceOrderNo { get; set; }
+        public string BelongDepart { get; set; }
+        public string Source { get; set; }
+        public string SpecsType { get; set; }
+        public string Supplier { get; set; }
+        public string TrafficType { get; set; }
+        public string OrderType { get; set; }
+        public string ShopCode { get; set; }
+        public string HAwbNo { get; set; }
+
+
+    }
+}

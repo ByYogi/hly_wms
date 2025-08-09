@@ -1,0 +1,526 @@
+﻿<%@ Page Title="订单收款监督" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="financeOrderReceiveMonitor.aspx.cs" Inherits="Cargo.Finance.financeOrderReceiveMonitor" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+            var HID = "<%=UserInfor.HouseID%>";
+            //如果是广州仓库显示公司类型选项
+            if (HID == "9") {
+                $("[name='BelongHouse']").show();
+                $('#BelongHouse').combobox('setValue', 0);
+            } else {
+                $('#BelongHouse').combobox('setValue', -1);
+                $("[name='BelongHouse']").hide();
+            }
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - $("div[name='SelectDiv2']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'OrderID',
+                url: null,
+                showFooter: true,
+                columns: [[
+                    {
+                        title: '订单号', field: 'OrderNo', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    { title: '开单时间', field: 'CreateDate', width: '130px', formatter: DateTimeFormatter },
+                    {
+                        title: '订单类型', field: 'OrderModel', width: '60px', formatter: function (val, row, index) {
+                            if (val == "0") { return "订货单"; } else if (val == "1") { return "退货单"; } else { return ""; }
+                        }
+                    },
+                    {
+                        title: '客户名称', field: 'PayClientName', width: '60px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '公司名称', field: 'AcceptUnit', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '收货人', field: 'AcceptPeople', width: '60px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '预收款余额', field: 'PreReceiveMoney', width: '70px', align: 'right', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '返利款余额', field: 'RebateMoney', width: '70px', align: 'right', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '联系手机', field: 'AcceptCellphone', width: '90px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '出发站', field: 'Dep', width: '50px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '到达站', field: 'Dest', width: '50px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '件数', field: 'Piece', width: '50px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '收入', field: 'TransportFee', width: '60px', align: 'right', formatter: function (val, row, index) {
+                            if (row.OrderModel == "1") {
+                                return "-" + val;
+                            } else { return val; }
+                        }
+                    },
+                    {
+                        title: '配送费', field: 'TransitFee', width: '60px', align: 'right', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    { title: '财务审核', field: 'FinanceSecondCheckDate', width: '130px', formatter: DateTimeFormatter },
+                    {
+                        title: '应收', field: 'TotalCharge', width: '70px', align: 'right', formatter: function (val, row, index) {
+                            if (row.OrderModel == "1") {
+                                return "-" + val;
+                            } else { return val; }
+                        }
+                    },
+                    {
+                        title: '已收', field: 'ReceivedMoney', width: '70px', align: 'right', formatter: function (value, row) {
+                            if (value != null && value != "") {
+                                if (row.OrderModel == "1") {
+                                    return "-" + value;
+                                } else { return value; }
+                            }
+                        }
+                    },
+                    {
+                        title: '未收', field: 'UncollectMoney', width: '70px', align: 'right', formatter: function (val, row, index) {
+                            if (row.OrderModel == "1" && row.UncollectMoney != 0) {
+                                return "-" + val;
+                            } else { return val; }
+                        }
+                    },
+                    {
+                        title: '操作人', field: 'UserName', width: '60px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    { title: '收款时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter },
+                    {
+                        title: '结算状态', field: 'CheckStatus', width: '60px', formatter: function (val, row, index) { if (val == "0") { return "未结算"; } else if (val == "1") { return "已结清"; } else if (val == "2") { return "未结清"; } else { return ""; } }
+                    },
+                    {
+                        title: '交易类型', field: 'TradeType', width: '60px', formatter: function (val, row, index) { if (val == "0") { return "账号交易"; } else if (val == "1") { return "预收款交易"; } else if (val == "2") { return "返利款交易"; } else if (val == "3") { return "微信支付"; } else { return "账号交易"; } }
+                    },
+                    {
+                        title: '业务员', field: 'SaleManName', width: '60px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '开单员', field: 'CreateAwb', width: '60px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    }
+                ]],
+                onLoadSuccess: function (data) { }
+            });
+            var datenow = new Date();
+            $('#StartDate').datebox('setValue', getLastDayFormatDate(datenow));
+            $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
+            //所在仓库
+            $('#AHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    var HID = rec.HouseID;
+                    //如果是广州仓库显示公司类型选项
+                    if (HID == 9) {
+                        $("[name='BelongHouse']").show();
+                        $('#BelongHouse').combobox('setValue', 0);
+                    } else {
+                        $('#BelongHouse').combobox('setValue', -1);
+                        $("[name='BelongHouse']").hide();
+                    }
+                    $('#SaleManID').combobox('clear');
+                    var url = '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=' + rec.HouseID;
+                    $('#SaleManID').combobox('reload', url);
+                    $('#ClientNum').textbox('clear');
+                    $('#AcceptPeople').combobox('clear');
+                    var url = '../Client/clientApi.aspx?method=AutoCompleteClient&houseID=' + rec.HouseID;
+                    $('#AcceptPeople').combobox('reload', url);
+
+                }
+            });
+            $('#AHouseID').combobox('textbox').bind('focus', function () { $('#AHouseID').combobox('showPanel'); });
+            $('#CheckStatus').combobox('textbox').bind('focus', function () { $('#CheckStatus').combobox('showPanel'); });
+            $('#SaleManID').combobox('textbox').bind('focus', function () { $('#SaleManID').combobox('showPanel'); });
+            $('#AHouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
+            $('#SaleManID').combobox('clear');
+            var url = '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=<%=UserInfor.HouseID%>';
+            $('#SaleManID').combobox('reload', url);
+            $('#ClientNum').textbox('clear');
+            $('#AcceptPeople').combobox('clear');
+            var url = '../Client/clientApi.aspx?method=AutoCompleteClient&houseID=<%=UserInfor.HouseID%>';
+            $('#AcceptPeople').combobox('reload', url);
+            //客户姓名
+            $('#AcceptPeople').combobox({
+                valueField: 'ClientNum', textField: 'Boss', AddField: 'PinyinName', delay: '10',
+                url: '../Client/clientApi.aspx?method=AutoCompleteClient',
+                onSelect: onAcceptAddressChanged,
+                filter: function (q, row) {
+                    var opts = $(this).combobox('options');
+                    return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                },
+                required: false
+            });
+            //客户姓名自动选择方法
+            function onAcceptAddressChanged(item) {
+                if (item) {
+                    $('#ClientNum').textbox('setValue', item.ClientNum);
+                }
+            }
+            var HID = "<%=UserInfor.HouseID%>";
+            //如果是广州仓库显示公司类型选项
+            if (HID == "64") { $('#btnClientIncome').hide(); }
+        });
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = '../Finance/financeApi.aspx?method=QueryOrderReciveMonitor';
+            $('#dg').datagrid('load', {
+                OrderNo: $('#OrderNo').val(),
+                AcceptPeople: $("#AcceptPeople").combobox('getValue'),
+                StartDate: $('#StartDate').datebox('getValue'),
+                EndDate: $('#EndDate').datebox('getValue'),
+                //Dest: $("#Dest").combobox('getValue'),
+                //ClientNum: $("#ClientNum").textbox('getValue'),
+                //PayClientName: $("#ClientNum").combobox('getText'),
+                HouseID: $("#AHouseID").combobox('getValue'),//仓库ID
+                OrderType: $("#AOrderType").combobox('getValue'),
+                CheckStatus: $('#CheckStatus').combobox('getValue'),
+                SaleManID: $('#SaleManID').combobox('getValue'),
+                BelongHouse: $('#BelongHouse').combobox('getValue')//公司类型
+            });
+        }
+    </script>
+
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div name="SelectDiv2" style="background: linear-gradient(to bottom, #eff5ff 0px, #e0ecff 100%) repeat-x scroll 0 0; border-color: #95b8e7; border-style: solid; border-width: 1px 1px 0px 1px;">
+        <table>
+            <tr>
+                <td>
+                    <a class="easyui-linkbutton" iconcls="icon-monitor_lightning" plain="false" style="color: Red;"
+                        href="../Finance/financeOrderReceiveMonitor.aspx" target="_self">&nbsp;订单收款监督&nbsp;</a>&nbsp;&nbsp;<a class="easyui-linkbutton" iconcls="icon-monitor_lightning" plain="false"
+                            href="../Finance/financeExpenseReceiveMonitor.aspx" target="_self">&nbsp;报销收款监督&nbsp;</a>&nbsp;&nbsp;<a class="easyui-linkbutton" iconcls="icon-monitor_lightning" plain="false"
+                                href="../Finance/financeExpensePayMonitor.aspx" target="_self">&nbsp;报销付款监督&nbsp;</a>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">订单号:
+                </td>
+                <td>
+                    <input id="OrderNo" class="easyui-textbox" data-options="prompt:'请输入订单号，多个用逗号,隔开'" style="width: 350px">
+                </td>
+
+                <td style="text-align: right;">客户名称:
+                </td>
+                <td>
+                    <input id="AcceptPeople" style="width: 100px;" class="easyui-combobox" />
+                    <%--  <input id="AcceptPeople" class="easyui-textbox" data-options="prompt:'收货单位/人'" style="width: 100px;" />--%>
+                </td>
+
+
+                <td style="text-align: right;">日期范围:
+                </td>
+                <td colspan="3">
+                    <input id="StartDate" class="easyui-datebox" style="width: 100px">~
+                    <input id="EndDate" class="easyui-datebox" style="width: 100px">
+                </td>
+
+                <td style="text-align: right;">结算状态:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="CheckStatus" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">未结算</option>
+                        <option value="1">已结清</option>
+                        <option value="2">未结清</option>
+                    </select>
+                </td>
+
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton"
+                        iconcls="icon-basket_add" plain="false" onclick="ClientIncome()" id="btnClientIncome">&nbsp;客户来款记录&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-application_put"
+                            plain="false" onclick="AwbExport()">&nbsp;导&nbsp;出</a>
+                    <form runat="server" id="fm1">
+                        <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived_Click" />
+                    </form>
+                </td>
+                <td style="text-align: right; display: none">客户编码:
+                </td>
+                <td style="display: none">
+                    <input id="ClientNum" class="easyui-textbox" style="width: 100px;" />
+                </td>
+                <td style="text-align: right;">所属仓库:
+                </td>
+                <td>
+                    <input id="AHouseID" class="easyui-combobox" style="width: 100px;"
+                        panelheight="auto" />
+                </td>
+                <td name="BelongHouse" style="text-align: right;">公司类型:
+                </td>
+                <td name="BelongHouse">
+                    <select class="easyui-combobox" id="BelongHouse" style="width: 80px;" panelheight="auto">
+                        <option value="0">迪乐泰</option>
+                        <option value="1">好来运</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">业务员:
+                </td>
+                <td>
+                    <input name="SaleManID" id="SaleManID" class="easyui-combobox" style="width: 100px;"
+                        data-options="valueField: 'LoginName',textField: 'UserName'" />
+                </td>
+                <td style="text-align: right;">下单方式:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="AOrderType" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">电脑下单</option>
+                        <option value="2">商城下单</option>
+                        <option value="3">APP下单</option>
+                        <option value="4">小程序下单</option>
+                        <option value="1">企业号下单</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+
+    <!--客户来款操作-->
+    <div id="dlgIncome" class="easyui-dialog" style="width: 1000px; height: 650px;"
+        closed="true" buttons="#dlgIncome-buttons">
+        <input type="hidden" id="IncomeClientID" />
+        <div id="saPanel" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
+            <table>
+                <tr>
+                    <td style="text-align: right;">客户编码:
+                    </td>
+                    <td>
+                        <input id="InClientNum" class="easyui-numberbox" data-options="prompt:'请输入客户编码'" style="width: 80px">
+                    </td>
+                    <td style="text-align: right;">客户姓名:
+                    </td>
+                    <td>
+                        <input id="InBoss" class="easyui-textbox" data-options="prompt:'请输入客户姓名'" style="width: 80px">
+                    </td>
+
+                    <td style="text-align: right;">手机号码:
+                    </td>
+                    <td>
+                        <input id="InCellphone" class="easyui-textbox" data-options="prompt:'请输入手机号码'" style="width: 90px">
+                    </td>
+                    <td style="text-align: right;">所属仓库:
+                    </td>
+                    <td>
+                        <input id="InID" class="easyui-combobox" style="width: 80px;" panelheight="auto" />
+                    </td>
+                    <td style="text-align: right;">来款时间:
+                    </td>
+                    <td>
+                        <input id="InStartDate" class="easyui-datebox" style="width: 100px">~
+                    <input id="InEndDate" class="easyui-datebox" style="width: 100px">
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <table id="dgIncome" class="easyui-datagrid">
+        </table>
+        <div id="Incomebar">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="QueryClientIncome()">查询</a>
+        </div>
+    </div>
+    <div id="dlgIncome-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgIncome').dialog('close')">&nbsp;关闭&nbsp;</a>
+    </div>
+    <script type="text/javascript">
+        //客户来款
+        function ClientIncome() {
+            var row = $('#ClientNum').val();
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择客户姓名！', 'warning');
+                return;
+            }
+            $('#dlgIncome').dialog('open').dialog('setTitle', '查询客户：' + row + ' 来款记录');
+            showdgIncomeGrid();
+            var gridOpts = $('#dgIncome').datagrid('options');
+            gridOpts.url = '../Client/clientApi.aspx?method=QueryClientIncome&ClientNum=' + row;
+            //$('#IncomeClientID').val(row.ClientID);
+            $('#InClientNum').numberbox('setValue', row);
+            //$('#InCellphone').textbox('setValue', row.Cellphone);
+            //$('#InBoss').textbox('setValue', row.Boss);
+            //所在仓库
+            $('#InID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            //$('#InID').combobox('setValue', row.HouseID);
+
+        }
+
+        function showdgIncomeGrid() {
+            $('#dgIncome').datagrid({
+                width: '100%',
+                height: '500px',
+                title: '', //标题内容
+                pagination: true, //分页是否显示
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'IncomeID',
+                url: null,
+                toolbar: '#Incomebar',
+                columns: [[
+                    { title: '客户编码', field: 'ClientNum', width: '60px' },
+                    { title: '客户姓名', field: 'Boss', width: '60px' },
+                    { title: '来款金额', field: 'Money', width: '60px' },
+                    { title: '来款时间', field: 'CreateDate', width: '80px', formatter: DateFormatter },
+                    { title: '转入账号', field: 'Aliases', width: '100px' },
+                    {
+                        title: '账号类型', field: 'CardType', width: '60px', formatter: function (val, row, index) {
+                            if (val == "0") { return "现金"; }
+                            else if (val == "1") { return "银行卡"; }
+                            else if (val == "2") { return "微信"; }
+                            else if (val == "3") { return "支付宝"; }
+                            else { return ""; }
+                        }
+                    },
+                    { title: '开户行', field: 'Bank', width: '80px' },
+                    { title: '开户名', field: 'CardName', width: '80px' },
+                    { title: '账号', field: 'CardNum', width: '120px' },
+                    { title: '操作人', field: 'OP_ID', width: '50px' },
+                    { title: '操作时间', field: 'OP_DATE', width: '120px', formatter: DateTimeFormatter }
+                ]]
+            });
+        }
+        //导出数据
+        function AwbExport() {
+            var row = $("#dg").datagrid('getData').rows[0];
+            if (row == null) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '没有数据可以进行导出，请重新查询！', 'warning'); return; }
+            var key = new Array();
+            key[0] = $('#OrderNo').val();
+            key[1] = $("#AcceptPeople").combobox('getValue');
+            key[2] = $('#StartDate').datebox('getValue');
+            key[3] = $('#EndDate').datebox('getValue');
+            key[4] = $("#ClientNum").textbox('getValue');
+            key[5] = $("#AHouseID").combobox('getValue');
+            key[6] = $('#CheckStatus').combobox('getValue');
+            key[7] = $('#SaleManID').combobox('getValue');
+            key[8] = $('#AOrderType').combobox('getValue');
+            key[9] = $('#BelongHouse').combobox('getValue');
+
+            $.ajax({
+                url: "../Finance/financeApi.aspx?method=QueryOrderReciveMonitorForExport&key=" + escape(key.toString()),
+                success: function (text) {
+                    if (text == "OK") { var obj = document.getElementById("<%=btnDerived.ClientID %>"); obj.click(); }
+                    else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
+                }
+            });
+        }
+    </script>
+
+</asp:Content>

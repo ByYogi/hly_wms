@@ -1,0 +1,89 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{0E910013-EE0C-4F03-B41F-AE0C4F630535}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>House.Business</RootNamespace>
+    <AssemblyName>House.Business</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Cargo\Arrive\ArriveBus.cs" />
+    <Compile Include="Cargo\Client\CargoClientBus.cs" />
+    <Compile Include="Cargo\Finance\CargoFinanceBus.cs" />
+    <Compile Include="Cargo\House\CargoHouseBus.cs" />
+    <Compile Include="Cargo\Interface\CargoInterfaceBus.cs" />
+    <Compile Include="Cargo\Order\CargoFactoryOrderBus.cs" />
+    <Compile Include="Cargo\Order\CargoOrderBus.cs" />
+    <Compile Include="Cargo\Price\CargoHouseBrandPriceBus.cs" />
+    <Compile Include="Cargo\Price\CargoPriceBus.cs" />
+    <Compile Include="Cargo\Price\CargoProductBasicPriceBus.cs" />
+    <Compile Include="Cargo\Product\CargoProductBus.cs" />
+    <Compile Include="Cargo\QY\QiyeBus.cs" />
+    <Compile Include="Cargo\Report\CargoBigDataBus.cs" />
+    <Compile Include="Cargo\Report\CargoReportBus.cs" />
+    <Compile Include="Cargo\SecKill\CargoSecKillBus.cs" />
+    <Compile Include="Cargo\Static\CargoStaticBus.cs" />
+    <Compile Include="Cargo\WX\CargoWeiXinBus.cs" />
+    <Compile Include="Log\LogBus.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="House\SystemBus.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\House.Entity\House.Entity.csproj">
+      <Project>{a888a0d3-ffb1-4444-8ca1-bf7c42eefba0}</Project>
+      <Name>House.Entity</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\House.Manager\House.Manager.csproj">
+      <Project>{6a448ef8-542e-4d71-8e1a-807883f35ce9}</Project>
+      <Name>House.Manager</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy $(TargetDir)$(TargetFileName) $(SolutionDir)DLL</PostBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

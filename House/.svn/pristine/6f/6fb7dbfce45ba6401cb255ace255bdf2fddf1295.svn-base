@@ -1,0 +1,66 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 拣货计划明细数据实体
+    /// </summary>
+    [Serializable]
+    public class CargoOrderPickPlanGoodsEntity
+    {
+        [Description("表主键")]
+        public long PickGoodsID { get; set; }
+        public string PickPlanNo { get; set; }
+        public long OrderID { get; set; }
+        public string OrderNo { get; set; }
+        public string ProductName { get; set; }
+        public string HouseName { get; set; }
+        public string ProductID { get; set; }
+        public string HouseID { get; set; }
+        public string AreaID { get; set; }
+        public string ContainerCode { get; set; }
+        public string GoodsCode { get; set; }
+        public string TagCode { get; set; }
+        public string Piece { get; set; }
+        public int ScanPiece { get; set; }
+        public string OP_ID { get; set; }
+        public string OP_DATE { get; set; }
+        public string LogisAwbNo { get; set; }
+        public string Dep { get; set; }
+        public string Dest { get; set; }
+        public string ScanStatus { get; set; }
+        public string OrderStatus { get; set; }
+        public string AcceptUnit { get; set; }
+        public string AcceptUnitCN { get; set; }
+        public string AcceptAddress { get; set; }
+        public string AcceptPeople { get; set; }
+        public string AcceptTelephone { get; set; }
+        public string AcceptCellphone { get; set; }
+        public string ScanUserID { get; set; }
+        public int PitNum { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,24 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="QY.master.cs" Inherits="Cargo.QY.QY" %>
+
+<!DOCTYPE html>
+
+<html>
+<head runat="server">
+    <meta name="viewport" content="width=device-width, initial-scale=1,maximum-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>长沙迪乐泰企业号</title>
+    <link href="../JS/MUI/css/mui.min.css" rel="stylesheet" />
+    <link href="../JS/MUI/css/icons-extra.css" rel="stylesheet" />
+    <link href="../JS/MUI/css/app.css" rel="stylesheet" />
+    <script src="../JS/MUI/js/mui.js"></script>
+    <script src="../JS/easy/js/jquery.min.js" type="text/javascript"></script>
+    <asp:ContentPlaceHolder ID="head" runat="server">
+    </asp:ContentPlaceHolder>
+</head>
+<body>
+
+    <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server">
+    </asp:ContentPlaceHolder>
+</body>
+</html>

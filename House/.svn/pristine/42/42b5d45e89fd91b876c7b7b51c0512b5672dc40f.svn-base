@@ -1,0 +1,89 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Report
+{
+    public partial class reportAgeingDetail : BasePage
+    {
+        public List<CargoReportAgeingEntity> OrderReportAgeingExport
+        {
+            get
+            {
+                if (Session["OrderReportAgeingExport"] == null)
+                {
+                    Session["OrderReportAgeingExport"] = new List<CargoReportAgeingEntity>();
+                }
+                return (List<CargoReportAgeingEntity>)(Session["OrderReportAgeingExport"]);
+            }
+            set
+            {
+                Session["OrderReportAgeingExport"] = value;
+            }
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (OrderReportAgeingExport.Count <= 0) { return; }
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("出库仓库", typeof(string));
+            table.Columns.Add("订单号", typeof(string));
+            table.Columns.Add("省", typeof(string));
+            table.Columns.Add("市", typeof(string));
+            table.Columns.Add("店代码", typeof(string));
+            table.Columns.Add("数量", typeof(int));
+            table.Columns.Add("线路", typeof(string));
+            table.Columns.Add("客户名称", typeof(string));
+            table.Columns.Add("开单时间", typeof(string));
+            table.Columns.Add("出库时间", typeof(string));
+            table.Columns.Add("出库时效(小时)", typeof(string));
+            table.Columns.Add("接单时间", typeof(string));
+            table.Columns.Add("发车时间", typeof(string));
+            table.Columns.Add("签收时间", typeof(string));
+            table.Columns.Add("开单签收时效(小时)", typeof(string));
+            table.Columns.Add("出库签收时效(小时)", typeof(string));
+
+            int i = 0;
+            foreach (var it in OrderReportAgeingExport)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["出库仓库"] = it.OutHouseName;
+                newRows["订单号"] = it.OrderNo;
+                newRows["省"] = it.Province;
+                newRows["市"] = it.City;
+                newRows["店代码"] = it.ShopCode;
+                newRows["数量"] = it.Piece;
+                newRows["线路"] = it.LineName;
+                newRows["客户名称"] = it.PayClientName;
+                newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["出库时间"] = it.OutCargoTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.OutCargoTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.OutCargoTime.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["出库时效(小时)"] = it.OutCargoAgeing;
+                newRows["接单时间"] = it.TakeOrderTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.TakeOrderTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.TakeOrderTime.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["发车时间"] = it.SendCarTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.SendCarTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.SendCarTime.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["签收时间"] = it.SignTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.SignTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.SignTime.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["开单签收时效(小时)"] = it.FromCreateToSignAgeing;
+                newRows["出库签收时效(小时)"] = it.FromOutCargoToSignAgeing;
+
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "时效数据表");
+        }
+    }
+}

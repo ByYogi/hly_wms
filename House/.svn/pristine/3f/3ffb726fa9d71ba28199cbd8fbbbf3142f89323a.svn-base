@@ -1,0 +1,20 @@
+Time:    2018/12/14 13:14:12
+Message: [{"UserID": "1033","Dep":"广州","Dest":"北京","Piece":"24","Weight":"","Volume":"","TransportFee":"2000","TransitFee":"","OtherFee":"","TotalCharge":"2000","AcceptUnit":"北京中升店","AcceptPeople":"中升","AcceptTelephone":"13250520143","AcceptCellphone":"13250520143","AcceptAddress":"北京中升店北京胡同口门子里68号","Remark":"","HouseID":"3","Goods":[{"ProductName":"优科豪马轮胎","GoodsCode":"R1098","TypeID":"9","Piece":"12","Specs":"","Figure":"","Model":""},{"ProductName":"优科豪马轮胎","GoodsCode":"R1098","TypeID":"9","Piece":"12","Specs":"","Figure":"","Model":""}]}]
+-----------------------------------------------------------
+
+
+Time:    2018/12/14 13:22:28
+Message: [{"UserID": "1033","Dep":"广州","Dest":"北京","Piece":"44","Weight":"","Volume":"","TransportFee":"2000","TransitFee":"","OtherFee":"","TotalCharge":"2000","AcceptUnit":"北京中升店","AcceptPeople":"中升","AcceptTelephone":"13250520143","AcceptCellphone":"13250520143","AcceptAddress":"北京中升店北京胡同口门子里68号","Remark":"","HouseID":"3","Goods":[{"ProductName":"优科豪马轮胎","GoodsCode":"R1118","TypeID":"9","Piece":"22","Specs":"","Figure":"","Model":""},{"ProductName":"优科豪马轮胎","GoodsCode":"R1118","TypeID":"9","Piece":"22","Specs":"","Figure":"","Model":""}]}]
+-----------------------------------------------------------
+
+
+Time:    2018/12/14 13:23:21
+Message: [{"UserID": "1033","Dep":"广州","Dest":"北京","Piece":"44","Weight":"","Volume":"","TransportFee":"2000","TransitFee":"","OtherFee":"","TotalCharge":"2000","AcceptUnit":"北京中升店","AcceptPeople":"中升","AcceptTelephone":"13250520143","AcceptCellphone":"13250520143","AcceptAddress":"北京中升店北京胡同口门子里68号","Remark":"","HouseID":"3","Goods":[{"ProductName":"优科豪马轮胎","GoodsCode":"R1118","TypeID":"9","Piece":"22","Specs":"","Figure":"","Model":""},{"ProductName":"优科豪马轮胎","GoodsCode":"R1118","TypeID":"9","Piece":"22","Specs":"","Figure":"","Model":""}]}]
+-----------------------------------------------------------
+
+
+Time:    2018/12/14 13:24:58
+Message: [{"UserID": "1033","Dep":"广州","Dest":"北京","Piece":"4","Weight":"","Volume":"","TransportFee":"2000","TransitFee":"","OtherFee":"","TotalCharge":"2000","AcceptUnit":"北京中升店","AcceptPeople":"中升","AcceptTelephone":"13250520143","AcceptCellphone":"13250520143","AcceptAddress":"北京中升店北京胡同口门子里68号","Remark":"","HouseID":"3","Goods":[{"ProductName":"优科豪马轮胎","GoodsCode":"R1118","TypeID":"9","Piece":"2","Specs":"","Figure":"","Model":""},{"ProductName":"优科豪马轮胎","GoodsCode":"R1118","TypeID":"9","Piece":"2","Specs":"","Figure":"","Model":""}]}]
+-----------------------------------------------------------
+
+

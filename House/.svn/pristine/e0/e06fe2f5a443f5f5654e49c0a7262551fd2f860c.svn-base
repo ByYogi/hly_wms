@@ -1,0 +1,157 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 产品基础价格数据实体
+    /// </summary>
+    [Serializable]
+    public class CargoProductBasicPriceEntity
+    {
+        /// <summary>
+        /// 主键
+        /// </summary>
+        public Int64 PID { get; set; }
+        /// <summary>
+        /// 产品类型ID
+        /// </summary>
+        public int TypeID { get; set; }
+        /// <summary>
+        /// 所属仓库ID
+        /// </summary>
+        public int HouseID { get; set; }
+        /// <summary>
+        /// 所属仓库名称
+        /// </summary>
+        public string HouseName { get; set; }
+        /// <summary>
+        /// 产品名称
+        /// </summary>
+        public string TypeName { get; set; }
+        /// <summary>
+        /// 生产地
+        /// </summary>
+        public int Born { get; set; }
+        /// <summary>
+        /// OE RE类型
+        /// </summary>
+        public string Assort { get; set; }
+        /// <summary>
+        /// 型号
+        /// </summary>
+        public string Model { get; set; }
+        /// <summary>
+        /// 货品代码
+        /// </summary>
+        public string GoodsCode { get; set; }
+        /// <summary>
+        /// 规格
+        /// </summary>
+        public string Specs { get; set; }
+        /// <summary>
+        /// 轮胎花纹
+        /// </summary>
+        public string Figure { get; set; }
+        /// <summary>
+        /// 载重指数
+        /// </summary>
+        public string LoadIndex { get; set; }
+        /// <summary>
+        /// 速度级别
+        /// </summary>
+        public string SpeedLevel { get; set; }
+        /// <summary>
+        /// 尺寸
+        /// </summary>
+        public string HubDiameter { get; set; }
+        /// <summary>
+        /// 订单年
+        /// </summary>
+        public string ProYear { get; set; }
+        /// <summary>
+        /// 订单月
+        /// </summary>
+        public string ProMonth { get; set; }
+        /// <summary>
+        /// 订单季度
+        /// </summary>
+        public int ProQuarter { get; set; }
+        /// <summary>
+        /// 单价
+        /// </summary>
+        public double UnitPrice { get; set; }
+        /// <summary>
+        /// 进仓价
+        /// </summary>
+        public double InHousePrice { get; set; }
+        /// <summary>
+        /// 批发价(销售价)门店价
+        /// </summary>
+        public double TradePrice { get; set; }
+        /// <summary>
+        /// 销售价小程序价
+        /// </summary>
+        public double SalePrice { get; set; }
+
+        
+        /// <summary>
+        /// 当前年成本价
+        /// </summary>
+        public double FinalCostPrice { get; set; }
+        /// <summary>
+        /// 上一年最终成本价
+        /// </summary>
+        public double PreCostPrice { get; set; }
+        /// <summary>
+        /// 成本价
+        /// </summary>
+        public double CostPrice { get; set; }
+        /// <summary>
+        /// 含税成本价
+        /// </summary>
+        public double TaxCostPrice { get; set; }
+        /// <summary>
+        /// 不含税成本价
+        /// </summary>
+        public double NoTaxCostPrice { get; set; }
+        /// <summary>
+        /// 操作时间
+        /// </summary>
+        public DateTime OP_DATE { get; set; }
+
+        /// <summary>
+        /// 旧仓库
+        /// </summary>
+        public string OldHouse { get; set; }
+        /// <summary>
+        /// 新仓库
+        /// </summary>
+        public string NewHouse { get; set; }
+        /// <summary>
+        /// 旧日期
+        /// </summary>
+        public string OldTime { get; set; }
+        /// <summary>
+        /// 新日期
+        /// </summary>
+        public string NewTime { get; set; }
+        /// <summary>
+        /// 所属部门
+        /// </summary>
+        public string BelongDepart { get; set; }
+        /// <summary>
+        /// 产品编码
+        /// </summary>
+        public string ProductCode { get; set; }
+        /// <summary>
+        /// 云仓类型
+        /// </summary>
+        public string CloudHouseType { get; set; }
+     
+        public decimal UpRate { get; set; }
+        public decimal UpMoney { get; set; }
+    }
+}

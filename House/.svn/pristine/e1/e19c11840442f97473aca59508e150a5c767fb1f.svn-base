@@ -1,0 +1,47 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 产品分类管理实体
+    /// </summary>
+    [Serializable]
+    public class CargoProductTypeEntity
+    {
+        [Description("表主键")]
+        public int TypeID { get; set; }
+        [Description("分类名称")]
+        public string TypeName { get; set; }
+        [Description("父级分类")]
+        public int ParentID { get; set; }
+        public string ParentName { get; set; }
+        [Description("操作时间")]
+        public DateTime OP_DATE { get; set; }
+        public string PinyinName { get; set; }
+        public string BrandCode { get; set; }
+
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

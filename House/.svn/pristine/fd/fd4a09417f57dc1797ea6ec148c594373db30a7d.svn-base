@@ -1,0 +1,1511 @@
+﻿
+using Cargo.QY;
+using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using House.Entity.Cargo.Interface;
+using iText.Kernel.Pdf;
+using Memcached.ClientLibrary;
+using Newtonsoft.Json;
+using NPOI.HSSF.Record.Formula.Functions;
+using NPOI.POIFS.Properties;
+using NPOI.POIFS.Storage;
+using Org.BouncyCastle.Utilities;
+using Senparc.Weixin.HttpUtility;
+using Senparc.Weixin.MP.AdvancedAPIs.MerChant;
+using Senparc.Weixin.MP.TenPayLibV3;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Configuration;
+using System.Data;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Net.Security;
+using System.Reflection;
+using System.Runtime.Remoting.Contexts;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.ServiceModel;
+using System.Text;
+using System.Threading;
+using System.Web;
+using System.Web.Script.Serialization;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using static NPOI.HSSF.Record.Formula.AttrPtg;
+using static System.Net.WebRequestMethods;
+
+namespace Cargo
+{
+    public partial class Test : System.Web.UI.Page
+    {
+        private string GetContiUrl()
+        {
+            return ConfigurationSettings.AppSettings["ContiUrl"];
+        }
+        private string GetContiStockSync()
+        {
+            return ConfigurationSettings.AppSettings["ContiStockSync"];
+        }
+        private string GetContiStockDOTSync()
+        {
+            return ConfigurationSettings.AppSettings["ContiStockDOTSync"];
+        }
+        public string OrderPushTime_Test() {
+            return "1";
+        }
+        protected MemcachedClient mc = new MemcachedClient();
+
+        public string EncodePassword(string password)
+        {
+            if (password.Length < 8)
+            {
+                return "";
+            }
+            string passOne = password.Substring(0, 2);
+            string passTwo = password.Substring(6, 2);
+            string passThree = password.Substring(2, 4);
+            string passFour = password.Substring(8, password.Length - 8);
+            string result = passTwo + passThree + passOne + passFour;
+
+            byte[] pass = Encoding.Unicode.GetBytes(result);
+            //byte[] saltByte = Convert.FromBase64String(salt);
+            //byte[] dst = new byte[pass.Length + saltByte.Length];
+            byte[] returnPassword = null;
+
+            //Buffer.BlockCopy(pass, 0, dst, 0, pass.Length);
+            //Buffer.BlockCopy(saltByte, 0, dst, pass.Length, saltByte.Length);
+
+            SHA256 sha = SHA256Cng.Create();
+            //SHA256 sha = new SHA256Managed();
+            returnPassword = sha.ComputeHash(pass);
+            sha.Clear();
+
+            return Convert.ToBase64String(returnPassword);
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            #region 缓存
+            string[] serverlist = ConfigurationSettings.AppSettings["memcachedServer"].Split('/');
+            SockIOPool pool = SockIOPool.GetInstance(ConfigurationSettings.AppSettings["PoolName"]);
+            pool.SetServers(serverlist);
+            pool.InitConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["InitConnections"]);//连接池初始容量
+            pool.MinConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MinConnections"]);//最小容量
+            pool.MaxConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MaxConnections"]);//最大容量
+            pool.SocketConnectTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketConnectTimeout"]);//数据读取超时时间
+            pool.SocketTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketTimeout"]);//Socket连接超时时间
+            pool.MaintenanceSleep = Convert.ToInt64(ConfigurationSettings.AppSettings["MaintenanceSleep"]);//线程池维护线程之间的休眠时间
+            pool.Failover = Convert.ToBoolean(ConfigurationSettings.AppSettings["Failover"]);//使用缓存服务器自动切换功能，当一台服务器死了可以自动切换到另外一台查找缓存
+
+            pool.Nagle = Convert.ToBoolean(ConfigurationSettings.AppSettings["Nagle"]);//禁用Nagle算法
+            pool.Initialize();
+            mc.PoolName = ConfigurationSettings.AppSettings["PoolName"];
+            mc.EnableCompression = true;
+            mc.CompressionThreshold = 10240;
+            #endregion
+            CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
+            cargoNewOrder.HouseName = "东平云仓";
+            cargoNewOrder.OrderNo = "201401010001";
+            cargoNewOrder.OrderNum = "2";
+            cargoNewOrder.ClientInfo = "泰乐 华笙 广东省广州市白云区东平加油站左侧";
+            cargoNewOrder.ProductInfo = "马牌 215/55R16 CC6 98V";
+            cargoNewOrder.DeliveryName = "自提";
+            cargoNewOrder.ReceivePeople = "";
+
+            string hcno = JSON.Encode(cargoNewOrder);
+            mc.Add("NewOrderNotice", hcno);
+            string res = (string)mc.Get("NewOrderNotice");
+            Response.Write(res);
+            //RedisHelper.SetString("NewOrderNotice", json);
+            //ScanContiQRCode();
+
+            //CargoOrderBus order = new CargoOrderBus();
+            ////查询所有云仓仓库
+            //CargoHouseBus houseBus = new CargoHouseBus();
+            //List<CargoHouseEntity> houseList = houseBus.QueryALLHouse(new CargoHouseEntity { BelongHouse = "6" });
+            //string cper = "119";
+            //foreach (var it in houseList)
+            //{
+            //    cper += "," + it.HouseID.ToString();
+            //}
+            //CargoOrderEntity entity = new CargoOrderEntity();
+            //entity.BelongHouse = "0";
+            //entity.CargoPermisID = cper;
+            //entity.StartDate = DateTime.Now.AddDays(-10);
+            //entity.LogisID = 34;
+            //order.SetOrderSignByHLY(entity);
+            //LogHelper.WriteLog("同步好来运签收数据成功");
+
+            //GetDongShunTyreData();
+            //#region 缓存
+            //string[] serverlist = ConfigurationSettings.AppSettings["memcachedServer"].Split('/');
+            //SockIOPool pool = SockIOPool.GetInstance(ConfigurationSettings.AppSettings["PoolName"]);
+            //pool.SetServers(serverlist);
+            //pool.InitConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["InitConnections"]);//连接池初始容量
+            //pool.MinConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MinConnections"]);//最小容量
+            //pool.MaxConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MaxConnections"]);//最大容量
+            //pool.SocketConnectTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketConnectTimeout"]);//数据读取超时时间
+            //pool.SocketTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketTimeout"]);//Socket连接超时时间
+            //pool.MaintenanceSleep = Convert.ToInt64(ConfigurationSettings.AppSettings["MaintenanceSleep"]);//线程池维护线程之间的休眠时间
+            //pool.Failover = Convert.ToBoolean(ConfigurationSettings.AppSettings["Failover"]);//使用缓存服务器自动切换功能，当一台服务器死了可以自动切换到另外一台查找缓存
+
+            //pool.Nagle = Convert.ToBoolean(ConfigurationSettings.AppSettings["Nagle"]);//禁用Nagle算法
+            //pool.Initialize();
+            //mc.PoolName = ConfigurationSettings.AppSettings["PoolName"];
+            //mc.EnableCompression = true;
+            //mc.CompressionThreshold = 10240;
+            //#endregion
+            //CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
+            //cargoNewOrder.HouseName = "东平云仓";
+            //cargoNewOrder.OrderNo = "201401010001";
+            //cargoNewOrder.OrderNum = "2";
+            //cargoNewOrder.ClientInfo = "泰乐 华笙 广东省广州市白云区东平加油站左侧";
+            //cargoNewOrder.ProductInfo = "马牌 215/55R16 CC6 98V";
+            //cargoNewOrder.DeliveryName = "自提";
+            //cargoNewOrder.ReceivePeople = "";
+
+            //string hcno = JSON.Encode(cargoNewOrder);
+            //mc.Add("NewOrderNotice", hcno);
+            //string res = (string)mc.Get("NewOrderNotice");
+            //Response.Write(res);
+            //RedisHelper.SetString("NewOrderNotice", json);
+            //ScanContiQRCode();
+
+            //CargoOrderBus order = new CargoOrderBus();
+            ////查询所有云仓仓库
+            //CargoHouseBus houseBus = new CargoHouseBus();
+            //List<CargoHouseEntity> houseList = houseBus.QueryALLHouse(new CargoHouseEntity { BelongHouse = "6" });
+            //string cper = "119";
+            //foreach (var it in houseList)
+            //{
+            //    cper += "," + it.HouseID.ToString();
+            //}
+            //CargoOrderEntity entity = new CargoOrderEntity();
+            //entity.BelongHouse = "0";
+            //entity.CargoPermisID = cper;
+            //entity.StartDate = DateTime.Now.AddDays(-10);
+            //entity.LogisID = 34;
+            //order.SetOrderSignByHLY(entity);
+            //LogHelper.WriteLog("同步好来运签收数据成功");
+
+            //CargoInterfaceBus interBus = new CargoInterfaceBus();
+            //CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
+            //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            //List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
+            //List<CargoContiStockSKUEntity> sKUEntities = new List<CargoContiStockSKUEntity>();//东莞改为众汇前置仓20231227
+            //List<CargoContiStockSKUEntity> SZsKUEntities = new List<CargoContiStockSKUEntity>();//深圳
+            //List<CargoContiStockSKUEntity> JYsKUEntities = new List<CargoContiStockSKUEntity>();//揭阳
+            //List<CargoContiStockSKUEntity> GZsKUEntities = new List<CargoContiStockSKUEntity>();//广州
+            //List<CargoContiStockSKUEntity> HNsKUEntities = new List<CargoContiStockSKUEntity>();//华南二仓
+            //List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
+            //List<CargoContiStockSKUEntity> DPCPsKUEntities = new List<CargoContiStockSKUEntity>();//东平城配仓
+            //List<CargoContiStockSKUEntity> STsKUEntities = new List<CargoContiStockSKUEntity>();//汕头云仓
+            ////汕头仓库
+            //stockSync = new CargoContiStockSyncEntity();
+            //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            //stockList = new List<CargoContiStockListEntity>();
+            //List<CargoSafeStockEntity> stStock = interBus.QueryGZContiStockData(new CargoSafeStockEntity { HouseID = "101" });
+            //if (stStock.Count > 0)
+            //{
+            //    foreach (var stock in stStock)
+            //    {
+
+            //CargoInterfaceBus interBus = new CargoInterfaceBus();
+            //CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
+            //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            //List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
+            //List<CargoContiStockSKUEntity> sKUEntities = new List<CargoContiStockSKUEntity>();//东莞改为众汇前置仓20231227
+            //List<CargoContiStockSKUEntity> SZsKUEntities = new List<CargoContiStockSKUEntity>();//深圳
+            //List<CargoContiStockSKUEntity> JYsKUEntities = new List<CargoContiStockSKUEntity>();//揭阳
+            //List<CargoContiStockSKUEntity> GZsKUEntities = new List<CargoContiStockSKUEntity>();//广州
+            //List<CargoContiStockSKUEntity> HNsKUEntities = new List<CargoContiStockSKUEntity>();//华南二仓
+            //List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
+            //List<CargoContiStockSKUEntity> DPCPsKUEntities = new List<CargoContiStockSKUEntity>();//东平城配仓
+            //List<CargoContiStockSKUEntity> STsKUEntities = new List<CargoContiStockSKUEntity>();//汕头云仓
+            ////汕头仓库
+            //stockSync = new CargoContiStockSyncEntity();
+            //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            //stockList = new List<CargoContiStockListEntity>();
+            //List<CargoSafeStockEntity> stStock = interBus.QueryGZContiStockData(new CargoSafeStockEntity { HouseID = "91" });
+            //if (stStock.Count > 0)
+            //{
+            //    foreach (var stock in stStock)
+            //    {
+
+            CargoInterfaceBus interBus = new CargoInterfaceBus();
+            CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
+            stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
+            List<CargoContiStockSKUEntity> sKUEntities = new List<CargoContiStockSKUEntity>();//东莞改为众汇前置仓20231227
+            List<CargoContiStockSKUEntity> SZsKUEntities = new List<CargoContiStockSKUEntity>();//深圳
+            List<CargoContiStockSKUEntity> JYsKUEntities = new List<CargoContiStockSKUEntity>();//揭阳
+            List<CargoContiStockSKUEntity> GZsKUEntities = new List<CargoContiStockSKUEntity>();//广州
+            List<CargoContiStockSKUEntity> HNsKUEntities = new List<CargoContiStockSKUEntity>();//华南二仓
+            List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
+            List<CargoContiStockSKUEntity> DPCPsKUEntities = new List<CargoContiStockSKUEntity>();//东平城配仓
+            List<CargoContiStockSKUEntity> STsKUEntities = new List<CargoContiStockSKUEntity>();//汕头云仓
+            //汕头仓库
+            stockSync = new CargoContiStockSyncEntity();
+            stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            stockList = new List<CargoContiStockListEntity>();
+            List<CargoSafeStockEntity> stStock = interBus.QueryGZContiStockData(new CargoSafeStockEntity { HouseID = "101" });
+            if (stStock.Count > 0)
+            {
+                foreach (var stock in stStock)
+                {
+
+
+                    if (string.IsNullOrEmpty(stock.GoodsCode) || stock.GoodsCode.Length < 7) { continue; }
+                    if (STsKUEntities.Exists(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7))))
+                    {
+                        CargoContiStockSKUEntity existEntity = STsKUEntities.Find(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7)));
+                        existEntity.dots.Add(new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum });
+                        //existEntity.qty += stock.StockNum;
+                    }
+                    else
+                    {
+                        STsKUEntities.Add(new CargoContiStockSKUEntity
+                        {
+                            skuCode = stock.GoodsCode.Substring(0, 7),
+                            dots = new List<CargoContiStockDOTEntity> { new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum } }
+                            //qty = stock.StockNum
+                        });
+                    }
+                }
+            }
+            stockList.Add(new CargoContiStockListEntity
+            {
+                warehouseName = "汕头仓库",
+                skuQtyList = STsKUEntities
+            });
+            //stockList.Add(new CargoContiStockListEntity
+            //{
+
+            //    warehouseName = "汕头仓库",
+            //    skuQtyList = STsKUEntities
+
+            //    warehouseName = "深圳龙华云配仓库",
+            //    skuQtyList = STsKUEntities
+            
+            //    warehouseName = "维京广州仓",
+            //    skuQtyList = gzWjEntity
+
+            //});
+            stockSync.stockList = stockList;
+            string body = JSON.Encode(stockSync);
+            try
+            {
+                string contiUrl = "https://cdms.continental-tires.cn/api/openapi/stock/dotSync";
+                string res1 = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", body);
+                //LogHelper.WriteLog("汕头仓库马牌维京库存同步成功");
+            }
+            catch (ApplicationException ex)
+            {
+                //LogHelper.WriteLog("汕头仓库马牌维京库存同步失败");
+            }
+
+            CargoInterfaceBus bus = new CargoInterfaceBus();
+            try
+            {
+                List<StockApiEntity> res1 = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 101 });
+                StockApiResponseEntity STentity = new StockApiResponseEntity();
+                STentity.Params = new Params();
+                STentity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+                STentity.data = new List<Data>();
+                StockApiResponseEntity entity = new StockApiResponseEntity();
+                entity.Params = new Params();
+                entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+                entity.data = new List<Data>();
+
+                if (res1.Count > 0)
+                {
+                    entity.Params.firstData = true;
+                    entity.Params.lastData = true;
+                    entity.Params.updateMode = "CHANGE";
+                    long tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+                    string strRes = string.Empty;
+                    entity.Params.tpsBatchId = tpsBatchId;
+                    int cou = 0;
+                    for (int i = 0; i < res1.Count; i++)
+                    {
+                        if (cou == 500)
+                        {
+                            // LogHelper.WriteLog("汕头仓云配开思推送ID:" + tpsBatchId + ",本次推送条数:" + cou);
+                            cou = 0;
+                            strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"));
+                            //string cpStrRes500 = wxHttpUtility.SendPostHttpRequest("https://cp.neway5.com/Interface/OpenApi.ashx?cmd=StockDataSync", "application/json", JsonConvert.SerializeObject(STentity));
+
+                            //STentity = new StockApiResponseEntity();
+                            //STentity.Params = new Params();
+                            //STentity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+                            //STentity.data = new List<Data>();
+
+                            entity = new StockApiResponseEntity();
+                            entity.Params = new Params();
+                            entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+                            entity.data = new List<Data>();
+                            if (strRes.IndexOf("200") >= 0)
+                            {
+                                tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+                                entity.Params.tpsBatchId = tpsBatchId;
+                                entity.Params.firstData = true;
+                                entity.Params.lastData = true;
+                                entity.Params.updateMode = "CHANGE";
+                            }
+                        }
+
+                        //STentity.data.Add(new Data
+                        //{
+                        //    CassProductCode = res[i].ProductCode,
+                        //    ProductName = res[i].ProductName,
+                        //    TypeName = res[i].TypeName,
+                        //    SalePrice = Convert.ToDecimal(res[i].SalePrice) + Convert.ToDecimal(10),
+                        //    StockNum = res[i].StockNum,
+                        //    Batch = res[i].Batch,
+                        //    HouseID = res[i].HouseID,//汕头仓+ Convert.ToDecimal(GetContiPrice())
+                        //});
+                        string casscode = res1[i].CassProductCode;
+                        if (res1[i].TypeID.Equals(34) || res1[i].TypeID.Equals(345) || res1[i].TypeID.Equals(163))
+                        {
+                            casscode = res1[i].GoodsCode;
+                        }
+                        else
+                        {
+                            casscode = string.IsNullOrEmpty(res1[i].CassProductCode) ? res1[i].ProductCode : res1[i].CassProductCode;
+
+                        }
+                        string typename = res1[i].TypeName;
+                        if (res1[i].TypeID.Equals(9))
+                        {
+                            typename = "横滨/优科豪马";
+                        }
+                        else if (res1[i].TypeID.Equals(66))
+                        {
+                            typename = "固铂轮胎";
+                        }
+                        entity.data.Add(new Data
+                        {
+                            CassProductCode = casscode,
+                            ProductName = res1[i].ProductName,
+                            TypeName = typename,
+                            SalePrice = Convert.ToDecimal(res1[i].SalePrice) + Convert.ToDecimal(10),
+                            StockNum = res1[i].StockNum,
+                            Batch = res1[i].Batch,
+                            HouseID = res1[i].HouseID,//汕头仓+ Convert.ToDecimal(GetContiPrice())
+                        });
+                        //LogHelper.WriteLog("汕头仓云配开思推送ID:" + tpsBatchId + ",本次推送金额:" + Convert.ToDecimal(res[i].SalePrice) + Convert.ToDecimal(GetContiPrice()) + ",加价金额:" + GetContiPrice());
+                        cou++;
+
+                    }
+                    strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"));
+
+                    // string data = JsonConvert.SerializeObject(STentity);
+
+                    //string cpStrRes = wxHttpUtility.SendPostHttpRequest("https://cp.neway5.com/Interface/OpenApi.ashx?cmd=StockDataSync", "application/json", data);
+
+                    // LogHelper.WriteLog("汕头仓云配开思推送ID:" + tpsBatchId + ",本次推送条数:" + cou);
+                    if (strRes.IndexOf("200") >= 0)
+                    {
+                        bus.UpdateStatus(res1);
+                        // LogHelper.WriteLog("汕头仓云配开思推送成功!共计" + res.Count + "条数据");
+                    }
+                    //if (cpStrRes.IndexOf("1000") >= 0)
+                    //{
+                    //    //bus.UpdateStatus(res);
+                    //    //LogHelper.WriteLog("汕头仓城配快送推送成功!共计" + res.Count + "条数据");
+                    //}
+                }
+
+            }
+            catch (Exception ex)
+            {
+                // LogHelper.WriteLog("汕头仓云配开思推送出现错误!Message" + ex.Message);
+                throw;
+            }
+
+            //CargoHouseBus busss = new CargoHouseBus();
+
+            //CargoContainerShowEntity queryEntity = new CargoContainerShowEntity();
+            //queryEntity.HouseID = 93;
+            //queryEntity.Specs = "2055516";
+            //queryEntity.IsLockStock = "0";//非锁定的库存
+            //queryEntity.TypeParentID = 1; //查询分类是轮胎的品牌产品库存
+
+            //int pageIndex = 1;//查询条件 分页 第几页
+            //int pageSize = 20; //查询条件 分页 每页数量
+            //List<CargoContainerShowEntity> list = busss.QueryHouseStockDataMiniPro(pageIndex, pageSize, queryEntity);
+
+            ////机器人账号
+            //LogEntity log = new LogEntity();
+            //log.IPAddress = "";
+            //log.Moudle = "服务管理";
+            //log.Status = "0";
+            //log.NvgPage = "定单推送服务";
+            //log.UserID = "2029";
+            //log.Operate = "A";
+            //CargoInterfaceBus bus = new CargoInterfaceBus();
+
+            ////string contiOutUrl = "https://cdms.continental-tires.cn/api/remote/openWms/getWmsDoHeaderInfoPage";
+            ////string outbody = "{\"updateStartTime\": \"" + DateTime.Now.AddHours(-10).ToString("yyyy-MM-dd HH:mm:ss") + "\",	\"updateEndTime\": \"" + DateTime.Now.AddHours(-5).ToString("yyyy-MM-dd HH:mm:ss") + "\",	\"pageNum\": 1,\"pageSize\": 100}";
+            ////string contistr = wxHttpUtility.ContiSendPostHttpRequest(contiOutUrl, "application/json", outbody);
+            ////contiOutOrderEntity contiOrder = JsonConvert.DeserializeObject<contiOutOrderEntity>(contistr);
+            ////if (contiOrder.code.Equals(10000))
+            ////{
+            ////    bus.UpdateContiOrderOutData(contiOrder.data.list, log);
+            ////}
+
+
+            ////CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
+            ////stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            ////List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
+            ////List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
+            //////深圳龙华云配仓库
+            ////stockSync = new CargoContiStockSyncEntity();
+            ////stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            ////stockList = new List<CargoContiStockListEntity>();
+            ////List<CargoSafeStockEntity> ypStock = bus.QueryGZContiStockData(new CargoSafeStockEntity { HouseID = "91" });
+            ////if (ypStock.Count > 0)
+            ////{
+            ////    foreach (var stock in ypStock)
+            ////    {
+            ////        if (string.IsNullOrEmpty(stock.GoodsCode) || stock.GoodsCode.Length < 7) { continue; }
+            ////        if (LHYPsKUEntities.Exists(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7))))
+            ////        {
+            ////            CargoContiStockSKUEntity existEntity = LHYPsKUEntities.Find(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7)));
+            ////            existEntity.dots.Add(new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum });
+            ////            //existEntity.qty += stock.StockNum;
+            ////        }
+            ////        else
+            ////        {
+            ////            LHYPsKUEntities.Add(new CargoContiStockSKUEntity
+            ////            {
+            ////                skuCode = stock.GoodsCode.Substring(0, 7),
+            ////                dots = new List<CargoContiStockDOTEntity> { new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum } }
+            ////                //qty = stock.StockNum
+            ////            });
+            ////        }
+            ////    }
+            ////}
+            ////stockList.Add(new CargoContiStockListEntity
+            ////{
+            ////    warehouseName = "深圳龙华云配仓库",
+            ////    skuQtyList = LHYPsKUEntities
+            ////});
+            //////stockList.Add(new CargoContiStockListEntity
+            //////{
+            //////    warehouseName = "维京广州仓",
+            //////    skuQtyList = gzWjEntity
+            //////});
+            ////stockSync.stockList = stockList;
+            ////string  body = JSON.Encode(stockSync);
+            ////try
+            ////{
+            ////    string contiUrl = "https://cdms.continental-tires.cn/api/openapi/stock/dotSync";
+            ////    string res = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", body);
+            ////   // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步成功");
+            ////}
+            ////catch (ApplicationException ex)
+            ////{
+            ////   // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步失败");
+            ////}
+
+
+
+
+
+
+
+            //saleOpenInfoResp entity = new saleOpenInfoResp();
+            //entity.HouseIDStr = "9,45,84,83,91,93,95,97,101";
+            //entity.StartDate = DateTime.Now.AddDays(-5);
+            //entity.InCreateStatus = "1";
+            //entity.IsPushOutTag = "0";
+            //List<saleOpenInfoResp> infoResps = bus.QueryContiOutOrderInfo(entity);
+            //if (infoResps.Count > 0)
+            //{
+            //    foreach (var res in infoResps)
+            //    {
+            //        OutOrderStatus outOrder = new OutOrderStatus();
+            //        outOrder.doNo = res.doNo;
+            //        outOrder.deliveryType = 4;
+            //        outOrder.contractName = res.SaleManName;
+            //        outOrder.contractMobile = res.SaleCellphone;
+            //        List<OutDetail> outs = new List<OutDetail>();
+            //        List<CargoProductTagEntity> result = bus.QueryContiOutOrderDetail(new saleOpenInfoResp { CargoOrderNo = res.CargoOrderNo });
+            //        if (result.Count > 0)
+            //        {
+            //            var groupedItems = result.GroupBy(item => item.GoodsCode).Select(group => new { GoodsCode = group.Key, Count = group.Count() });
+            //            foreach (var group in groupedItems)
+            //            {
+            //                OutDetail outD = new OutDetail();
+            //                outD.outNum = group.Count;
+            //                outD.skuCode = group.GoodsCode.Substring(0, 7);
+
+            //                List<BarCodeEntity> barCodeEntities = new List<BarCodeEntity>();
+            //                List<CargoProductTagEntity> cpt = result.Where(c => c.GoodsCode == group.GoodsCode).ToList();
+            //                foreach (var cp in cpt)
+            //                {
+            //                    barCodeEntities.Add(new BarCodeEntity
+            //                    {
+            //                        barCode = cp.TyreCode,
+            //                        dot = cp.Batch,
+            //                        scanTime = cp.OutCargoTime.ToString("yyyy-MM-dd HH:mm:ss")
+            //                    });
+            //                }
+            //                outD.barCodeList = barCodeEntities;
+            //                outs.Add(outD);
+            //            }
+            //        }
+            //        outOrder.doDetails = outs;
+
+            //        //处理Json推送到马牌系统
+            //        string postJson = JsonConvert.SerializeObject(outOrder);
+            //        string contiUrl = "https://cdms.continental-tires.cn/api/openapi/out/sync";
+            //        string oks = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", postJson);
+            //        if (oks.Contains("10000"))
+            //        {
+            //            //成功
+            //            bus.UpdateContiOutOrderPushStatus(new saleOpenInfoResp { IsPushOutTag = "1", orderCode = res.orderCode }, log);
+            //        }
+            //    }
+            //}
+
+            ScanContiQRCode();
+
+        }
+
+        private void GetDongShunTyreData()
+        {
+            //{"action":"003","openid":"ojE6s5CTng_fZyjEVjBCSHu_htSc"}获取轮胎品牌数据
+            string brandstr = "{\"code\":0,\"data\":{\"respdata\":[{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007002\",\"ishaveChild\":null,\"typeCode\":\"02\",\"typeName\":\"倍耐力\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007003\",\"ishaveChild\":null,\"typeCode\":\"03\",\"typeName\":\"马牌\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007004\",\"ishaveChild\":null,\"typeCode\":\"04\",\"typeName\":\"普利司通\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007005\",\"ishaveChild\":null,\"typeCode\":\"05\",\"typeName\":\"邓禄普\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007006\",\"ishaveChild\":null,\"typeCode\":\"06\",\"typeName\":\"固特异\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007008\",\"ishaveChild\":null,\"typeCode\":\"08\",\"typeName\":\"韩泰\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007007\",\"ishaveChild\":null,\"typeCode\":\"09\",\"typeName\":\"优科豪马\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007009\",\"ishaveChild\":null,\"typeCode\":\"11\",\"typeName\":\"玛吉斯\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007021004\",\"ishaveChild\":null,\"typeCode\":\"15\",\"typeName\":\"佳通\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007021005\",\"ishaveChild\":null,\"typeCode\":\"16\",\"typeName\":\"玲珑\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007021002\",\"ishaveChild\":null,\"typeCode\":\"17\",\"typeName\":\"朝阳\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007021010\",\"ishaveChild\":null,\"typeCode\":\"18\",\"typeName\":\"正新\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007011\",\"ishaveChild\":null,\"typeCode\":\"10\",\"typeName\":\"固铂\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007021011\",\"ishaveChild\":null,\"typeCode\":\"32\",\"typeName\":\"万力\"},{\"childTypeSort\":null,\"flagNotWebShow\":false,\"innerCode\":\"1007001\",\"ishaveChild\":null,\"typeCode\":\"01\",\"typeName\":\"米其林\"}]},\"msg\":null}";
+
+            TyreEntity brandList = JsonConvert.DeserializeObject<TyreEntity>(brandstr);
+
+            List<respdata> list = new List<respdata>();
+
+            string url = "https://nngs.sihuiyun.com.cn/WXProgramService/api/WxService";
+
+            foreach (var itt in brandList.data.respdata)
+            {
+                for (int i = 1; i < 200; i++)
+                {
+                    string poststr = "{\"typeInnerCode\":\"" + itt.innerCode + "\",\"search\":\"\",\"page\":" + i + ",\"pagesize\":100,\"openid\":\"ojE6s5CTng_fZyjEVjBCSHu_htSc\",\"action\":\"004\",\"flag\":\"0\"}";
+                    string result = wxHttpUtility.SendPostHttpRequest(url, "application/json", poststr);
+
+                    TyreEntity tyreEntity = JsonConvert.DeserializeObject<TyreEntity>(result);
+                    if (tyreEntity.data.respdata.Count <= 0)
+                    {
+                        break;
+                    }
+                    if (tyreEntity.code.Equals(0))
+                    {
+                        list.AddRange(tyreEntity.data.respdata);
+                    }
+                    Thread.Sleep(1000);
+                }
+            }
+
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("品牌代码", typeof(string));
+            table.Columns.Add("商品名称", typeof(string));
+            table.Columns.Add("车型", typeof(string));
+            table.Columns.Add("周期", typeof(string));
+            table.Columns.Add("东盟仓库存", typeof(string));
+            table.Columns.Add("西仓库存", typeof(string));
+            table.Columns.Add("原价", typeof(string));
+            table.Columns.Add("销售价", typeof(string));
+            table.Columns.Add("对外价格1", typeof(string));
+            table.Columns.Add("对外价格2", typeof(string));
+            table.Columns.Add("对外价格3", typeof(string));
+            table.Columns.Add("对外价格4", typeof(string));
+            table.Columns.Add("对外价格5", typeof(string));
+            table.Columns.Add("对外价格6", typeof(string));
+            int j = 0;
+            foreach (var it in list)
+            {
+                j++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = j;
+                newRows["品牌代码"] = it.typeInnerCode;
+                newRows["商品名称"] = it.partName;
+                newRows["车型"] = it.carType;
+                newRows["周期"] = it.brand;
+                newRows["东盟仓库存"] = it.storageAmount1;
+                newRows["西仓库存"] = it.storageAmount2;
+                newRows["原价"] = it.yuanPrice;
+                newRows["销售价"] = it.price;
+                newRows["对外价格1"] = it.outPrice1;
+                newRows["对外价格2"] = it.outPrice2;
+                newRows["对外价格3"] = it.outPrice3;
+                newRows["对外价格4"] = it.outPrice4;
+                newRows["对外价格5"] = it.outPrice5;
+                newRows["对外价格6"] = it.outPrice6;
+
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "库存数据表");
+
+        }
+
+        public static string PostHttpRequest(string url, string contentType, string Data)
+        {
+            string result = string.Empty;
+            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+            TimeSpan timeSpan = DateTime.UtcNow.AddMinutes(-5) - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            DateTime dateTime = DateTime.Now;
+            long timestamp = (long)(dateTime.Subtract(new DateTime(1970, 1, 1))).TotalMilliseconds;
+            string sign = "38476BFFE6274DBCAB38647884D467C6" + "cassec.sand.passive.data" + "gzshly60be866dbe52" + "7b39a4ed11e24289b1b7a42aea766802" + timestamp;
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] inputBytes = Encoding.UTF8.GetBytes(sign);
+                byte[] hashBytes = md5.ComputeHash(inputBytes);
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < hashBytes.Length; i++)
+                {
+                    sb.Append(hashBytes[i].ToString("x2"));
+                }
+                sign = sb.ToString().ToUpper();
+            }
+            request.Headers.Add("apiName", "cassec.sand.passive.data");
+            request.Headers.Add("appKey", "gzshly60be866dbe52");
+            request.Headers.Add("sign", sign);
+            request.Headers.Add("session", "7b39a4ed11e24289b1b7a42aea766802");
+            request.Headers.Add("timestamp", timestamp.ToString());
+            request.Method = "POST";
+            request.ContentType = contentType;
+            byte[] postBytes = null;
+            postBytes = Encoding.UTF8.GetBytes(Data);
+            request.ContentLength = postBytes.Length;
+            using (Stream outstream = request.GetRequestStream())
+            {
+                outstream.Write(postBytes, 0, postBytes.Length);
+            }
+            using (WebResponse response = request.GetResponse())
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                        }
+                    }
+
+                }
+            }
+            return result;
+
+
+        }
+        private void ScanContiQRCode()
+        {
+            string TagCode = "QRA9002061673";//马牌二维码
+            string[] tArr = TagCode.Split('=');
+            if (tArr.Length > 1)
+            {
+                TagCode = tArr[1];
+            }
+            string QrText = "";// "8476063989";//轮胎内侧码
+            string QRcode = string.IsNullOrEmpty(QrText) ? TagCode : QrText;//产品唯一编码标签码
+            //调用马牌接口查询轮胎数据
+            TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            string tms = Convert.ToInt64(ts.TotalSeconds).ToString();
+            string sign = string.Empty;
+            //二维码转条码 通过扫描轮胎上二维码查询该条轮胎具体信息
+
+            string ss = "QRcode=" + QRcode + "&appKey=" + Common.GetContiappKey() + "&noise=" + Common.GetContinoise() + "&timestamp=" + tms + "&appSecret=" + Common.GetContiappSecret();
+            if (!QRcode.ToUpper().Contains("R"))
+            {
+                ss = "appKey=" + Common.GetContiappKey() + "&barcodes=%5B" + QRcode + "%5D" + "&noise=" + Common.GetContinoise() + "&timestamp=" + tms + "&appSecret=" + Common.GetContiappSecret();
+            }
+            string reValue = string.Empty;
+            //MD5加密
+            using (MD5 md5Hash = MD5.Create())
+            {
+                sign = Common.GetMd5Hash(md5Hash, ss);
+            }
+            NameValueCollection nvc = new NameValueCollection();
+            nvc.Add("appKey", Common.GetContiappKey());
+            nvc.Add("noise", Common.GetContinoise());
+            nvc.Add("timestamp", tms);
+            nvc.Add("sign", sign);
+            //if (!QRcode.ToUpper().Contains("R"))
+            if (!QRcode.ToUpper().Contains("R"))
+            {
+                nvc.Add("barcodes", "%5B" + QRcode + "%5D");
+                reValue = wxHttpUtility.PostForm("https://contiid.continental-tires.cn/api/2.0/TTP/getBarcodeInfo", nvc, null);
+                ArrayList GridRows = (ArrayList)JSON.Decode("[" + reValue + "]");
+                foreach (Hashtable item in GridRows)
+                {
+                    //数据返回正确
+                    if (Convert.ToString(item["code"]).Equals("1000"))
+                    {
+                        ArrayList datalit = (ArrayList)JSON.Decode("[" + JSON.Encode(item["data"]) + "]");
+                        foreach (Hashtable ri in datalit)
+                        {
+                            ArrayList datalitt = (ArrayList)JSON.Decode("[" + JSON.Encode(ri["" + QRcode + ""]) + "]");
+                            //foreach (Hashtable rit in datalitt)
+                            //{
+                            //    string[] description = Convert.ToString(rit["Description"]).Split(' ');
+                            //    for (int i = 2; i < description.Length; i++)
+                            //    {
+                            //        Figure += description[i];//花纹
+                            //    }
+                            //    Specs = description[0];
+                            //    string loadSpeed = description[1].Replace("(", "").Replace(")", "");
+                            //    LoadIndex = loadSpeed.Substring(0, loadSpeed.Length - 1);
+                            //    SpeedLevel = loadSpeed.Substring(loadSpeed.Length - 1);
+                            //    TyreCode = Convert.ToString(rit["barcode"]);
+                            //    GoodsCode = Convert.ToString(rit["material"]);
+                            //    if (GoodsCode.Length > 6)
+                            //    {
+                            //        GoodsCode = GoodsCode + "0000";
+                            //    }
+                            //    else if (GoodsCode.Length == 5)
+                            //    {
+                            //        GoodsCode = "0" + GoodsCode + "0000";
+                            //    }
+                            //    Batch = Convert.ToString(rit["DOT"]);
+                            //    string singleBrand = Convert.ToString(rit["brand"]);
+                            //    if (singleBrand.ToUpper().Contains("VIKING"))
+                            //    {
+                            //        TypeID = 345;
+                            //        ProductName = "维京轮胎";
+                            //    }
+                            //}
+                        }
+                    }
+                    else
+                    {
+                        //msg.Result = false;
+                        //msg.Message = Convert.ToString(item["code"].ToString() + " " + item["data"].ToString());
+                        //goto ERR;
+                    }
+                }
+            }
+            else
+            {
+                nvc.Add("QRcode", QRcode);
+                //二维码转条码 接口
+                reValue = wxHttpUtility.PostForm("https://contiid.continental-tires.cn/api/2.0/TTP/QRgetBarcode", nvc, null);
+                ArrayList GridRows = (ArrayList)JSON.Decode("[" + reValue + "]");
+                foreach (Hashtable item in GridRows)
+                {
+                    //数据返回正确
+                    if (Convert.ToString(item["code"]).Equals("1000"))
+                    {
+                        ArrayList datalit = (ArrayList)JSON.Decode("[" + JSON.Encode(item["data"]) + "]");
+                        //foreach (Hashtable ri in datalit)
+                        //{
+                        //    string[] description = Convert.ToString(ri["Description"]).Split(' ');
+                        //    for (int i = 2; i < description.Length; i++)
+                        //    {
+                        //        Figure += description[i];//花纹
+                        //    }
+                        //    Specs = description[0];
+                        //    string loadSpeed = description[1].Replace("(", "").Replace(")", "");
+                        //    LoadIndex = loadSpeed.Substring(0, loadSpeed.Length - 1);
+                        //    SpeedLevel = loadSpeed.Substring(loadSpeed.Length - 1);
+                        //    TyreCode = Convert.ToString(ri["barcode"]);
+                        //    GoodsCode = Convert.ToString(ri["material"]);
+                        //    if (GoodsCode.Length > 6)
+                        //    {
+                        //        GoodsCode = GoodsCode + "0000";
+                        //    }
+                        //    else if (GoodsCode.Length == 5)
+                        //    {
+                        //        GoodsCode = "0" + GoodsCode + "0000";
+                        //    }
+                        //    Batch = Convert.ToString(ri["DOT"]);
+                        //    string singleBrand = Convert.ToString(ri["singleBrand"]);
+                        //    if (singleBrand.ToUpper().Contains("VIKING"))
+                        //    {
+                        //        TypeID = 345;
+                        //        ProductName = "维京轮胎";
+                        //    }
+                        //}
+                    }
+                    else
+                    {
+                        //msg.Result = false;
+                        //msg.Message = Convert.ToString(item["code"].ToString() + " " + item["data"].ToString());
+                        //goto ERR;
+                    }
+                }
+            }
+
+        }
+        public void ScanQRCodeInCargo()
+        {
+            //string ContainerCode = Convert.ToString(Request["ContainerCode"]);//货位代码
+            string ContainerCode = "T1B0006SHL";
+
+            //string QRcode = Qcode;//Convert.ToString(Request["TagCode"]);
+            string QRcode = "QRA0006202575";
+            string trCode = "";
+
+
+            string UserID = "1000";
+            string ProductName = "马牌轮胎";//产品名称
+            string GoodsCode = string.Empty; ;//货品代码
+            int HouseID = 45;//仓库代码ID
+            int TypeID = 34;//产品类型ID
+            string Specs = string.Empty; ;//规格
+            string Figure = string.Empty;//花纹
+
+            string Model = string.Empty; ;//型号
+            string Batch = string.Empty; ;//周期
+            string TagCode = QRcode;//产品唯一编码标签码
+            string LoadIndex = string.Empty; ;//载重指数
+            string SpeedLevel = string.Empty; ;//速度级别
+            string Born = "0";//生产地 0：国产1：进口
+            string Assort = "";//OER  REP 胎
+            string TyreCode = string.Empty; ;//轮胎编码
+            string InCargoNum = "1";//入库数量
+            string Source = "14";//产品来源
+            string SourceOrderNo = string.Empty; ;//工厂订单号
+            string BelongMonth = DateTime.Now.ToString("yyyyMM");//订单归属月
+            string OrderType = "0";//订单类型ID
+            string HLYReturnID = string.Empty;//好来运ID
+
+            ErrMessage msg = new ErrMessage(); msg.Message = ""; msg.Result = true;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "产品管理";
+            log.NvgPage = "扫描入库";
+            log.UserID = UserID;//限定某一账号
+            log.Operate = "A";
+            log.Status = "0";
+            //调用马牌接口查询轮胎数据
+            TimeSpan ts = DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            string tms = Convert.ToInt64(ts.TotalSeconds).ToString();
+            string sign = string.Empty;
+            //二维码转条码 通过扫描轮胎上二维码查询该条轮胎具体信息
+
+            //string ss = "QRcode=" + QRcode + "&appKey=" + Common.GetContiappKey() + "&noise=" + Common.GetContinoise() + "&timestamp=" + tms + "&appSecret=" + Common.GetContiappSecret();
+            string ss = "appKey=" + Common.GetContiappKey() + "&barcodes=%5B" + trCode + "%5D" + "&noise=" + Common.GetContinoise() + "&timestamp=" + tms + "&appSecret=" + Common.GetContiappSecret();
+            //MD5加密
+            using (MD5 md5Hash = MD5.Create())
+            {
+                sign = Common.GetMd5Hash(md5Hash, ss);
+            }
+            NameValueCollection nvc = new NameValueCollection();
+            nvc.Add("appKey", Common.GetContiappKey());
+            nvc.Add("noise", Common.GetContinoise());
+            nvc.Add("timestamp", tms);
+            nvc.Add("sign", sign);
+            //nvc.Add("QRcode", trCode);
+            nvc.Add("barcodes", "%5B" + trCode + "%5D");
+            string reValue = wxHttpUtility.PostForm("https://contiid.continental-tires.cn/api/2.0/TTP/getBarcodeInfo", nvc, null);
+            ArrayList GridRows = (ArrayList)JSON.Decode("[" + reValue + "]");
+            foreach (Hashtable item in GridRows)
+            {
+                //数据返回正确
+                if (Convert.ToString(item["code"]).Equals("1000"))
+                {
+                    ArrayList datalit = (ArrayList)JSON.Decode("[" + JSON.Encode(item["data"]) + "]");
+                    foreach (Hashtable ri in datalit)
+                    {
+                        ArrayList datalitt = (ArrayList)JSON.Decode("[" + JSON.Encode(ri["" + trCode + ""]) + "]");
+                        foreach (Hashtable rit in datalitt)
+                        {
+                            string[] description = Convert.ToString(rit["Description"]).Split(' ');
+                            for (int i = 2; i < description.Length; i++)
+                            {
+                                Figure += description[i];//花纹
+                            }
+                            Specs = description[0];
+                            LoadIndex = description[1].Substring(0, description[1].Length - 1);
+                            SpeedLevel = description[1].Substring(description[1].Length - 1);
+                            TyreCode = Convert.ToString(rit["barcode"]);
+                            GoodsCode = Convert.ToString(rit["material"]);
+                            if (GoodsCode.Length > 6)
+                            {
+                                GoodsCode = GoodsCode + "0000";
+                            }
+                            else if (GoodsCode.Length == 5)
+                            {
+                                GoodsCode = "0" + GoodsCode + "0000";
+                            }
+                            Batch = Convert.ToString(rit["DOT"]);
+                        }
+                    }
+                }
+                else
+                {
+                    msg.Result = false;
+                    msg.Message = Convert.ToString(item["code"]);
+                    goto ERR;
+                }
+            }
+            //二维码转条码 接口
+            //string reValue = wxHttpUtility.PostForm("https://contiid.continental-tires.cn/api/2.0/TTP/QRgetBarcode", nvc, null);
+            //string reValue = "{\"code\":1000,\"data\":{\"barcode\":\"8463495774\",\"material\":\"0356828\",\"Description\":\"225/45R17 91W SC5SSR*BMW\",\"DOT\":\"0521\",\"size\":\"17\",\"singleBrand\":\"CONTINENTAL\",\"singlebrandcode\":\"11\"}}";
+            //ArrayList GridRows = (ArrayList)JSON.Decode("[" + reValue + "]");
+            //foreach (Hashtable item in GridRows)
+            //{
+            //    //数据返回正确
+            //    if (Convert.ToString(item["code"]).Equals("1000"))
+            //    {
+            //        ArrayList datalit = (ArrayList)JSON.Decode("[" + JSON.Encode(item["data"]) + "]");
+            //        foreach (Hashtable ri in datalit)
+            //        {
+            //            string[] description = Convert.ToString(ri["Description"]).Split(' ');
+            //            for (int i = 2; i < description.Length; i++)
+            //            {
+            //                Figure += description[i];//花纹
+            //            }
+            //            Specs = description[0];
+            //            LoadIndex = description[1].Substring(0, description[1].Length - 1);
+            //            SpeedLevel = description[1].Substring(description[1].Length - 1);
+            //            TyreCode = Convert.ToString(ri["barcode"]);
+            //            GoodsCode = Convert.ToString(ri["material"]);
+            //            if (GoodsCode.Length > 6)
+            //            {
+            //                GoodsCode = GoodsCode + "0000";
+            //            }
+            //            else if (GoodsCode.Length == 5)
+            //            {
+            //                GoodsCode = "0" + GoodsCode + "0000";
+            //            }
+            //            Batch = Convert.ToString(ri["DOT"]);
+            //        }
+            //    }
+            //    else
+            //    {
+            //        msg.Result = false;
+            //        msg.Message = Convert.ToString(item["code"]);
+            //        goto ERR;
+            //    }
+            //}
+            //查询原仓库的产品信息
+            Model = Specs;
+
+            CargoProductBus bus = new CargoProductBus();
+            CargoInterfaceBus inter = new CargoInterfaceBus();
+            CargoHouseBus house = new CargoHouseBus();
+            CargoOrderBus order = new CargoOrderBus();
+            List<CargoFactoryOrderBarcodeEntity> barlist = order.QueryBarcodeInfo(new CargoFactoryOrderBarcodeEntity { Barcode = TyreCode });
+            if (barlist.Count > 0)
+            {
+                SourceOrderNo = barlist[0].VehicleNo;
+            }
+            #region 通用数据检验
+
+            if (string.IsNullOrEmpty(GoodsCode))
+            {
+                msg.Result = false;
+                msg.Message = "货品代码不能为空";
+                goto ERR;
+            }
+            if (string.IsNullOrEmpty(ContainerCode))
+            {
+                msg.Result = false;
+                msg.Message = "货位代码不能为空";
+                goto ERR;
+            }
+            if (string.IsNullOrEmpty(TagCode))
+            {
+                msg.Result = false;
+                msg.Message = "产品编码不能为空";
+                goto ERR;
+            }
+            if (string.IsNullOrEmpty(Batch))
+            {
+                msg.Result = false;
+                msg.Message = "周期批次不能为空";
+                goto ERR;
+            }
+            #endregion
+            List<CargoProductTypeEntity> ptype = bus.QueryProductType(new CargoProductTypeEntity { TypeID = TypeID, ParentID = -1 });
+            int parentID = 0;
+            if (ptype.Count > 0)
+            {
+                parentID = ptype[0].ParentID;
+            }
+            int bYear = 0, bWeek = 0, flatRadio = 0, HubDiameter = 0, TreadWidth = 0;
+            switch (parentID)
+            {
+                case 1:
+                    #region 轮胎
+                    if (string.IsNullOrEmpty(Specs))
+                    {
+                        msg.Result = false;
+                        msg.Message = "规格不能为空";
+                        goto ERR;
+                    }
+                    if (string.IsNullOrEmpty(Figure))
+                    {
+                        msg.Result = false;
+                        msg.Message = "花纹不能为空";
+                        goto ERR;
+                    }
+                    if (!Common.IsInt(LoadIndex))
+                    {
+                        msg.Result = false;
+                        msg.Message = "载重指数数据有误";
+                        goto ERR;
+                    }
+                    if (string.IsNullOrEmpty(SpeedLevel))
+                    {
+                        msg.Result = false;
+                        msg.Message = "速度级别不能为空";
+                        goto ERR;
+                    }
+                    if (Batch.Length != 4)
+                    {
+                        msg.Result = false;
+                        msg.Message = "周期批次输入有误";
+                        goto ERR;
+                    }
+                    if (!Common.IsInt(Batch))
+                    {
+                        msg.Result = false;
+                        msg.Message = "周期批次输入有误";
+                        goto ERR;
+                    }
+                    if (Batch.Length == 4)
+                    {
+                        bWeek = Convert.ToInt32(Batch.Substring(0, 2));
+                        bYear = Convert.ToInt32(Batch.Substring(2, 2));
+                    }
+                    else if (Batch.Length == 3)
+                    {
+                        bWeek = Convert.ToInt32(Batch.Substring(0, 1));
+                        bYear = Convert.ToInt32(Batch.Substring(1, 2));
+                    }
+                    string[] sp = Specs.Split('/');
+                    if (sp.Length > 1)
+                    {
+                        if (Common.IsInt(sp[0]))
+                        {
+                            TreadWidth = Convert.ToInt32(sp[0]);
+                        }
+                        string gg = Convert.ToString(sp[1]);
+                        if (Common.IsInt(gg.Substring(0, 2)))
+                        {
+                            flatRadio = Convert.ToInt32(gg.Substring(0, 2));
+                        }
+                        if (Common.IsInt(gg.Substring(3, 2)))
+                        {
+                            HubDiameter = Convert.ToInt32(gg.Substring(3, 2));
+                        }
+                        //HubDiameter = Convert.ToInt32(gg.Substring(gg.Length - 2, 2));
+                    }
+                    #endregion
+                    InCargoNum = "1";
+                    Figure = Figure.Replace(" ", "");
+                    break;
+                default:
+                    break;
+            }
+            #region 验证
+            CargoContainerEntity contain = house.QueryContainerEntityByCode(ContainerCode, HouseID);
+            if (contain == null || contain.ContainerID.Equals(0))
+            {
+                msg.Result = false;
+                msg.Message = "货位代码不存在";
+                goto ERR;
+            }
+            if (bus.IsExistCargoProductTag(new CargoProductTagEntity { TagCode = TagCode }))
+            {
+                msg.Result = false;
+                msg.Message = "已经存在相同的产品编码：" + TagCode;
+                goto ERR;
+            }
+            #endregion
+
+            #region 获取基础价格数据
+            //根据产品类型ID、规格、花纹、速度指数、载重指数、订单月
+            Decimal unitPrice = 0.00M, finalCostPrice = 0.00M, costPrice = 0.00M, taxCostPrice = 0.00M, noTaxCostPrice = 0.00M, tradePrice = 0.00M, salePrice = 0.00M;
+            string SpecsType = string.Empty;
+            if (BelongMonth.Length.Equals(6))
+            {
+                //获取单价
+                CargoFactoryOrderBus ProductUnitPrice = new CargoFactoryOrderBus();
+                CargoFactoryOrderEntity factoryOrderEntity = new CargoFactoryOrderEntity();
+                factoryOrderEntity.FacOrderNo = SourceOrderNo;
+                factoryOrderEntity.HouseID = HouseID;
+                factoryOrderEntity.TypeID = TypeID;
+                factoryOrderEntity.GoodsCode = GoodsCode;
+                CargoFactoryOrderEntity productUnitPrice = ProductUnitPrice.QueryProductUnitPrice(factoryOrderEntity);
+                if (productUnitPrice != null && productUnitPrice.ID != 0)
+                {
+                    unitPrice = Convert.ToDecimal(productUnitPrice.UnitPrice);
+                    salePrice = Convert.ToDecimal(productUnitPrice.SalePrice);
+                    tradePrice = Convert.ToDecimal(productUnitPrice.SalePrice);
+
+                    costPrice = Convert.ToDecimal(productUnitPrice.CostPrice);
+                    taxCostPrice = Convert.ToDecimal(productUnitPrice.TaxCostPrice);
+                    noTaxCostPrice = Convert.ToDecimal(productUnitPrice.NoTaxCostPrice);
+                    SpecsType = productUnitPrice.SpecsType;
+                }
+
+                //获取基础价格成本价
+                //外采订单类型不匹配基础价格
+                if (OrderType != "3")
+                {
+                    string proYear, proMonth;
+                    proYear = BelongMonth.Substring(0, 4);
+                    proMonth = BelongMonth.Substring(4, 2);
+                    CargoProductBasicPriceEntity basicPriceEntity = new CargoProductBasicPriceEntity();
+                    basicPriceEntity.HouseID = HouseID;
+                    basicPriceEntity.TypeID = TypeID;
+                    basicPriceEntity.GoodsCode = GoodsCode;
+                    basicPriceEntity.ProYear = proYear;
+                    basicPriceEntity.ProMonth = proMonth;
+                    CargoProductBasicPriceEntity basicPrice = house.QueryProductBasicPrice(basicPriceEntity);
+                    if (basicPrice != null && basicPrice.PID != 0)
+                    {
+                        finalCostPrice = Convert.ToDecimal(basicPrice.FinalCostPrice);
+                        if (costPrice.Equals(0))
+                        {
+                            costPrice = Convert.ToDecimal(basicPrice.CostPrice);
+                            taxCostPrice = Convert.ToDecimal(basicPrice.TaxCostPrice);
+                            noTaxCostPrice = Convert.ToDecimal(basicPrice.NoTaxCostPrice);
+                        }
+                        if (!basicPrice.TradePrice.Equals(0))
+                        {
+                            tradePrice = Convert.ToDecimal(basicPrice.TradePrice);
+                            salePrice = Convert.ToDecimal(basicPrice.TradePrice);
+                        }
+                    }
+                }
+            }
+            #endregion
+
+            inter.scanTagInCargo(new CargoProductEntity { ProductName = ProductName, GoodsCode = GoodsCode, HouseID = HouseID, TypeID = TypeID, Specs = Specs, Figure = Figure, Model = Model, Batch = Batch, ContainerCode = ContainerCode, TagCode = TagCode, BatchYear = bYear, BatchWeek = bWeek, InCargoID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString(), OPID = UserID, LoadIndex = LoadIndex, SpeedLevel = SpeedLevel, Meridian = "R", TreadWidth = TreadWidth, FlatRatio = flatRadio, HubDiameter = HubDiameter, InCargoStatus = "1", InHouseTime = DateTime.Now, OperaType = "1", Born = Born, Assort = Assort, TyreCode = TyreCode, Numbers = Convert.ToInt32(InCargoNum), ParentID = parentID, Source = Source, SourceOrderNo = SourceOrderNo, BelongMonth = BelongMonth, UnitPrice = unitPrice, FinalCostPrice = finalCostPrice, CostPrice = costPrice, TaxCostPrice = taxCostPrice, NoTaxCostPrice = noTaxCostPrice, TradePrice = tradePrice, SalePrice = salePrice, HLYReturnID = HLYReturnID, SpecsType = SpecsType }, log);
+        ERR:
+            //返回处理结果
+            string ress = JSON.Encode(msg);
+            Response.Write(ress);
+        }
+        public static string PostForm(string requestUri, NameValueCollection postData, CookieContainer cookie)
+        {
+            ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(CheckValidationResult);
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(requestUri);
+            request.Method = "post";
+            //request.ContentType = "application/x-www-form-urlencoded";
+            request.ContentType = "application/json;charset=UTF-8";
+
+            request.CookieContainer = cookie;
+
+            StringBuilder stringBuilder = new StringBuilder();
+            foreach (string key in postData.Keys)
+            {
+                stringBuilder.AppendFormat("&{0}={1}", key, postData.Get(key));
+            }
+            byte[] buffer = Encoding.UTF8.GetBytes(stringBuilder.ToString().Trim('&'));
+            Stream requestStream = request.GetRequestStream();
+            requestStream.Write(buffer, 0, buffer.Length);
+            requestStream.Close();
+
+            WebResponse response = request.GetResponse();
+            StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+            return reader.ReadToEnd();
+
+        }
+        private static bool CheckValidationResult(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors errors)
+        {
+            return true; //总是接受 
+        }
+        public static string PostFormMultipart(string requestUri, NameValueCollection postData, CookieContainer cookie)
+        {
+            //ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+            ////ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls;
+            //ServicePointManager.SecurityProtocol = SecurityProtocolType.Ssl3 | SecurityProtocolType.Tls;
+
+            ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(CheckValidationResult);
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+
+            string boundary = string.Format("-----{0}", DateTime.Now.Ticks.ToString("x"));
+            HttpWebRequest webrequest = (HttpWebRequest)WebRequest.Create(requestUri);
+            //webrequest.CookieContainer = cookie;
+            webrequest.Timeout = 120000;
+            webrequest.Method = "post";
+            webrequest.ContentType = string.Format("multipart/form-data; boundary={0}", boundary);
+
+            Stream requestStream = webrequest.GetRequestStream();
+            foreach (string key in postData.Keys)
+            {
+                StringBuilder strBuilder = new StringBuilder();
+                strBuilder.AppendFormat("--{0}", boundary);
+                strBuilder.AppendFormat("\r\nContent-Disposition: form-data; name=\"{0}\"", key);
+
+                if (System.IO.File.Exists(postData.Get(key)))
+                {
+                    strBuilder.AppendFormat(";filename=\"{0}\"\r\nContent-Type: multipart/form-data\r\n\r\n", Path.GetFileName(postData.Get(key)));
+                    byte[] buffer = Encoding.UTF8.GetBytes(strBuilder.ToString());
+                    requestStream.Write(buffer, 0, buffer.Length);
+                    //获取图片流
+                    FileStream fileStream = new FileStream(postData.Get(key), FileMode.Open, FileAccess.Read);
+                    BinaryReader binaryReader = new BinaryReader(fileStream);
+                    byte[] fileBuffer = binaryReader.ReadBytes((int)fileStream.Length);
+                    binaryReader.Close();
+                    fileStream.Close();
+                    requestStream.Write(fileBuffer, 0, fileBuffer.Length);
+                }
+                else
+                {
+                    strBuilder.AppendFormat("\r\n\r\n{0}\r\n", postData.Get(key));
+                    byte[] buff = Encoding.UTF8.GetBytes(strBuilder.ToString());
+                    requestStream.Write(buff, 0, buff.Length);
+                }
+            }
+
+            byte[] boundaryBuffer = Encoding.UTF8.GetBytes(string.Format("\r\n--{0}\r\n", boundary));
+            requestStream.Write(boundaryBuffer, 0, boundaryBuffer.Length);
+            requestStream.Close();
+
+            WebResponse response = webrequest.GetResponse();
+            StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8);
+            return reader.ReadToEnd();
+        }
+
+        private void dd()
+        {
+            LogEntity log = new LogEntity();
+            log.IPAddress = "";
+            log.Moudle = "服务管理";
+            log.Status = "0";
+            log.NvgPage = "定时服务";
+            log.UserID = "2029";
+            log.Operate = "A";
+
+            List<CargoMonthStatisEntity> monthStatisList = new List<CargoMonthStatisEntity>();
+            CargoHouseBus house = new CargoHouseBus();
+            //List<CargoHouseEntity> houselist = house.QueryALLHouse();
+            //湖南，湖北，广东，揭阳，广通慧采，狄乐汽服仓，华南配件仓，华南枢纽，佛山云配，中山云配
+            string houseArr = "64,65,82,84,86,87";
+            CargoLeaderCookpitEntity coo = new CargoLeaderCookpitEntity();
+            coo.StartDate = DateTime.Now.AddMonths(-1);
+            coo.EndDate = DateTime.Now.AddDays(1 - DateTime.Now.Day);
+            coo.CargoPermisID = houseArr;
+            //LogHelper.WriteLog("Begin 开始取数据");
+            monthStatisList.AddRange(queryByProductType(coo));
+            monthStatisList.AddRange(queryBySaleMan(coo));
+            monthStatisList.AddRange(queryByClient(coo));
+            //LogHelper.WriteLog("End 结束取数据");
+            CargoReportBus report = new CargoReportBus();
+            report.saveMonthStatis(monthStatisList, log);
+            //LogHelper.WriteLog("End 保存数据");
+
+            coo.StartDate = DateTime.Now.AddMonths(-3);
+            coo.EndDate = DateTime.Now.AddMonths(-2).AddDays(1 - DateTime.Now.AddMonths(-2).Day);
+            //LogHelper.WriteLog("Begin 开始取3月前数据");
+            monthStatisList.AddRange(queryByProductType(coo));
+            monthStatisList.AddRange(queryBySaleMan(coo));
+            monthStatisList.AddRange(queryByClient(coo));
+            //LogHelper.WriteLog("End 结束取3月前数据");
+            report.updateMonthStatis(monthStatisList, log);
+            //LogHelper.WriteLog("End 保存3月前数据");
+        }
+        /// <summary>
+        /// 按客户统计 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        private List<CargoMonthStatisEntity> queryByClient(CargoLeaderCookpitEntity entity)
+        {
+            List<CargoMonthStatisEntity> monthStatisList = new List<CargoMonthStatisEntity>();
+            CargoReportBus report = new CargoReportBus();
+            List<CargoLeaderCookpitEntity> saleList = report.QueryByClient(new CargoLeaderCookpitEntity
+            {
+                StartDate = entity.StartDate,
+                EndDate = entity.EndDate,
+                CargoPermisID = entity.CargoPermisID
+            });
+            if (saleList.Count > 0)
+            {
+                foreach (var it in saleList)
+                {
+                    CargoMonthStatisEntity sta = new CargoMonthStatisEntity();
+                    sta.Title = it.AcceptPeople;
+                    sta.HouseID = it.HouseID;
+                    sta.SaleNum = it.Piece;
+                    sta.SaleIncome = it.TotalCharge;
+                    sta.StatisType = "3";
+                    sta.Year = DateTime.Now.AddMonths(-1).Year;
+                    sta.Month = DateTime.Now.AddMonths(-1).Month;
+                    monthStatisList.Add(sta);
+                }
+            }
+            return monthStatisList;
+        }
+
+        /// <summary>
+        /// 按业务员统计 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        private List<CargoMonthStatisEntity> queryBySaleMan(CargoLeaderCookpitEntity entity)
+        {
+            List<CargoMonthStatisEntity> monthStatisList = new List<CargoMonthStatisEntity>();
+            CargoReportBus report = new CargoReportBus();
+            List<CargoLeaderCookpitEntity> saleList = report.QueryBySaleMan(new CargoLeaderCookpitEntity
+            {
+                StartDate = entity.StartDate,
+                EndDate = entity.EndDate,
+                CargoPermisID = entity.CargoPermisID
+            });
+            if (saleList.Count > 0)
+            {
+                foreach (var it in saleList)
+                {
+                    CargoMonthStatisEntity sta = new CargoMonthStatisEntity();
+                    sta.Title = it.SaleManName;
+                    sta.HouseID = it.HouseID;
+                    sta.SaleNum = it.Piece;
+                    sta.SaleIncome = it.TotalCharge;
+                    sta.StatisType = "2";
+                    sta.Year = DateTime.Now.AddMonths(-1).Year;
+                    sta.Month = DateTime.Now.AddMonths(-1).Month;
+                    monthStatisList.Add(sta);
+                }
+            }
+            return monthStatisList;
+        }
+        /// <summary>
+        /// 按产品类型统计 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        private List<CargoMonthStatisEntity> queryByProductType(CargoLeaderCookpitEntity entity)
+        {
+            List<CargoMonthStatisEntity> monthStatisList = new List<CargoMonthStatisEntity>();
+            CargoReportBus report = new CargoReportBus();
+            List<CargoLeaderCookpitEntity> typeList = report.QueryByProductType(new CargoLeaderCookpitEntity
+            {
+                StartDate = entity.StartDate,
+                EndDate = entity.EndDate,
+                CargoPermisID = entity.CargoPermisID
+            });
+
+            if (typeList.Count > 0)
+            {
+                foreach (var it in typeList)
+                {
+                    if (it.ParentID.Equals(20))//去掉赠品 
+                    {
+                        continue;
+                    }
+                    CargoMonthStatisEntity sta = new CargoMonthStatisEntity();
+                    sta.Title = it.TypeName;
+                    sta.HouseID = it.HouseID;
+                    sta.SaleNum = it.Piece;
+                    sta.SaleIncome = it.TotalCharge;
+                    sta.StatisType = "1";
+                    sta.Year = DateTime.Now.AddMonths(-1).Year;
+                    sta.Month = DateTime.Now.AddMonths(-1).Month;
+                    monthStatisList.Add(sta);
+                }
+
+                var total = typeList.Where(c => c.ParentID != 20).GroupBy(c => c.HouseID).Select(g => new
+                {
+                    ID = g.Key,
+                    Piece = g.Sum(c => c.Piece),
+                    TotalCharge = g.Sum(c => c.TotalCharge)
+                }).ToList();
+                foreach (var it in total)
+                {
+                    CargoMonthStatisEntity sta = new CargoMonthStatisEntity();
+                    sta.Title = "汇总";
+                    sta.HouseID = it.ID;
+                    sta.SaleNum = it.Piece;
+                    sta.SaleIncome = it.TotalCharge;
+                    sta.StatisType = "0";
+                    sta.Year = DateTime.Now.AddMonths(-1).Year;
+                    sta.Month = DateTime.Now.AddMonths(-1).Month;
+                    monthStatisList.Add(sta);
+                }
+            }
+
+            return monthStatisList;
+        }
+    }
+
+    public class TyreEntity
+    {
+        public int code { get; set; }
+        public string msg { get; set; }
+
+        public TyreData data { get; set; }
+    }
+    public class TyreData
+    {
+        public List<respdata> respdata { get; set; }
+
+    }
+    public class respdata
+    {
+        public string typeName { get; set; }
+        public string HBPrice { get; set; }
+        public string amount { get; set; }
+        public string article { get; set; }
+        public string brand { get; set; }
+        public string carType { get; set; }
+        public string clientPrice { get; set; }
+        public string commodityDetails { get; set; }
+        public string commonCarType { get; set; }
+        public string commonSpecialType { get; set; }
+        public string cuXiaoPrice { get; set; }
+        public string cxTitle { get; set; }
+        public string flagNotWebShow { get; set; }
+        public string img { get; set; }
+        public string innerCode { get; set; }
+        public string iscx { get; set; }
+        public string onlineIntegral { get; set; }
+        public string outPrice1 { get; set; }
+        public string outPrice2 { get; set; }
+        public string outPrice3 { get; set; }
+        public string outPrice4 { get; set; }
+        public string outPrice5 { get; set; }
+        public string outPrice6 { get; set; }
+        public string partCode { get; set; }
+        public string partName { get; set; }
+        public string pics { get; set; }
+        public string price { get; set; }
+        public string spec { get; set; }
+        public string specialType { get; set; }
+        public string storageAmount1 { get; set; }
+        public string storageAmount2 { get; set; }
+        public string storageIsExist { get; set; }
+        public string storageName1 { get; set; }
+        public string storageName2 { get; set; }
+        public string typeInnerCode { get; set; }
+        public string unit { get; set; }
+        public string yuanPrice { get; set; }
+    }
+
+
+    public partial class YouZanEntity
+    {
+        public string source_order_no { get; set; }
+        public string create_time { get; set; }
+        public string retail_source { get; set; }
+        public int operate_type { get; set; }
+        public string creator { get; set; }
+        public string warehouse_code { get; set; }
+        public string remark { get; set; }
+        public List<YouZanAdjustEntity> order_items { get; set; }
+
+        public long admin_id { get; set; }
+        public int page_no { get; set; }
+        public int type { get; set; }
+        public int page_size { get; set; }
+    }
+    public partial class YouZanAdjustEntity
+    {
+        public string sku_code { get; set; }
+        public string quantity { get; set; }
+        public string supplier_code { get; set; }
+    }
+}

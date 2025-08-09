@@ -1,0 +1,905 @@
+﻿using House.Entity;
+using House.Entity.Cargo;
+using House.Manager;
+using House.Manager.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Transactions;
+
+namespace House.Business.Cargo
+{
+    /// <summary>
+    /// 静态数据操作逻辑类
+    /// </summary>
+    public class CargoStaticBus
+    {
+        private CargoStaticManager man = new CargoStaticManager();
+        #region 城市界面操作方法集合
+        /// <summary>
+        /// 删除城市
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void DelCity(List<CargoCityManagerEntity> entity, LogEntity log)
+        {
+
+            LogWrite<CargoCityManagerEntity> lw = new LogWrite<CargoCityManagerEntity>();
+            try
+            {
+                man.DelCity(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "作废城市：城市ID：" + it.CID.ToString() + "，城市名称：" + it.CityName.Trim() + "，操作时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "作废城市，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 新增城市
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCity(CargoCityManagerEntity entity, LogEntity log)
+        {
+
+            LogWrite<CargoCityManagerEntity> lw = new LogWrite<CargoCityManagerEntity>();
+            try
+            {
+                man.AddCity(entity);
+                log.Memo = "新增城市";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增城市，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 修改城市
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCity(CargoCityManagerEntity entity, LogEntity log)
+        {
+
+            LogWrite<CargoCityManagerEntity> lw = new LogWrite<CargoCityManagerEntity>();
+            try
+            {
+                man.UpdateCity(entity);
+                log.Memo = "修改城市";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改城市，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 查询城市
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryCity(int pIndex, int pNum, CargoCityManagerEntity entity)
+        {
+
+            return man.QueryCity(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询所有城市数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoCityManagerEntity> QueryAllCity(CargoCityManagerEntity entity)
+        {
+
+            return man.QueryAllCity(entity);
+        }
+        /// <summary>
+        /// 判断城市是否存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCity(CargoCityManagerEntity entity)
+        {
+
+            return man.IsExistCity(entity);
+        }
+        #endregion
+        #region 物流公司操作方法集合
+        /// <summary>
+        /// 作废物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelLogistic(List<CargoLogisticEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoLogisticEntity> lw = new LogWrite<CargoLogisticEntity>();
+            try
+            {
+                man.DelLogistic(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "作废物流公司：ID：" + it.ID.ToString() + "，物流公司名称：" + it.LogisticName.Trim() + "，操作时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "作废物流公司，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 新增物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddLogistic(CargoLogisticEntity entity, LogEntity log)
+        {
+            LogWrite<CargoLogisticEntity> lw = new LogWrite<CargoLogisticEntity>();
+            try
+            {
+                man.AddLogistic(entity);
+                log.Memo = "新增物流公司";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增物流公司，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+
+        }
+        /// <summary>
+        /// 修改物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateLogistic(CargoLogisticEntity entity, LogEntity log)
+        {
+            LogWrite<CargoLogisticEntity> lw = new LogWrite<CargoLogisticEntity>();
+            try
+            {
+                man.UpdateLogistic(entity);
+                log.Memo = "修改物流公司";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改物流公司，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 查询物流公司
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryLogistic(int pIndex, int pNum, CargoLogisticEntity entity)
+        {
+            return man.QueryLogistic(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 判断物流公司是否存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistLogistic(CargoLogisticEntity entity)
+        {
+            return man.IsExistLogistic(entity);
+        }
+        /// <summary>
+        /// 查询所有的物流公司数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoLogisticEntity> QueryAllLogistic(CargoLogisticEntity entity)
+        {
+            return man.QueryAllLogistic(entity);
+        }
+        #endregion
+        #region 会计科目操作方法集合
+        public Hashtable QueryFinance(int pIndex, int pNum, FinanceSubjectEntity entity)
+        {
+            return man.QueryFinance(pIndex, pNum, entity);
+        }
+        public List<FinanceSubjectEntity> QueryAllZeroSubject(int ZID)
+        {
+            return man.QueryAllZeroSubject(ZID);
+        }
+        public List<FinanceSubjectEntity> QueryAllFirstSubject(int ZID)
+        {
+            return man.QueryAllFirstSubject(ZID);
+        }
+        public List<FinanceSubjectEntity> QueryAllSecondSubject(int FID)
+        {
+            return man.QueryAllSecondSubject(FID);
+        }
+
+        public void InsertFinanceData(FinanceSubjectEntity entity, LogEntity log)
+        {
+            LogWrite<FinanceSubjectEntity> lw = new LogWrite<FinanceSubjectEntity>();
+            try
+            {
+                man.InsertFinanceData(entity);
+                log.Memo = "新增会计科目数据";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增会计科目数据，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public void UpdateFinanceData(FinanceSubjectEntity entity, LogEntity log)
+        {
+            //using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            //{
+            LogWrite<FinanceSubjectEntity> lw = new LogWrite<FinanceSubjectEntity>();
+            try
+            {
+                man.UpdateFinanceData(entity);
+                log.Memo = "修改会计科目数据";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改会计科目数据，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+            //}
+        }
+
+        public void DeleteFinanceData(List<FinanceSubjectEntity> entity, LogEntity log)
+        {
+
+            LogWrite<FinanceSubjectEntity> lw = new LogWrite<FinanceSubjectEntity>();
+            try
+            {
+                man.DeleteFinanceData(entity);
+                foreach (var it in entity)
+                {
+                    string logStr = "";
+                    if (it.SID != 0)
+                    {
+                        logStr = "删除会计科目数据：一级科目ID：" + it.ZID.ToString() + "，一级科目名称：" + it.ZName.ToString() + ",二级科目ID：" + it.FID.ToString() + "，二级科目名称：" + it.ZName.ToString() + ",三级科目ID：" + it.SID.ToString() + "，三级科目名称：" + it.SName.ToString() + "，操作时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    }
+                    else if (it.SID != 0)
+                    {
+
+                        logStr = "删除会计科目数据：一级科目ID：" + it.ZID.ToString() + "，一级科目名称：" + it.ZName.ToString() + ",二级科目ID：" + it.FID.ToString() + "，二级科目名称：" + it.ZName.ToString() + it.SName.ToString() + "，操作时间：" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    }
+                    log.Memo = logStr;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除会计科目数据，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+
+        public bool IsExistFinance(string Name, string Type)
+        {
+            return man.IsExistFinance(Name, Type);
+        }
+        #endregion
+        #region 申请审批操作方法集合
+        /// <summary>
+        /// 查询我的申请
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryMyApplication(int pIndex, int pNum, CargoApproveEntity entity)
+        {
+            return man.QueryMyApplication(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询到我的审批的所有申请
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryMyCheck(int pIndex, int pNum, CargoApproveEntity entity)
+        {
+            return man.QueryMyCheck(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询申请
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoApproveEntity QueryApproveEntity(CargoApproveEntity entity)
+        {
+            return man.QueryApproveEntity(entity);
+        }
+        /// <summary>
+        /// 删除 我的申请
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelMyApprove(List<CargoApproveEntity> list, LogEntity log)
+        {
+            LogWrite<CargoApproveEntity> lw = new LogWrite<CargoApproveEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var entity in list)
+                    {
+                        //1.删除我的申请表
+                        man.DelMyApprove(entity);
+                        //2.删除申请关联数据表
+                        man.DelApproveRelate(new CargoApproveRelateEntity { ApproveID = entity.ID, ApplyType = entity.ApplyType });
+                        //3.删除申请文件表
+                        man.DelApproveFile(new CargoApproveFileEntity { ApproveID = entity.ID });
+                        //4.删除 路线图表
+                        man.DelApproveRout(new CargoExpenseApproveRoutEntity { ExID = entity.ID, ApproveType = entity.ApplyType });
+                        //5.删除审批关联表
+                        man.DelApproveCheck(new CargoApproveCheckEntity { ApproveID = entity.ID, ApproveType = entity.ApplyType });
+                        //6.写日志
+                        log.Memo = "删除申请单：ID：" + entity.ID.ToString() + "，标题：" + entity.Title + "，申请人：" + entity.ApplyName + ",申请类型：" + entity.ApplyType;
+                        lw.WriteLog(log);
+                    }
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除申请单，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+                scope.Complete();
+            }
+        }
+        public void DelApproveFile(CargoApproveFileEntity entity, LogEntity log)
+        {
+            LogWrite<CargoApproveFileEntity> lw = new LogWrite<CargoApproveFileEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    //1.删除我的申请表
+                    man.DelApproveFile(entity);
+                    //6.写日志
+                    log.Memo = "删除申请单文件：ID：" + entity.ID.ToString() + ",文件名：" + entity.FileName;
+                    lw.WriteLog(log);
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除申请单文件，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+                scope.Complete();
+            }
+        }
+        /// <summary>
+        /// 保存申请新增申请
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public long AddApplication(CargoApproveEntity entity, LogEntity log)
+        {
+            long exid = 0;
+            CargoFinanceBus fb = new CargoFinanceBus();
+            LogWrite<CargoApproveEntity> lw = new LogWrite<CargoApproveEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                entity.EnSafe();
+                try
+                {
+                    //1.保存申请单和关联数据
+                    exid = man.AddApplication(entity);
+                    //2.保存上传文件图片数据
+                    if (entity.FileList != null)
+                    {
+                        foreach (var f in entity.FileList)
+                        {
+                            f.ApproveID = exid;
+                            man.AddApproveFile(f);
+                        }
+                    }
+                    //3.保存申请路线图
+                    CargoExpenseApproveRoutEntity approveRoute = new CargoExpenseApproveRoutEntity();
+                    approveRoute.ExID = exid;
+                    approveRoute.UserID = entity.ApplyID;
+                    approveRoute.UserName = entity.ApplyName;
+                    approveRoute.Opera = "3";//提交申请
+                    approveRoute.Result = entity.Memo;
+                    //approveRoute.ApproveType = "2";
+                    approveRoute.ApproveType = entity.ApplyType;
+                    fb.AddExpenseApproveRout(approveRoute);
+                    switch (entity.ApplyType)
+                    {
+                        case "4":
+                            log.Memo = "新增申请单成功,申请人:" + entity.ApplyName + ",申请标题:" + entity.Title + ",申请内容:" + entity.Memo + ",流程ID:" + entity.AppSetID + ",下一审批人:" + entity.NextCheckName + ",审批状态:" + entity.ApplyStatus + ",申请类型:" + entity.ApplyType + ",加班开始时间:" + entity.OStartTime.ToString("yyyy-MM-dd HH:mm") + ",加班结束时间:" + entity.OEndTime.ToString("yyyy-MM-dd HH:mm") + ",加班时长：" + entity.OTime.ToString("F2");
+                            break;
+                        case "2":
+                            log.Memo = "新增申请单成功,申请人:" + entity.ApplyName + ",申请标题:" + entity.Title + ",申请内容:" + entity.Memo + ",流程ID:" + entity.AppSetID + ",下一审批人:" + entity.NextCheckName + ",审批状态:" + entity.ApplyStatus + ",申请类型:" + entity.ApplyType + ",所属仓库:" + entity.HouseID.ToString() + ",外调仓库:" + entity.ThrowHouseName + ",客户ID：" + entity.ClientID.ToString();
+                            break;
+                        case "8":
+                            log.Memo = "新增申请单成功,申请人:" + entity.ApplyName + ",申请标题:" + entity.Title + ",申请内容:" + entity.Memo + ",流程ID:" + entity.AppSetID + ",下一审批人:" + entity.NextCheckName + ",审批状态:" + entity.ApplyStatus + ",申请类型:" + entity.ApplyType;
+                            break;
+                        case "15":
+                            log.Memo = "新增申请单成功,申请人:" + entity.ApplyName + ",申请标题:" + entity.Title + ",申请内容:" + entity.Memo + ",流程ID:" + entity.AppSetID + ",下一审批人:" + entity.NextCheckName + ",审批状态:" + entity.ApplyStatus + ",申请类型:" + entity.ApplyType;
+                            break;
+                        default:
+                            break;
+                    }
+
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增申请单失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+            return exid;
+        }
+        /// <summary>
+        /// 修改申请
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateApplication(CargoApproveEntity entity, LogEntity log)
+        {
+            CargoFinanceBus fb = new CargoFinanceBus();
+            LogWrite<CargoApproveEntity> lw = new LogWrite<CargoApproveEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                entity.EnSafe();
+                try
+                {
+                    //1.保存申请单和关联数据
+                    man.UpdateApplication(entity);
+                    //2.保存上传文件图片数据
+                    man.DelApproveFile(new CargoApproveFileEntity { ApproveID = entity.ID });
+                    foreach (var f in entity.FileList)
+                    {
+                        man.AddApproveFile(f);
+                    }
+                    //3.保存申请路线图
+                    CargoExpenseApproveRoutEntity approveRoute = new CargoExpenseApproveRoutEntity();
+                    approveRoute.ExID = entity.ID;
+                    approveRoute.UserID = entity.ApplyID;
+                    approveRoute.UserName = entity.ApplyName;
+                    approveRoute.Opera = "3";//提交申请
+                    approveRoute.Result = entity.Memo;
+                    approveRoute.ApproveType = entity.ApplyType;
+                    fb.AddExpenseApproveRout(approveRoute);
+                    log.Memo = "修改申请单成功,申请人:" + entity.ApplyName + ",申请标题:" + entity.Title + ",申请内容:" + entity.Memo + ",流程ID:" + entity.AppSetID + ",下一审批人:" + entity.NextCheckName + ",审批状态:" + entity.ApplyStatus + ",申请类型:" + entity.ApplyType + ",所属仓库:" + entity.HouseID.ToString() + ",外调仓库:" + entity.ThrowHouseName + ",客户ID：" + entity.ClientID.ToString();
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增申请单失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 查询轮胎外调关联数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoApproveRelateEntity> QueryApproveContainerGoodRelateList(CargoApproveRelateEntity entity)
+        {
+            return man.QueryApproveContainerGoodRelateList(entity);
+        }
+        /// <summary>
+        /// 单表获取申请关联数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoApproveRelateEntity> QueryApproveThrowRelateList(CargoApproveRelateEntity entity)
+        {
+            return man.QueryApproveThrowRelateList(entity);
+        }
+        /// <summary>
+        /// 通过审批和拒审申请单 
+        /// </summary>
+        /// <param name="list"></param>
+        /// <param name="ty"></param>
+        /// <param name="log"></param>
+        public void setApplicationCheck(List<CargoApproveEntity> list, int ty, LogEntity log)
+        {
+            CargoFinanceManager fm = new CargoFinanceManager();
+            LogWrite<CargoApproveEntity> lw = new LogWrite<CargoApproveEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    if (ty.Equals(0))//通过
+                    {
+                        foreach (var it in list)
+                        {
+                            it.EnSafe();
+                            //修改申请的审批状态
+                            man.UpdateApplicationStatus(it);
+
+                            //增加申请审批路线
+                            fm.AddExpenseApproveRout(new CargoExpenseApproveRoutEntity
+                            {
+                                ExID = it.ID,
+                                UserID = it.CurrID,//当前操作人ID
+                                UserName = it.CurrName,//当前操作人姓名
+                                Opera = "0",
+                                ApproveType = it.ApplyType,
+                                Result = it.DenyReason
+                            });
+                            //审批结束则直接到出纳
+                            if (it.ApplyStatus.Equals("3"))
+                            {
+                                //增加申请审批路线
+                                fm.AddExpenseApproveRout(new CargoExpenseApproveRoutEntity
+                                {
+                                    ExID = it.ID,
+                                    UserID = it.CurrID,//当前操作人ID
+                                    UserName = it.CurrName,//当前操作人姓名
+                                    Opera = "2",//审批路线为结束
+                                    ApproveType = it.ApplyType,
+                                    Result = it.DenyReason
+                                });
+                            }
+                            //添加申请单与审批人关系数据
+                            if (!fm.IsExistApproveCheck(new CargoApproveCheckEntity { ApproveID = it.ID, CheckUserID = it.CurrID, CheckType = "0", ApproveType = it.ApplyType }))
+                            {
+                                fm.AddApproveCheck(new CargoApproveCheckEntity
+                                {
+                                    ApproveID = it.ID,
+                                    CheckUserID = it.CurrID,
+                                    CheckName = it.CurrName,
+                                    CheckType = "0",
+                                    ReadStatus = "1",
+                                    ApproveType = it.ApplyType
+                                });
+                            }
+                            log.Memo += "申请单号：" + it.ID.ToString() + ",审批人：" + it.CurrID + ",审批人姓名：" + it.CurrName + ",申请标题:" + it.Title + ",申请人:" + it.ApplyName;
+                        }
+                    }
+                    else
+                    {
+                        foreach (var it in list)
+                        {
+                            it.EnSafe();
+                            //拒审4.增加审批路线
+                            fm.AddExpenseApproveRout(new CargoExpenseApproveRoutEntity
+                            {
+                                ExID = it.ID,
+                                UserID = it.CurrID,//当前操作人ID
+                                UserName = it.CurrName,//当前操作人姓名
+                                Opera = "1",
+                                ApproveType = it.ApplyType,
+                                Result = it.DenyReason
+                            });
+                            //5.添加申请单与审批人关系数据
+                            if (!fm.IsExistApproveCheck(new CargoApproveCheckEntity { ApproveID = it.ID, CheckUserID = it.CurrID, CheckType = "0", ApproveType = it.ApplyType }))
+                            {
+                                fm.AddApproveCheck(new CargoApproveCheckEntity
+                                {
+                                    ApproveID = it.ID,
+                                    CheckUserID = it.CurrID,
+                                    CheckName = it.CurrName,
+                                    CheckType = "0",
+                                    ReadStatus = "1",
+                                    ApproveType = it.ApplyType
+                                });
+                            }
+                            log.Memo += "申请单号：" + it.ID.ToString() + ",审批人：" + it.CurrID + ",审批人姓名：" + it.CurrName + ",申请标题:" + it.Title + ",申请人:" + it.ApplyName;
+                            //6.修改申请数据
+                            it.CurrID = it.ApplyID;
+                            it.CurrName = it.ApplyName;
+                            it.NextCheckID = "";
+                            it.NextCheckName = "";
+                            it.ApplyStatus = "2";
+                            man.UpdateApplicationStatus(it);
+                        }
+                    }
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "操作申请单失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        #endregion
+        #region 微信推送操作方法集合
+        /// <summary>
+        /// 新增要推送的数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddPushData(CargoPushDataEntity entity, LogEntity log)
+        {
+            LogWrite<CargoPushDataEntity> lw = new LogWrite<CargoPushDataEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddPushData(entity);
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改推送状态
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdatePushStatus(CargoPushDataEntity entity, LogEntity log)
+        {
+            LogWrite<CargoPushDataEntity> lw = new LogWrite<CargoPushDataEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdatePushStatus(entity);
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "更新失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询待推送的数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoPushDataEntity> QueryPushData(CargoPushDataEntity entity)
+        {
+            return man.QueryPushData(entity);
+        }
+        #endregion
+        #region 公告管理操作方法集合
+        /// <summary>
+        /// 删除公告
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoNotice(List<CargoNoticeEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoNoticeEntity> lw = new LogWrite<CargoNoticeEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelCargoNotice(entity);
+                    log.Memo = "作废公告";
+                    foreach (var it in entity)
+                    {
+                        log.Memo += " 标题：" + it.Title + ",ID：" + it.ID.ToString() + ",公告类型：" + it.NoticeType + "所属仓库 :" + it.HouseName;
+                    }
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询公告
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryCargoNotice(int pIndex, int pNum, CargoNoticeEntity entity)
+        {
+            return man.QueryCargoNotice(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 新增公告
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddNotice(CargoNoticeEntity entity, LogEntity log)
+        {
+            LogWrite<CargoNoticeEntity> lw = new LogWrite<CargoNoticeEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddNotice(entity);
+                    log.Memo = "新增公告 标题：" + entity.Title + ",公告类型：" + entity.NoticeType + "所属仓库 :" + entity.HouseID.ToString() + ",公告内容：" + entity.Memo;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改公告
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateNotice(CargoNoticeEntity entity, LogEntity log)
+        {
+            LogWrite<CargoNoticeEntity> lw = new LogWrite<CargoNoticeEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateNotice(entity);
+                    log.Memo = "修改公告 标题：" + entity.Title + ",公告类型：" + entity.NoticeType + "所属仓库 :" + entity.HouseID.ToString() + ",公告内容：" + entity.Memo;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+
+        public void UpdateNoticeReadStatus(CargoNoticeEntity entity)
+        {
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateNoticeReadStatus(entity);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询公告
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoNoticeEntity QueryNoticeByID(CargoNoticeEntity entity)
+        {
+            return man.QueryNoticeByID(entity);
+        }
+        /// <summary>
+        /// 查询公告用以APP首页显示
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<APPCargoNoticeEntity> QueryNoticeForAPP(CargoNoticeEntity entity)
+        {
+            return man.QueryNoticeForAPP(entity);
+        }
+        #endregion
+        #region 物流订阅操作方法集合
+        public void DelHouseLogisPoll(List<CargoHouseLogisPollEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoHouseLogisPollEntity> lw = new LogWrite<CargoHouseLogisPollEntity>();
+            try
+            {
+                man.DelHouseLogisPoll(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "作废订阅物流公司：ID：" + it.ID.ToString() + "，物流公司名称：" + it.LogisticName.Trim() + "，所属仓库：" + it.HouseName;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        public bool IsExistHouseLogisPoll(CargoHouseLogisPollEntity entity)
+        {
+            return man.IsExistHouseLogisPoll(entity);
+        }
+        public Hashtable QueryHouseLogisPoll(int pIndex, int pNum, CargoHouseLogisPollEntity entity)
+        {
+            return man.QueryHouseLogisPoll(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 新增订阅物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddHouseLogisPoll(CargoHouseLogisPollEntity entity, LogEntity log)
+        {
+            LogWrite<CargoHouseLogisPollEntity> lw = new LogWrite<CargoHouseLogisPollEntity>();
+            try
+            {
+                man.AddHouseLogisPoll(entity);
+                log.Memo = "新增物流公司订阅";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+
+        }
+        /// <summary>
+        /// 修改订阅物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateHouseLogisPoll(CargoHouseLogisPollEntity entity, LogEntity log)
+        {
+            LogWrite<CargoHouseLogisPollEntity> lw = new LogWrite<CargoHouseLogisPollEntity>();
+            try
+            {
+                man.UpdateHouseLogisPoll(entity);
+                log.Memo = "修改物流公司订阅";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        #endregion
+    }
+}

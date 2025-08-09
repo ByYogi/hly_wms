@@ -1,0 +1,104 @@
+﻿using House.Business.Cargo;
+using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.QY
+{
+    public partial class qyApplicationCheck : QYBasePage
+    {
+        public long ApproveID = 0;
+        public CargoApproveEntity approveEntity;
+        public string WXORDER = string.Empty;
+        public string IsCheck = string.Empty;
+        public string ty = string.Empty;
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                ApproveID = Convert.ToInt64(Request["ApproveID"]);
+                //测试
+                //ApproveID = 227;
+                if (ApproveID.Equals(0)) { return; }
+                ty = Convert.ToString(Request["ty"]);
+                CargoStaticBus obj = new CargoStaticBus();
+                approveEntity = obj.QueryApproveEntity(new CargoApproveEntity { ID = ApproveID });
+                if (!QyUserInfo.CheckRole.Contains(approveEntity.NextCheckID))
+                {
+                    IsCheck = "0";
+                }
+                string ltlApp = string.Empty;
+                switch (approveEntity.ApplyType)
+                {
+                    case "4":
+                        WXORDER = "加班申请审批";
+                        ltlApp += "<dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">加班事由：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.Memo + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">加班时间：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.OStartTime.ToString("MM-dd HH:mm") + "---" + approveEntity.OEndTime.ToString("MM-dd HH:mm") + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">加班时长：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.OTime.ToString("F1") + "小时</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请人：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.ApplyName + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请时间：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.ApplyDate.ToString("yyyy-MM-dd HH:mm:ss") + "</dd></dl>";
+                        break;
+                    case "8":
+                        WXORDER = "客户资料审批";
+                        ltlApp += "<dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请标题：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.Title + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请人：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.ApplyName + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请时间：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.ApplyDate.ToString("yyyy-MM-dd HH:mm:ss") + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请额度：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.LimitMoney.ToString("F2") + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请内容：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.Memo + "</dd></dl>";
+                        break;
+                    case "15":
+                        WXORDER = "优惠券申请审批";
+                        ltlApp += "<dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请标题：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.Title + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请人：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.ApplyName + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请时间：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.ApplyDate.ToString("yyyy-MM-dd HH:mm:ss") + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">客户姓名：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.ClientName + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请金额：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.LimitMoney.ToString("F2") + "</dd></dl><dl class=\"weui-pay-line\"><dt class=\"weui-pay-label\">申请内容：</dt><dd class=\"weui-pay-e\" style=\"font-weight: bold;\">" + approveEntity.Memo + "</dd></dl>";
+                        break;
+                    default:
+                        break;
+                }
+                ltlApprove.Text = ltlApp;
+                //关联附件
+                if (approveEntity.FileList != null)
+                {
+                    if (approveEntity.FileList.Count > 0)
+                    {
+                        string file = "<h4 style=\"color:#FF8247;padding-left:5px;\">关联附件</h4><div class=\"weui-cells\" style=\"font-size:13px;\">";
+                        foreach (var it in approveEntity.FileList)
+                        {
+                            string ftype = string.Empty;
+                            switch (it.FileType)
+                            {
+                                case "0": ftype = "身份证正面"; break;
+                                case "1": ftype = "身份证反面"; break;
+                                case "2": ftype = "营业执照"; break;
+                                case "3": ftype = "签订合同"; break;
+                                case "4": ftype = "门头照片"; break;
+                                default:
+                                    break;
+                            }
+                            file += "<a href=" + it.FilePath + " class=\"weui-cell weui-cell_access\" ><div class=\"weui-cell__bd\"><p>" + ftype + "</p></div><div class=\"weui-cell__ft\">" + it.FileName + "</div></a>";
+                        }
+                        file += "</div>";
+                        ltlFile.Text = file;
+                    }
+                }
+                //审批流程
+                CargoFinanceBus f = new CargoFinanceBus();
+                List<CargoExpenseApproveRoutEntity> result = f.QueryExpenseRout(new CargoExpenseApproveRoutEntity { ExID = ApproveID, ApproveType = approveEntity.ApplyType });
+                string res = "<h4 style=\"color:#49b348;padding-left:5px;\">审批流程</h4><ul class=\"weui-comment\">";
+                if (result.Count > 0)
+                {
+                    foreach (var it in result)
+                    {
+                        string opera = string.Empty;
+                        switch (it.Opera)
+                        {
+                            case "0": opera = "<span class=\"mui-h5\">通过</span>"; break;
+                            case "1": opera = "<span class=\"mui-h5\">拒审</span>"; break;
+                            case "2": opera = "<span class=\"mui-h5\">结束</span>"; break;
+                            case "3": opera = "<span class=\"mui-h5\">提交申请</span>"; break;
+                            case "5": opera = "<span class=\"mui-h5\" style=\"color:#8ec160\">评论</span>"; break;
+                            default: break;
+                        }
+                        res += "<li class=\"weui-comment-item\" style=\"padding-left:10px;border-bottom:1px solid #f5f5f5\"><div class=\"weui-comment-li\"><span class=\"check\" style=\"font-size:12px;padding-right:30px;\">" + opera + "</span></div><div class=\"userinfo\"><strong class=\"nickname\" style=\"font-size:12px;\">" + it.UserName + "</strong></div><div class=\"weui-comment-msg\" style=\"color:#727272;font-size:14px;\">" + it.Result + "</div><p class=\"time\">" + it.OperaDate.ToString("yyyy-MM-dd HH:mm:ss") + "</p></li>";
+                    }
+                }
+                res += "</ul>";
+                ltlRoute.Text = res;
+            }
+        }
+    }
+}

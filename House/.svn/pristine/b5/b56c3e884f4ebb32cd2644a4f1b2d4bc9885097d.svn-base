@@ -1,0 +1,258 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo.Product
+{
+    /// <summary>
+    /// 产品规格数据表
+    /// </summary>
+    [Serializable]
+    public class CargoProductSpecEntity
+    {
+        [Description("表主键")]
+        public Int64 SID { get; set; }
+
+        [Description("产品编码")]
+        public string ProductCode { get; set; }
+        [Description("产品类型ID")]
+        public int TypeID { get; set; }
+        /// <summary>
+        /// 型号
+        /// </summary>
+        [Description("型号")]
+        public string Model { get; set; }
+        /// <summary>
+        /// 货品代码
+        /// </summary>
+        [Description("货品代码")]
+        public string GoodsCode { get; set; }
+        /// <summary>
+        /// 规格
+        /// </summary>
+        [Description("规格")]
+        public string Specs { get; set; }
+        /// <summary>
+        /// 轮胎花纹
+        /// </summary>
+        [Description("轮胎花纹")]
+        public string Figure { get; set; }
+        /// <summary>
+        /// 胎面宽度
+        /// </summary>
+        [Description("胎面宽度")]
+        public int TreadWidth { get; set; }
+        /// <summary>
+        /// 轮胎扁平比
+        /// </summary>
+        [Description("轮胎扁平比")]
+        public int FlatRatio { get; set; }
+        /// <summary>
+        /// 轮毂直径
+        /// </summary>
+        [Description("轮毂直径")]
+        public int HubDiameter { get; set; }
+        /// <summary>
+        /// 载重指数
+        /// </summary>
+        [Description("载重指数")]
+        public string LoadIndex { get; set; }
+        /// <summary>
+        /// 速度级别
+        /// </summary>
+        [Description("速度级别")]
+        public string SpeedLevel { get; set; }
+        /// <summary>
+        /// 生产地
+        /// </summary>
+        [Description("生产地")]
+        public int Born { get; set; }
+        /// <summary>
+        /// OE RE胎
+        /// </summary>
+        [Description("OE RE胎")]
+        public string Assort { get; set; }
+        /// <summary>
+        /// 常用规格
+        /// </summary>
+        [Description("常用规格")]
+        public int CommType { get; set; }
+        /// <summary>
+        /// 缩略图
+        /// </summary>
+        [Description("缩略图")]
+        public string Thumbnail { get; set; }
+        /// <summary>
+        /// 详情图
+        /// </summary>
+        [Description("详情图")]
+        public string DetailDrawing { get; set; }
+        /// <summary>
+        /// 产品名称
+        /// </summary>
+        [Description("产品名称")]
+        public string ProductName { get; set; }
+        /// <summary>
+        /// 适配车型
+        /// </summary>
+        [Description("适配车型")]
+        public string CarModel { get; set; }
+        /// <summary>
+        /// 制造商
+        /// </summary>
+        [Description("制造商")]
+        public string Manufacturer { get; set; }
+        /// <summary>
+        /// 制造商地址
+        /// </summary>
+        [Description("制造商地址")]
+        public string ManufacturerAddress { get; set; }
+        /// <summary>
+        /// 销售商
+        /// </summary>
+        [Description("销售商")]
+        public string Seller { get; set; }
+        /// <summary>
+        /// 销售商地址
+        /// </summary>
+        [Description("销售商地址")]
+        public string SellerAddress { get; set; }
+        /// <summary>
+        /// 服务商
+        /// </summary>
+        [Description("服务商")]
+        public string Servicer { get; set; }
+        /// <summary>
+        /// 服务商地址
+        /// </summary>
+        [Description("服务商地址")]
+        public string ServicerAddress { get; set; }
+        /// <summary>
+        /// 上游公司ID
+        /// </summary>
+        [Description("上游公司ID")]
+        public int UpClientID { get; set; }
+        /// <summary>
+        /// 上游公司简称
+        /// </summary>
+        [Description("上游公司简称")]
+        public string UpClientShortName { get; set; }
+        /// <summary>
+        /// 品牌代码
+        /// </summary>
+        [Description("品牌代码")]
+        public string BrandCode { get; set; }
+        /// <summary>
+        /// 轮胎类型
+        /// </summary>
+        [Description("轮胎类型")]
+        public int TyreType { get; set; }
+        /// <summary>
+        /// 产品单位
+        /// </summary>
+        public string ProductUnit { get; set; }
+        /// <summary>
+        /// 捆包数量
+        /// </summary>
+        public int BundleNum { get; set; }
+
+        #region 用于返回
+        public string LoadSpeed { get; set; }//载数（载重+速度）
+        public string TypeName { get; set; }//品牌名称
+
+        #endregion
+    }
+    [Serializable]
+    public class CargoSupplierProductPrice
+    {
+        /// <summary>
+        /// 产品规格表ID
+        /// </summary>
+        public Int64 SID { get; set; }
+        /// <summary>
+        /// 产品类型
+        /// </summary>
+        public int TypeID { get; set; }
+        /// <summary>
+        /// 产品编码
+        /// </summary>
+        public string ProductCode { get; set; }
+        /// <summary>
+        /// 仓库ID
+        /// </summary>
+        public int HouseID { get; set; }
+        /// <summary>
+        /// 供应商ID
+        /// </summary>
+        public int SupplierID { get; set; }
+        /// <summary>
+        /// 供应商编码
+        /// </summary>
+        public int SupplierNum { get; set; }
+        /// <summary>
+        /// 单价
+        /// </summary>
+        public decimal UnitPrice { get; set; }
+        /// <summary>
+        /// 删除标识
+        /// </summary>
+        public int DelFlag { get; set; }
+    }
+
+    /// <summary>
+    /// 基础数据绑定数据实体
+    /// </summary>
+    [Serializable]
+    public class CargoProductMappingEntity
+    { 
+        public long MID { get; set; }
+        public string ProductCode { get; set; }
+        public string CassCode { get; set; }
+        public string CorpClass { get; set; }
+        public string ShareCode { get; set;}
+        public int TypeID { get; set; }
+        public string TypeName { get; set; }
+        /// <summary>
+        /// 型号
+        /// </summary>
+        public string Model { get; set; }
+        /// <summary>
+        /// 货品代码
+        /// </summary>
+        public string GoodsCode { get; set; }
+        /// <summary>
+        /// 规格
+        /// </summary>
+        public string Specs { get; set; }
+        /// <summary>
+        /// 轮胎花纹
+        /// </summary>
+        public string Figure { get; set; }
+        public string LoadIndex { get; set; }
+        /// <summary>
+        /// 速度级别
+        /// </summary>
+        public string SpeedLevel { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

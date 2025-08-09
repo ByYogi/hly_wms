@@ -1,0 +1,253 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Security.AccessControl;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Report
+{
+    public partial class reportAgeingDetail : BasePage
+    {
+        public List<CargoReportAgeingEntity> OrderReportAgeingExport
+        {
+            get
+            {
+                if (Session["OrderReportAgeingExport"] == null)
+                {
+                    Session["OrderReportAgeingExport"] = new List<CargoReportAgeingEntity>();
+                }
+                return (List<CargoReportAgeingEntity>)(Session["OrderReportAgeingExport"]);
+            }
+            set
+            {
+                Session["OrderReportAgeingExport"] = value;
+            }
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (OrderReportAgeingExport.Count <= 0) { return; }
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("出库仓库", typeof(string));
+            table.Columns.Add("订单号", typeof(string));
+            table.Columns.Add("省", typeof(string));
+            table.Columns.Add("市", typeof(string));
+            table.Columns.Add("店代码", typeof(string));
+            table.Columns.Add("数量", typeof(int));
+            table.Columns.Add("线路", typeof(string));
+            table.Columns.Add("客户名称", typeof(string));
+            table.Columns.Add("订单状态", typeof(string));
+            table.Columns.Add("签收照片", typeof(string));
+            table.Columns.Add("开单时间", typeof(string));
+            table.Columns.Add("出库时间", typeof(string));
+            table.Columns.Add("出库时效(小时)", typeof(string));
+            table.Columns.Add("接单时间", typeof(string));
+            table.Columns.Add("发车时间", typeof(string));
+            table.Columns.Add("签收时间", typeof(string));
+            table.Columns.Add("开单签收时效(小时)", typeof(string));
+            table.Columns.Add("出库签收时效(小时)", typeof(string));
+            //table.Columns.Add("签收类型", typeof(string));
+
+            int i = 0;
+            foreach (var it in OrderReportAgeingExport)
+            {
+                string signimagestr = "";
+                if (it.AwbStatus.Equals("5"))
+                {
+                    signimagestr = "无照片";
+                    if (!string.IsNullOrEmpty(it.SignImage))
+                    {
+                        signimagestr = "有照片";
+                    }
+                }
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["出库仓库"] = it.OutHouseName;
+                newRows["订单号"] = it.OrderNo;
+                newRows["省"] = it.Province;
+                newRows["市"] = it.City;
+                newRows["店代码"] = it.ShopCode;
+                newRows["数量"] = it.Piece;
+                newRows["线路"] = it.LineName;
+                newRows["客户名称"] = it.PayClientName;
+                newRows["订单状态"] = GetText(it.GetType().GetProperty("AwbStatus").GetValue(it, null).ToString(), "AwbStatus");
+                newRows["签收照片"] = signimagestr;
+                newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["出库时间"] = it.OutCargoTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.OutCargoTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.OutCargoTime.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["出库时效(小时)"] = it.OutCargoAgeing;
+                newRows["接单时间"] = it.TakeOrderTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.TakeOrderTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.TakeOrderTime.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["发车时间"] = it.SendCarTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.SendCarTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.SendCarTime.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["签收时间"] = it.SignTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.SignTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.SignTime.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["开单签收时效(小时)"] = it.FromCreateToSignAgeing;
+                newRows["出库签收时效(小时)"] = it.FromOutCargoToSignAgeing;
+                //newRows["签收类型"] = it.AbSignStatus.Equals("1") ? "超时签收" : "正常签收";
+
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "订单时效数据表");
+        }
+        private string GetText(string value, string id)
+        {
+            string retStr = string.Empty;
+            if (id.Contains("ClientType"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "普通客户";
+                else if (value.Trim() == "1")
+                    retStr = "合同客户";
+                else if (value.Trim() == "2")
+                    retStr = "VIP客户";
+            }
+            switch (id)
+            {
+                case "AwbStatus":
+                    if (value.Trim() == "0")
+                        retStr = "已下单";
+                    else if (value.Trim() == "1")
+                        retStr = "出库中";
+                    else if (value.Trim() == "2")
+                        retStr = "已出库";
+                    else if (value.Trim() == "3")
+                        retStr = "运输在途";
+                    //else if (value.Trim() == "4")
+                    //    retStr = "已到达";
+                    else if (value.Trim() == "5")
+                        retStr = "已签收";
+                    else if (value.Trim() == "6")
+                        retStr = "已拣货";
+                    else if (value.Trim() == "7")
+                        retStr = "正在配送";
+                    break;
+                case "CheckOutType":
+                    if (value.Trim() == "0")
+                        retStr = "现付";
+                    else if (value.Trim() == "1")
+                        retStr = "周期";
+                    else if (value.Trim() == "2")
+                        retStr = "月结";
+                    else if (value.Trim() == "3")
+                        retStr = "到付";
+                    else if (value.Trim() == "4")
+                        retStr = "代收";
+                    else if (value.Trim() == "5")
+                        retStr = "微信付款";
+                    else if (value.Trim() == "6")
+                        retStr = "额度付款";
+                    break;
+                case "OrderType":
+                    if (value.Trim() == "0")
+                        retStr = "电脑单";
+                    else if (value.Trim() == "1")
+                        retStr = "企业微信单";
+                    else if (value.Trim() == "2")
+                        retStr = "微信商城单";
+                    else if (value.Trim() == "3")
+                        retStr = "APP单";
+                    else if (value.Trim() == "4")
+                        retStr = "小程序单";
+                    break;
+                case "PayWay":
+                    if (value.Trim() == "0")
+                        retStr = "微信付款";
+                    else if (value.Trim() == "1")
+                        retStr = "额度付款";
+                    else if (value.Trim() == "2")
+                        retStr = "积分兑换";
+                    break;
+                case "FinanceSecondCheck":
+                    if (value.Trim() == "0")
+                        retStr = "未审";
+                    else if (value.Trim() == "1")
+                        retStr = "已审";
+                    break;
+                case "CheckStatus":
+                    if (value.Trim() == "0")
+                        retStr = "未结算";
+                    else if (value.Trim() == "1")
+                        retStr = "已结算";
+                    else if (value.Trim() == "2")
+                        retStr = "未结清";
+                    break;
+                case "TrafficType":
+                    if (value.Trim() == "0")
+                        retStr = "自有";
+                    else if (value.Trim() == "1")
+                        retStr = "外发外采";
+                    else if (value.Trim() == "2")
+                        retStr = "上门提货外采";
+                    break;
+                case "ThrowGood":
+                    if (value.Trim() == "0")
+                        retStr = "客户单";
+                    else if (value.Trim() == "1")
+                        retStr = "抛货单";
+                    else if (value.Trim() == "2")
+                        retStr = "调货单";
+                    else if (value.Trim() == "3")
+                        retStr = "代发单";
+                    else if (value.Trim() == "4")
+                        retStr = "周期胎";
+                    else if (value.Trim() == "5")
+                        retStr = "长和订单";
+                    else if (value.Trim() == "6")
+                        retStr = "商贸订单";
+                    else if (value.Trim() == "7")
+                        retStr = "祺航订单";
+                    else if (value.Trim() == "8")
+                        retStr = "其它订单";
+                    else if (value.Trim() == "9")
+                        retStr = "理赔单";
+                    else if (value.Trim() == "10")
+                        retStr = "移库单";
+                    else if (value.Trim() == "11")
+                        retStr = "展示单";
+                    else if (value.Trim() == "12")
+                        retStr = "OES客户单";
+                    else if (value.Trim() == "13")
+                        retStr = "自有零售店单";
+                    else if (value.Trim() == "14")
+                        retStr = "报量单";
+                    else if (value.Trim() == "15")
+                        retStr = "速配单";
+                    else if (value.Trim() == "16")
+                        retStr = "促销单";
+                    else if (value.Trim() == "17")
+                        retStr = "急送单";
+                    else if (value.Trim() == "18")
+                        retStr = "异地单";
+                    else if (value.Trim() == "19")
+                        retStr = "来货单";
+                    else if (value.Trim() == "20")
+                        retStr = "电商单";
+                    else if (value.Trim() == "21")
+                        retStr = "订货单";
+                    else if (value.Trim() == "22")
+                        retStr = "极速达";
+                    else if (value.Trim() == "23")
+                        retStr = "次日达";
+                    else if (value.Trim() == "24")
+                        retStr = "渠道订单";
+                    else if (value.Trim() == "25")
+                        retStr = "退仓单";
+                    break;
+            }
+            return retStr;
+        }
+
+    }
+}

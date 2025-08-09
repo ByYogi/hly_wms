@@ -1,0 +1,66 @@
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="Test.aspx.cs" Inherits="Cargo.Test" %>
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title></title>
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+
+    <script type="text/javascript">
+
+        let requestIdCounter = 0;
+        function logRequest(methodName, url) {
+            const id = ++requestIdCounter;
+            const startTime = new Date().getTime();
+
+            // 添加一条请求记录到列表
+            const $item = $(`
+            <div class="request-item" id="request-${id}">
+                <div>接口：${methodName}</div>
+                <div class="request-status">请求中...</div>
+                <div class="request-time"></div>
+            </div>
+        `);
+
+            $("#request-list").prepend($item);
+
+            $.ajax({
+                url: url,
+                method: "GET",
+                complete: function (data) {
+                    const endTime = new Date().getTime();
+                    const duration = ((endTime - startTime) / 1000).toFixed(2);
+                    $(`#request-${id} .request-status`).text("请求完成");
+                    $(`#request-${id} .request-time`).text(`${duration} 秒`);
+                }
+            });
+        }
+
+        function click_request_aspx() {
+            logRequest("click_request_aspx", "Api/ClientApi.aspx?method=get1");
+        }
+        function click_request2_aspx() {
+            logRequest("click_request2_aspx", "Api/ClientApi.aspx?method=get2");
+        }
+        function click_request10_aspx() {
+            logRequest("click_request10_aspx", "Api/ClientApi.aspx?method=get10");
+        }
+    </script>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <asp:Button ID="Button1" runat="server" Text="添加Redis缓存" OnClick="Button1_Click" />
+        
+    <button type="button" onclick="click_request_aspx()">3s请求 异步</button>
+    <button type="button" onclick="click_request2_aspx()">3s请求 同步</button>
+    <button type="button" onclick="click_request10_aspx()">0.3s请求</button>
+
+        
+<section id="request-list">
+    <!-- 请求记录将插入到这里 -->
+</section>
+    </form>
+</body>
+</html>

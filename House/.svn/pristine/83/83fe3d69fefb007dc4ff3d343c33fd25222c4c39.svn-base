@@ -1,0 +1,204 @@
+﻿using Senparc.Weixin.MP;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Xml;
+
+namespace Cargo.Weixin
+{
+    public partial class txapi : System.Web.UI.Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            //string signature = Request["signature"];
+            //string timestamp = Request["timestamp"];
+            //string nonce = Request["nonce"];
+            //string echoString = Request["echostr"];
+            //if (Request.HttpMethod.ToUpper() == "GET")//验证签名
+            //{
+            //    //string result = CheckSignature.GetSignature(timestamp, nonce, Common.GetdltToken());
+            //    if (CheckSignature.Check(signature, timestamp, nonce, Common.GetdltToken()))
+            //    {
+            //        WriteContent(echoString);
+            //    }
+            //}
+            //else
+            //{
+            //    WriteContent("");
+            //}
+            //Response.End();
+
+
+            //由微信服务接收请求，具体处理请求
+            WeiXinService wxService = new WeiXinService(Request);
+            string responseMsg = wxService.Response();
+            Response.Clear();
+            Response.Charset = "UTF-8";
+            Response.Write(responseMsg);
+            Response.End();
+        }
+    }
+
+    public class WeiXinService
+    {
+        /// <summary>
+        /// TOKEN
+        /// </summary>
+        public const string TOKEN = "dltChina";
+        /// <summary>
+        /// 签名
+        /// </summary>
+        public const string SIGNATURE = "signature";
+        /// <summary>
+        /// 时间戳
+        /// </summary>
+        public const string TIMESTAMP = "timestamp";
+        /// <summary>
+        /// 随机数
+        /// </summary>
+        public const string NONCE = "nonce";
+        /// <summary>
+        /// 随机字符串
+        /// </summary>
+        public const string ECHOSTR = "echostr";
+        /// <summary>
+        /// 
+        /// </summary>
+        public HttpRequest Request { get; set; }
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="request"></param>
+        public WeiXinService(HttpRequest request)
+        {
+            this.Request = request;
+        }
+        /// <summary>
+        /// 处理请求，产生响应
+        /// </summary>
+        /// <returns></returns>
+        public string Response()
+        {
+            string method = Request.HttpMethod.ToUpper();
+            //验证签名
+            if (method == "GET")
+            {
+                if (CheckSignature.Check(SIGNATURE, TIMESTAMP, NONCE, Common.GetdltToken()))
+                {
+                    return Request.QueryString[ECHOSTR];
+                }
+            }
+            else
+            {
+                return "error";
+            }
+
+            //处理消息
+            if (method == "POST")
+            {
+                return ResponseMsg();
+            }
+            else
+            {
+                return "无法处理";
+            }
+        }
+        /// <summary>
+        /// 处理请求
+        /// </summary>
+        /// <returns></returns>
+        private string ResponseMsg()
+        {
+            string requestXml = ReadRequest(this.Request);
+            WriteTextLog(requestXml, DateTime.Now);
+            IHandler handler = HandlerFactory.CreateHandler(requestXml);
+            if (handler != null)
+            {
+                return handler.HandleRequest();
+            }
+
+            return string.Empty;
+        }
+
+        public static void WriteTextLog(string strMessage, DateTime time)
+        {
+            string path = AppDomain.CurrentDomain.BaseDirectory + @"System\Log\";
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            string fileFullPath = path + time.ToString("yyyy-MM-dd") + ".System.txt";
+            StringBuilder str = new StringBuilder();
+            str.Append("Time:    " + time.ToString() + "\r\n");
+            str.Append("Message: " + strMessage + "\r\n");
+            str.Append("-----------------------------------------------------------\r\n\r\n");
+            StreamWriter sw;
+            if (!File.Exists(fileFullPath))
+            {
+                sw = File.CreateText(fileFullPath);
+            }
+            else
+            {
+                sw = File.AppendText(fileFullPath);
+            }
+            sw.WriteLine(str.ToString());
+            sw.Close();
+        }
+        /// <summary>
+        /// 发送人
+        /// </summary>
+        public const string FROM_USERNAME = "FromUserName";
+        /// <summary>
+        /// 开发者微信号
+        /// </summary>
+        public const string TO_USERNAME = "ToUserName";
+        /// <summary>
+        /// 消息内容
+        /// </summary>
+        public const string CONTENT = "Content";
+        /// <summary>
+        /// 消息创建时间 （整型）
+        /// </summary>
+        public const string CREATE_TIME = "CreateTime";
+        /// <summary>
+        /// 消息类型
+        /// </summary>
+        public const string MSG_TYPE = "MsgType";
+        /// <summary>
+        /// 消息id，64位整型
+        /// </summary>
+        public const string MSG_ID = "MsgId";
+        /// <summary>
+        /// 得到当前时间（整型）（考虑时区）
+        /// </summary>
+        /// <returns></returns>
+        public static string GetNowTime()
+        {
+            DateTime timeStamp = new DateTime(1970, 1, 1);  //得到1970年的时间戳
+            long a = (DateTime.UtcNow.Ticks - timeStamp.Ticks) / 10000000;
+            return a.ToString();
+        }
+        /// <summary>
+        /// 读取请求对象的内容
+        /// 只能读一次
+        /// </summary>
+        /// <param name="request">HttpRequest对象</param>
+        /// <returns>string</returns>
+        public string ReadRequest(HttpRequest request)
+        {
+            string reqStr = string.Empty;
+            using (Stream s = request.InputStream)
+            {
+                using (StreamReader reader = new StreamReader(s, Encoding.UTF8))
+                {
+                    reqStr = reader.ReadToEnd();
+                }
+            }
+            return reqStr;
+        }
+    }
+}

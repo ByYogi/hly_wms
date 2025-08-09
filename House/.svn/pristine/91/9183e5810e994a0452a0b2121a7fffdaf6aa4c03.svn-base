@@ -1,0 +1,221 @@
+﻿using Cargo.Product;
+using House.Business.Cargo;
+using House.Entity.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Order
+{
+    public partial class shopOrderImport : BasePage
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        public Hashtable QueryShopOrderDataList
+        {
+            get
+            {
+                if (Session["QueryShopOrderDataList"] == null)
+                {
+                    Session["QueryShopOrderDataList"] = new Hashtable();
+                }
+                return (Hashtable)(Session["QueryShopOrderDataList"]);
+            }
+            set
+            {
+                Session["QueryShopOrderDataList"] = value;
+            }
+        }
+        List<CargoProductSourceEntity> productSourceList = new List<CargoProductSourceEntity>();
+        protected void btnShopOrder_Click(object sender, EventArgs e)
+        {
+            if (QueryShopOrderDataList == null)
+            {
+                return;
+            }
+
+            CargoProductBus bus = new CargoProductBus();
+            productSourceList = bus.QueryAllProductSource();
+
+            var List = QueryShopOrderDataList["rows"];
+            IEnumerable<object> list = List as IEnumerable<object>;
+            if (list.Count() <= 0) { return; }
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("所属仓库", typeof(string));
+            table.Columns.Add("销售订单号", typeof(string));
+            table.Columns.Add("产品来源", typeof(string));
+            table.Columns.Add("产品ID", typeof(string));
+            table.Columns.Add("产品名称", typeof(string));
+            table.Columns.Add("产品品牌", typeof(string));
+            table.Columns.Add("订单类型", typeof(string));
+            table.Columns.Add("归属月", typeof(string));
+            table.Columns.Add("产地", typeof(string));
+            table.Columns.Add("类型", typeof(string));
+            table.Columns.Add("型号", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("载重", typeof(string));
+            table.Columns.Add("速度", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            table.Columns.Add("批次", typeof(string));
+            table.Columns.Add("状态", typeof(string));
+            table.Columns.Add("订单数量", typeof(string));
+            table.Columns.Add("回告数量", typeof(string));
+            table.Columns.Add("入库数量", typeof(string));
+            table.Columns.Add("单价", typeof(string));
+            table.Columns.Add("销售价", typeof(string));
+            table.Columns.Add("是否含税", typeof(string));
+            table.Columns.Add("销售金额", typeof(string));
+            table.Columns.Add("收货人", typeof(string));
+            table.Columns.Add("收货城市", typeof(string));
+            table.Columns.Add("收货电话", typeof(string));
+            table.Columns.Add("来源仓库", typeof(string));
+            table.Columns.Add("操作时间", typeof(string));
+
+            int i = 0;
+            string orderno = string.Empty;
+            foreach (var it in list)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["所属仓库"] = it.GetType().GetProperty("HouseName").GetValue(it, null).ToString();
+                newRows["销售订单号"] = it.GetType().GetProperty("FacOrderNo").GetValue(it, null).ToString(); ;
+                newRows["产品来源"] = GetValue(1,it.GetType().GetProperty("Source").GetValue(it, null).ToString());
+                newRows["产品ID"] = it.GetType().GetProperty("ProductID").GetValue(it, null).ToString();
+                newRows["产品名称"] = it.GetType().GetProperty("ProductName").GetValue(it, null).ToString(); ;
+                newRows["产品品牌"] = it.GetType().GetProperty("TypeName").GetValue(it, null).ToString();
+                newRows["订单类型"] = GetValue(2, it.GetType().GetProperty("OrderType").GetValue(it, null).ToString());
+                newRows["归属月"] = it.GetType().GetProperty("BelongMonth").GetValue(it, null).ToString();
+                newRows["产地"] = GetValue(3, it.GetType().GetProperty("Born").GetValue(it, null).ToString());
+                newRows["类型"] = it.GetType().GetProperty("Assort").GetValue(it, null).ToString();
+                newRows["型号"] = it.GetType().GetProperty("Model").GetValue(it, null).ToString();
+                newRows["规格"] = it.GetType().GetProperty("Specs").GetValue(it, null).ToString();
+                newRows["载重"] = it.GetType().GetProperty("LoadIndex").GetValue(it, null).ToString();
+                newRows["速度"] = it.GetType().GetProperty("SpeedLevel").GetValue(it, null).ToString();
+                newRows["花纹"] = it.GetType().GetProperty("Figure").GetValue(it, null).ToString();
+                newRows["货品代码"] = it.GetType().GetProperty("GoodsCode").GetValue(it, null).ToString();
+                newRows["批次"] = it.GetType().GetProperty("Batch").GetValue(it, null).ToString();
+                newRows["状态"] = GetValue(4, it.GetType().GetProperty("InCargoStatus").GetValue(it, null).ToString());
+                newRows["订单数量"] = it.GetType().GetProperty("OrderNum").GetValue(it, null).ToString();
+                newRows["回告数量"] = it.GetType().GetProperty("ReplyNumber").GetValue(it, null).ToString();
+                newRows["入库数量"] = it.GetType().GetProperty("InPiece").GetValue(it, null).ToString();
+                newRows["单价"] = it.GetType().GetProperty("UnitPrice").GetValue(it, null).ToString();
+                newRows["销售价"] = it.GetType().GetProperty("SalePrice").GetValue(it, null).ToString();
+                newRows["是否含税"] = GetValue(5, it.GetType().GetProperty("WhetherTax").GetValue(it, null).ToString());
+                newRows["销售金额"] = it.GetType().GetProperty("SaleMoney").GetValue(it, null).ToString();
+                newRows["收货人"] = it.GetType().GetProperty("ReceiveName").GetValue(it, null).ToString();
+                newRows["收货城市"] = it.GetType().GetProperty("ReceiveCity").GetValue(it, null).ToString();
+                newRows["收货电话"] = it.GetType().GetProperty("ReceiveMobile").GetValue(it, null).ToString();
+                newRows["来源仓库"] = it.GetType().GetProperty("SourceHouse").GetValue(it, null).ToString();
+                newRows["操作时间"] = it.GetType().GetProperty("OP_DATE").GetValue(it, null).ToString();
+
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "来货订单数据");
+        }
+
+        private string GetValue(int type, string value)
+        {
+            string returnValue = "";
+            switch (type)
+            {
+                case 1:
+                    for (int i = 0; i < productSourceList.Count; i++)
+                    {
+                        if (productSourceList[i].Source.ToString() == value)
+                        {
+                            returnValue = productSourceList[i].SourceName;
+                            break;
+                        }
+                    }
+                    if (string.IsNullOrEmpty(returnValue)) { returnValue = "未定义来源" + value; }
+                    break;
+                case 2:
+                    switch (value)
+                    {
+                        case "0":
+                            returnValue= "内部订单";
+                            break;
+                        case "1":
+                            returnValue= "外部订单";
+                            break;
+                        case "2":
+                            returnValue = "退货订单";
+                            break;
+                        case "3":
+                            returnValue = "外采订单";
+                            break;
+                        case "":
+                            returnValue = "";
+                            break;
+                        default:
+                            returnValue = "未定义类型" + value;
+                            break;
+                    }
+                    break;
+                case 3:
+                    switch (value)
+                    {
+                        case "0":
+                            returnValue = "国产";
+                            break;
+                        case "1":
+                            returnValue = "进口";
+                            break;
+                        case "":
+                            returnValue = "";
+                            break;
+                        default:
+                            returnValue = "未定义产地" + value;
+                            break;
+                    }
+                    break;
+                case 4:
+                    switch (value)
+                    {
+                        case "0":
+                            returnValue = "未入库";
+                            break;
+                        case "1":
+                            returnValue = "已入库";
+                            break;
+                        case "2":
+                            returnValue = "部分入库";
+                            break;
+                        case "":
+                            returnValue = "";
+                            break;
+                        default:
+                            returnValue = "未定义订单状态" + value;
+                            break;
+                    }
+                    break;
+                case 5:
+                    switch (value)
+                    {
+                        case "1":
+                            returnValue = "含税";
+                            break;
+                        default:
+                            returnValue = "不含税";
+                            break;
+                    }
+                    break;
+                default:
+                    returnValue = "";
+                    break;
+            }
+            return returnValue;
+        }
+    }
+}

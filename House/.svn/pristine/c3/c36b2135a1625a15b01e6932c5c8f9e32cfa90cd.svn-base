@@ -1,0 +1,58 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace House.Entity.Cargo.House
+{
+    /// <summary>
+    /// 仓储目标数据实体Tbl_Cargo_House
+    /// </summary>
+    [Serializable]
+    public class CargoHouseAimEntity
+    {
+        [Description("表主键")]
+        public int ID { get; set; }
+        [Description("仓库ID")]
+        public int HouseID { get; set; }
+        [Description("年")]
+        public int AimYear { get; set; }
+        [Description("月")]
+        public int AimMonth { get; set; }
+        [Description("目标条数")]
+        public int AimQuantity { get; set; }
+        [Description("目标金额")]
+        public decimal AimMoney { get; set; }
+        [Description("操作员")]
+        public string OPID { get; set; }
+        [Description("操作时间")]
+        public DateTime OP_DATE { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public int Piece { get; set; }
+        public int TypeID { get; set; }
+        public int SuppClientNum { get; set; }
+        public string HouseName { get; set; }
+        public double PercentComplete { get; set; }
+        public int OrderType { get; set; }
+
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

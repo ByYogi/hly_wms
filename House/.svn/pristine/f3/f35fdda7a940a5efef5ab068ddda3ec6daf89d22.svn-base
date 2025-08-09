@@ -1,0 +1,197 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.Remoting.Metadata.W3cXsd2001;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+
+    public class ContiOrderEntity
+    {
+        public int code { get; set; }
+        public string message { get; set; }
+        public OrderDataEntity data { get; set; }
+
+
+    }
+
+    public class OrderDataEntity
+    {
+        public saleOrderStatusOpenQueryResp saleOrderStatusOpenQueryResp { get; set; }
+        public List<saleOpenInfoResp> saleOpenInfoResp { get; set; }
+
+    }
+
+    [Serializable]
+    public class saleOrderStatusOpenQueryResp
+    {
+        public long CID { get; set; }
+        public string currentUpdateTime { get; set; }
+        public string nextUpdateTime { get; set; }
+        public long tenantId { get; set; }
+        public long companyId { get; set; }
+        public int size { get; set; }
+
+        public string ResJson { get; set; }
+    }
+
+    /// <summary>
+    /// 马牌订单数据实体
+    /// </summary>
+    [Serializable]
+    public class saleOpenInfoResp
+    {
+        public string orderCode { get; set; }
+        public string orderSource { get; set; }
+        public string orderType { get; set; }
+        public string orderLabel { get; set; }
+        public string orderLabelStr { get; set; }
+        public string deliveryType { get; set; }
+        public string deliveryTypeDesc { get; set; }
+        public string customerName { get; set; }
+        public string customerCode { get; set; }
+        public string customerSubCode { get; set; }
+        public string orderStatus { get; set; }
+        public string orderStatusStr { get; set; }
+        public string sellerName { get; set; }
+        public string businessName { get; set; }
+        public decimal nowTotalAmount { get; set; }
+        public decimal rebateAmount { get; set; }
+        public string freightAmount { get; set; }
+        public decimal onlinePaidAmount { get; set; }
+        public decimal couponAmount { get; set; }
+        
+        public decimal creditAmount { get; set; }
+        public string warehouseName { get; set; }
+        public string warehouseCode { get; set; }
+        public string warehouseProvince { get; set; }
+        public string warehouseCity { get; set; }
+        public string warehouseDistrict { get; set; }
+        public string warehouseAddress { get; set; }
+        public string remark { get; set; }
+        public string consigneeAddress { get; set; }
+        public string consigneeName { get; set; }
+        public string consigneeMobile { get; set; }
+        public string distributorSoldTo { get; set; }
+        public string deliveryTime { get; set; }
+        public string submitTime { get; set; }
+        /// <summary>
+        /// CDMS出库单号（CKD开头）
+        /// </summary>
+        public string doNo { get; set; }
+        /// <summary>
+        /// CDMS发货单号（FXSA开头）
+        /// </summary>
+        public string shippingCode { get; set; }
+
+        public List<saleOpenPromotionAmountList> saleOpenPromotionAmountList { get; set; }
+        public List<saleSkuOpenInfoResp> saleSkuOpenInfoResp { get; set; }
+        public List<saleShippingOpenInfoResp> saleShippingOpenInfoResp { get; set; }
+
+
+        public long OrderID { get; set; }
+        public DateTime OPDATE { get; set; }
+        public int BidClientNum { get; set; }
+        public string BidClientName { get; set; }
+        public int ClientNum { get; set; }
+        public int HouseID { get; set; }
+        public int AreaID { get; set; }
+        public int OrderPiece { get; set; }
+        
+        public string InCreateStatus { get; set; }
+        public string CreateAwbID { get; set; }
+        public string CreateAwb { get; set; }
+        public DateTime CreateDate { get; set; }
+        public string CargoOrderNo { get; set; }
+        public string HouseName { get; set; }
+        public string HouseIDStr { get; set; }
+        public string IsPushOutTag { get; set; }
+        public string SaleManName { get; set; }
+        public string SaleCellphone { get; set; }
+        public string LogisAwbNo { get; set; }
+        public string OpenExpressName { get; set; }
+        public string OpenExpressNum { get; set; }
+        public string PayClientName { get; set; }
+        
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+
+    }
+
+    /// <summary>
+    /// 销售订单商品数据实体
+    /// </summary>
+    [Serializable]
+    public class saleSkuOpenInfoResp
+    {
+        public string skuName { get; set; }
+        public string skuCode { get; set; }
+        public string sellUnitName { get; set; }
+        public int skuNum { get; set; }
+        public decimal nowUnitPrice { get; set; }
+        public decimal originalUnitPrice { get; set; }
+        public decimal totalAmount { get; set; }
+
+        public long GoodsID { get; set; }
+        public long OrderID { get; set; }
+
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 优惠券金额明细数据实体
+    /// </summary>
+    [Serializable]
+    public class saleOpenPromotionAmountList
+    {
+        public decimal couponAmount { get; set; }
+        public decimal deductionPromotionAmount { get; set; }
+        public decimal cashPromotionAmount { get; set; }
+    }
+
+    /// <summary>
+    /// 发货数据实体
+    /// </summary>
+    [Serializable]
+    public class saleShippingOpenInfoResp
+    {
+
+    }
+}
