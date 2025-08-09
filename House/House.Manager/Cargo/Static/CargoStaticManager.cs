@@ -1,0 +1,2534 @@
+﻿using House.DataAccess;
+using House.Entity.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Text;
+using System.Threading;
+
+namespace House.Manager.Cargo
+{
+    /// <summary>
+    /// 静态数据操作类
+    /// </summary>
+    public class CargoStaticManager
+    {
+        private SqlHelper conn = new SqlHelper();
+        #region 城市界面操作方法集合
+        /// <summary>
+        /// 作废城市
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCity(List<CargoCityManagerEntity> entity)
+        {
+            try
+            {
+                foreach (var it in entity)
+                {
+                    string strSQL = @"UPDATE Tbl_Cargo_City SET DelFlag='1' WHERE CID=@CID";
+                    if (it.DelFlag.Equals("1"))//彻底删除
+                    {
+                        strSQL = @"Delete from Tbl_Cargo_City where CID=@CID ";
+                    }
+                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    {
+                        conn.AddInParameter(cmd, "@CID", DbType.Int32, it.CID);
+                        conn.ExecuteNonQuery(cmd);
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 新增城市
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCity(CargoCityManagerEntity entity)
+        {
+
+            string strSQL = @"INSERT INTO Tbl_Cargo_City(CityName,DelFlag) VALUES (@CityName,@DelFlag)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@CityName", DbType.String, entity.CityName);
+                    //conn.AddInParameter(cmd, "@CityCode", DbType.String, entity.CityCode);
+                    conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                    //conn.AddInParameter(cmd, "@OP_ID", DbType.String, entity.OP_ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改城市
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCity(CargoCityManagerEntity entity)
+        {
+
+            string strSQL = @"UPDATE Tbl_Cargo_City SET CityName=@CityName,DelFlag=@DelFlag,OP_DATE=@OP_DATE WHERE CID=@CID";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@CityName", DbType.String, entity.CityName);
+                    //conn.AddInParameter(cmd, "@CityCode", DbType.String, entity.CityCode);
+                    conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                    //conn.AddInParameter(cmd, "@OP_ID", DbType.String, entity.OP_ID);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@CID", DbType.Int32, entity.CID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 查询城市
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryCity(int pIndex, int pNum, CargoCityManagerEntity entity)
+        {
+            List<CargoCityManagerEntity> result = new List<CargoCityManagerEntity>();
+
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY OP_DATE DESC) AS RowNumber,* FROM Tbl_Cargo_City WHERE (1=1)";
+                if (!string.IsNullOrEmpty(entity.DelFlag))
+                {
+                    strSQL += " and DelFlag = '" + entity.DelFlag + "'";
+                }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.CityName))
+                {
+                    strSQL += " and CityName like '%" + entity.CityName + "%'";
+                }
+
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoCityManagerEntity
+                            {
+                                CID = Convert.ToInt32(idr["CID"]),
+                                //CityCode = Convert.ToString(idr["CityCode"]),
+                                CityName = Convert.ToString(idr["CityName"]),
+                                // OP_ID = Convert.ToString(idr["OP_ID"]),
+                                DelFlag = Convert.ToString(idr["DelFlag"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                            });
+                        }
+                    }
+                }
+
+                resHT["rows"] = result;
+
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_City Where (1=1)";
+                if (!string.IsNullOrEmpty(entity.DelFlag))
+                {
+                    strCount += " and DelFlag = '" + entity.DelFlag + "'";
+                }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.CityName))
+                {
+                    strCount += " and CityName like '%" + entity.CityName + "%'";
+                }
+
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 判断城市是否存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCity(CargoCityManagerEntity entity)
+        {
+            bool result = false;
+
+            string strSQL = @"SELECT CityName From Tbl_Cargo_City  WHERE (1=1)";
+            if (!string.IsNullOrEmpty(entity.CityName))
+            {
+                strSQL += " and CityName='" + entity.CityName + "'";
+            }
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(cmd))
+                    {
+                        if (dd.Rows.Count > 0)
+                        {
+                            result = true;
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        /// <summary>
+        /// 查询所有的城市数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoCityManagerEntity> QueryAllCity(CargoCityManagerEntity entity)
+        {
+            List<CargoCityManagerEntity> result = new List<CargoCityManagerEntity>();
+            string strSQL = @" SELECT * FROM Tbl_Cargo_City WHERE DelFlag='0'";
+            //以中文名称为查询条件
+            if (!string.IsNullOrEmpty(entity.CityName))
+            {
+                strSQL += " and CityName = '" + entity.CityName + "'";
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoCityManagerEntity
+                        {
+                            //CityCode = Convert.ToString(idr["CityCode"]),
+                            CityName = Convert.ToString(idr["CityName"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        #endregion
+        #region 物流公司操作方法集合
+        /// <summary>
+        /// 作废物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelLogistic(List<CargoLogisticEntity> entity)
+        {
+            try
+            {
+                foreach (var it in entity)
+                {
+                    string strSQL = @"UPDATE Tbl_Cargo_Logistic SET DelFlag='1' WHERE ID=@ID";
+                    if (it.DelFlag.Equals("1"))//彻底删除
+                    {
+                        strSQL = @"Delete from Tbl_Cargo_Logistic where ID=@ID ";
+                    }
+                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    {
+                        conn.AddInParameter(cmd, "@ID", DbType.Int32, it.ID);
+                        conn.ExecuteNonQuery(cmd);
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 新增物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddLogistic(CargoLogisticEntity entity)
+        {
+
+            string strSQL = @"INSERT INTO Tbl_Cargo_Logistic(LogisticName,DelFlag) VALUES (@LogisticName,@DelFlag)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@LogisticName", DbType.String, entity.LogisticName);
+                    //conn.AddInParameter(cmd, "@CityCode", DbType.String, entity.CityCode);
+                    conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                    //conn.AddInParameter(cmd, "@OP_ID", DbType.String, entity.OP_ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateLogistic(CargoLogisticEntity entity)
+        {
+
+            string strSQL = @"UPDATE Tbl_Cargo_Logistic SET LogisticName=@LogisticName,DelFlag=@DelFlag,OP_DATE=@OP_DATE WHERE ID=@ID";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@LogisticName", DbType.String, entity.LogisticName);
+                    //conn.AddInParameter(cmd, "@CityCode", DbType.String, entity.CityCode);
+                    conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                    //conn.AddInParameter(cmd, "@OP_ID", DbType.String, entity.OP_ID);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 查询物流公司
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryLogistic(int pIndex, int pNum, CargoLogisticEntity entity)
+        {
+            List<CargoLogisticEntity> result = new List<CargoLogisticEntity>();
+
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY OP_DATE DESC) AS RowNumber,* FROM Tbl_Cargo_Logistic WHERE (1=1)";
+                if (!string.IsNullOrEmpty(entity.DelFlag))
+                {
+                    strSQL += " and DelFlag = '" + entity.DelFlag + "'";
+                }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.LogisticName))
+                {
+                    strSQL += " and LogisticName like '%" + entity.LogisticName + "%'";
+                }
+
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoLogisticEntity
+                            {
+                                ID = Convert.ToInt32(idr["ID"]),
+                                //CityCode = Convert.ToString(idr["CityCode"]),
+                                LogisticName = Convert.ToString(idr["LogisticName"]),
+                                // OP_ID = Convert.ToString(idr["OP_ID"]),
+                                DelFlag = Convert.ToString(idr["DelFlag"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                            });
+                        }
+                    }
+                }
+
+                resHT["rows"] = result;
+
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_Logistic Where (1=1)";
+                if (!string.IsNullOrEmpty(entity.DelFlag))
+                {
+                    strCount += " and DelFlag = '" + entity.DelFlag + "'";
+                }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.LogisticName))
+                {
+                    strCount += " and LogisticName like '%" + entity.LogisticName + "%'";
+                }
+
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 判断物流公司是否存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistLogistic(CargoLogisticEntity entity)
+        {
+            bool result = false;
+
+            string strSQL = @"SELECT LogisticName From Tbl_Cargo_Logistic  WHERE (1=1)";
+            if (!string.IsNullOrEmpty(entity.LogisticName))
+            {
+                strSQL += " and LogisticName='" + entity.LogisticName + "'";
+            }
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(cmd))
+                    {
+                        if (dd.Rows.Count > 0)
+                        {
+                            result = true;
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        /// <summary>
+        /// 查询所有的物流公司数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoLogisticEntity> QueryAllLogistic(CargoLogisticEntity entity)
+        {
+            List<CargoLogisticEntity> result = new List<CargoLogisticEntity>();
+
+
+            string strSQL = @" SELECT * FROM Tbl_Cargo_Logistic WHERE DelFlag='0'";
+            //以中文名称为查询条件
+            if (!string.IsNullOrEmpty(entity.LogisticName))
+            {
+                strSQL += " and LogisticName = '" + entity.LogisticName + "'";
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoLogisticEntity
+                        {
+                            //CityCode = Convert.ToString(idr["CityCode"]),
+                            ID = Convert.ToInt32(idr["ID"]),
+                            LogisticName = Convert.ToString(idr["LogisticName"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 通过ID查询物流公司信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoLogisticEntity QueryLogisticByID(CargoLogisticEntity entity)
+        {
+            CargoLogisticEntity result = new CargoLogisticEntity();
+            string strSQL = @"SELECT * FROM Tbl_Cargo_Logistic WHERE DelFlag='0' and ID=@ID ";
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                    using (DataTable dt = conn.ExecuteDataTable(cmd))
+                    {
+                        foreach (DataRow idrCount in dt.Rows)
+                        {
+                            result.ID = Convert.ToInt32(idrCount["ID"]);
+                            result.LogisticName = Convert.ToString(idrCount["LogisticName"]);
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        #endregion
+        #region 会计科目操作方法集合
+        public Hashtable QueryFinance(int pIndex, int pNum, FinanceSubjectEntity entity)
+        {
+            List<FinanceSubjectEntity> result = new List<FinanceSubjectEntity>();
+
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY zs.ZID DESC) AS RowNumber,zs.*,ISNULL(fs.FID,'') as FID,ISNULL(fs.FName,'') as FName,ISNULL(fs.ZID,'') AS FZID,ISNULL(ss.SID,'')as SID,ISNULL(ss.SName,'') as SName,ISNULL(ss.FID,'') AS SFID,(CASE WHEN(SID is null)THEN 0 ELSE (select count(*) from Tbl_Cargo_ExpenseDetail where SID=ss.SID) END) as UseCount from Tbl_Cargo_ZeroSubject zs left join Tbl_Cargo_FirstSubject fs on fs.ZID=zs.ZID  left join Tbl_Cargo_SecondSubject ss on ss.FID=fs.FID WHERE (1=1)";
+                if (entity.ZID != -1)
+                {
+                    strSQL += " and zs.ZID = '" + entity.ZID + "'";
+                }
+                if (entity.FID != -1)
+                {
+                    strSQL += " and fs.FID = '" + entity.FID + "'";
+                }
+                if (!string.IsNullOrEmpty(entity.ZName))
+                {
+                    strSQL += "  and (SName like '%" + entity.ZName + "%' or FName like '%" + entity.ZName + "%' or ZName like '%" + entity.ZName + "%')";
+                }
+
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new FinanceSubjectEntity
+                            {
+                                RowNumber = Convert.ToInt32(idr["RowNumber"]),
+                                ZID = Convert.ToInt32(idr["ZID"]),
+                                ZName = Convert.ToString(idr["ZName"]),
+                                FID = Convert.ToInt32(idr["FID"]),
+                                FName = Convert.ToString(idr["FName"]),
+                                SID = Convert.ToInt32(idr["SID"]),
+                                SName = Convert.ToString(idr["SName"]),
+                                UseCount = Convert.ToInt32(idr["UseCount"])
+                            });
+                        }
+                    }
+                }
+
+                resHT["rows"] = result;
+
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_ZeroSubject a left join Tbl_Cargo_FirstSubject b on b.ZID=a.ZID  left join Tbl_Cargo_SecondSubject c on c.FID=b.FID Where (1=1)";
+                if (entity.ZID != -1)
+                {
+                    strSQL += " and DelFlag = '" + entity.ZID + "'";
+                }
+                if (entity.FID != -1)
+                {
+                    strSQL += " and DelFlag = '" + entity.FID + "'";
+                }
+
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+
+        public List<FinanceSubjectEntity> QueryAllZeroSubject(int ZID)
+        {
+            List<FinanceSubjectEntity> result = new List<FinanceSubjectEntity>();
+            string strSQL = "select * from Tbl_Cargo_ZeroSubject where 1=1";
+            if (ZID != -1)
+            {
+                strSQL += " and ZID= " + ZID;
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new FinanceSubjectEntity
+                        {
+                            ZID = Convert.ToInt32(idr["ZID"]),
+                            ZName = Convert.ToString(idr["ZName"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        public List<FinanceSubjectEntity> QueryAllFirstSubject(int ZID)
+        {
+            List<FinanceSubjectEntity> result = new List<FinanceSubjectEntity>();
+            string strSQL = "select * from Tbl_Cargo_FirstSubject where 1=1";
+            if (ZID != -1)
+            {
+                strSQL += " and ZID= " + ZID;
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new FinanceSubjectEntity
+                        {
+                            ZID = Convert.ToInt32(idr["ZID"]),
+                            FID = Convert.ToInt32(idr["FID"]),
+                            FName = Convert.ToString(idr["FName"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        public List<FinanceSubjectEntity> QueryAllSecondSubject(int FID)
+        {
+            List<FinanceSubjectEntity> result = new List<FinanceSubjectEntity>();
+            string strSQL = "select * from Tbl_Cargo_SecondSubject where 1=1";
+            if (FID != -1)
+            {
+                strSQL += " and FID= " + FID;
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new FinanceSubjectEntity
+                        {
+                            SID = Convert.ToInt32(idr["SID"]),
+                            FID = Convert.ToInt32(idr["FID"]),
+                            SName = Convert.ToString(idr["SName"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        public void InsertFinanceData(FinanceSubjectEntity entity)
+        {
+            try
+            {
+                string strSQL = "";
+                if (entity.SID == -1 && !string.IsNullOrEmpty(entity.SName))
+                {
+                    if (entity.FID == -1 && !string.IsNullOrEmpty(entity.FName))
+                    {
+                        strSQL = @"INSERT INTO Tbl_Cargo_FirstSubject (FName,ZID) VALUES (@FName,@ZID) SELECT @@IDENTITY";
+
+                        string FID;
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@FName", DbType.String, entity.FName);
+                            conn.AddInParameter(cmd, "@ZID", DbType.Int32, entity.ZID);
+                            FID = Convert.ToString(conn.ExecuteScalar(cmd));
+                        }
+                        strSQL = @"INSERT INTO Tbl_Cargo_SecondSubject (SName,FID) VALUES (@SName,@FID)";
+
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@SName", DbType.String, entity.SName);
+                            conn.AddInParameter(cmd, "@FID", DbType.Int32, FID);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                    else
+                    {
+                        strSQL = @"INSERT INTO Tbl_Cargo_SecondSubject (SName,FID) VALUES (@SName,@FID)";
+
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@SName", DbType.String, entity.SName);
+                            conn.AddInParameter(cmd, "@FID", DbType.Int32, entity.FID);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                }
+                else if (entity.FID == -1 && !string.IsNullOrEmpty(entity.FName))
+                {
+                    strSQL = @"INSERT INTO Tbl_Cargo_FirstSubject (FName,ZID) VALUES (@FName,@ZID)";
+
+                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    {
+                        conn.AddInParameter(cmd, "@FName", DbType.String, entity.FName);
+                        conn.AddInParameter(cmd, "@ZID", DbType.Int32, entity.ZID);
+                        conn.ExecuteNonQuery(cmd);
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        public void UpdateFinanceData(FinanceSubjectEntity entity)
+        {
+            try
+            {
+                string strSQL = "";
+                if (entity.OldFID != entity.FID || entity.OldSName != entity.SName)
+                {
+                    if (entity.SID != -1)
+                    {
+                        strSQL = "UPDATE Tbl_Cargo_SecondSubject SET FID=@FID,SName=@SName WHERE SID=@SID";
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@FID", DbType.Int32, entity.FID);
+                            conn.AddInParameter(cmd, "@SName", DbType.String, entity.SName);
+                            conn.AddInParameter(cmd, "@SID", DbType.Int32, entity.SID);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                    else
+                    {
+                        InsertFinanceData(entity);
+                    }
+                }
+                if (entity.OldZID != entity.ZID || entity.OldFName != entity.FName)
+                {
+                    if (entity.FID != -1)
+                    {
+                        strSQL = "UPDATE Tbl_Cargo_FirstSubject SET ZID=@ZID,FName=@FName WHERE FID=@FID";
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@ZID", DbType.Int32, entity.ZID);
+                            conn.AddInParameter(cmd, "@FName", DbType.String, entity.FName);
+                            conn.AddInParameter(cmd, "@FID", DbType.Int32, entity.FID);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                    else
+                    {
+                        InsertFinanceData(entity);
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+
+        public void DeleteFinanceData(List<FinanceSubjectEntity> entity)
+        {
+            try
+            {
+                string strSQL = "";
+                foreach (var it in entity)
+                {
+                    if (it.SID != 0)
+                    {
+                        strSQL = @"Delete from Tbl_Cargo_SecondSubject where SID=@SID";
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@SID", DbType.String, it.SID);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                    else if (it.FID != 0)
+                    {
+                        strSQL = @"Delete from Tbl_Cargo_FirstSubject where FID=@FID";
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.AddInParameter(cmd, "@FID", DbType.String, it.FID);
+                            conn.ExecuteNonQuery(cmd);
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        public bool IsExistFinance(string Name, string Type)
+        {
+            bool result = false;
+            string strSQL = "";
+            if (Type == "FirstSubject")
+            {
+                strSQL = @"SELECT * From Tbl_Cargo_FirstSubject Where FName='" + Name + "'";
+            }
+            else
+            {
+                strSQL = @"SELECT * From Tbl_Cargo_SecondSubject Where SName='" + Name + "'";
+            }
+            try
+            {
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(cmd))
+                    {
+                        if (dd.Rows.Count > 0)
+                        {
+                            result = true;
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        #endregion
+        #region 申请审批操作方法集合
+        /// <summary>
+        /// 查询我的申请
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryMyApplication(int pIndex, int pNum, CargoApproveEntity entity)
+        {
+            List<CargoApproveEntity> result = new List<CargoApproveEntity>();
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OP_DATE DESC) AS RowNumber,a.*,b.ApproveName FROM Tbl_Cargo_Approve as a inner join Tbl_Cargo_ExpenseApproveSet as b on a.AppSetID=b.ID WHERE (1=1)";
+                if (!string.IsNullOrEmpty(entity.ApplyID)) { strSQL += " and a.ApplyID = '" + entity.ApplyID + "'"; }
+                if (!string.IsNullOrEmpty(entity.ApplyStatus)) { strSQL += " and a.ApplyStatus = '" + entity.ApplyStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.Title)) { strSQL += " and a.Title like '%" + entity.Title + "%'"; }
+                //制单日期范围
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.ApplyDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.ApplyDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                if (!string.IsNullOrEmpty(entity.ApplyType)) { strSQL += " and a.ApplyType = '" + entity.ApplyType + "'"; }
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            List<CargoApproveRelateEntity> relate = new List<CargoApproveRelateEntity>();
+                            if (Convert.ToString(idr["ApplyType"]).Equals("2"))
+                            {
+                                relate = QueryApproveContainerGoodRelateList(new CargoApproveRelateEntity { ApplyType = Convert.ToString(idr["ApplyType"]), ApproveID = Convert.ToInt64(idr["ID"]) });
+                            }
+
+                            result.Add(new CargoApproveEntity
+                            {
+                                ID = Convert.ToInt64(idr["ID"]),
+                                Title = Convert.ToString(idr["Title"]),
+                                ApplyID = Convert.ToString(idr["ApplyID"]),
+                                ApplyName = Convert.ToString(idr["ApplyName"]),
+                                ApplyDate = Convert.ToDateTime(idr["ApplyDate"]),
+                                Memo = Convert.ToString(idr["Memo"]),
+                                AppSetID = Convert.ToInt32(idr["AppSetID"]),
+                                ApproveName = Convert.ToString(idr["ApproveName"]),
+                                CurrID = Convert.ToString(idr["CurrID"]),
+                                CurrName = Convert.ToString(idr["CurrName"]),
+                                NextCheckID = Convert.ToString(idr["NextCheckID"]),
+                                NextCheckName = Convert.ToString(idr["NextCheckName"]),
+                                ApplyStatus = Convert.ToString(idr["ApplyStatus"]),
+                                DenyReason = Convert.ToString(idr["DenyReason"]),
+                                ApplyType = Convert.ToString(idr["ApplyType"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                ThrowHouse = Convert.ToInt32(idr["ThrowHouse"]),
+                                ThrowHouseName = Convert.ToString(idr["ThrowHouseName"]),
+                                ClientID = Convert.ToInt64(idr["ClientID"]),
+                                ClientName = Convert.ToString(idr["ClientName"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                                OStartTime = string.IsNullOrEmpty(Convert.ToString(idr["OStartTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["OStartTime"]),
+                                OEndTime = string.IsNullOrEmpty(Convert.ToString(idr["OEndTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["OEndTime"]),
+                                OTime = Convert.ToDecimal(idr["OTime"]),
+                                RelateList = relate,
+                                FileList = QueryApproveFileList(new CargoApproveFileEntity { ApproveID = Convert.ToInt64(idr["ID"]) })
+                            });
+                        }
+                    }
+                }
+                resHT["rows"] = result;
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_Approve as a Where (1=1)";
+                if (!string.IsNullOrEmpty(entity.ApplyID)) { strCount += " and a.ApplyID = '" + entity.ApplyID + "'"; }
+                if (!string.IsNullOrEmpty(entity.ApplyStatus)) { strCount += " and a.ApplyStatus = '" + entity.ApplyStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.Title)) { strCount += " and a.Title like '%" + entity.Title + "%'"; }
+                //制单日期范围
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.ApplyDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.ApplyDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                if (!string.IsNullOrEmpty(entity.ApplyType)) { strCount += " and a.ApplyType = '" + entity.ApplyType + "'"; }
+
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 查询到我的审批的所有申请
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryMyCheck(int pIndex, int pNum, CargoApproveEntity entity)
+        {
+            List<CargoApproveEntity> result = new List<CargoApproveEntity>();
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OP_DATE DESC) AS RowNumber,a.*,b.ApproveName,c.CheckType FROM Tbl_Cargo_Approve as a inner join Tbl_Cargo_ExpenseApproveSet as b on a.AppSetID=b.ID inner join Tbl_Cargo_ApproveCheck as c on a.ID=c.ApproveID and a.ApplyType=c.ApproveType WHERE (1=1) ";
+                if (!string.IsNullOrEmpty(entity.ApplyID)) { strSQL += " and a.ApplyID = '" + entity.ApplyID + "'"; }
+                if (!string.IsNullOrEmpty(entity.ApplyStatus)) { strSQL += " and a.ApplyStatus = '" + entity.ApplyStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.Title)) { strSQL += " and a.Title like '%" + entity.Title + "%'"; }
+                //制单日期范围
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.ApplyDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.ApplyDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                if (!string.IsNullOrEmpty(entity.ApplyType)) { strSQL += " and a.ApplyType = '" + entity.ApplyType + "'"; }
+                if (!string.IsNullOrEmpty(entity.CheckUserID)) { strSQL += " and c.CheckUserID = '" + entity.CheckUserID + "'"; }
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoApproveEntity
+                            {
+                                ID = Convert.ToInt64(idr["ID"]),
+                                Title = Convert.ToString(idr["Title"]),
+                                ApplyID = Convert.ToString(idr["ApplyID"]),
+                                ApplyName = Convert.ToString(idr["ApplyName"]),
+                                ApplyDate = Convert.ToDateTime(idr["ApplyDate"]),
+                                Memo = Convert.ToString(idr["Memo"]),
+                                AppSetID = Convert.ToInt32(idr["AppSetID"]),
+                                ApproveName = Convert.ToString(idr["ApproveName"]),
+                                CurrID = Convert.ToString(idr["CurrID"]),
+                                CurrName = Convert.ToString(idr["CurrName"]),
+                                NextCheckID = Convert.ToString(idr["NextCheckID"]),
+                                NextCheckName = Convert.ToString(idr["NextCheckName"]),
+                                ApplyStatus = Convert.ToString(idr["ApplyStatus"]),
+                                DenyReason = Convert.ToString(idr["DenyReason"]),
+                                ApplyType = Convert.ToString(idr["ApplyType"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                ThrowHouse = Convert.ToInt32(idr["ThrowHouse"]),
+                                ThrowHouseName = Convert.ToString(idr["ThrowHouseName"]),
+                                ClientID = Convert.ToInt64(idr["ClientID"]),
+                                ClientName = Convert.ToString(idr["ClientName"]),
+                                CheckType = Convert.ToString(idr["CheckType"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                                OStartTime = string.IsNullOrEmpty(Convert.ToString(idr["OStartTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["OStartTime"]),
+                                OEndTime = string.IsNullOrEmpty(Convert.ToString(idr["OEndTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["OEndTime"]),
+                                OTime = Convert.ToDecimal(idr["OTime"]),
+                                FileList = QueryApproveFileList(new CargoApproveFileEntity { ApproveID = Convert.ToInt64(idr["ID"]) })
+                            });
+                        }
+                    }
+                }
+                resHT["rows"] = result;
+                #region 汇总
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_Approve as a inner join Tbl_Cargo_ExpenseApproveSet as b on a.AppSetID=b.ID inner join Tbl_Cargo_ApproveCheck as c on a.ID=c.ApproveID and a.ApplyType=c.ApproveType WHERE (1=1)";
+                if (!string.IsNullOrEmpty(entity.ApplyID)) { strCount += " and a.ApplyID = '" + entity.ApplyID + "'"; }
+                if (!string.IsNullOrEmpty(entity.ApplyStatus)) { strCount += " and a.ApplyStatus = '" + entity.ApplyStatus + "'"; }
+                if (!string.IsNullOrEmpty(entity.Title)) { strCount += " and a.Title like '%" + entity.Title + "%'"; }
+                //制单日期范围
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.ApplyDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.ApplyDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                if (!string.IsNullOrEmpty(entity.ApplyType)) { strCount += " and a.ApplyType = '" + entity.ApplyType + "'"; }
+                if (!string.IsNullOrEmpty(entity.CheckUserID)) { strSQL += " and c.CheckUserID = '" + entity.CheckUserID + "'"; }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+                }
+                #endregion
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 查询申请
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoApproveEntity QueryApproveEntity(CargoApproveEntity entity)
+        {
+            CargoApproveEntity result = new CargoApproveEntity();
+            string strSQL = @"Select * from Tbl_Cargo_Approve where (1=1)";
+            if (!entity.ID.Equals(0)) { strSQL += " and ID=" + entity.ID; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        #region 获取数据
+                        result.ID = Convert.ToInt64(idr["ID"]);
+                        result.Title = Convert.ToString(idr["Title"]);
+                        result.ApplyID = Convert.ToString(idr["ApplyID"]);
+                        result.ApplyName = Convert.ToString(idr["ApplyName"]);
+                        result.ApplyDate = Convert.ToDateTime(idr["ApplyDate"]);
+                        result.Memo = Convert.ToString(idr["Memo"]);
+                        result.AppSetID = Convert.ToInt32(idr["AppSetID"]);
+                        result.CurrID = Convert.ToString(idr["CurrID"]);
+                        result.CurrName = Convert.ToString(idr["CurrName"]);
+                        result.NextCheckID = Convert.ToString(idr["NextCheckID"]);
+                        result.NextCheckName = Convert.ToString(idr["NextCheckName"]);
+                        result.ApplyStatus = Convert.ToString(idr["ApplyStatus"]);
+                        result.DenyReason = Convert.ToString(idr["DenyReason"]);
+                        result.ApplyType = Convert.ToString(idr["ApplyType"]);
+                        result.HouseID = Convert.ToInt32(idr["HouseID"]);
+                        result.ThrowHouse = Convert.ToInt32(idr["ThrowHouse"]);
+                        result.ThrowHouseName = Convert.ToString(idr["ThrowHouseName"]);
+                        result.ClientName = Convert.ToString(idr["ClientName"]);
+                        result.ClientID = Convert.ToInt64(idr["ClientID"]);
+                        result.OP_DATE = Convert.ToDateTime(idr["OP_DATE"]);
+                        result.OStartTime = string.IsNullOrEmpty(Convert.ToString(idr["OStartTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["OStartTime"]);
+                        result.OEndTime = string.IsNullOrEmpty(Convert.ToString(idr["OEndTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["OEndTime"]);
+                        result.OTime = Convert.ToDecimal(idr["OTime"]);
+                        result.LimitMoney = Convert.ToDecimal(idr["LimitMoney"]);
+                        result.FileList = QueryApproveFileList(new CargoApproveFileEntity { ApproveID = Convert.ToInt64(idr["ID"]) });
+                        #endregion
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 删除 我的申请
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelMyApprove(CargoApproveEntity entity)
+        {
+            entity.EnSafe();
+            string strDel = @"Delete From Tbl_Cargo_Approve WHERE ID=@ID";
+            using (DbCommand cmdAdd = conn.GetSqlStringCommond(strDel))
+            {
+                conn.AddInParameter(cmdAdd, "@ID", DbType.Int64, entity.ID);
+                conn.ExecuteNonQuery(cmdAdd);
+            }
+        }
+        /// <summary>
+        /// 删除 申请关联数据 表
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelApproveRelate(CargoApproveRelateEntity entity)
+        {
+            entity.EnSafe();
+            string strDel = @"Delete From Tbl_Cargo_ApproveRelate WHERE ApproveID=@ApproveID and ApplyType=@ApplyType";
+            using (DbCommand cmdAdd = conn.GetSqlStringCommond(strDel))
+            {
+                conn.AddInParameter(cmdAdd, "@ApproveID", DbType.Int64, entity.ApproveID);
+                conn.AddInParameter(cmdAdd, "@ApplyType", DbType.String, entity.ApplyType);
+                conn.ExecuteNonQuery(cmdAdd);
+            }
+        }
+        /// <summary>
+        /// 删除申请文件表
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelApproveFile(CargoApproveFileEntity entity)
+        {
+            if (entity.ID.Equals(0) && entity.ApproveID.Equals(0))
+            {
+                return;
+            }
+            entity.EnSafe();
+            string strDel = @"Delete From Tbl_Cargo_ApproveFile WHERE (1=1)";
+            if (!entity.ID.Equals(0)) { strDel += " and ID=@ID"; }
+            if (!entity.ApproveID.Equals(0)) { strDel += " and ApproveID=@ApproveID"; }
+            using (DbCommand cmdAdd = conn.GetSqlStringCommond(strDel))
+            {
+                if (!entity.ID.Equals(0)) { conn.AddInParameter(cmdAdd, "@ID", DbType.Int64, entity.ID); }
+                if (!entity.ApproveID.Equals(0)) { conn.AddInParameter(cmdAdd, "@ApproveID", DbType.Int64, entity.ApproveID); }
+                conn.ExecuteNonQuery(cmdAdd);
+            }
+        }
+        /// <summary>
+        /// 查询申请文件
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoApproveFileEntity> QueryApproveFileList(CargoApproveFileEntity entity)
+        {
+            List<CargoApproveFileEntity> result = new List<CargoApproveFileEntity>();
+            string strSQL = "Select * From Tbl_Cargo_ApproveFile Where ApproveID=@ApproveID";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@ApproveID", DbType.Int64, entity.ApproveID);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoApproveFileEntity
+                        {
+                            ApproveID = Convert.ToInt64(idr["ApproveID"]),
+                            FileName = Convert.ToString(idr["FileName"]),
+                            FileExtension = Convert.ToString(idr["FileExtension"]),
+                            FilePath = Convert.ToString(idr["FilePath"]),
+                            FileType = Convert.ToString(idr["FileType"]),
+                            ID = Convert.ToInt64(idr["ID"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询轮胎外调关联数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoApproveRelateEntity> QueryApproveContainerGoodRelateList(CargoApproveRelateEntity entity)
+        {
+            List<CargoApproveRelateEntity> result = new List<CargoApproveRelateEntity>();
+            string strSQL = "select a.ID,a.ApproveID,a.RelateID,a.ThrowNum,a.ThrowCharge,a.ApplyType,a.OP_DATE,b.ID,b.ContainerID,b.Piece,b.ProductID,b.TypeID,c.ProductName,c.Model,c.Specs,c.Figure,c.Model,c.GoodsCode,c.LoadIndex,c.SpeedLevel,c.SalePrice,c.TradePrice,c.FinalCostPrice,c.TaxCostPrice,c.NoTaxCostPrice,c.Batch,d.ContainerCode,d.AreaID,g.Name as AreaName,h.Name as HouseName,j.TypeName From Tbl_Cargo_ApproveRelate as a inner join Tbl_Cargo_ContainerGoods as b on a.RelateID=b.ID inner join Tbl_Cargo_Product as c on b.ProductID=c.ProductID and b.TypeID=c.TypeID inner join Tbl_Cargo_Container as d on b.ContainerID=d.ContainerID left join Tbl_Cargo_Area as e on d.AreaID=e.AreaID left join Tbl_Cargo_Area as f on e.ParentID=f.AreaID left join Tbl_Cargo_Area as g on f.ParentID=g.AreaID inner join Tbl_Cargo_House as h on c.HouseID=h.HouseID left join Tbl_Cargo_ProductType as j on b.TypeID=j.TypeID Where a.ApproveID=@ApproveID and a.ApplyType=@ApplyType";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@ApproveID", DbType.Int64, entity.ApproveID);
+                conn.AddInParameter(command, "@ApplyType", DbType.String, entity.ApplyType);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoApproveRelateEntity
+                        {
+                            ID = Convert.ToInt64(idr["ID"]),
+                            ApproveID = Convert.ToInt64(idr["ApproveID"]),
+                            RelateID = Convert.ToInt64(idr["RelateID"]),
+                            ContainerID = Convert.ToInt32(idr["ContainerID"]),
+                            ProductID = Convert.ToInt64(idr["ProductID"]),
+                            ThrowNum = Convert.ToInt32(idr["ThrowNum"]),
+                            ThrowCharge = Convert.ToDecimal(idr["ThrowCharge"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            ApplyType = Convert.ToString(idr["ApplyType"]),
+                            AreaName = Convert.ToString(idr["AreaName"]),
+                            AreaID = Convert.ToInt32(idr["AreaID"]),
+                            Batch = Convert.ToString(idr["Batch"]),
+                            ProductName = Convert.ToString(idr["ProductName"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                            ContainerCode = Convert.ToString(idr["ContainerCode"]),
+                            Figure = Convert.ToString(idr["Figure"]),
+                            HouseName = Convert.ToString(idr["HouseName"]),
+                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                            Model = Convert.ToString(idr["Model"]),
+                            NoTaxCostPrice = Convert.ToDecimal(idr["NoTaxCostPrice"]),
+                            SalePrice = Convert.ToDecimal(idr["SalePrice"]),
+                            TaxCostPrice = Convert.ToDecimal(idr["TaxCostPrice"]),
+                            TradePrice = Convert.ToDecimal(idr["TradePrice"]),
+                            FinalCostPrice = Convert.ToDecimal(idr["FinalCostPrice"]),
+                            TypeName = Convert.ToString(idr["TypeName"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 单表获取申请关联数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoApproveRelateEntity> QueryApproveThrowRelateList(CargoApproveRelateEntity entity)
+        {
+            List<CargoApproveRelateEntity> result = new List<CargoApproveRelateEntity>();
+            string strSQL = "select ID,ApproveID,RelateID,ThrowNum,ThrowCharge,ApplyType,OP_DATE From Tbl_Cargo_ApproveRelate Where ApproveID=@ApproveID and ApplyType=@ApplyType";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@ApproveID", DbType.Int64, entity.ApproveID);
+                conn.AddInParameter(command, "@ApplyType", DbType.String, entity.ApplyType);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoApproveRelateEntity
+                        {
+                            ID = Convert.ToInt64(idr["ID"]),
+                            ApproveID = Convert.ToInt64(idr["ApproveID"]),
+                            RelateID = Convert.ToInt64(idr["RelateID"]),
+                            ThrowNum = Convert.ToInt32(idr["ThrowNum"]),
+                            ThrowCharge = Convert.ToDecimal(idr["ThrowCharge"]),
+                            ApplyType = Convert.ToString(idr["ApplyType"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 删除申请审批路线图
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelApproveRout(CargoExpenseApproveRoutEntity entity)
+        {
+            entity.EnSafe();
+            string strDel = @"Delete From Tbl_Cargo_ExpenseApproveRout WHERE ExID=@ExID and ApproveType=@ApproveType";
+            using (DbCommand cmdAdd = conn.GetSqlStringCommond(strDel))
+            {
+                conn.AddInParameter(cmdAdd, "@ExID", DbType.Int64, entity.ExID);
+                conn.AddInParameter(cmdAdd, "@ApproveType", DbType.String, entity.ApproveType);
+                conn.ExecuteNonQuery(cmdAdd);
+            }
+        }
+        /// <summary>
+        /// 删除审批关联表
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelApproveCheck(CargoApproveCheckEntity entity)
+        {
+            entity.EnSafe();
+            string strDel = @"Delete From Tbl_Cargo_ApproveCheck WHERE ApproveID=@ApproveID and ApproveType=@ApproveType";
+            using (DbCommand cmdAdd = conn.GetSqlStringCommond(strDel))
+            {
+                conn.AddInParameter(cmdAdd, "@ApproveID", DbType.Int64, entity.ApproveID);
+                conn.AddInParameter(cmdAdd, "@ApproveType", DbType.String, entity.ApproveType);
+                conn.ExecuteNonQuery(cmdAdd);
+            }
+        }
+        /// <summary>
+        /// 保存申请新增申请
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public long AddApplication(CargoApproveEntity entity)
+        {
+            Int64 did = 0;
+            string strSQL = @"INSERT INTO Tbl_Cargo_Approve(Title,ApplyID,ApplyName,ApplyDate,Memo,AppSetID,CurrID,CurrName,CheckTime,NextCheckID,NextCheckName,ApplyStatus,OP_DATE,ApplyType,HouseID,ThrowHouse,ThrowHouseName,ClientID,ClientName";
+            if (entity.OStartTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.OStartTime.ToString("yyyy-MM-dd") != "1900-01-01")
+            {
+                strSQL += ",OStartTime";
+            }
+            if (entity.OEndTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.OEndTime.ToString("yyyy-MM-dd") != "1900-01-01")
+            {
+                strSQL += ",OEndTime";
+            }
+            strSQL += ",OTime,LimitMoney) VALUES (@Title,@ApplyID,@ApplyName,@ApplyDate,@Memo,@AppSetID,@CurrID,@CurrName,@CheckTime,@NextCheckID,@NextCheckName,@ApplyStatus,@OP_DATE,@ApplyType,@HouseID,@ThrowHouse,@ThrowHouseName,@ClientID,@ClientName";
+            if (entity.OStartTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.OStartTime.ToString("yyyy-MM-dd") != "1900-01-01")
+            {
+                strSQL += ",OStartTime";
+            }
+            if (entity.OEndTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.OEndTime.ToString("yyyy-MM-dd") != "1900-01-01")
+            {
+                strSQL += ",OEndTime";
+            }
+            strSQL += ",@OTime,@LimitMoney) SELECT @@IDENTITY";
+            entity.EnSafe();
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                conn.AddInParameter(cmd, "@ApplyID", DbType.String, entity.ApplyID);
+                conn.AddInParameter(cmd, "@ApplyName", DbType.String, entity.ApplyName);
+                conn.AddInParameter(cmd, "@ApplyDate", DbType.DateTime, entity.ApplyDate);
+                conn.AddInParameter(cmd, "@Memo", DbType.String, entity.Memo);
+                conn.AddInParameter(cmd, "@AppSetID", DbType.Int32, entity.AppSetID);
+                conn.AddInParameter(cmd, "@CurrID", DbType.String, entity.CurrID);
+                conn.AddInParameter(cmd, "@CurrName", DbType.String, entity.CurrName);
+                conn.AddInParameter(cmd, "@CheckTime", DbType.DateTime, entity.CheckTime);
+                conn.AddInParameter(cmd, "@NextCheckID", DbType.String, entity.NextCheckID);
+                conn.AddInParameter(cmd, "@NextCheckName", DbType.String, entity.NextCheckName);
+                conn.AddInParameter(cmd, "@ApplyStatus", DbType.String, entity.ApplyStatus);
+                conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                conn.AddInParameter(cmd, "@ApplyType", DbType.String, entity.ApplyType);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@ThrowHouse", DbType.Int32, entity.ThrowHouse);
+                conn.AddInParameter(cmd, "@ThrowHouseName", DbType.String, entity.ThrowHouseName);
+                conn.AddInParameter(cmd, "@ClientName", DbType.String, entity.ClientName);
+                conn.AddInParameter(cmd, "@ClientID", DbType.Int64, entity.ClientID);
+                if (entity.OStartTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.OStartTime.ToString("yyyy-MM-dd") != "1900-01-01")
+                {
+                    conn.AddInParameter(cmd, "@OStartTime", DbType.DateTime, entity.OStartTime);
+                }
+                if (entity.OEndTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.OEndTime.ToString("yyyy-MM-dd") != "1900-01-01")
+                {
+                    conn.AddInParameter(cmd, "@OEndTime", DbType.DateTime, entity.OEndTime);
+                }
+                conn.AddInParameter(cmd, "@OTime", DbType.Decimal, entity.OTime);
+                conn.AddInParameter(cmd, "@LimitMoney", DbType.Decimal, entity.LimitMoney);
+                did = Convert.ToInt64(conn.ExecuteScalar(cmd));
+            }
+            if (entity.RelateList != null)
+            {
+                //增加申请关联详细内容
+                foreach (var it in entity.RelateList)
+                {
+                    it.ApproveID = did;
+                    AddApproveRelate(it);
+                }
+            }
+
+            return did;
+        }
+        /// <summary>
+        /// 修改申请
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateApplication(CargoApproveEntity entity)
+        {
+            string strSQL = @"Update Tbl_Cargo_Approve Set Title=@Title,Memo=@Memo,CurrID=@CurrID,CurrName=@CurrName,CheckTime=@CheckTime,NextCheckID=@NextCheckID,NextCheckName=@NextCheckName,ApplyStatus=@ApplyStatus,ApplyType=@ApplyType,ThrowHouse=@ThrowHouse,ThrowHouseName=@ThrowHouseName,ClientID=@ClientID,ClientName=@ClientName Where ID=@ID";
+
+            entity.EnSafe();
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@ID", DbType.Int64, entity.ID);
+                conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                conn.AddInParameter(cmd, "@Memo", DbType.String, entity.Memo);
+                conn.AddInParameter(cmd, "@CurrID", DbType.String, entity.CurrID);
+                conn.AddInParameter(cmd, "@CurrName", DbType.String, entity.CurrName);
+                conn.AddInParameter(cmd, "@CheckTime", DbType.DateTime, entity.CheckTime);
+                conn.AddInParameter(cmd, "@NextCheckID", DbType.String, entity.NextCheckID);
+                conn.AddInParameter(cmd, "@NextCheckName", DbType.String, entity.NextCheckName);
+                conn.AddInParameter(cmd, "@ApplyStatus", DbType.String, entity.ApplyStatus);
+                conn.AddInParameter(cmd, "@ApplyType", DbType.String, entity.ApplyType);
+                conn.AddInParameter(cmd, "@ThrowHouse", DbType.Int32, entity.ThrowHouse);
+                conn.AddInParameter(cmd, "@ThrowHouseName", DbType.String, entity.ThrowHouseName);
+                conn.AddInParameter(cmd, "@ClientName", DbType.String, entity.ClientName);
+                conn.AddInParameter(cmd, "@ClientID", DbType.Int64, entity.ClientID);
+                conn.ExecuteNonQuery(cmd);
+            }
+            //增加申请关联详细内容
+            DelApproveRelate(new CargoApproveRelateEntity { ApproveID = entity.ID, ApplyType = entity.ApplyType });
+            foreach (var it in entity.RelateList)
+            {
+                AddApproveRelate(it);
+            }
+        }
+        /// <summary>
+        /// 新增申请关联数据表
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddApproveRelate(CargoApproveRelateEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = "Insert into Tbl_Cargo_ApproveRelate(ApproveID,RelateID,ThrowNum,ThrowCharge,ApplyType) values (@ApproveID,@RelateID,@ThrowNum,@ThrowCharge,@ApplyType)";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@ApproveID", DbType.Int64, entity.ApproveID);
+                conn.AddInParameter(cmd, "@RelateID", DbType.Int64, entity.RelateID);
+                conn.AddInParameter(cmd, "@ThrowNum", DbType.Int32, entity.ThrowNum);
+                conn.AddInParameter(cmd, "@ThrowCharge", DbType.Decimal, entity.ThrowCharge);
+                conn.AddInParameter(cmd, "@ApplyType", DbType.String, entity.ApplyType);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 保存申请关联的文件数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddApproveFile(CargoApproveFileEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = "Insert into Tbl_Cargo_ApproveFile(ApproveID,FileName,FilePath,FileExtension,FileType) values (@ApproveID,@FileName,@FilePath,@FileExtension,@FileType)";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@ApproveID", DbType.Int64, entity.ApproveID);
+                conn.AddInParameter(cmd, "@FileName", DbType.String, entity.FileName);
+                conn.AddInParameter(cmd, "@FilePath", DbType.String, entity.FilePath);
+                conn.AddInParameter(cmd, "@FileExtension", DbType.String, entity.FileExtension);
+                conn.AddInParameter(cmd, "@FileType", DbType.String, entity.FileType);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 修改审批状态
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateApplicationStatus(CargoApproveEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = "Update Tbl_Cargo_Approve Set CurrID=@CurrID,CurrName=@CurrName,CheckTime=@CheckTime,NextCheckID=@NextCheckID,NextCheckName=@NextCheckName,ApplyStatus=@ApplyStatus,DenyReason=@DenyReason Where ID=@ID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@CurrID", DbType.String, entity.CurrID);
+                conn.AddInParameter(cmd, "@CurrName", DbType.String, entity.CurrName);
+                conn.AddInParameter(cmd, "@CheckTime", DbType.DateTime, entity.CheckTime);
+                conn.AddInParameter(cmd, "@NextCheckID", DbType.String, entity.NextCheckID);
+                conn.AddInParameter(cmd, "@NextCheckName", DbType.String, entity.NextCheckName);
+                conn.AddInParameter(cmd, "@ApplyStatus", DbType.String, entity.ApplyStatus);
+                conn.AddInParameter(cmd, "@DenyReason", DbType.String, entity.DenyReason);
+                conn.AddInParameter(cmd, "@ID", DbType.Int64, entity.ID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        #endregion
+        #region 微信推送操作方法集合
+        /// <summary>
+        /// 新增要推送的数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddPushData(CargoPushDataEntity entity)
+        {
+            string strSQL = "INSERT INTO Tbl_Cargo_PushData(PushTitle,OrderInfo,TotalCharge,WXOrderNo,wxOpenID,TemplateID,HouseName,HouseID,PushType,PushStatus) VALUES (@PushTitle,@OrderInfo,@TotalCharge,@WXOrderNo,@wxOpenID,@TemplateID,@HouseName,@HouseID,@PushType,@PushStatus)";
+            entity.EnSafe();
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@PushTitle", DbType.String, entity.PushTitle);
+                conn.AddInParameter(cmd, "@OrderInfo", DbType.String, entity.OrderInfo);
+                conn.AddInParameter(cmd, "@TotalCharge", DbType.Decimal, entity.TotalCharge);
+                conn.AddInParameter(cmd, "@WXOrderNo", DbType.String, entity.WXOrderNo);
+                conn.AddInParameter(cmd, "@wxOpenID", DbType.String, entity.wxOpenID);
+                conn.AddInParameter(cmd, "@TemplateID", DbType.String, entity.TemplateID);
+                conn.AddInParameter(cmd, "@HouseName", DbType.String, entity.HouseName);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@PushType", DbType.String, entity.PushType);
+                conn.AddInParameter(cmd, "@PushStatus", DbType.String, entity.PushStatus);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 修改推送状态
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdatePushStatus(CargoPushDataEntity entity)
+        {
+            string strSQL = "UPDATE Tbl_Cargo_PushData set PushStatus=@PushStatus,PushDate=@PushDate Where ID=@ID";
+            entity.EnSafe();
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@ID", DbType.Int64, entity.ID);
+                conn.AddInParameter(cmd, "@PushDate", DbType.DateTime, DateTime.Now);
+                conn.AddInParameter(cmd, "@PushStatus", DbType.String, entity.PushStatus);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 查询待推送的数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoPushDataEntity> QueryPushData(CargoPushDataEntity entity)
+        {
+            List<CargoPushDataEntity> result = new List<CargoPushDataEntity>();
+            string strSQL = "Select * from Tbl_Cargo_PushData Where (1=1)";
+            //string strSQL = "Select top 1 * from Tbl_Cargo_PushData Where (1=1)";
+            if (!string.IsNullOrEmpty(entity.PushStatus)) { strSQL += " and PushStatus='" + entity.PushStatus + "'"; }
+            if (!string.IsNullOrEmpty(entity.PushType)) { strSQL += " and PushType='" + entity.PushType + "'"; }
+            strSQL += "ORDER BY OP_DATE";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoPushDataEntity
+                        {
+                            ID = Convert.ToInt64(idr["ID"]),
+                            PushTitle = Convert.ToString(idr["PushTitle"]),
+                            OrderInfo = Convert.ToString(idr["OrderInfo"]),
+                            TotalCharge = Convert.ToDecimal(idr["TotalCharge"]),
+                            wxOpenID = Convert.ToString(idr["wxOpenID"]),
+                            WXOrderNo = Convert.ToString(idr["WXOrderNo"]),
+                            TemplateID = Convert.ToString(idr["TemplateID"]),
+                            HouseName = Convert.ToString(idr["HouseName"]),
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            PushType = Convert.ToString(idr["PushType"]),
+                            PushStatus = Convert.ToString(idr["PushStatus"]),
+                            PushDate = string.IsNullOrEmpty(Convert.ToString(idr["PushDate"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["PushDate"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        #endregion
+        #region 公告管理操作方法集合
+        /// <summary>
+        /// 删除公告
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoNotice(List<CargoNoticeEntity> entity)
+        {
+            foreach (var it in entity)
+            {
+                string strSQL = @"UPDATE Tbl_Cargo_Notice SET DelFlag='1' WHERE ID=@ID";
+                if (it.DelFlag.Equals("1"))//彻底删除
+                {
+                    strSQL = @"Delete from Tbl_Cargo_Notice where ID=@ID ";
+                }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, it.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+        }
+        /// <summary>
+        /// 查询公告
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryCargoNotice(int pIndex, int pNum, CargoNoticeEntity entity)
+        {
+            List<CargoNoticeEntity> result = new List<CargoNoticeEntity>();
+
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OP_DATE DESC) AS RowNumber,a.*,b.Name as HouseName FROM Tbl_Cargo_Notice as a inner join tbl_Cargo_House as b on a.HouseID=b.HouseID WHERE (1=1)";
+                if (!string.IsNullOrEmpty(entity.DelFlag)) { strSQL += " and a.DelFlag = '" + entity.DelFlag + "'"; }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.Title)) { strSQL += " and a.Title like '%" + entity.Title + "%'"; }
+
+                if (!string.IsNullOrEmpty(entity.NoticeType)) { strSQL += " and a.NoticeType = '" + entity.NoticeType + "'"; }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and a.HouseID=" + entity.HouseID; }
+                if (!entity.ClientNum.Equals(0)) { strSQL += " and a.ClientNum = " + entity.ClientNum; }
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoNoticeEntity
+                            {
+                                ID = Convert.ToInt32(idr["ID"]),
+                                NoticeType = Convert.ToString(idr["NoticeType"]),
+                                Title = Convert.ToString(idr["Title"]),
+                                //Memo = Convert.ToString(idr["Memo"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                OPName = Convert.ToString(idr["OPName"]),
+                                DelFlag = Convert.ToString(idr["DelFlag"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                                ClientNum = Convert.ToInt32(idr["ClientNum"]),
+                                ReadStatus = string.IsNullOrEmpty(Convert.ToString(idr["ReadStatus"])) ? 0 : Convert.ToInt32(idr["ReadStatus"])
+                            });
+                        }
+                    }
+                }
+
+                resHT["rows"] = result;
+
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_Notice as a Where (1=1)";
+                if (!string.IsNullOrEmpty(entity.DelFlag)) { strCount += " and a.DelFlag = '" + entity.DelFlag + "'"; }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.Title)) { strCount += " and a.Title like '%" + entity.Title + "%'"; }
+                if (!string.IsNullOrEmpty(entity.NoticeType)) { strCount += " and a.NoticeType = '" + entity.NoticeType + "'"; }
+                if (!entity.HouseID.Equals(0)) { strCount += " and a.HouseID=" + entity.HouseID; }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 新增公告
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddNotice(CargoNoticeEntity entity)
+        {
+
+            string strSQL = @"INSERT INTO Tbl_Cargo_Notice(Title,NoticeType,HouseID,Memo,DelFlag,OPName,ClientNum) VALUES (@Title,@NoticeType,@HouseID,@Memo,@DelFlag,@OPName,@ClientNum)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                    conn.AddInParameter(cmd, "@NoticeType", DbType.String, entity.NoticeType);
+                    conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                    conn.AddInParameter(cmd, "@Memo", DbType.String, entity.Memo);
+                    conn.AddInParameter(cmd, "@OPName", DbType.String, entity.OPName);
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@ClientNum", DbType.String, entity.ClientNum);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改公告
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateNotice(CargoNoticeEntity entity)
+        {
+
+            string strSQL = @"UPDATE Tbl_Cargo_Notice SET Title=@Title,DelFlag=@DelFlag,NoticeType=@NoticeType,Memo=@Memo,ClientNum=@ClientNum,OPName=@OPName,OP_DATE=@OP_DATE WHERE ID=@ID";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                    conn.AddInParameter(cmd, "@NoticeType", DbType.String, entity.NoticeType);
+                    conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                    conn.AddInParameter(cmd, "@Memo", DbType.String, entity.Memo);
+                    conn.AddInParameter(cmd, "@ClientNum", DbType.Int32, entity.ClientNum);
+                    conn.AddInParameter(cmd, "@OPName", DbType.String, entity.OPName);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改公告阅读状态
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void UpdateNoticeReadStatus(CargoNoticeEntity entity)
+        {
+
+            string strSQL = @"UPDATE Tbl_Cargo_Notice SET ReadStatus=@ReadStatus WHERE ID=@ID";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ReadStatus", DbType.Int32, entity.ReadStatus);
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 查询公告
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoNoticeEntity QueryNoticeByID(CargoNoticeEntity entity)
+        {
+            CargoNoticeEntity result = new CargoNoticeEntity();
+            string strSQL = "Select * From Tbl_Cargo_Notice Where ID=@ID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idrCount in dt.Rows)
+                    {
+                        result.ID = Convert.ToInt32(idrCount["ID"]);
+                        result.Title = Convert.ToString(idrCount["Title"]);
+                        result.NoticeType = Convert.ToString(idrCount["NoticeType"]);
+                        result.Memo = Convert.ToString(idrCount["Memo"]);
+                        result.DelFlag = Convert.ToString(idrCount["DelFlag"]);
+                        result.OPName = Convert.ToString(idrCount["OPName"]);
+                        result.HouseID = Convert.ToInt32(idrCount["HouseID"]);
+                        result.ClientNum = Convert.ToInt32(idrCount["ClientNum"]);
+                        result.ReadStatus = string.IsNullOrEmpty(Convert.ToString(idrCount["ReadStatus"])) ? 0 : Convert.ToInt32(idrCount["ReadStatus"]);
+                        result.OP_DATE = Convert.ToDateTime(idrCount["OP_DATE"]);
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询公告用以APP首页显示
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<APPCargoNoticeEntity> QueryNoticeForAPP(CargoNoticeEntity entity)
+        {
+            List<APPCargoNoticeEntity> result = new List<APPCargoNoticeEntity>();
+            string strSQL = "Select * From Tbl_Cargo_Notice Where (1=1)";
+            if (!entity.HouseID.Equals(0)) { strSQL += " and HouseID=" + entity.HouseID; }
+            if (!string.IsNullOrEmpty(entity.DelFlag)) { strSQL += " and DelFlag='" + entity.DelFlag + "'"; }
+            if (!string.IsNullOrEmpty(entity.NoticeType)) { strSQL += " and NoticeType='" + entity.NoticeType + "'"; }
+            strSQL += " Order BY DelFlag asc, OP_DATE desc";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new APPCargoNoticeEntity
+                        {
+                            ID = Convert.ToInt32(idr["ID"]),
+                            Title = Convert.ToString(idr["Title"]),
+                            DelFlag = Convert.ToString(idr["DelFlag"]),
+                            OPDATE = Convert.ToDateTime(idr["OP_DATE"]),
+                            URL = "https://dlt.neway5.com/NoticeShow.aspx?ID=" + Convert.ToString(idr["ID"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        #endregion
+        #region 消息管理操作方法集合
+        /// <summary>
+        /// 查询公告消息列表
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryCargoNoticeUser(int pIndex, int pNum, CargoNoticeEntity entity)
+        {
+            List<CargoNoticeEntity> result = new List<CargoNoticeEntity>();
+
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OP_DATE DESC) AS RowNumber,a.*,b.Name as HouseName, COALESCE(v.ReadStatus, 0) AS UserReadStatus FROM Tbl_Cargo_Notice as a inner join tbl_Cargo_House as b on a.HouseID=b.HouseID  LEFT JOIN  Tbl_Cargo_NoticeUserView as v  ON  a.ID=v.MessageID WHERE (1=1)";
+                strSQL += " and  (v.LoginName = '" + entity.LoginName + "' OR v.LoginName IS NULL)";
+
+                if (!string.IsNullOrEmpty(entity.DelFlag)) { strSQL += " and a.DelFlag = '" + entity.DelFlag + "'"; }
+                if (!entity.ReadStatus.Equals(0)) { strSQL += " and COALESCE(v.ReadStatus, 0) = " + (entity.ReadStatus - 1) + ""; }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.Title)) { strSQL += " and a.Title like '%" + entity.Title + "%'"; }
+                if (!string.IsNullOrEmpty(entity.NoticeType)) { strSQL += " and a.NoticeType = '" + entity.NoticeType + "'"; }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and a.HouseID=" + entity.HouseID; }
+                if (!entity.ClientNum.Equals(0)) { strSQL += " and a.ClientNum = " + entity.ClientNum; }
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))  ORDER BY UserReadStatus ASC, OP_DATE DESC";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoNoticeEntity
+                            {
+                                ID = Convert.ToInt32(idr["ID"]),
+                                NoticeType = Convert.ToString(idr["NoticeType"]),
+                                Title = Convert.ToString(idr["Title"]),
+                                //Memo = Convert.ToString(idr["Memo"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                OPName = Convert.ToString(idr["OPName"]),
+                                DelFlag = Convert.ToString(idr["DelFlag"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                                ClientNum = Convert.ToInt32(idr["ClientNum"]),
+                                ReadStatus = string.IsNullOrEmpty(Convert.ToString(idr["UserReadStatus"])) ? 0 : Convert.ToInt32(idr["UserReadStatus"])
+                            });
+                        }
+                    }
+                }
+
+                resHT["rows"] = result;
+
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_Notice as a Where (1=1)";
+                if (!string.IsNullOrEmpty(entity.DelFlag)) { strCount += " and a.DelFlag = '" + entity.DelFlag + "'"; }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.Title)) { strCount += " and a.Title like '%" + entity.Title + "%'"; }
+                if (!string.IsNullOrEmpty(entity.NoticeType)) { strCount += " and a.NoticeType = '" + entity.NoticeType + "'"; }
+                if (!entity.HouseID.Equals(0)) { strCount += " and a.HouseID=" + entity.HouseID; }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+
+
+        /// <summary>
+        /// 查询公告未读消息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoNoticeEntity> QueryUnreadMessage(CargoNoticeEntity entity)
+        {
+
+            List<CargoNoticeEntity> result = new List<CargoNoticeEntity>();
+            string strSQL = "select a.*, b.Name as HouseName, COALESCE(v.ReadStatus, 0) AS UserReadStatus,v.ID as NoticeUserID   FROM Tbl_Cargo_Notice as a inner join tbl_Cargo_House as b on a.HouseID=b.HouseID  LEFT JOIN  Tbl_Cargo_NoticeUserView as v  ON  a.ID=v.MessageID  WHERE (1=1) ";
+            strSQL += " and  (v.LoginName = '" + entity.LoginName + "'  AND  v.ReadStatus = 0) OR  v.LoginName IS NULL";
+            //if (!entity.ID.Equals(0)) { strSQL += " and n.ID=" + entity.ID; }
+            //if (!entity.HouseID.Equals(0)) { strSQL += " and HouseID=" + entity.HouseID; }
+            //if (!string.IsNullOrEmpty(entity.DelFlag)) { strSQL += " and DelFlag='" + entity.DelFlag + "'"; }
+            //if (!string.IsNullOrEmpty(entity.NoticeType)) { strSQL += " and NoticeType='" + entity.NoticeType + "'"; }
+            strSQL += " Order BY DelFlag asc, OP_DATE desc";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoNoticeEntity
+                        {
+                            ID = Convert.ToInt32(idr["ID"]),
+                            NoticeType = Convert.ToString(idr["NoticeType"]),
+                            Title = Convert.ToString(idr["Title"]),
+                            //Memo = Convert.ToString(idr["Memo"]),
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            HouseName = Convert.ToString(idr["HouseName"]),
+                            OPName = Convert.ToString(idr["OPName"]),
+                            DelFlag = Convert.ToString(idr["DelFlag"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                            ClientNum = Convert.ToInt32(idr["ClientNum"]),
+                            ReadStatus = string.IsNullOrEmpty(Convert.ToString(idr["UserReadStatus"])) ? 0 : Convert.ToInt32(idr["UserReadStatus"]),
+                            NoticeUserID = Convert.ToString(idr["NoticeUserID"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 查询消息列表
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoNoticeUserViewEntity> QueryNoticeUserView(CargoNoticeUserViewEntity entity)
+        {
+            List<CargoNoticeUserViewEntity> result = new List<CargoNoticeUserViewEntity>();
+            string strSQL = "SELECT * FROM Tbl_Cargo_NoticeUserView  WHERE (1=1)";
+            if (!entity.ID.Equals(0)) { strSQL += " and ID=" + entity.ID; }
+            if (!entity.MessageID.Equals(0)) { strSQL += " and MessageID=" + entity.MessageID; }
+            if (!entity.LoginName.Equals(0)) { strSQL += " and LoginName=" + entity.LoginName; }
+            //if (!entity.HouseID.Equals(0)) { strSQL += " and HouseID=" + entity.HouseID; }
+            //if (!string.IsNullOrEmpty(entity.DelFlag)) { strSQL += " and DelFlag='" + entity.DelFlag + "'"; }
+            //if (!string.IsNullOrEmpty(entity.NoticeType)) { strSQL += " and NoticeType='" + entity.NoticeType + "'"; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoNoticeUserViewEntity
+                        {
+                            ID = Convert.ToInt32(idr["ID"]),
+                            MessageID = Convert.ToInt32(idr["MessageID"]),
+                            Title = Convert.ToString(idr["Title"]),
+                            MessageType = Convert.ToInt32(idr["MessageType"]),
+                            UserName = Convert.ToString(idr["UserName"]),
+                            LoginName = Convert.ToString(idr["LoginName"]),
+                            ReadStatus = (byte)(string.IsNullOrEmpty(Convert.ToString(idr["ReadStatus"])) ? 0 : Convert.ToInt32(idr["ReadStatus"])),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+
+
+        /// <summary>
+        /// 新增消息
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddNoticeUserView(CargoNoticeUserViewEntity entity)
+        {
+
+            string strSQL = @"INSERT INTO Tbl_Cargo_NoticeUserView(MessageID, Title, MessageType, ReadStatus, LoginName, UserName, OP_DATE) 
+ VALUES (@MessageID, @Title, @MessageType, @ReadStatus, @LoginName, @UserName, @OP_DATE)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@MessageID", DbType.Int32, entity.MessageID);
+                    conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                    conn.AddInParameter(cmd, "@MessageType", DbType.Int32, entity.MessageType);
+                    conn.AddInParameter(cmd, "@ReadStatus", DbType.Int32, entity.ReadStatus);
+                    conn.AddInParameter(cmd, "@LoginName", DbType.String, entity.LoginName);
+                    conn.AddInParameter(cmd, "@UserName", DbType.String, entity.UserName);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        /// <summary>
+        /// 修改公告消息阅读状态
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void UpdateNoticeUserView(CargoNoticeUserViewEntity entity)
+        {
+
+            string strSQL = @"UPDATE Tbl_Cargo_NoticeUserView SET ReadStatus=@ReadStatus , Title=@Title  WHERE MessageID=@MessageID ";
+            if (!string.IsNullOrEmpty(entity.LoginName)) { strSQL += " and LoginName=@LoginName"; }
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ReadStatus", DbType.Int32, entity.ReadStatus);
+                    conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                    conn.AddInParameter(cmd, "@MessageID", DbType.Int32, entity.MessageID);
+                    if (!string.IsNullOrEmpty(entity.LoginName)) { conn.AddInParameter(cmd, "@LoginName", DbType.String, entity.LoginName); }
+
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        #endregion
+        #region 我的日报操作方法集合
+        /// <summary>
+        /// 查询我的日报列表
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryCargoDailyReports(int pIndex, int pNum, CargoDailyReportsEntity entity)
+        {
+            List<CargoDailyReportsEntity> result = new List<CargoDailyReportsEntity>();
+
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY OP_DATE DESC) AS RowNumber,* FROM  Tbl_Cargo_DailyReports  WHERE (1=1)";
+                strSQL += " and  LoginName = '" + entity.LoginName + "'";
+
+
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.Title)) { strSQL += " and Title like '%" + entity.Title + "%'"; }
+
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and OP_DATE>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and OP_DATE<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+
+
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))  ORDER BY  OP_DATE DESC";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoDailyReportsEntity
+                            {
+                                ID = Convert.ToInt32(idr["ID"]),
+                                Title = Convert.ToString(idr["Title"]),
+                                //Content = Convert.ToString(idr["Content"]), 
+                                LoginName = Convert.ToString(idr["LoginName"]),
+                                UserName = Convert.ToString(idr["UserName"]),
+                                LoginReportName = Convert.ToString(idr["LoginReportName"]),
+                                UserReportName = Convert.ToString(idr["UserReportName"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                            });
+                        }
+                    }
+                }
+
+                resHT["rows"] = result;
+
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_DailyReports as a Where (1=1)";
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.Title)) { strCount += " and a.Title like '%" + entity.Title + "%'"; }
+
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+
+        /// <summary>
+        /// 查询我的日报信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDailyReportsEntity> QueryDailyReportsByID(CargoDailyReportsEntity entity)
+        {
+            List<CargoDailyReportsEntity> result = new List<CargoDailyReportsEntity>();
+            string strSQL = "SELECT * FROM Tbl_Cargo_DailyReports  WHERE (1=1)";
+            if (!entity.ID.Equals(0)) { strSQL += " and ID=" + entity.ID; }
+
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoDailyReportsEntity
+                        {
+                            ID = Convert.ToInt32(idr["ID"]),
+                            Title = Convert.ToString(idr["Title"]),
+                            Content = Convert.ToString(idr["Content"]),
+                            LoginName = Convert.ToString(idr["LoginName"]),
+                            UserName = Convert.ToString(idr["UserName"]),
+                            LoginReportName = Convert.ToString(idr["LoginReportName"]),
+                            UserReportName = Convert.ToString(idr["UserReportName"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 查询我的可批复日报
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoDailyReportsEntity> QueryCanDailyReports(CargoDailyReportsEntity entity)
+        {
+            List<CargoDailyReportsEntity> result = new List<CargoDailyReportsEntity>();
+
+            string strSQL = "SELECT   DISTINCT TOP 20 DR.* FROM   Tbl_Cargo_DailyReports  DR LEFT JOIN   Tbl_Cargo_ReportComments UR ON DR.ID = UR.Report_id  AND UR.LoginName = '" + entity.LoginName + "' WHERE DR.LoginReportName  LIKE '%" + entity.LoginName + "%' ";
+            //筛选掉已回复的日报  0 不筛选   1 已筛选
+            if (!entity.IsReply.Equals(0)) { strSQL += "AND UR.Report_id IS NULL"; }
+            strSQL += " ORDER BY  OP_DATE DESC";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoDailyReportsEntity
+                        {
+                            ID = Convert.ToInt32(idr["ID"]),
+                            Title = Convert.ToString(idr["Title"]),
+                            Content = Convert.ToString(idr["Content"]),
+                            LoginName = Convert.ToString(idr["LoginName"]),
+                            UserName = Convert.ToString(idr["UserName"]),
+                            LoginReportName = Convert.ToString(idr["LoginReportName"]),
+                            UserReportName = Convert.ToString(idr["UserReportName"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 查询可评论人员
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoUserReportCommentsEntity> QueryUserReportComments(CargoUserReportCommentsEntity entity)
+        {
+            List<CargoUserReportCommentsEntity> result = new List<CargoUserReportCommentsEntity>();
+
+            string strSQL = "SELECT * FROM  Tbl_Cargo_UserReportComments";
+
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoUserReportCommentsEntity
+                        {
+                            ID = Convert.ToInt32(idr["ID"]),
+                            RoleID = Convert.ToInt32(idr["RoleID"]),
+                            LoginName = Convert.ToString(idr["LoginName"]),
+                            UserName = Convert.ToString(idr["UserName"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 添加我的日报
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void AddDailyReports(CargoDailyReportsEntity entity)
+        {
+
+            string strSQL = @"INSERT INTO Tbl_Cargo_DailyReports (Title, Content, LoginName, UserName, UserReportName ,LoginReportName, OP_DATE) VALUES (@Title, @Content, @LoginName, @UserName, @UserReportName ,@LoginReportName, @OP_DATE)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                    conn.AddInParameter(cmd, "@Content", DbType.String, entity.Content);
+                    conn.AddInParameter(cmd, "@UserReportName", DbType.String, entity.UserReportName);
+                    conn.AddInParameter(cmd, "@LoginReportName", DbType.String, entity.LoginReportName);
+                    conn.AddInParameter(cmd, "@LoginName", DbType.String, entity.LoginName);
+                    conn.AddInParameter(cmd, "@UserName", DbType.String, entity.UserName);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        /// <summary>
+        /// 修改我的日报
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void UpdateDailyReports(CargoDailyReportsEntity entity)
+        {
+
+            string strSQL = @"UPDATE Tbl_Cargo_DailyReports SET Title = @Title, Content = @Content ,UserReportName = @UserReportName  ,LoginReportName=@LoginReportName, OP_DATE = @OP_DATE WHERE ID = @ID";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@Title", DbType.String, entity.Title);
+                    conn.AddInParameter(cmd, "@Content", DbType.String, entity.Content);
+                    conn.AddInParameter(cmd, "@UserReportName", DbType.String, entity.UserReportName);
+                    conn.AddInParameter(cmd, "@LoginReportName", DbType.String, entity.LoginReportName);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        /// <summary>
+        /// 删除我的日报
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoDailyReports(List<CargoDailyReportsEntity> entity)
+        {
+            foreach (var it in entity)
+            {
+                string strSQL = @"Delete Tbl_Cargo_DailyReports  WHERE ID=@ID";
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, it.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 查询日报的评论信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoReportCommentsEntity> QueryReportComments(CargoReportCommentsEntity entity)
+        {
+            List<CargoReportCommentsEntity> result = new List<CargoReportCommentsEntity>();
+            string strSQL = "SELECT * FROM Tbl_Cargo_ReportComments  WHERE (1=1)";
+            if (!entity.Report_id.Equals(0)) { strSQL += " and Report_id=" + entity.Report_id; }
+
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoReportCommentsEntity
+                        {
+                            ID = Convert.ToInt32(idr["ID"]),
+                            Report_id = Convert.ToInt32(idr["Report_id"]),
+                            Content = Convert.ToString(idr["Content"]),
+                            LoginName = Convert.ToString(idr["LoginName"]),
+                            UserName = Convert.ToString(idr["UserName"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 添加我的日报评论
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void AddReportComments(CargoReportCommentsEntity entity)
+        {
+
+            string strSQL = @"INSERT INTO Tbl_Cargo_ReportComments (Report_id, Content, LoginName, UserName, OP_DATE) VALUES (@Report_id, @Content, @LoginName, @UserName, @OP_DATE)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@Report_id", DbType.Int32, entity.Report_id);
+                    conn.AddInParameter(cmd, "@Content", DbType.String, entity.Content);
+                    conn.AddInParameter(cmd, "@LoginName", DbType.String, entity.LoginName);
+                    conn.AddInParameter(cmd, "@UserName", DbType.String, entity.UserName);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        /// <summary>
+        /// 删除我的日报评论
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoReportCommentsByReportId(List<CargoReportCommentsEntity> entity)
+        {
+            foreach (var it in entity)
+            {
+                string strSQL = @"Delete Tbl_Cargo_ReportComments  WHERE ID=@ID";
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, it.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+        }
+        #endregion
+        #region 物流订阅操作方法集合
+        /// <summary>
+        /// 作废物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelHouseLogisPoll(List<CargoHouseLogisPollEntity> entity)
+        {
+            try
+            {
+                foreach (var it in entity)
+                {
+                    string strSQL = @"UPDATE Tbl_Cargo_HouseLogisPoll SET DelFlag='1' WHERE ID=@ID";
+                    if (it.DelFlag.Equals("1"))//彻底删除
+                    {
+                        strSQL = @"Delete from Tbl_Cargo_HouseLogisPoll where ID=@ID ";
+                    }
+                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    {
+                        conn.AddInParameter(cmd, "@ID", DbType.Int32, it.ID);
+                        conn.ExecuteNonQuery(cmd);
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 新增物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddHouseLogisPoll(CargoHouseLogisPollEntity entity)
+        {
+
+            string strSQL = @"INSERT INTO Tbl_Cargo_HouseLogisPoll(HouseID,LogisID,LogisticName,ComCode,DelFlag,OP_ID) VALUES (@HouseID,@LogisID,@LogisticName,@ComCode,@DelFlag,@OP_ID)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@LogisID", DbType.Int32, entity.LogisID);
+                    conn.AddInParameter(cmd, "@LogisticName", DbType.String, entity.LogisticName);
+                    conn.AddInParameter(cmd, "@ComCode", DbType.String, entity.ComCode);
+                    conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                    conn.AddInParameter(cmd, "@OP_ID", DbType.String, entity.OP_ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改物流公司
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateHouseLogisPoll(CargoHouseLogisPollEntity entity)
+        {
+
+            string strSQL = @"UPDATE Tbl_Cargo_HouseLogisPoll SET LogisticName=@LogisticName,LogisID=@LogisID,HouseID=@HouseID,ComCode=@ComCode,OP_ID=@OP_ID,DelFlag=@DelFlag,OP_DATE=@OP_DATE WHERE ID=@ID";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@LogisID", DbType.Int32, entity.LogisID);
+                    conn.AddInParameter(cmd, "@LogisticName", DbType.String, entity.LogisticName);
+                    conn.AddInParameter(cmd, "@ComCode", DbType.String, entity.ComCode);
+                    conn.AddInParameter(cmd, "@DelFlag", DbType.String, entity.DelFlag);
+                    conn.AddInParameter(cmd, "@OP_ID", DbType.String, entity.OP_ID);
+                    conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 查询物流公司
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryHouseLogisPoll(int pIndex, int pNum, CargoHouseLogisPollEntity entity)
+        {
+            List<CargoHouseLogisPollEntity> result = new List<CargoHouseLogisPollEntity>();
+
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OP_DATE DESC) AS RowNumber,a.*,b.Name as HouseName FROM Tbl_Cargo_HouseLogisPoll as a inner join tbl_Cargo_House as b on a.HouseID=b.HouseID WHERE (1=1)";
+                if (!string.IsNullOrEmpty(entity.DelFlag))
+                {
+                    strSQL += " and a.DelFlag = '" + entity.DelFlag + "'";
+                }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and a.HouseID=" + entity.HouseID; }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.LogisticName))
+                {
+                    strSQL += " and a.LogisticName like '%" + entity.LogisticName + "%'";
+                }
+
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoHouseLogisPollEntity
+                            {
+                                ID = Convert.ToInt32(idr["ID"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                LogisID = Convert.ToInt32(idr["LogisID"]),
+                                LogisticName = Convert.ToString(idr["LogisticName"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                ComCode = Convert.ToString(idr["ComCode"]),
+                                OP_ID = Convert.ToString(idr["OP_ID"]),
+                                DelFlag = Convert.ToString(idr["DelFlag"]),
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                            });
+                        }
+                    }
+                }
+
+                resHT["rows"] = result;
+
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_HouseLogisPoll Where (1=1)";
+                if (!string.IsNullOrEmpty(entity.DelFlag))
+                {
+                    strCount += " and DelFlag = '" + entity.DelFlag + "'";
+                }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and HouseID=" + entity.HouseID; }
+                //以中文名称为查询条件
+                if (!string.IsNullOrEmpty(entity.LogisticName))
+                {
+                    strCount += " and LogisticName like '%" + entity.LogisticName + "%'";
+                }
+
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 判断物流公司是否存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistHouseLogisPoll(CargoHouseLogisPollEntity entity)
+        {
+            bool result = false;
+
+            string strSQL = @"SELECT LogisticName From Tbl_Cargo_HouseLogisPoll  WHERE (1=1)";
+            if (!entity.HouseID.Equals(0)) { strSQL += " and HouseID=" + entity.HouseID; }
+            if (!entity.LogisID.Equals(0)) { strSQL += " and LogisID=" + entity.LogisID; }
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(cmd))
+                    {
+                        if (dd.Rows.Count > 0)
+                        {
+                            result = true;
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        #endregion
+        #region 客户回访操作方法集合
+
+        /// <summary>
+        /// 查询客户回访信息
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryCargoFeedBack(int pIndex, int pNum, CargoFeedBackEntity entity)
+        {
+            List<CargoFeedBackEntity> result = new List<CargoFeedBackEntity>();
+
+            Hashtable resHT = new Hashtable();
+            try
+            {
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.OPDATE DESC) AS RowNumber,a.*,b.Name as HouseName FROM Tbl_Cargo_FeedBack as a inner join tbl_Cargo_House as b on a.HouseID=b.HouseID WHERE (1=1)";
+                if (!string.IsNullOrEmpty(entity.CompanyName)) { strSQL += " and a.CompanyName like '%" + entity.CompanyName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ResultType)) { strSQL += " and a.ResultType = '" + entity.ResultType + "'"; }
+                if (!string.IsNullOrEmpty(entity.FeedBackName)) { strSQL += " and a.FeedBackName = '" + entity.FeedBackName + "'"; }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and a.HouseID=" + entity.HouseID; }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.FeedBackTime>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strSQL += " and a.FeedBackTime<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoFeedBackEntity
+                            {
+                                FID = Convert.ToInt64(idr["FID"]),
+                                CompanyName = Convert.ToString(idr["CompanyName"]),
+                                Name = Convert.ToString(idr["Name"]),
+                                //Memo = Convert.ToString(idr["Memo"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                HouseName = Convert.ToString(idr["HouseName"]),
+                                ResultType = Convert.ToString(idr["ResultType"]),
+                                FeedBackName = Convert.ToString(idr["FeedBackName"]),
+                                OPDATE = Convert.ToDateTime(idr["OPDATE"]),
+                                FeedBackResult = Convert.ToString(idr["FeedBackResult"]),
+                                FeedBackTime = Convert.ToDateTime(idr["FeedBackTime"]),
+                            });
+                        }
+                    }
+                }
+
+                resHT["rows"] = result;
+
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_FeedBack as a Where (1=1)";
+                if (!string.IsNullOrEmpty(entity.CompanyName)) { strCount += " and a.CompanyName like '%" + entity.CompanyName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ResultType)) { strCount += " and a.ResultType = '" + entity.ResultType + "'"; }
+                if (!string.IsNullOrEmpty(entity.FeedBackName)) { strCount += " and a.FeedBackName = '" + entity.FeedBackName + "'"; }
+                if (!entity.HouseID.Equals(0)) { strCount += " and a.HouseID=" + entity.HouseID; }
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.FeedBackTime>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.FeedBackTime<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
+                using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+                {
+                    using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                    {
+                        if (idrCount.Rows.Count > 0)
+                        {
+                            resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return resHT;
+        }
+        /// <summary>
+        /// 新增客户回访
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoFeedBack(CargoFeedBackEntity entity)
+        {
+
+            string strSQL = @"INSERT INTO Tbl_Cargo_FeedBack(CompanyName,Name,HouseID,ResultType,FeedBackTime,FeedBackName,FeedBackResult) VALUES (@CompanyName,@Name,@HouseID,@ResultType,@FeedBackTime,@FeedBackName,@FeedBackResult)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@CompanyName", DbType.String, entity.CompanyName);
+                    conn.AddInParameter(cmd, "@Name", DbType.String, entity.Name);
+                    conn.AddInParameter(cmd, "@FeedBackTime", DbType.DateTime, entity.FeedBackTime);
+                    conn.AddInParameter(cmd, "@ResultType", DbType.String, entity.ResultType);
+                    conn.AddInParameter(cmd, "@FeedBackName", DbType.String, entity.FeedBackName);
+                    conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                    conn.AddInParameter(cmd, "@FeedBackResult", DbType.String, entity.FeedBackResult);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        /// <summary>
+        /// 修改客户回访
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoFeedBack(CargoFeedBackEntity entity)
+        {
+
+            string strSQL = @"UPDATE Tbl_Cargo_FeedBack SET ResultType=@ResultType,FeedBackResult=@FeedBackResult WHERE FID=@FID";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ResultType", DbType.String, entity.ResultType);
+                    conn.AddInParameter(cmd, "@FeedBackResult", DbType.String, entity.FeedBackResult);
+                    conn.AddInParameter(cmd, "@FID", DbType.Int64, entity.FID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+
+        #endregion
+
+    }
+}

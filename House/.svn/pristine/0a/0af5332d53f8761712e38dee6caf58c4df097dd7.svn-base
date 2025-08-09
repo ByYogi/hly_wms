@@ -1,0 +1,489 @@
+﻿<%@ Page Title="安全库存" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="SafeStock.aspx.cs" Inherits="Cargo.House.SafeSnap" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script type="text/javascript">
+        //页面加载时执行
+        window.onload = function () {
+            adjustment();
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        //页面加载显示遮罩层防止用户看见未加载CSS的页面
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //加载完成后关闭遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: true, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'SID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [[
+                  {
+                      title: '', field: 'SID', checkbox: true, width: '30px', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  {
+                      title: '区域大仓', field: 'HouseName', width: '10%', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  {
+                      title: '所属仓库', field: 'AreaName', width: '10%', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  {
+                      title: '产品类型', field: 'TypeName', width: '10%', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  {
+                      title: '规格', field: 'Specs', width: '10%', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  {
+                      title: '花纹', field: 'Figure', width: '10%', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  {
+                      title: '货品代码', field: 'GoodsCode', width: '10%', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  {
+                      title: '载重', field: 'LoadIndex', width: '5%', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  {
+                      title: '速度', field: 'SpeedLevel', width: '5%', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  {
+                      title: '安全库存', field: 'StockNum', width: '5%', formatter: function (value) {
+                          return "<span title='" + value + "'>" + value + "</span>";
+                      }
+                  },
+                  { title: '操作时间', field: 'OP_DATE', width: '10%', formatter: DateTimeFormatter }
+                ]],
+                onLoadSuccess: function (data) { },
+                onClickRow: function (index, row) {
+                    $('#dg').datagrid('clearSelections');
+                    $('#dg').datagrid('selectRow', index);
+                },
+                onDblClickRow: function (index, row) { editItem(); },
+                rowStyler: function (index, row) { }
+            });
+
+            //列表回车响应查询
+            $("#saPanelTab").keydown(function (e) { if (e.keyCode == 13) { dosearch(); } });
+            //编辑回车响应保存
+            //$("#editTab").keydown(function (e) { if (e.keyCode == 13) { saveItem(); } });
+
+
+
+            //所在仓库
+            $('#HouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    $('#AreaID').combobox('clear');
+                    var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    $('#AreaID').combobox('reload', url);
+                }
+            });
+            //所在仓库
+            $('#eHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    $('#eAreaID').combobox('clear');
+                    var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    $('#eAreaID').combobox('reload', url);
+                }
+            });
+            $('#eParentID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLOneProductType',
+                onSelect: function (rec) {
+                    $('#eTypeID').combobox('clear');
+                    $('#eFigure').combobox('clear');
+                    $('#eGoodsCode').combobox('clear');
+                    $('#eLoadIndex').combobox('clear');
+                    $('#eSpeedLevel').combobox('clear');
+                    $('#eSpecs').combobox('clear');
+                    var url = '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + rec.TypeID;
+                    $('#eTypeID').combobox('reload', url);
+                    //轮胎规格
+                    $('#eTypeID').combobox({
+                        onSelect: function (fai) {
+                            $('#eFigure').combobox('clear');
+                            $('#eGoodsCode').combobox('clear');
+                            $('#eLoadIndex').combobox('clear');
+                            $('#eSpeedLevel').combobox('clear');
+                            $('#eSpecs').combobox('clear');
+                            var url = '../Price/priceApi.aspx?method=QueryAllSpesc&typeid=' + fai.TypeID + '&houseID=' + $("#eHouseID").combobox('getValue');
+                            $('#eSpecs').combobox('reload', url);
+                            $('#eSpecs').combobox({
+                                onSelect: function (sp) {
+                                    $('#eFigure').combobox('clear');
+                                    var url = '../Price/priceApi.aspx?method=QueryAllFigure&typeid=' + fai.TypeID + '&Specs=' + sp.Specs + '&houseID=' + $("#eHouseID").combobox('getValue');
+                                    $('#eFigure').combobox('reload', url);
+                                    if ($("#eFigure").combobox('getData').length > 0) {
+                                        $("#eFigure").combobox("setValue", $("#eFigure").combobox('getData')[0].Figure);
+                                    }
+
+                                    $('#eGoodsCode').combobox('clear');
+                                    var url = '../Price/priceApi.aspx?method=QueryAllGoodsCode&typeid=' + fai.TypeID + '&Specs=' + sp.Specs + '&houseID=' + $("#eHouseID").combobox('getValue');
+                                    $('#eGoodsCode').combobox('reload', url);
+                                    if ($("#eGoodsCode").combobox('getData').length > 0) {
+                                        $("#eGoodsCode").combobox("setValue", $("#eGoodsCode").combobox('getData')[0].GoodsCode);
+                                    }
+
+                                    $('#eLoadIndex').combobox('clear');
+                                    var url = '../Price/priceApi.aspx?method=QueryAllLoadIndex&typeid=' + fai.TypeID + '&Specs=' + sp.Specs + '&houseID=' + $("#eHouseID").combobox('getValue');
+                                    $('#eLoadIndex').combobox('reload', url);
+                                    if ($("#eLoadIndex").combobox('getData').length > 0) {
+                                        $("#eLoadIndex").combobox("setValue", $("#eLoadIndex").combobox('getData')[0].LoadIndex);
+                                    }
+
+                                    $('#eSpeedLevel').combobox('clear');
+                                    var url = '../Price/priceApi.aspx?method=QueryAllSpeedLevel&typeid=' + fai.TypeID + '&Specs=' + sp.Specs + '&houseID=' + $("#eHouseID").combobox('getValue');
+                                    $('#eSpeedLevel').combobox('reload', url);
+                                    if ($("#eSpeedLevel").combobox('getData').length > 0) {
+                                        $("#eSpeedLevel").combobox("setValue", $("#eSpeedLevel").combobox('getData')[0].SpeedLevel);
+                                    }
+                                    if ($("#eFigure").combobox('getData').length == 0) {
+                                        var time = 2;
+                                        var interval = setInterval(fun, time * 400);
+                                        function fun() {
+                                            var date = new Date();
+                                            console.log(date.getMilliseconds());
+                                            --time;
+                                            Getvalue();
+                                            if (time == 0) {
+                                                clearInterval(interval);
+                                            }
+                                        };
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+
+            $('#HouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+            $('#AreaID').combobox('textbox').bind('focus', function () { $('#AreaID').combobox('showPanel'); });
+            $('#eHouseID').combobox('textbox').bind('focus', function () { $('#eHouseID').combobox('showPanel'); });
+            $('#eAreaID').combobox('textbox').bind('focus', function () { $('#eAreaID').combobox('showPanel'); });
+            $('#eParentID').combobox('textbox').bind('focus', function () { $('#eParentID').combobox('showPanel'); });
+            $('#eTypeID').combobox('textbox').bind('focus', function () { $('#eTypeID').combobox('showPanel'); });
+            $('#eSpecs').combobox('textbox').bind('focus', function () { $('#eSpecs').combobox('showPanel'); });
+            $('#eFigure').combobox('textbox').bind('focus', function () { $('#eFigure').combobox('showPanel'); });
+            $('#eGoodsCode').combobox('textbox').bind('focus', function () { $('#eGoodsCode').combobox('showPanel'); });
+            $('#eLoadIndex').combobox('textbox').bind('focus', function () { $('#eLoadIndex').combobox('showPanel'); });
+            $('#eSpeedLevel').combobox('textbox').bind('focus', function () { $('#eSpeedLevel').combobox('showPanel'); });
+        });
+
+        function Getvalue() {
+            if ($("#eFigure").combobox('getData').length > 0) {
+                $("#eFigure").combobox("setValue", $("#eFigure").combobox('getData')[0].Figure);
+            }
+            if ($("#eGoodsCode").combobox('getData').length > 0) {
+                $("#eGoodsCode").combobox("setValue", $("#eGoodsCode").combobox('getData')[0].GoodsCode);
+            }
+            if ($("#eLoadIndex").combobox('getData').length > 0) {
+                $("#eLoadIndex").combobox("setValue", $("#eLoadIndex").combobox('getData')[0].LoadIndex);
+            }
+            if ($("#eSpeedLevel").combobox('getData').length > 0) {
+                $("#eSpeedLevel").combobox("setValue", $("#eSpeedLevel").combobox('getData')[0].SpeedLevel);
+            }
+        }
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'houseApi.aspx?method=QuerySafeStockData';
+            $('#dg').datagrid('load', {
+                HouseID: $('#HouseID').combobox('getValue'),
+                AreaID: $('#AreaID').combobox('getValue'),
+                Specs: $("#Specs").val(),
+                Figure: $("#Figure").val(),
+                GoodsCode: $("#GoodsCode").val()
+            });
+        }
+    </script>
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <%--此div用于在界面未完全加载样式前显示内容--%>
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 100%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <%--此div用于在界面未完全加载样式前显示内容--%>
+
+    <%--此div用于显示查询条件--%>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table id="saPanelTab">
+            <tr>
+                <td style="text-align: right;">区域大仓: </td>
+                <td>
+                    <input id="HouseID" class="easyui-combobox" style="width: 95px;" data-options="required:false" panelheight="auto" />
+                    <input type="hidden" id="HiddenHouseID" />
+                </td>
+                <td style="text-align: right;">所属仓库:
+                </td>
+                <td>
+                    <input id="AreaID" class="easyui-combobox" style="width: 100px;" data-options="valueField:'AreaID',textField:'Name',editable:false" />
+                </td>
+                <td style="text-align: right;">规格:
+                </td>
+                <td>
+                    <input id="Specs" class="easyui-textbox" data-options="prompt:'请输入规格'" style="width: 100px">
+                </td>
+                <td style="text-align: right;">花纹:
+                </td>
+                <td>
+                    <input id="Figure" class="easyui-textbox" data-options="prompt:'请输入花纹'" style="width: 100px">
+                </td>
+                <td style="text-align: right;">货品代码:
+                </td>
+                <td>
+                    <input id="GoodsCode" class="easyui-textbox" data-options="prompt:'请输入货品代码'" style="width: 100px">
+                </td>
+            </tr>
+        </table>
+    </div>
+    <%--此div用于显示查询条件--%>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <%--此div用于显示按钮操作--%>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addItem()">&nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editItem()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
+    </div>
+    <%--此div用于显示按钮操作--%>
+
+    <%--此div用于新增/编辑数据--%>
+    <div id="dlgedit" class="easyui-dialog" style="width: 580px; height: 260px; padding: 5px 5px"
+        closed="true" buttons="#dlg-buttons">
+        <form id="fm" class="easyui-form" method="post">
+            <input type="hidden" name="SID" />
+            <table id="editTab">
+                <tr>
+                    <td style="vertical-align: top">
+                        <table>
+                            <tr>
+                                <td style="text-align: right;">区域大仓:
+                                </td>
+                                <td>
+                                    <input id="eHouseID" name="HouseID" class="easyui-combobox" style="width: 200px;" data-options="valueField:'HouseID',textField:'HouseName',editable:false,required:true" />
+                                </td>
+                                <td style="text-align: right;">花纹:
+                                </td>
+                                <td>
+                                    <input id="eFigure" name="Figure" class="easyui-combobox" style="width: 200px;" data-options="valueField:'Figure',textField:'Figure',required:true" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: right;">所属仓库:
+                                </td>
+                                <td>
+                                    <input id="eAreaID" name="AreaID" class="easyui-combobox" style="width: 200px;" data-options="valueField:'AreaID',textField:'Name',editable:false,required:true" />
+                                </td>
+                                <td style="text-align: right;">货品代码:
+                                </td>
+                                <td>
+                                    <input id="eGoodsCode" name="GoodsCode" class="easyui-combobox" style="width: 200px;" data-options="valueField:'GoodsCode',textField:'GoodsCode',required:true" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: right;">一级分类:
+                                </td>
+                                <td>
+                                    <input id="eParentID" name="ParentID" class="easyui-combobox" style="width: 200px;" data-options="valueField:'TypeID',textField:'TypeName',editable:false,required:true" panelheight="auto" />
+                                </td>
+                                <td style="text-align: right;">载重指数:
+                                </td>
+                                <td>
+                                    <input id="eLoadIndex" name="LoadIndex" class="easyui-combobox" style="width: 200px;" data-options="valueField:'LoadIndex',textField:'LoadIndex',required:true" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: right;">产品类型:
+                                </td>
+                                <td>
+                                    <input id="eTypeID" name="TypeID" class="easyui-combobox" style="width: 200px;" data-options="valueField:'TypeID',textField:'TypeName',editable:false,required:true" />
+                                </td>
+                                <td style="text-align: right;">速度级别:
+                                </td>
+                                <td>
+                                    <input id="eSpeedLevel" name="SpeedLevel" class="easyui-combobox" style="width: 200px;" data-options="valueField:'SpeedLevel',textField:'SpeedLevel',required:true" />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align: right;">规格:
+                                </td>
+                                <td>
+                                    <input id="eSpecs" name="Specs" class="easyui-combobox" style="width: 200px;" data-options="valueField:'Specs',textField:'Specs',required:true" />
+                                </td>
+                                <td style="text-align: right;">安全数量:
+                                </td>
+                                <td>
+                                    <input name="StockNum" id="eStockNum" class="easyui-numberbox" data-options="min:0,precision:0,required:true" style="width: 200px;" validtype="length[0,5]">
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+    <div id="dlg-buttons">
+        <a href="#" class="easyui-linkbutton" id="btnSave" iconcls="icon-ok" onclick="btnSaveData()">&nbsp;保&nbsp;存&nbsp;</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgedit').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+    <%--此div用于新增/编辑数据--%>
+
+    <script type="text/javascript">
+
+        //新增
+        function addItem() {
+            $('#dlgedit').form('clear');
+            $('#dlgedit').dialog('open').dialog('setTitle', '新增安全库存');
+            $("#eHouseID").combobox("setValue", '<%=UserInfor.HouseID%>');
+            $('#eAreaID').combobox('clear');
+            var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=<%=UserInfor.HouseID%>';
+            $('#eAreaID').combobox('reload', url);
+        }
+
+        //修改
+        function editItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (rows.length > 1) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择一条要修改的数据！', 'warning');
+                return;
+            }
+            if (rows[0]) {
+                $('#dlgedit').dialog('open').dialog('setTitle', '修改仓库安全库存');
+
+                $('#eAreaID').combobox('clear');
+                var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rows[0].HouseID;
+                $('#eAreaID').combobox('reload', url);
+                $('#eParentID').combobox('clear');
+                var url = '../Product/productApi.aspx?method=QueryALLOneProductType';
+                $('#eParentID').combobox('reload', url);
+                $('#eTypeID').combobox('clear');
+                var url = '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + rows[0].ParentID;
+                $('#eTypeID').combobox('reload', url);
+                $('#eSpecs').combobox('clear');
+                var url = '../Price/priceApi.aspx?method=QueryAllSpesc&typeid=' + rows[0].TypeID + '&houseID=' + rows[0].HouseID;
+                $('#eSpecs').combobox('reload', url);
+                $('#eFigure').combobox('clear');
+                var url = '../Price/priceApi.aspx?method=QueryAllFigure&typeid=' + rows[0].TypeID + '&Specs=' + rows[0].Specs + '&houseID=' + rows[0].HouseID;
+                $('#eFigure').combobox('reload', url);
+                $('#eGoodsCode').combobox('clear');
+                var url = '../Price/priceApi.aspx?method=QueryAllGoodsCode&typeid=' + rows[0].TypeID + '&Specs=' + rows[0].Specs + '&houseID=' + rows[0].HouseID;
+                $('#eGoodsCode').combobox('reload', url);
+                $('#eLoadIndex').combobox('clear');
+                var url = '../Price/priceApi.aspx?method=QueryAllLoadIndex&typeid=' + rows[0].TypeID + '&Specs=' + rows[0].Specs + '&houseID=' + rows[0].HouseID;
+                $('#eLoadIndex').combobox('reload', url);
+                $('#eSpeedLevel').combobox('clear');
+                var url = '../Price/priceApi.aspx?method=QueryAllSpeedLevel&typeid=' + rows[0].TypeID + '&Specs=' + rows[0].Specs + '&houseID=' + rows[0].HouseID;
+                $('#eSpeedLevel').combobox('reload', url);
+
+                $('#fm').form('load', rows[0]);
+            }
+        }
+
+        //保存数据
+        function btnSaveData() {
+            $.messager.progress({ msg: '请稍后,正在保存中...' });
+            $('#fm').form('submit', {
+                url: 'houseApi.aspx?method=SaveSafeStockData',
+                onSubmit: function () {
+                    var check = $(this).form('enableValidation').form('validate');
+                    if (!check) { $.messager.progress("close"); }
+                    return check;
+                },
+                success: function (msg) {
+                    $.messager.progress("close");
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlgedit').dialog('close');
+                        dosearch();
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+
+        //删除数据
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'houseApi.aspx?method=DeleteSafeStockData',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dg').datagrid('clearSelections');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</asp:Content>

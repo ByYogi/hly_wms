@@ -1,0 +1,101 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 分配仓库采购单 Tbl_Cargo_RealFactoryPurchaseHouse
+    /// 描述：记录采购单里分配到各个仓库的数据
+    /// </summary>
+    [Serializable]
+    public class CargoRealFactoryPurchaseHouseEntity
+    {
+        /// <summary>
+        /// 表主键
+        /// </summary>
+        [Description("表主键")]
+        public long FPID { get; set; }
+
+        /// <summary>
+        /// 采购订单表主键
+        /// </summary>
+        [Description("采购订单表主键")]
+        public long PurOrderID { get; set; }
+        public string PurOrderNo { get; set; }
+
+        /// <summary>
+        /// 分配仓库ID
+        /// </summary>
+        [Description("分配仓库ID")]
+        public int HouseID { get; set; }
+
+        public string HouseName { get; set; }
+
+        /// <summary>
+        /// 采购订单数量
+        /// </summary>
+        [Description("采购订单数量")]
+        public int OrderNum { get; set; }
+
+        /// <summary>
+        /// 工厂回告总数量
+        /// </summary>
+        [Description("工厂回告总数量")]
+        public int ReplyNum { get; set; }
+
+        /// <summary>
+        /// 来货单号
+        /// </summary>
+        [Description("来货单号")]
+        public string FacOrderNo { get; set; }
+
+        /// <summary>
+        /// 物流单号
+        /// </summary>
+        [Description("物流单号")]
+        public string LogisAwbNo { get; set; }
+        public int LogisID { get; set; }
+        [Description("物流公司")]
+        public string LogisticName { get; set; }
+
+
+        /// <summary>
+        /// 预计到货时间
+        /// </summary>
+        [Description("预计到货时间")]
+        public DateTime ETATime { get; set; }
+
+        /// <summary>
+        /// 操作时间
+        /// </summary>
+        [Description("操作时间")]
+        public DateTime OP_DATE { get; set; }
+        /// <summary>
+        /// 采购单明细列表
+        /// </summary>
+        public List<CargoRealFactoryPurchaseOrderGoodsEntity> orderGoodsEntities { get; set; }
+
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

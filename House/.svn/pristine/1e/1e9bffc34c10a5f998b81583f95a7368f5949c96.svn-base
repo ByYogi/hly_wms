@@ -1,0 +1,70 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 客户账单管理数据实体1.3.7.Tbl_Cargo_ClientAccount（客户账单数据表）
+    /// </summary>
+    [Serializable]
+    public class CargoClientAccountEntity
+    {
+        public string AccountID { get; set; }
+        public string AccountTitle { get; set; }
+        public DateTime CreateDate { get; set; }
+        public string AccountDate { get; set; }
+        public long ClientID { get; set; }
+        public int ClientNum { get; set; }
+        public string ClientName { get; set; }
+        public decimal ARMoney { get; set; }
+        public decimal Total { get; set; }
+        public decimal TaxFee { get; set; }
+        public decimal OtherFee { get; set; }
+        public string Memo { get; set; }
+        public string Status { get; set; }
+        public string NextCheckID { get; set; }
+        public string NextCheckName { get; set; }
+        public DateTime NextCheckDate { get; set; }
+        public string CheckStatus { get; set; }
+        public string OPID { get; set; }
+        public DateTime OPDATE { get; set; }
+        public string AType { get; set; }
+        public string HouseName { get; set; }
+        public int HouseID { get; set; }
+        public string ElecSign { get; set; }
+        public DateTime ElecSignDate { get; set; }
+        public string ElecSignImg { get; set; }
+
+        public decimal IncomeMoney { get; set; }
+        public decimal PreReceiveMoney { get; set; }
+        public decimal RebateMoney { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string OrderNo { get; set; }
+        public List<string> OrderNoList { get; set; }
+        public decimal ReceivedMoney { get; set; }
+        public string FromTO { get; set; }
+        public string RType { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

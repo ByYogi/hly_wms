@@ -1,0 +1,124 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 业务员每日报表查询实体
+    /// </summary>
+    [Serializable]
+    public class SaleManReportEntity
+    {
+        public string OpenOrderNo { get; set; }
+        public string Province { get; set; }
+        public string City { get; set; }
+        public string ShowGoodsCode { get; set; }
+        public string ShowTypeName { get; set; }
+        public int BusinessID { get; set; }
+        public string OrderNo { get; set; }
+
+        public Int64 ProductID { get; set; }
+        public int HouseID { get; set; }
+        public int AreaID { get; set; }
+        public string ContainerCode { get; set; }
+        public string OrderType { get; set; }
+        public string OrderModel { get; set; }
+        public decimal ActSalePrice { get; set; }
+        public int Piece { get; set; }
+        public string OutCargoID { get; set; }
+        public Int64 OrderID { get; set; }
+        public string Dep { get; set; }
+        public string Dest { get; set; }
+
+        
+        public decimal InsuranceFee { get; set; }
+        public decimal TransportFee { get; set; }
+        public decimal DeliveryFee { get; set; }
+        public decimal TotalCharge { get; set; }
+        public string AcceptUnit { get; set; }
+        public string AcceptPeople { get; set; }
+        public string AcceptCellphone { get; set; }
+        public string AcceptAddress { get; set; }
+        public string CreateAwb { get; set; }
+        public DateTime CreateDate { get; set; }
+        public string SaleManID { get; set; }
+        public string SaleManName { get; set; }
+        public string HouseName { get; set; }
+        public string AreaName { get; set; }
+        public string ProductName { get; set; }
+        public string ProductCode { get; set; }
+        public string Figure { get; set; }
+        public string Specs { get; set; }
+        public string Model { get; set; }
+        public string LogisAwbNo { get; set; }
+        public int LogisID { get; set; }
+        public string LogisticName { get; set; }
+        public decimal TransitFee { get; set; }
+        public string CargoPermisID { get; set; }
+        public string Batch { get; set; }
+        public int BatchWeek { get; set; }
+        public int BatchYear { get; set; }
+        public int TypeID { get; set; }
+        public int ParentTypeID { get; set; }
+        public int FirstAreaID { get; set; }
+        public string FirstAreaName { get; set; }
+        public int ParentAreaID { get; set; }
+        public string ParentAreaName { get; set; }
+        public string BelongMonth { get; set; }
+        public DateTime InHouseTime { get; set; }
+        /// <summary>
+        /// 单价
+        /// </summary>
+        public decimal UnitPrice { get; set; }
+        /// <summary>
+        /// 成本价
+        /// </summary>
+        public decimal CostPrice { get; set; }
+        /// <summary>
+        /// 最终成本价
+        /// </summary>
+        public decimal FinalCostPrice { get; set; }
+        /// <summary>
+        /// 毛利
+        /// </summary>
+        public decimal Gross { get; set; }
+        public decimal TotalGross { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public int ClientNum { get; set; }
+        public string ShopCode { get; set; }
+        public string ClientName { get; set; }
+        public string GoodsCode { get; set; }
+        public string TypeName { get; set; }
+        public string LoadIndex { get; set; }
+        public string SpeedLevel { get; set; }
+        public string TryeClientCode { get; set; }
+        public string ThrowGood { get; set; }
+        public string TranHouse { get; set; }
+        public int RowNumber { get; set; }
+        public string Remark { get; set; }
+        public decimal TaxCostPrice { get; set; }
+        public decimal NoTaxCostPrice { get; set; }
+        public string Source { get; set; }
+        /// <summary>
+        /// 公司类型
+        /// </summary>
+        public string BelongHouse { get; set; }
+        public string TrafficType { get; set; }
+        /// <summary>
+        /// 门店类型
+        /// </summary>
+        public string TryeClientType { get; set; }
+        public string PayClientName { get; set; }
+        public int PayClientNum { get; set; }
+        public string DeliverySettlement { get; set; }
+        public int ModifyPriceStatus { get; set; }
+        public string TypeIDs { get; set; }
+
+        public string BusUserName { get; set;}
+        public string Supplier { get; set; }
+        public string HAwbNo { get; set; }
+    }
+}

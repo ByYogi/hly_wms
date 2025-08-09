@@ -1,0 +1,64 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 订单状态跟踪数据实体1.4.3.Tbl_Cargo_OrderStatus（订单状态跟踪表）
+    /// </summary>
+    [Serializable]
+    public class CargoOrderStatusEntity
+    {
+        public long ID { get; set; }
+        public long OrderID { get; set; }
+        public string OrderNo { get; set; }
+        public string OrderStatus { get; set; }
+        public string Signer { get; set; }
+        public DateTime SignTime { get; set; }
+        public string DetailInfo { get; set; }
+        public string OP_ID { get; set; }
+        public string OP_Name { get; set; }
+        public string WXOrderNo { get; set; }
+        public DateTime OP_DATE { get; set; }
+        public string SignImage { get; set; }
+        public string Longitude { get; set; }
+        public string Latitude { get; set; }
+        public int LogisID { get; set; }
+        public string LogisAwbNo { get; set; }
+        public string ThrowGood { get; set; }
+        public string OutHouseName { get; set; }
+
+        public string WxSendStatusPush { get; set; }
+        /// <summary>
+        /// 异常签收状态 0:正常签收 1:超时签收
+        /// </summary>
+        public string AbSignStatus { get; set; }
+        public string DeliveryDriverName { get; set; }
+        public string DriverIDNum { get; set; }
+        public string DriverCellphone { get; set; }
+        public string DriverCarNum { get; set; }
+
+
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

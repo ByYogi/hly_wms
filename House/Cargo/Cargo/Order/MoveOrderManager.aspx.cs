@@ -1,0 +1,208 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using House.Entity.Cargo;
+
+namespace Cargo.Order
+{
+    public partial class MoveOrderManager : BasePage
+    {
+        public string Un = string.Empty;
+        public string Ln = string.Empty;
+        public string HouseName = string.Empty;
+        public string PickTitle = string.Empty;
+        public string SendTitle = string.Empty;
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            Un = UserInfor.UserName.Trim();
+            Ln = UserInfor.LoginName.Trim();
+            HouseName = UserInfor.HouseName.Trim();
+            PickTitle = UserInfor.PickTitle;
+            SendTitle = UserInfor.SendTitle;
+        }
+        /// <summary>
+        /// 导出实体
+        /// </summary>
+        public List<CargoMoveOrderGoodsEntity> MoveOrderExport
+        {
+            get
+            {
+                if (Session["MoveOrderExport"] == null)
+                {
+                    Session["MoveOrderExport"] = new List<CargoMoveOrderGoodsEntity>();
+                }
+                return (List<CargoMoveOrderGoodsEntity>)(Session["MoveOrderExport"]);
+            }
+            set
+            {
+                Session["MoveOrderExport"] = value;
+            }
+        }
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (MoveOrderExport.Count <= 0) { return; }
+            string MoveNoStr = "";
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("移库单号", typeof(string));
+            table.Columns.Add("产品名称", typeof(string));
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("原产品ID", typeof(int));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("型号", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            table.Columns.Add("载速", typeof(string));
+            table.Columns.Add("移库数量", typeof(int));
+            table.Columns.Add("单价", typeof(string));
+            table.Columns.Add("销售价", typeof(string));
+            table.Columns.Add("批次", typeof(string));
+            table.Columns.Add("货位代码", typeof(string));
+            table.Columns.Add("所在区域", typeof(string));
+            table.Columns.Add("产品来源", typeof(string));
+            table.Columns.Add("移库状态", typeof(string));
+            table.Columns.Add("目标仓库", typeof(string));
+            table.Columns.Add("新产品ID", typeof(int));
+            table.Columns.Add("备注", typeof(string));
+            foreach (var it in MoveOrderExport)
+            {
+                //if (MoveNoStr.IndexOf(it.MoveNo.Trim()) < 0)
+                //{
+                //    MoveNoStr += it.MoveNo.Trim() + "|";
+                //}
+                DataRow newRows = table.NewRow();
+                newRows["移库单号"] = it.MoveNo.Trim();
+                newRows["产品名称"] = it.ProductName.Trim();
+                newRows["品牌"] = it.TypeName.Trim();
+                newRows["原产品ID"] = it.ProductID;
+                newRows["规格"] = it.Specs.Trim();
+                newRows["型号"] = it.Model.Trim();
+                newRows["花纹"] = it.Figure.Trim();
+                newRows["货品代码"] = it.GoodsCode.Trim();
+                newRows["载速"] = it.LoadIndex + it.SpeedLevel.Trim();
+                newRows["移库数量"] = it.Piece;
+                newRows["单价"] = it.UnitPrice;
+                newRows["销售价"] = it.SalePrice;
+                newRows["批次"] = it.Batch.Trim();
+                newRows["货位代码"] = it.ContainerCode.Trim();
+                newRows["所在区域"] = it.FirstAreaName.Trim();
+                newRows["产品来源"] = it.SourceName.Trim();
+                newRows["移库状态"] = GetText(it.MoveStatus.Trim(), "MoveStatus");
+                //GetText(it.MoveStatus);
+                newRows["目标仓库"] = it.NewHouseName.Trim();
+                newRows["新产品ID"] = it.NewProductID;
+                newRows["备注"] = it.Memo.Trim();
+
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "移库单移库详细列表");
+        }
+        public Hashtable QueryMoveOrderDataList
+        {
+            get
+            {
+                if (Session["QueryMoveOrderDataList"] == null)
+                {
+                    Session["QueryMoveOrderDataList"] = new Hashtable();
+                }
+                return (Hashtable)(Session["QueryMoveOrderDataList"]);
+            }
+            set
+            {
+                Session["QueryMoveOrderDataList"] = value;
+            }
+        }
+        /// <summary>
+        /// 导出移库列表信息
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnMoveCode_Click(object sender, EventArgs e)
+        {
+            var List = QueryMoveOrderDataList["rows"];
+            IEnumerable<object> list = List as IEnumerable<object>;
+            if (list.Count() <= 0) { return; }
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("移库单号", typeof(string));
+            table.Columns.Add("原仓库", typeof(string));
+            table.Columns.Add("目标仓库", typeof(string));
+            table.Columns.Add("移库数量", typeof(string));
+            table.Columns.Add("备注", typeof(string));
+            table.Columns.Add("开单人", typeof(string));
+            table.Columns.Add("移库状态", typeof(string));
+            table.Columns.Add("操作时间", typeof(string));
+
+            int i = 0;
+            string orderno = string.Empty;
+            foreach (var it in list)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["移库单号"] = it.GetType().GetProperty("MoveNo").GetValue(it, null).ToString();
+                newRows["原仓库"] = it.GetType().GetProperty("OldHouseName").GetValue(it, null).ToString();
+                newRows["目标仓库"] = it.GetType().GetProperty("NewHouseName").GetValue(it, null).ToString();
+                newRows["移库数量"] = it.GetType().GetProperty("MoveNum").GetValue(it, null).ToString();
+                newRows["备注"] = it.GetType().GetProperty("Memo").GetValue(it, null).ToString();
+                newRows["开单人"] = it.GetType().GetProperty("OPID").GetValue(it, null).ToString();
+                newRows["移库状态"] = GetText(it.GetType().GetProperty("MoveStatus").GetValue(it, null).ToString(), "MoveStatus");
+                newRows["操作时间"] = it.GetType().GetProperty("OP_DATE").GetValue(it, null).ToString();
+                table.Rows.Add(newRows);
+
+            }
+            ToExcel.DataTableToExcel(table, "", "移库列表信息");
+
+
+        }
+        /// <summary>
+        /// 格式化
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        private string GetText(string value, string id)
+        {
+            string retStr = string.Empty;
+            switch (id)
+            {
+                case "MoveStatus":
+                    if (value.Trim() == "0")
+                        retStr = "已开单";
+                    else if (value.Trim() == "1")
+                        retStr = "全扫描";
+                    else if (value.Trim() == "2")
+                        retStr = "已完成";
+                    else if (value.Trim() == "3")
+                        retStr = "移库中";
+                    else if (value.Trim() == "4")
+                        retStr = "入库中";
+                    break;
+            }
+            return retStr;
+        }
+        //private string GetText(string value)
+        //        {
+        //            string retStr = string.Empty;
+
+        //            if (value.Trim() == "0")
+        //                retStr = "已开单";
+        //            else if (value.Trim() == "1")
+        //                retStr = "全扫描";
+        //            else if (value.Trim() == "2")
+        //                retStr = "已完成";
+        //            else if (value.Trim() == "3")
+        //                retStr = "移库中";
+        //            else if (value.Trim() == "4")
+        //                retStr = "入库中";
+        //            else
+        //                retStr = "";
+        //            return retStr;
+        //        }
+    }
+}

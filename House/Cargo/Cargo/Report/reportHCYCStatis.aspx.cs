@@ -1,0 +1,158 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Report
+{
+    public partial class reportHCYCStatis : BasePage
+    {
+        /// <summary>
+        /// 慧采云仓数据统计
+        /// </summary>
+        public List<CargoDLTDataStatisEntity> HCYCReportDataExport
+        {
+            get
+            {
+                if (Session["HCYCReportDataExport"] == null)
+                {
+                    Session["HCYCReportDataExport"] = new List<CargoDLTDataStatisEntity>();
+                }
+                return (List<CargoDLTDataStatisEntity>)(Session["HCYCReportDataExport"]);
+            }
+            set
+            {
+                Session["HCYCReportDataExport"] = value;
+            }
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        /// <summary>
+        /// 7日浏览数据导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDayAccessNumExport_Click(object sender, EventArgs e)
+        {
+            if (HCYCReportDataExport.Count <= 0) { return; }
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("载速", typeof(string));
+            table.Columns.Add("门店名称", typeof(string));
+            table.Columns.Add("联系人", typeof(string));
+            table.Columns.Add("手机号", typeof(string));
+            table.Columns.Add("浏览时间", typeof(string));
+
+
+            int i = 0;
+            foreach (var it in HCYCReportDataExport)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["品牌"] = it.TypeName;
+                newRows["规格"] = it.Specs;
+                newRows["花纹"] = it.Figure;
+                newRows["载速"] = it.LoadIndex + it.SpeedLevel;
+                newRows["门店名称"] = it.CompanyName;
+                newRows["联系人"] = it.Name;
+                newRows["手机号"] = it.Cellphone;
+                newRows["浏览时间"] = it.AccessDate.ToString("yyyy-MM-dd HH:mm:ss");
+                table.Rows.Add(newRows);
+
+            }
+            ToExcel.DataTableToExcel(table, "", DateTime.Now.ToString("yyyyMM") + "月客户浏览数据统计表");
+
+        }
+
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (HCYCReportDataExport.Count <= 0) { return; }
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("载速", typeof(string));
+            table.Columns.Add("门店名称", typeof(string));
+            table.Columns.Add("联系人", typeof(string));
+            table.Columns.Add("电话", typeof(string));
+            table.Columns.Add("门店地址", typeof(string));
+            table.Columns.Add("销量(条)", typeof(int));
+            table.Columns.Add("下单时间", typeof(string));
+
+
+            int i = 0;
+            foreach (var it in HCYCReportDataExport)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["品牌"] = it.TypeName;
+                newRows["规格"] = it.Specs;
+                newRows["花纹"] = it.Figure;
+                newRows["载速"] = it.LoadIndex + it.SpeedLevel;
+                newRows["门店名称"] = it.ClientName;
+                newRows["联系人"] = it.Name;
+                newRows["电话"] = it.Cellphone;
+                newRows["门店地址"] = it.Address;
+                newRows["销量(条)"] = it.OrderPiece;
+                newRows["下单时间"] = it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                table.Rows.Add(newRows);
+
+            }
+            ToExcel.DataTableToExcel(table, "", DateTime.Now.ToString("yyyyMM") + "月订单数据统计表");
+        }
+        /// <summary>
+        /// 关键字查询数据导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnKeyWordExport_Click(object sender, EventArgs e)
+        {
+            if (HCYCReportDataExport.Count <= 0) { return; }
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("门店名称", typeof(string));
+            table.Columns.Add("联系人", typeof(string));
+            table.Columns.Add("手机号", typeof(string));
+            table.Columns.Add("搜索关键字", typeof(string));
+            table.Columns.Add("搜索品牌", typeof(string));
+            //table.Columns.Add("搜索结果", typeof(string));
+            table.Columns.Add("搜索时间", typeof(string));
+
+
+
+            int i = 0;
+            foreach (var it in HCYCReportDataExport)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["门店名称"] = it.CompanyName;
+                newRows["联系人"] = it.Name;
+                newRows["手机号"] = it.Cellphone;
+                newRows["搜索关键字"] = it.Specs;
+                newRows["搜索品牌"] = it.TypeName;
+                //newRows["搜索结果"] = it.Figure.Equals("0") ? "无库存" : "有库存";
+                newRows["搜索时间"] = it.AccessDate.ToString("yyyy-MM-dd HH:mm:ss");
+                table.Rows.Add(newRows);
+
+            }
+            ToExcel.DataTableToExcel(table, "", "客户搜索关键字数据统计表");
+        }
+    }
+}

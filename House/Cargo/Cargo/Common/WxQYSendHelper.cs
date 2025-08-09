@@ -1,0 +1,1010 @@
+﻿using House.Business.Cargo;
+using House.Entity.Cargo;
+using Newtonsoft.Json;
+using Senparc.Weixin.Entities;
+using Senparc.Weixin.QY.AdvancedAPIs;
+using Senparc.Weixin.QY.CommonAPIs;
+using Senparc.Weixin.QY.Entities;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Security.Policy;
+using System.Web;
+
+namespace Cargo
+{
+    /// <summary>
+    /// 微信企业号推送公共类
+    /// </summary>
+    public static class WxQYSendHelper
+    {
+        public static string GetWeixinQYToken(string qyCorpID, string qyAgentSecret)
+        {
+            string token = string.Empty;
+            try
+            {
+                token = Senparc.Weixin.QY.Containers.AccessTokenContainer.TryGetToken(qyCorpID, qyAgentSecret);
+            }
+            catch (Exception ex)
+            {
+                Common.WriteTextLog(ex.Message);
+                token = Senparc.Weixin.QY.Containers.AccessTokenContainer.TryGetToken(qyCorpID, qyAgentSecret, true);
+            }
+            return token;
+        }
+        /// <summary>
+        /// 通过微信的MediaID从微信服务器下载图片保存到本地img3路径
+        /// </summary>
+        /// <param name="mediaID">微信Media_ID</param>
+        /// <param name="imgName">返回文件名</param>
+        /// <param name="imgPath">返回文件路径</param>
+        public static void SaveWxPictureOilCard(string mediaID, ref string imgName, ref string imgPath, string AgentSecret)
+        {
+            //根据appId判断获取Token 
+            string appid = Common.GetQYCorpID();
+            string appsecret = Common.GetQYEncodingAESKey();
+            string token = GetWeixinQYToken(appid, AgentSecret);
+            //string time = "_" + Convert.ToString(Util.TimeHelp.ConvertDateTimeToInt(DateTime.Now));
+            //图片名字以时间命名
+            string modifyFileName = DateTime.Now.Year.ToString() + DateTime.Now.Month.ToString() + DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString() + DateTime.Now.Second.ToString() + DateTime.Now.Millisecond.ToString();
+            imgName = modifyFileName + ".jpg";
+            try
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    if (!Directory.Exists(HttpContext.Current.Server.MapPath(imgPath)))
+                    {
+                        Directory.CreateDirectory(HttpContext.Current.Server.MapPath(imgPath));
+                    }
+                    MediaApi.Get(token, mediaID, ms);
+                    string savePath = System.Web.HttpContext.Current.Server.MapPath(imgPath + imgName);
+                    //保存到文件
+                    using (FileStream fs = new FileStream(savePath, FileMode.Create))
+                    {
+                        ms.Position = 0;
+                        byte[] buffer = new byte[1024];
+                        int bytesRead = 0;
+                        while ((bytesRead = ms.Read(buffer, 0, buffer.Length)) != 0)
+                        {
+                            fs.Write(buffer, 0, bytesRead);
+                        }
+                        fs.Flush();
+                    }
+                    //WriteTextLog("上传图片成功", DateTime.Now);
+                    //UploadHLYService(modifyFileName, imgPath, "OilCardImg");
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                //WriteTextLog("回收件图片上传异常：" + ex.Message + "", DateTime.Now);
+                return;
+            }
+        }
+        private static QyConfigEntity GetToken(string AgentID)
+        {
+            QiyeBus bus = new QiyeBus();
+            QyConfigEntity config = bus.QueryQyConfig(new QyConfigEntity { AgentID = AgentID, QYKind = "0" });
+            if (config == null || config.ID.Equals(0)) { return new QyConfigEntity(); }
+            string token = string.Empty;
+            try
+            {
+                token = Senparc.Weixin.QY.Containers.AccessTokenContainer.TryGetToken(Common.GetQYCorpID(), config.AppSecret.Trim());
+                GetCallBackIpResult bip = CommonApi.GetCallBackIp(token);
+                if (bip.errcode.Equals("40001"))
+                {
+                    //WriteTextLog(bip.errcode.ToString());
+                    //Senparc.Weixin.MP.Containers.AccessTokenContainer.Register(appID, appSecret, "DLTWxToken");
+                    //token = Senparc.Weixin.MP.Containers.AccessTokenContainer.TryGetAccessToken(appID, appSecret);
+                    Senparc.Weixin.QY.Containers.AccessTokenContainer.Register(Common.GetQYCorpID(), config.AppSecret.Trim());
+                    token = Senparc.Weixin.QY.Containers.AccessTokenContainer.TryGetToken(Common.GetQYCorpID(), config.AppSecret.Trim());
+                }
+            }
+            catch (Exception ex)
+            {
+                Senparc.Weixin.QY.Containers.AccessTokenContainer.Register(Common.GetQYCorpID(), config.AppSecret.Trim());
+                token = Senparc.Weixin.QY.Containers.AccessTokenContainer.TryGetToken(Common.GetQYCorpID(), config.AppSecret.Trim());
+            }
+            config.Token = token;
+            return config;
+        }
+        /// <summary>
+        /// 通过微信企业号向用户推送消息  直接应用内推送
+        /// </summary>
+        /// <param name="sendInfo"></param>
+        public static void QiyePushInfo(QySendInfoEntity sendInfo)
+        {
+            string urlF = @"https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={0}";
+            //消息通知应用的Secret和ApentID1000003
+            //AccessTokenResult token = new AccessTokenResult();
+            QyConfigEntity config = GetToken(sendInfo.agentID);
+            object data = new object(); ;
+            switch (sendInfo.msgType)
+            {
+                case msgType.text:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "text",
+                        agentid = sendInfo.agentID,
+                        text = new
+                        {
+                            content = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.imgage:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "imgage",
+                        agentid = sendInfo.agentID,
+                        imgage = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.voice:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "voice",
+                        agentid = sendInfo.agentID,
+                        voice = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.video:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "video",
+                        agentid = sendInfo.agentID,
+                        video = new
+                        {
+                            media_id = sendInfo.media_id,
+                            title = sendInfo.title,
+                            description = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.file:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "file",
+                        agentid = sendInfo.agentID,
+                        file = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.textcard:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "textcard",
+                        agentid = sendInfo.agentID,
+                        textcard = new
+                        {
+                            title = sendInfo.title,
+                            description = sendInfo.content,
+                            url = sendInfo.url,
+                            btntxt = "详情"
+                        }
+                    };
+                    break;
+                case msgType.news:
+                    break;
+                case msgType.mpnews:
+                    break;
+                default:
+                    break;
+            }
+
+            QyJsonResult res = CommonJsonSend.Send(config.Token, urlF, data, Senparc.Weixin.CommonJsonSendType.POST);
+        }
+        /// <summary>
+        /// 通过微信企业号向用户推送消息
+        /// </summary>
+        /// <param name="sendType">消息类型：0：推送</param>
+        /// <param name="workType">业务分类：0：下单推送，1：价格变动，2：修改订单单价申请3:我的客户订单</param>
+        /// <param name="sendInfo"></param>
+        public static void PushInfo(string sendType, string workType, QySendInfoEntity sendInfo)
+        {
+            QiyeBus bus = new QiyeBus();
+            QyConfigEntity config = bus.QueryQyConfig(new QyConfigEntity { SendType = sendType, WorkClass = workType, QYKind = "0" });
+            if (config == null || config.ID.Equals(0))
+            {
+                return;
+            }
+            sendInfo.agentID = config.AgentID;
+            string urlF = @"https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={0}";
+            //消息通知应用的Secret和ApentID1000003
+            //AccessTokenResult token = new AccessTokenResult();
+            string token = string.Empty;
+            try
+            {
+                //token = CommonApi.GetToken(Common.GetQYCorpID(), config.AppSecret.Trim());
+                token = Senparc.Weixin.QY.Containers.AccessTokenContainer.TryGetToken(Common.GetQYCorpID(), config.AppSecret.Trim());
+                GetCallBackIpResult bip = CommonApi.GetCallBackIp(token);
+                if (bip.errcode.Equals("40001"))
+                {
+                    //WriteTextLog(bip.errcode.ToString());
+                    //Senparc.Weixin.MP.Containers.AccessTokenContainer.Register(appID, appSecret, "DLTWxToken");
+                    //token = Senparc.Weixin.MP.Containers.AccessTokenContainer.TryGetAccessToken(appID, appSecret);
+                    Senparc.Weixin.QY.Containers.AccessTokenContainer.Register(Common.GetQYCorpID(), config.AppSecret.Trim());
+                    token = Senparc.Weixin.QY.Containers.AccessTokenContainer.TryGetToken(Common.GetQYCorpID(), config.AppSecret.Trim());
+                }
+            }
+            catch (Exception ex)
+            {
+                Senparc.Weixin.QY.Containers.AccessTokenContainer.Register(Common.GetQYCorpID(), config.AppSecret.Trim());
+                token = Senparc.Weixin.QY.Containers.AccessTokenContainer.TryGetToken(Common.GetQYCorpID(), config.AppSecret.Trim());
+            }
+            object data = new object();
+            switch (sendInfo.msgType)
+            {
+                case msgType.text:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "text",
+                        agentid = sendInfo.agentID,
+                        text = new
+                        {
+                            content = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.imgage:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "imgage",
+                        agentid = sendInfo.agentID,
+                        imgage = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.voice:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "voice",
+                        agentid = sendInfo.agentID,
+                        voice = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.video:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "video",
+                        agentid = sendInfo.agentID,
+                        video = new
+                        {
+                            media_id = sendInfo.media_id,
+                            title = sendInfo.title,
+                            description = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.file:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "file",
+                        agentid = sendInfo.agentID,
+                        file = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.textcard:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "textcard",
+                        agentid = sendInfo.agentID,
+                        textcard = new
+                        {
+                            title = sendInfo.title,
+                            description = sendInfo.content,
+                            url = sendInfo.url,
+                            btntxt = "详情"
+                        }
+                    };
+                    break;
+                case msgType.news:
+                    break;
+                case msgType.mpnews:
+                    break;
+                default:
+                    break;
+            }
+
+            QyJsonResult res = CommonJsonSend.Send(token, urlF, data, Senparc.Weixin.CommonJsonSendType.POST);
+        }
+        /// <summary>
+        /// 添加机器人
+        /// </summary>
+        /// <param name="ChatID"></param>
+        /// <param name="AgentID"></param>
+        public static void CreateBoot(string ChatID, string AgentID)
+        {
+            QyConfigEntity config = GetToken(AgentID);
+            var urlF = "https://qyapi.weixin.qq.com/cgi-bin/appchat/update?access_token={0}";
+
+            object data = new object(); ;
+            data = new
+            {
+                chatid = ChatID,
+                add_robot_list = new[] { AgentID }
+            };
+            QyJsonResult res = CommonJsonSend.Send(config.Token, urlF, data, Senparc.Weixin.CommonJsonSendType.POST);
+
+        }
+        /// <summary>
+        /// 通过WebHook发送信息
+        /// </summary>
+        /// <param name="content"></param>
+        /// <param name="mentionedList"></param>
+        public static void SendBootMessage(QySendInfoEntity sendInfo, List<string> mentionedList = null)
+        {
+            string WebhookUrl = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=b542237a-0e80-44e2-9392-22a583f5f122";
+            object mdata = new object();
+            switch (sendInfo.msgType)
+            {
+                case msgType.text:
+                    mdata = new
+                    {
+                        msgtype = "text",
+                        text = new
+                        {
+                            content = sendInfo.content,
+                            mentioned_list = mentionedList
+                        }
+                    };
+                    break;
+                case msgType.imgage:
+                    break;
+                case msgType.voice:
+                    break;
+                case msgType.video:
+                    break;
+                case msgType.file:
+                    break;
+                case msgType.textcard:
+                    break;
+                case msgType.news:
+                    mdata = new
+                    {
+                        msgtype = "news",
+                        news = new
+                        {
+                            articles = new
+                            {
+                                title = sendInfo.title,
+                                description = sendInfo.content,
+                                url = sendInfo.url,
+                                picurl = sendInfo.url
+                            }
+                        }
+                    };
+                    break;
+                case msgType.mpnews:
+                    break;
+                case msgType.markdown:
+                    mdata = new
+                    {
+                        msgtype = "markdown",
+                        markdown = new
+                        {
+                            content = sendInfo.content,
+                        }
+                    };
+                    break;
+                default:
+                    break;
+            }
+
+
+            string sre = wxHttpUtility.PostHttpRequest(WebhookUrl, "application/json", JsonConvert.SerializeObject(mdata));
+
+        }
+
+
+        /// <summary>
+        /// 创建应用内的群聊会话
+        /// </summary>
+        /// <param name="ChatID"></param>
+        /// <param name="ChatName"></param>
+        /// <param name="Owner"></param>
+        /// <param name="userList"></param>
+        /// <param name="AgentID"></param>
+        public static void CreateChat(string ChatID, string ChatName, string Owner, string[] userList, string AgentID)
+        {
+            QyConfigEntity config = GetToken(AgentID);
+            string urlF = "https://qyapi.weixin.qq.com/cgi-bin/appchat/create?access_token={0}";
+            object data = new object(); ;
+            data = new
+            {
+                name = ChatName,
+                owner = Owner,
+                chatid = ChatID,
+                userlist = userList
+            };
+            QyJsonResult res = CommonJsonSend.Send(config.Token, urlF, data, Senparc.Weixin.CommonJsonSendType.POST);
+        }
+        /// <summary>
+        /// 修改企业微信 群聊
+        /// </summary>
+        /// <param name="ChatID"></param>
+        /// <param name="ChatName"></param>
+        /// <param name="Owner"></param>
+        /// <param name="adduserList"></param>
+        /// <param name="deluserList"></param>
+        /// <param name="AgentID"></param>
+        public static void UpdateChat(string ChatID, string ChatName, string Owner, string[] adduserList, string[] deluserList, string AgentID)
+        {
+            QyConfigEntity config = GetToken(AgentID);
+            string urlF = "https://qyapi.weixin.qq.com/cgi-bin/appchat/update?access_token={0}";
+            object data = new object(); ;
+            data = new
+            {
+                name = ChatName,
+                owner = Owner,
+                chatid = ChatID,
+                add_user_list = adduserList,
+                del_user_list = deluserList
+            };
+            QyJsonResult res = CommonJsonSend.Send(config.Token, urlF, data, Senparc.Weixin.CommonJsonSendType.POST);
+
+        }
+        /// <summary>
+        /// 向群聊天推送消息
+        /// </summary>
+        /// <param name="sendInfo"></param>
+        public static void SendChatInfo(QySendInfoEntity sendInfo)
+        {
+            QyConfigEntity config = GetToken(sendInfo.agentID);
+            string urlF = "https://qyapi.weixin.qq.com/cgi-bin/appchat/send?access_token={0}";
+            object data = new object(); ;
+            switch (sendInfo.msgType)
+            {
+                case msgType.text:
+                    data = new
+                    {
+                        chatid = sendInfo.ChatID,
+                        msgtype = "text",
+                        text = new
+                        {
+                            content = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.imgage:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "imgage",
+                        agentid = sendInfo.agentID,
+                        imgage = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.voice:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "voice",
+                        agentid = sendInfo.agentID,
+                        voice = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.video:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "video",
+                        agentid = sendInfo.agentID,
+                        video = new
+                        {
+                            media_id = sendInfo.media_id,
+                            title = sendInfo.title,
+                            description = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.file:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "file",
+                        agentid = sendInfo.agentID,
+                        file = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.textcard:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "textcard",
+                        agentid = sendInfo.agentID,
+                        textcard = new
+                        {
+                            title = sendInfo.title,
+                            description = sendInfo.content,
+                            url = sendInfo.url,
+                            btntxt = "详情"
+                        }
+                    };
+                    break;
+                case msgType.markdown:
+                    data = new
+                    {
+                        chatid = sendInfo.ChatID,
+                        msgtype = "markdown",
+                        markdown = new
+                        {
+                            content = sendInfo.content
+                        }
+                    };
+                    break;
+                case msgType.news:
+                    break;
+                case msgType.mpnews:
+                    break;
+                default:
+                    break;
+            }
+            QyJsonResult res = CommonJsonSend.Send(config.Token, urlF, data, Senparc.Weixin.CommonJsonSendType.POST);
+
+        }
+
+        /// <summary>
+        /// 通过好来运微信企业号向用户推送消息
+        /// </summary>
+        /// <param name="sendType">消息类型：0：推送</param>
+        /// <param name="workType">业务分类：0：下单推送，1：价格变动，2：状态跟踪推送</param>
+        /// <param name="sendInfo"></param>
+        public static void HLYQYPushInfo(QyConfigEntity agentEnt, QySendInfoEntity sendInfo)
+        {
+            sendInfo.agentID = agentEnt.AgentID;
+            string urlF = @"https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={0}";
+            //消息通知应用的Secret和ApentID1000003
+            //string token = AccessTokenContainer.TryGetToken(Common.GetQYCorpID(), agentEnt.AgentSecret);
+            string token = GetWeixinQYToken("wx5bf912a3b8774d14", agentEnt.AgentSecret);
+            //AccessTokenResult token = CommonApi.GetToken(Common.GetQYCorpID(), config.AppSecret.Trim());//VkkRCESh5hxT8FStrYa0jWjIg0ux--M670SoFFyuimM
+            object data = new object(); ;
+            switch (sendInfo.msgType)
+            {
+                case msgType.text:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "text",
+                        agentid = sendInfo.agentID,
+                        text = new
+                        {
+                            content = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.imgage:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "imgage",
+                        agentid = sendInfo.agentID,
+                        imgage = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.voice:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "voice",
+                        agentid = sendInfo.agentID,
+                        voice = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.video:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "video",
+                        agentid = sendInfo.agentID,
+                        video = new
+                        {
+                            media_id = sendInfo.media_id,
+                            title = sendInfo.title,
+                            description = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.file:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "file",
+                        agentid = sendInfo.agentID,
+                        file = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.textcard:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "textcard",
+                        agentid = sendInfo.agentID,
+                        textcard = new
+                        {
+                            title = sendInfo.title,
+                            description = sendInfo.content,
+                            url = sendInfo.url,
+                            btntxt = "详情"
+                        }
+                    };
+                    break;
+                case msgType.news:
+                    break;
+                case msgType.mpnews:
+                    break;
+                default:
+                    break;
+            }
+
+            QyJsonResult res = CommonJsonSend.Send(token, urlF, data, Senparc.Weixin.CommonJsonSendType.POST);
+        }
+        /// <summary>
+        /// 通过微信企业号向用户推送消息
+        /// </summary>
+        /// <param name="sendInfo"></param>
+        public static void DLTQYPushInfo(QySendInfoEntity sendInfo)
+        {
+            string urlF = @"https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token={0}";
+            //消息通知应用的Secret和ApentID1000003
+            //AccessTokenResult token = new AccessTokenResult();
+            string token = GetWeixinQYToken("ww4ee2174db697d479", sendInfo.AgentSecret);
+
+            object data = new object(); ;
+            switch (sendInfo.msgType)
+            {
+                case msgType.text:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "text",
+                        agentid = sendInfo.agentID,
+                        text = new
+                        {
+                            content = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.imgage:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "imgage",
+                        agentid = sendInfo.agentID,
+                        imgage = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.voice:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "voice",
+                        agentid = sendInfo.agentID,
+                        voice = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.video:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "video",
+                        agentid = sendInfo.agentID,
+                        video = new
+                        {
+                            media_id = sendInfo.media_id,
+                            title = sendInfo.title,
+                            description = sendInfo.content
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.file:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "file",
+                        agentid = sendInfo.agentID,
+                        file = new
+                        {
+                            media_id = sendInfo.media_id
+                        },
+                        safe = sendInfo.safe
+                    };
+                    break;
+                case msgType.textcard:
+                    data = new
+                    {
+                        touser = sendInfo.toUser,
+                        toparty = sendInfo.toParty,
+                        totag = sendInfo.toTag,
+                        msgtype = "textcard",
+                        agentid = sendInfo.agentID,
+                        textcard = new
+                        {
+                            title = sendInfo.title,
+                            description = sendInfo.content,
+                            url = sendInfo.url,
+                            btntxt = "详情"
+                        }
+                    };
+                    break;
+                case msgType.news:
+                    break;
+                case msgType.mpnews:
+                    break;
+                default:
+                    break;
+            }
+
+            QyJsonResult res = CommonJsonSend.Send(token, urlF, data, Senparc.Weixin.CommonJsonSendType.POST);
+        }
+
+
+        public static void CreateExterChat(string ChatName, string Owner, string[] userList, string AgentID)
+        {
+            QyConfigEntity config = GetToken(AgentID);
+            string urlF = "https://qyapi.weixin.qq.com/cgi-bin/appchat/create?access_token={0}";
+            object data = new object(); ;
+            data = new
+            {
+                name = ChatName,
+                owner = Owner,
+                userlist = userList
+            };
+            QyJsonResult res = CommonJsonSend.Send(config.Token, urlF, data, Senparc.Weixin.CommonJsonSendType.POST);
+        }
+
+        public static void AddRobotToExternalGroup(string chatId, string robotAgentId)
+        {
+            QyConfigEntity config = GetToken(robotAgentId);
+            string url = "https://qyapi.weixin.qq.com/cgi-bin/externalcontact/groupchat/add_robot?access_token=" + config.Token;
+
+            var mdata = new
+            {
+                chat_id = chatId,
+                robot_dls = new[]
+                {
+                    new
+                    {
+                        userid = "1000",  // 机器人管理员UserID
+                        agentid = robotAgentId    // 机器人应用的AgentID
+                    }
+                }
+            };
+            string sre = wxHttpUtility.PostHttpRequest(url, "application/json", JsonConvert.SerializeObject(mdata));
+        }
+
+
+        // 获取所有群聊（自动处理分页）
+        public static List<ChatGroup> GetAllGroups(string AgentID)
+        {
+            var groups = new List<ChatGroup>();
+            int offset = 0;
+            const int limit = 200; // 每次最多获取100个群
+            string cursor = "";
+            while (true)
+            {
+                QyConfigEntity config = GetToken(AgentID);
+                var url = "https://qyapi.weixin.qq.com/cgi-bin/externalcontact/groupchat/list?access_token=" + config.Token;
+                var jsonData = JsonConvert.SerializeObject(new { offset = offset, limit = limit, cursor = cursor });
+
+                var response = wxHttpUtility.PostHttpRequest(url, "application/json", jsonData);
+                var result = JsonConvert.DeserializeObject<GroupListResponse>(response);
+
+                if (result.errcode != 0)
+                    throw new Exception($"获取群列表失败: {result.errmsg}");
+
+                cursor = result.next_cursor;
+                groups.AddRange(result.group_chat_list);
+
+                if (result.group_chat_list.Count < limit)
+                    break;
+
+                offset += limit;
+            }
+            return groups;
+        }
+
+
+        public static group_chat GetAllGroupsDetail(string chat_id, string AgentID)
+        {
+            int need_name = 1;
+            //const int limit = 200; // 每次最多获取100个群
+            //string chat_id = "250329162546";
+
+            QyConfigEntity config = GetToken(AgentID);
+            var url = "https://qyapi.weixin.qq.com/cgi-bin/externalcontact/groupchat/get?access_token=" + config.Token;
+            var jsonData = JsonConvert.SerializeObject(new { chat_id = chat_id, need_name = need_name });
+
+            var response = wxHttpUtility.PostHttpRequest(url, "application/json", jsonData);
+            var result = JsonConvert.DeserializeObject<GroupListDetailResponse>(response);
+
+            if (result.errcode != 0)
+                throw new Exception($"获取群列表失败: {result.errmsg}");
+
+
+            return result.group_chat;
+        }
+    }
+    public class AccessTokenResponse
+    {
+        public int errcode { get; set; }
+        public string errmsg { get; set; }
+        public string access_token { get; set; }
+    }
+
+    public class GroupListResponse
+    {
+        public int errcode { get; set; }
+        public string errmsg { get; set; }
+        public string next_cursor { get; set; }
+        public List<ChatGroup> group_chat_list { get; set; }
+    }
+
+    public class ChatGroup
+    {
+        public string chat_id { get; set; }
+        public string status { get; set; }
+        public List<string> userlist { get; set; }
+    }
+    public class GroupListDetailResponse
+    {
+        public int errcode { get; set; }
+        public string errmsg { get; set; }
+        public string next_cursor { get; set; }
+        public group_chat group_chat { get; set; }
+
+    }
+
+    public class group_chat
+    {
+        public string chat_id { get; set; }
+        public string name { get; set; }
+        public string owner { get; set; }
+        public string notice { get; set; }
+
+        public List<member_list> member_list { get; set; }
+    }
+
+    public class member_list
+    {
+        public string userid { get; set; }
+        public int type { get; set; }
+        public string unionid { get; set; }
+        public string group_nickname { get; set; }
+        public string name { get; set; }
+
+
+    }
+}

@@ -1,0 +1,118 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.House
+{
+    public partial class StockTakeManager : BasePage
+    {
+        /// <summary>
+        /// 库存数据导出实体
+        /// </summary>
+        public List<CargoStockTakeTagEntity> CargoStockTakeList
+        {
+            get
+            {
+                if (Session["CargoStockTakeList"] == null)
+                {
+                    Session["CargoStockTakeList"] = new List<CargoStockTakeTagEntity>();
+                }
+                return (List<CargoStockTakeTagEntity>)(Session["CargoStockTakeList"]);
+            }
+            set
+            {
+                Session["CargoStockTakeList"] = value;
+            }
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (CargoStockTakeList.Count <= 0) { return; }
+
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("盘点单号", typeof(int));
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("载速", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            table.Columns.Add("货位代码", typeof(string));
+            table.Columns.Add("标签号码", typeof(string));
+            table.Columns.Add("扫描状态", typeof(string));
+            table.Columns.Add("盘点状态", typeof(string));
+            table.Columns.Add("盘点结果", typeof(string));
+            table.Columns.Add("扫描人", typeof(string));
+            table.Columns.Add("扫描时间", typeof(string));
+            //table.Columns.Add("备注", typeof(string));
+            int i = 0;
+            foreach (var it in CargoStockTakeList)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["盘点单号"] = it.StockID;
+                newRows["品牌"] = it.TypeName;
+                newRows["规格"] = it.Specs;
+                newRows["花纹"] = it.Figure;
+                newRows["载速"] = it.LoadIndex + it.SpeedLevel;
+                newRows["货品代码"] = it.GoodsCode;
+                newRows["货位代码"] = it.ContainerCode;
+                newRows["标签号码"] = it.TagCode;
+                newRows["扫描状态"] = GetText(it.ScanStatus, "ScanStatus");
+                newRows["盘点状态"] = GetText(it.StockStatus, "StockStatus");
+                newRows["盘点结果"] = it.Remark;
+                newRows["扫描人"] = it.ScanUserName;
+                newRows["扫描时间"] = it.ScanDate.ToString("yyyy-MM-dd") == "0001-01-01" || it.ScanDate.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.ScanDate.ToString("yyyy-MM-dd HH:mm:ss");
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "盘点扫描导出数据表");
+
+        }
+        private string GetText(string value, string id)
+        {
+            string retStr = string.Empty;
+            if (id.Contains("ScanStatus"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "未扫描";
+                else if (value.Trim() == "1")
+                    retStr = "已扫描";
+            }
+            else if (id.Contains("StockStatus"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "未扫描";
+                else if (value.Trim() == "1")
+                    retStr = "正常";
+                else if (value.Trim() == "2")
+                    retStr = "标签已出库";
+                else if (value.Trim() == "3")
+                    retStr = "标签未入库";
+                else if (value.Trim() == "4")
+                    retStr = "货位错误";
+                else if (value.Trim() == "5")
+                    retStr = "非盘点单标签";
+                else if (value.Trim() == "6")
+                    retStr = "在移库单上";
+            }
+
+            return retStr;
+        }
+    }
+}

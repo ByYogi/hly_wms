@@ -1,0 +1,549 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Transactions;
+using House.Entity;
+using House.Entity.Cargo;
+using House.Manager;
+using House.Manager.Cargo;
+
+namespace House.Business.Cargo
+{
+    public class CargoFactoryOrderBus
+    {
+        private CargoFactoryOrderManager man = new CargoFactoryOrderManager();
+        /// <summary>
+        /// 判断是否已经存在GTMC广丰订单
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistGtmcOrder(CargoGtmcProOrderEntity entity)
+        {
+            return man.IsExistGtmcOrder(entity);
+        }
+        /// <summary>
+        /// 查询广丰导入的订单数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        /// <exception cref="ApplicationException"></exception>
+        public Hashtable QueryGtmcImportData(int pIndex, int pNum, CargoGtmcProOrderEntity entity)
+        {
+            return man.QueryGtmcImportData(pIndex, pNum, entity);
+        }
+        public Hashtable QueryData(int pIndex, int pNum, CargoFactoryOrderEntity entity)
+        {
+            return man.QueryData(pIndex, pNum, entity);
+        }
+        public CargoGtmcProOrderEntity QueryGtmcProOrderEntity(CargoGtmcProOrderEntity entity)
+        {
+            return man.QueryGtmcProOrderEntity(entity);
+        }
+        /// <summary>
+        /// 更新广丰订单的智能系统订单号
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateGtmcProOrderStatus(CargoGtmcProOrderEntity entity)
+        {
+            man.UpdateGtmcProOrderStatus(entity);
+        }
+        /// <summary>
+        /// 根据ID查询广丰订单明细数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoGtmcProOrderDetailEntity> QueryGTMCOrderByID(CargoGtmcProOrderDetailEntity entity)
+        {
+            return man.QueryGTMCOrderByID(entity);
+        }
+
+        /// <summary>
+        /// 查询广丰订单库存信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoGtmcProOrderDetailEntity> QueryAllBatchImportOrder(CargoGtmcProOrderDetailEntity entity)
+        {
+            return man.QueryAllBatchImportOrder(entity);
+        }
+
+        /// <summary>
+        /// 来货单添加对接查询
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoFactoryOrderEntity> QueryGTMCOrderTime(CargoFactoryOrderEntity entity)
+        {
+            return man.QueryGTMCOrderTime(entity);
+        }
+        /// <summary>
+        /// 保存导入数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void SaveFactoryOrderData(List<CargoFactoryOrderEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            //使用事务
+            //using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            //{
+            try
+            {
+                man.SaveData(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "导入工厂订单数据：来货订单号：" + it.FacOrderNo + "，所属仓库ID:" + it.HouseID + "，产品来源：" + it.Source + "，产品名称：" + it.ProductName + "，订单归属月：" + it.BelongMonth + "，产地：" + it.Born + "，OERE类型：" + it.Assort + "，产品类型ID：" + it.TypeID + "，规格：" + it.Specs + "，花纹：" + it.Figure + "，货品代码：" + it.GoodsCode + "，载重指数：" + it.LoadIndex + "，速度级别：" + it.SpeedLevel + "，批次：" + it.Batch + "，原始订单数量：" + it.OrderNum + "，回告数量：" + it.ReplyNumber + "，单价：" + it.UnitPrice + "，销售价：" + it.SalePrice + "，是否含税：" + it.WhetherTax + "，规格类型：" + it.SpecsType + "，收货人：" + it.ReceiveName + "，收货城市：" + it.ReceiveCity + "，收货电话：" + it.ReceiveMobile;
+                    lw.WriteLog(it, log);
+                }
+                //scope.Complete();
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "导入工厂订单失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+            //}
+            //使用事务
+            //using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            //{
+            //    try
+            //    {
+            //        man.SaveData(entity);
+            //        log.Memo = "";
+            //        foreach (var it in entity)
+            //        {
+            //            lw.WriteLog(it, log);
+            //        }
+            //        scope.Complete();
+            //    }
+            //    catch (ApplicationException ex)
+            //    {
+            //        log.Status = "1";
+            //        log.Memo = "导入工厂订单失败，失败信息：" + ex.Message;
+            //        lw.WriteLog(log);
+            //        throw;
+            //    }
+            //}
+        }
+
+        #region 来货单
+        public void SaveArrivalOrder(List<CargoFactoryOrderEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            CargoHouseManager house = new CargoHouseManager();
+            CargoProductManager product = new CargoProductManager();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var item in entity)
+                    {
+                        long ProductID = product.AddCargoProduct(new CargoProductEntity { ProductName = item.ProductName, TypeID = item.TypeID, Model = item.Model, GoodsCode = item.GoodsCode, Specs = item.Specs, Figure = item.Figure, LoadIndex = item.LoadIndex, SpeedLevel = item.SpeedLevel, UnitPrice = Convert.ToDecimal(item.UnitPrice), Numbers = item.OrderNum, FinalCostPrice = Convert.ToDecimal(item.UnitPrice), CostPrice = Convert.ToDecimal(item.UnitPrice), TaxCostPrice = Convert.ToDecimal(item.UnitPrice), NoTaxCostPrice = Convert.ToDecimal(item.UnitPrice), TradePrice = Convert.ToDecimal(item.TradePrice), SalePrice = Convert.ToDecimal(item.SalePrice), Batch = item.Batch, HouseID = item.HouseID, Source = item.Source.ToString(), SourceOrderNo = item.FacOrderNo, BelongMonth = item.BelongMonth, Born = item.Born, Assort = item.Assort, BelongDepart = item.BelongDepart, Company = item.Company, SpecsType = item.SpecsType, OperaType = "0", Package = "", Size = "", Meridian = "" });
+
+                        CargoContainerGoodsEntity containerGoodsEntity = new CargoContainerGoodsEntity();
+                        containerGoodsEntity.ContainerID = item.ContainerID;
+                        containerGoodsEntity.TypeID = item.TypeID;
+                        containerGoodsEntity.ProductID = ProductID;
+                        containerGoodsEntity.Piece = item.OrderNum;
+                        containerGoodsEntity.Weight = 0;
+                        containerGoodsEntity.IsPrintInCargo = false;
+                        containerGoodsEntity.InHouseType = "0";
+                        containerGoodsEntity.InCargoID = item.InCargoID;
+                        house.AddContainerGoods(containerGoodsEntity);
+                        //保存入库单表
+                        house.AddInContainerGoods(containerGoodsEntity);
+                        //修改货位上的产品件数
+                        house.UpdateContainerInPiece(new CargoContainerEntity { ContainerID = item.ContainerID, InPiece = item.OrderNum, IsAdd = true });
+                        //修改产品的入库状态 
+                        product.UpdateCargoProductStatus(new CargoProductEntity { ProductID = ProductID, InCargoStatus = "1" });
+
+                        log.Memo = "保存来货单";
+                        lw.WriteLog(item, log);
+                    }
+
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "采购订单取消失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        #endregion
+        public void SavePriceData(List<CargoFactoryOrderEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.SavePriceData(entity);
+                    log.Memo = "";
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "导入工厂订单成本价数据：来货订单号：" + it.FacOrderNo + "，订单类型:" + it.OrderType + "，所属仓库ID:" + it.HouseID + "，产品来源：" + it.Source + "，订单归属月：" + it.BelongMonth + "，产地：" + it.Born + "，OERE类型：" + it.Assort + "，产品类型ID：" + it.TypeID + "，型号：" + it.Model + "，规格：" + it.Specs + "，载重指数：" + it.LoadIndex + "，速度级别：" + it.SpeedLevel + "，花纹：" + it.Figure + "，货品代码：" + it.GoodsCode + "，批次：" + it.Batch + "，成本价：" + it.CostPrice + "，含税成本价：" + it.TaxCostPrice + "，不含税成本价：" + it.NoTaxCostPrice + "，是否含税：" + it.WhetherTax;
+                        lw.WriteLog(it, log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "导入工厂订单成本价失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+
+        public void HLYUpdateFactoryOrderData(CargoFactoryOrderEntity entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            try
+            {
+                man.HLYUpdateData(entity);
+
+                log.Memo = "修改工厂订单数据：推送状态：" + entity.PushStatus + "，好来运数据库返回ID:" + entity.HLYReturnID + "，ID：" + entity.ID;
+                lw.WriteLog(entity, log);
+                //scope.Complete();
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改工厂订单数据，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateFactoryOrderData(CargoFactoryOrderEntity entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            //使用事务
+            //using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            //{
+            try
+            {
+                man.UpdateData(entity);
+                CargoFactoryOrderEntity facEnt = man.QueryFactoryOrderData(entity);
+                if (facEnt != null)
+                {
+                    if (facEnt.InCargoStatus.Equals(0) && !entity.FacOrderNo.Equals(facEnt.FacOrderNo))
+                    {
+                        //未入库并且修改了来货订单号，则同步修改所有的来货订单号
+                        man.UpdateFactoryOrderData(new CargoFactoryOrderEntity { FacOrderNo = entity.FacOrderNo, HouseID = entity.HouseID, TypeID = entity.TypeID, InCargoStatus = facEnt.InCargoStatus }, facEnt.FacOrderNo);
+                        //修改来货订单照片的来货订单号
+                        man.UpdateCargoFactoryFileNo(new CargoFactoryFileEntity { FacOrderNo = entity.FacOrderNo, HouseID = entity.HouseID }, facEnt.FacOrderNo);
+                    }
+                }
+                log.Memo = "修改工厂订单数据：来货订单号：" + entity.FacOrderNo + "，所属仓库ID:" + entity.HouseID + "，产品来源：" + entity.Source + "，产品名称：" + entity.ProductName + "，订单归属月：" + entity.BelongMonth + "，产地：" + entity.Born + "，OERE类型：" + entity.Assort + "，产品类型ID：" + entity.TypeID + "，规格：" + entity.Specs + "，花纹：" + entity.Figure + "，货品代码：" + entity.GoodsCode + "，载重指数：" + entity.LoadIndex + "，速度级别：" + entity.SpeedLevel + "，批次：" + entity.Batch + "，原始订单数量：" + entity.OrderNum + "，回告数量：" + entity.ReplyNumber + "，单价：" + entity.UnitPrice + "，销售价：" + entity.SalePrice + "，是否含税：" + entity.WhetherTax + "，收货人：" + entity.ReceiveName + "，收货城市：" + entity.ReceiveCity + "，收货电话：" + entity.ReceiveMobile;
+                lw.WriteLog(entity, log);
+                //scope.Complete();
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改工厂订单数据，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+            //}
+        }
+        /// <summary>
+        /// 新增
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void InsertFactoryOrderData(CargoFactoryOrderEntity entity, LogEntity log)
+        {
+            //使用事务
+            //using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            //{
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            try
+            {
+                man.InsertData(entity);
+                log.Memo = "新增工厂订单数据：来货订单号：" + entity.FacOrderNo + "，所属仓库ID:" + entity.HouseID + "，产品来源：" + entity.Source + "，产品名称：" + entity.ProductName + "，订单归属月：" + entity.BelongMonth + "，产地：" + entity.Born + "，OERE类型：" + entity.Assort + "，产品类型ID：" + entity.TypeID + "，规格：" + entity.Specs + "，花纹：" + entity.Figure + "，货品代码：" + entity.GoodsCode + "，载重指数：" + entity.LoadIndex + "，速度级别：" + entity.SpeedLevel + "，批次：" + entity.Batch + "，原始订单数量：" + entity.OrderNum + "，回告数量：" + entity.ReplyNumber + "，单价：" + entity.UnitPrice + "，销售价：" + entity.SalePrice + "，是否含税：" + entity.WhetherTax + "，收货人：" + entity.ReceiveName + "，收货城市：" + entity.ReceiveCity + "，收货电话：" + entity.ReceiveMobile;
+                lw.WriteLog(entity, log);
+                //scope.Complete();
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增工厂订单数据，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+            //}
+        }
+
+        /// <summary>
+        /// 删除数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void DeleteFactoryOrderData(List<CargoFactoryOrderEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            //使用事务
+            //using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            //{
+            try
+            {
+                man.DeleteData(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除工厂订单数据：销售订单号" + it.FacOrderNo + "，订单类型：" + it.OrderType + "，所属仓库ID：" + it.HouseID + "，产品类型ID:" + it.TypeID;
+                }
+                lw.WriteLog(log);
+                //scope.Complete();
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除工厂订单数据失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+            //}
+        }
+
+        public CargoFactoryOrderEntity QueryFactoryOrderData(CargoFactoryOrderEntity entity)
+        {
+            return man.QueryFactoryOrderData(entity);
+        }
+        /// <summary>
+        /// 新增产品获取返回的产品id
+        /// </summary>
+        /// <param name="entity"></param>
+        public long AddCargoProduct(CargoProductEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            CargoProductManager pman = new CargoProductManager();
+            long pid = 0;
+            try
+            {
+                pid = pman.AddCargoProduct(entity);
+                log.Memo = "新增产品获取返回的产品ID：来货订单号：" + entity.SourceOrderNo + "，所属仓库ID:" + entity.HouseID + "，产品来源：" + entity.Source + "，产品名称：" + entity.ProductName + "，订单归属月：" + entity.BelongMonth + "，产地：" + entity.Born + "，OERE类型：" + entity.Assort + "，产品类型ID：" + entity.TypeID + "，规格：" + entity.Specs + "，花纹：" + entity.Figure + "，货品代码：" + entity.GoodsCode + "，载重指数：" + entity.LoadIndex + "，速度级别：" + entity.SpeedLevel + "，批次：" + entity.Batch;
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增产品，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+            return pid;
+        }
+        public void UpdateFactoryInPiece(CargoFactoryOrderEntity entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            try
+            {
+                man.UpdateFactoryInPiece(entity);
+                log.Memo = "来货单退货修改工厂订单入库数量：ID：" + entity.ID + "，仓库ID：" + entity.HouseID + ",修改数量：" + entity.InPiece;
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "来货单退货修改工厂订单入库数量，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改产品ID
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateProductID(CargoFactoryOrderEntity entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            try
+            {
+                man.UpdateProductID(entity);
+                log.Memo = "修改工厂订单数据产品ID：ID：" + entity.ID + "，产品ID：" + entity.ProductID;
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改工厂订单数据产品ID，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public int GetCargoType(CargoFactoryOrderEntity entity)
+        {
+            return man.GetCargoType(entity);
+        }
+        /// <summary>
+        /// 修改入库数量
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateCargoPiece(CargoFactoryOrderEntity entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryOrderEntity> lw = new LogWrite<CargoFactoryOrderEntity>();
+            try
+            {
+                man.UpdateCargoPiece(entity);
+                log.Memo = "修改工厂订单入库数量：来货订单号：" + entity.FacOrderNo + "，所属仓库ID:" + entity.HouseID + "，产品来源：" + entity.Source + "，产品名称：" + entity.ProductName + "，订单归属月：" + entity.BelongMonth + "，产地：" + entity.Born + "，OERE类型：" + entity.Assort + "，产品类型ID：" + entity.TypeID + "，规格：" + entity.Specs + "，花纹：" + entity.Figure + "，货品代码：" + entity.GoodsCode + "，载重指数：" + entity.LoadIndex + "，速度级别：" + entity.SpeedLevel + "，批次：" + entity.Batch + "原始订单数量：" + entity.OrderNum + "，回告数量：" + entity.ReplyNumber;
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改工厂订单入库数量，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 根据条件获取单价
+        /// </summary>
+        /// <param name="FacOrderNo"></param>
+        /// <param name="HouseID"></param>
+        /// <param name="TypeID"></param>
+        /// <param name="Born"></param>
+        /// <param name="Assort"></param>
+        /// <param name="GoodsCode"></param>
+        /// <param name="Specs"></param>
+        /// <param name="Figure"></param>
+        /// <param name="LoadIndex"></param>
+        /// <param name="SpeedLevel"></param>
+        /// <param name="BelongMonth"></param>
+        /// <returns></returns>
+        public CargoFactoryOrderEntity QueryProductUnitPrice(CargoFactoryOrderEntity entity)
+        {
+            return man.QueryProductUnitPrice(entity);
+        }
+        public void AddCargoFactoryFile(List<CargoFactoryFileEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoFactoryFileEntity> lw = new LogWrite<CargoFactoryFileEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.AddCargoFactoryFile(it);
+                        log.Memo = "新增来货订单照片，来货订单号：" + it.FacOrderNo + ",文件名：" + it.FileName + ",文件类型：" + it.FileType;
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        public void _InsertData(CargoFactoryOrderEntity entity)
+        {
+            man._InsertData(entity);
+        }
+        public List<CargoFactoryFileEntity> QueryCargoFactoryFile(CargoFactoryFileEntity entity)
+        {
+            return man.QueryCargoFactoryFile(entity);
+        }
+        public void SaveGTMCImportData(CargoGtmcProOrderEntity entity, LogEntity log)
+        {
+            LogWrite<CargoGtmcProOrderEntity> lw = new LogWrite<CargoGtmcProOrderEntity>();
+
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.SaveGTMCImportData(entity);
+
+                    lw.WriteLog(entity, log);
+
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        public void SaveGTMCImportData(List<CargoGtmcProOrderEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoGtmcProOrderEntity> lw = new LogWrite<CargoGtmcProOrderEntity>();
+
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                foreach (var it in entity)
+                {
+                    man.SaveGTMCImportData(it);
+                    lw.WriteLog(it, log);
+                }
+                scope.Complete();
+
+            }
+        }
+        public Hashtable QueryBatchImportOrderData(int pIndex, int pNum, CargoGtmcProOrderEntity entity)
+        {
+            return man.QueryBatchImportOrderData(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 清单编码明细查询
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoGtmcProOrderEntity> QueryExterOrderDataList(CargoGtmcProOrderEntity entity)
+        {
+            return man.QueryExterOrderDataList(entity);
+        }
+        public bool QueryBatchImportOrderType(CargoGtmcProOrderEntity entity)
+        {
+            return man.QueryBatchImportOrderType(entity);
+        }
+        public void DelBatchImportOrder(List<CargoGtmcProOrderEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoGtmcProOrderEntity> lw = new LogWrite<CargoGtmcProOrderEntity>();
+
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                foreach (var it in entity)
+                {
+                    man.DelBatchImportOrder(it);
+                    lw.WriteLog(it, log);
+                }
+                scope.Complete();
+
+            }
+        }
+    }
+}

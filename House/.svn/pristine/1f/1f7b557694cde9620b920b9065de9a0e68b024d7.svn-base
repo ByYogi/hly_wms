@@ -1,0 +1,259 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 微信服务号用户数据实体1.3.4.Tbl_WX_Client（微信用户表）
+    /// </summary>
+    [Serializable]
+    public class WXUserEntity
+    {
+        [Description("表主键")]
+        public Int64 ID { get; set; }
+        [Description("用户姓名")]
+        public string Name { get; set; }
+        [Description("微信名")]
+        public string wxName { get; set; }
+        [Description("OPENID")]
+        public string wxOpenID { get; set; }
+        [Description("头像图")]
+        public string AvatarSmall { get; set; }
+        public string AvatarBig { get; set; }
+        [Description("手机号")]
+        public string Cellphone { get; set; }
+        [Description("身份证号码")]
+        public string IDCardNum { get; set; }
+        public string IsCertific { get; set; }
+        [Description("积分")]
+        public int ConsumerPoint { get; set; }
+        [Description("性别")]
+        public int Sex { get; set; }
+        [Description("省")]
+        public string Province { get; set; }
+        [Description("市")]
+        public string City { get; set; }
+        [Description("国家")]
+        public string Country { get; set; }
+        public string Address { get; set; }
+        public string ClientPayType { get; set; }
+        [Description("营业执照照片")]
+        public string BusLicenseImg { get; set; }
+        [Description("身份证正面照片")]
+        public string IDCardImg { get; set; }
+        [Description("身份证反面照片")]
+        public string IDCardBackImg { get; set; }
+        [Description("公司名称")]
+        public string CompanyName { get; set; }
+        public bool IsSign { get; set; }
+        [Description("注册时间")]
+        public DateTime RegisterDate { get; set; }
+        [Description("操作时间")]
+        public DateTime OP_DATE { get; set; }
+        /// <summary>
+        /// 客户编码
+        /// </summary>
+        public int ClientNum { get; set; }
+        public string ClientName { get; set; }
+        public string SaleManID { get; set; }
+        public string SaleManName { get; set; }
+        public int ClientID { get; set; }
+        /// <summary>
+        /// 收货联系人
+        /// </summary>
+        public string AcceptName { get; set; }
+        /// <summary>
+        /// 收货联系电话
+        /// </summary>
+        public string AcceptCellphone { get; set; }
+
+        /// <summary>
+        /// 门店电话
+        /// </summary>
+        public string StorePhone { get; set; }
+        /// <summary>
+        /// 仓库经营品牌
+        /// </summary>
+        public string OperaBrand { get; set; }
+        /// <summary>
+        /// 绑定时间
+        /// </summary>
+        public DateTime BindDate { get; set; }
+        /// <summary>
+        /// 是否绑定店代码
+        /// </summary>
+        public string IsBind { get; set; }
+        /// <summary>
+        /// 是否管理员
+        /// </summary>
+        public string IsManager { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        /// <summary>
+        /// 拒审原因
+        /// </summary>
+        public string DenyReason { get; set; }
+        /// <summary>
+        /// 预存款
+        /// </summary>
+        public decimal PreReceiveMoney { get; set; }
+        /// <summary>
+        /// 返利款
+        /// </summary>
+        public decimal RebateMoney { get; set; }
+        /// <summary>
+        /// 可用额度 
+        /// </summary>
+        public decimal LimitMoney { get; set; }
+        /// <summary>
+        /// 我的申请额度
+        /// </summary>
+        public decimal QuotaMoney { get; set; }
+        /// <summary>
+        /// 所在仓库
+        /// </summary>
+        public int HouseID { get; set; }
+        public string HouseIDStr { get; set; }
+        /// <summary>
+        /// 仓库名称
+        /// </summary>
+        public string HouseName { get; set; }
+        /// <summary>
+        /// 仓库地址
+        /// </summary>
+        public string HouseAddress { get; set; }
+        /// <summary>
+        /// 仓库联系电话
+        /// </summary>
+        public string HouseCellphone { get; set; }
+        /// <summary>
+        /// 业务员ID
+        /// </summary>
+        public string BusinessID { get; set; }
+        /// <summary>
+        /// 配送物流名称
+        /// </summary>
+        public string LogicName { get; set; }
+        /// <summary>
+        /// 物流公司ID
+        /// </summary>
+        public int LogisID { get; set; }
+        /// <summary>
+        /// 目标销量
+        /// </summary>
+        public int TargetNum { get; set; }
+        /// <summary>
+        /// 关注人ID
+        /// </summary>
+        public long ParentID { get; set; }
+        /// <summary>
+        /// 仓储系统登陆账号ID
+        /// </summary>
+        public string SysLoginID { get; set; }
+        /// <summary>
+        /// 仓储系统登陆账号姓名
+        /// </summary>
+        public string SysLoginName { get; set; }
+        /// <summary>
+        /// 额度付款权限 
+        /// </summary>
+        public string QuotaLimit { get; set; }
+        /// <summary>
+        /// 和其他应用关联ID
+        /// </summary>
+        public string UnionID { get; set; }
+        /// <summary>
+        /// App使用Token字符串
+        /// </summary>
+        public string Dtoken { get; set; }
+        /// <summary>
+        /// 开发者平台的WxOpenID
+        /// </summary>
+        public string DevOpenID { get; set; }
+        /// <summary>
+        /// 用户类型0：微信用户1：手机用户
+        /// </summary>
+        public string UserType { get; set; }
+        /// <summary>
+        /// 是否推送客户订单
+        /// </summary>
+        public string PushAccount { get; set; }
+        /// <summary>
+        /// 是否计算运费 Ture:是要计算 False:否，不计算
+        /// </summary>
+        public bool IsReckon { get; set; }
+        /// <summary>
+        /// 是否显示物流 Ture:是显示 False:否不显示
+        /// </summary>
+        public bool IsShowLogic { get; set; }
+        /// <summary>
+        /// 物流费用单价  每条多少钱 例：3元/每条
+        /// </summary>
+        public decimal LogisFee { get; set; }
+        /// <summary>
+        /// 物流费用，两条多少钱
+        /// </summary>
+        public decimal TwoLogisFee { get; set; }
+        /// <summary>
+        /// 物流费用  三条多少钱
+        /// </summary>
+        public decimal ThreeLogisFee { get; set; }
+        /// <summary>
+        /// 次日达运费
+        /// </summary>
+        public decimal NextDayLogisFee { get; set; }
+        /// <summary>
+        /// 超期单价费用
+        /// </summary>
+        public decimal OverDueUnitPrice { get; set; }
+        /// <summary>
+        /// 超期天数
+        /// </summary>
+        public int OverDayNum { get; set; }
+
+
+        public decimal Discount { get; set; }
+        public string CheckOutType { get; set; }
+
+        /// <summary>
+        /// 是否是APP商城首单 Ture:是首单 False:不是首单
+        /// </summary>
+        public bool IsAPPFirstOrder { get; set; }
+        /// <summary>
+        /// 纬度
+        /// </summary>
+        public string Latitude { get; set; }
+        /// <summary>
+        /// 经度
+        /// </summary>
+        public string Longitude { get; set; }
+        /// <summary>
+        /// 货到付款权限 0：打开1：关闭
+        /// </summary>
+        public string ArrivePayLimit { get; set; }
+        public string EndBusHours { get; set; }
+
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

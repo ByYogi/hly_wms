@@ -1,0 +1,92 @@
+## === Visual Studio 生成文件 ===
+# 用户特定文件
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# 构建输出目录
+[Bb]in/
+[Oo]bj/
+Debug/
+Release/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+# 临时发布文件
+*.Publish.xml
+*.pubxml
+*.pubxml.user
+publish/
+
+# 编译生成的文件
+*.dll
+*.pdb
+*.cache
+*.log
+*.vspscc
+*.vssscc
+*.tmp
+*.csproj.user
+
+# Web 编译缓存
+App_Data/
+_AppStart.cshtml
+aspnet_client/
+*.dbmdl
+*.mdf
+*.ldf
+
+# WebForms 特有
+*.designer.cs
+*.designer.vb
+*.refresh
+*.resx
+*.generated.cs
+*.generated.vb
+
+# Visual Studio 临时文件
+.vs/
+*.sdf
+*.cachefile
+*.opendb
+*.ide
+*.suo
+
+# NuGet
+packages/
+*.nupkg
+project.lock.json
+
+# Rider / Resharper
+.idea/
+*.DotSettings.user
+
+# IIS Express
+.IISExpress/
+*.vspscc
+iisexpress/
+
+# Windows 临时文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# 日志文件
+*.log
+
+# 其他不必要同步的文件
+*.bak
+*.swp
+*.swn
+*.swo
+*.orig
+*.tmp
+*.db
+
+# 其他不必要同步的文件件
+20240930/
+Log/

@@ -1,0 +1,1029 @@
+﻿<%@ Page Title="出纳资金管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="financeCashierMoneyManager.aspx.cs" Inherits="Cargo.Finance.financeCashierMoneyManager" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'BasicID',
+                url: null,
+                toolbar: '',
+                columns: [[
+                    { title: '', field: 'BasicID', checkbox: true, width: '30px' },
+                    {
+                        title: '所属仓库', field: 'HouseName', width: '70px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '账户类型', field: 'CardType', width: '60px',
+                        formatter: function (val, row, index) { if (val == "0") { return "<span title='现金'>现金</span>"; } else if (val == "1") { return "<span title='银行卡'>银行卡</span>"; } else if (val == "2") { return "<span title='微信'>微信</span>"; } else if (val == "3") { return "<span title='支付宝'>支付宝</span>"; } else { return ""; } }
+                    },
+                    {
+                        title: '别名', field: 'Aliases', width: '150px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '开户名', field: 'CardName', width: '200px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '帐号', field: 'CardNum', width: '150px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '开户行', field: 'Bank', width: '220px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '余额', field: 'OverMoney', width: '120px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '状态', field: 'Status', width: '40px',
+                        formatter: function (val, row, index) { if (val == "0") { return "<span title='正常'>正常</span>"; } else if (val == "1") { return "<span title='注销'>注销</span>"; } else { return ""; } }
+                    },
+                    { title: '操作时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter }
+                ]],
+                onLoadSuccess: function (data) { },
+                onDblClickRow: function (index, row) { editItemByID(index); }
+            });
+            $("input[name=outCardType]").click(function () { showCont(); });
+            $("input[name=inCardType]").click(function () { inCont(); });
+            $("input[name=joinCardType]").click(function () { joinCont(); });
+            //所在仓库
+            $('#AHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            $('#AHouseID').combobox('textbox').bind('focus', function () { $('#AHouseID').combobox('showPanel'); });
+            $('#CardType').combobox('textbox').bind('focus', function () { $('#CardType').combobox('showPanel'); });
+            $('#Status').combobox('textbox').bind('focus', function () { $('#Status').combobox('showPanel'); });
+            $('#AHouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
+            $('#AffectClient').combobox({
+                valueField: 'Boss', textField: 'Boss', AddField: 'PinyinName', delay: '10',
+                url: '../Client/clientApi.aspx?method=AutoCompleteClient',
+                filter: function (q, row) {
+                    var opts = $(this).combobox('options');
+                    return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                }
+            });
+            $('#AffectClient').combobox('textbox').bind('focus', function () { $('#AffectClient').combobox('showPanel'); });
+        });
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = '../Finance/financeApi.aspx?method=QueryFinanceBasicData';
+            $('#dg').datagrid('load', {
+                HouseID: $("#AHouseID").combobox('getValue'),
+                CardType: $("#CardType").combobox('getValue'),
+                Status: $("#Status").combobox('getValue')
+            });
+        }
+    </script>
+
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">所属仓库:
+                </td>
+                <td>
+                    <input id="AHouseID" class="easyui-combobox" style="width: 100px;" panelheight="auto" />
+                </td>
+                <td style="text-align: right;">账户类型:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="CardType" style="width: 70px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">现金</option>
+                        <option value="1">银行卡</option>
+                        <option value="2">微信</option>
+                        <option value="3">支付宝</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">账户状态:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="Status" style="width: 70px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">正常</option>
+                        <option value="1">注销</option>
+                    </select>
+                </td>
+
+            </tr>
+            <tr>
+                <td colspan="6">
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-shape_ungroup" plain="false" onclick="detail()">&nbsp;收支明细&nbsp;</a>&nbsp;&nbsp;
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-basket_go" plain="false" onclick="edit()">&nbsp;内部转账&nbsp;</a>&nbsp;&nbsp;
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-basket_go" plain="false" onclick="add()">&nbsp;新增收入&nbsp;</a>&nbsp;&nbsp;
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-basket_go" plain="false" onclick="del()">&nbsp;新增支出&nbsp;</a>&nbsp;&nbsp;
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-money" plain="false" onclick="cashM()">&nbsp;资金账号管理&nbsp;</a>&nbsp;&nbsp;
+                </td>
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="dlg" class="easyui-dialog" style="width: 900px; height: 350px; padding: 3px 3px" closed="true" buttons="#dlg-buttons">
+        <form id="fm" class="easyui-form" method="post">
+            <input type="hidden" name="overMoney" id="overMoney" />
+            <table>
+                <tr>
+                    <td style="width: 380px;" id="out">
+                        <fieldset>
+                            <legend><span style="font-size: 14px; font-weight: bolder;">转出账号信息</span></legend>
+                            <table style="width: 100%; height: 200px">
+                                <tr>
+                                    <td style="text-align: right;">账户类型:
+                                    </td>
+                                    <td>
+                                        <input name="outCardType" id="outCardType0" type="radio" value="0"><label for="outCardType0" style="font-size: 15px;">现金</label>
+                                        <input name="outCardType" id="outCardType1" type="radio" value="1"><label for="outCardType1" style="font-size: 15px;">银行卡</label>
+                                        <input name="outCardType" id="outCardType2" type="radio" value="2"><label for="outCardType2" style="font-size: 15px;">微信</label>
+                                        <input name="outCardType" id="outCardType3" type="radio" value="3"><label for="outCardType3" style="font-size: 15px;">支付宝</label>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div id="zc">
+                                            转出账号:
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <input id="outAccount" name="outAccount" class="easyui-combobox" style="width: 200px;"
+                                            panelheight="auto" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>转出金额:
+                                    </td>
+                                    <td>
+                                        <input name="outMoney" id="outMoney" data-options="min:0,precision:2,required:true"
+                                            class="easyui-numberbox" style="width: 200px;" />
+                                    </td>
+                                </tr>
+                            </table>
+                        </fieldset>
+                    </td>
+                    <td id="outimg">
+                        <img src="../CSS/image/jt.png" />
+                    </td>
+                    <td>
+                        <fieldset>
+                            <legend><span style="font-size: 14px; font-weight: bolder;">转入账号信息</span></legend>
+                            <table style="width: 100%; height: 200px">
+                                <tr>
+                                    <td>账号类型:
+                                    </td>
+                                    <td>
+                                        <input name="inCardType" id="inCardType0" type="radio" value="0"><label for="inCardType0" style="font-size: 15px;">现金</label>
+                                        <input name="inCardType" id="inCardType1" type="radio" value="1"><label for="inCardType1" style="font-size: 15px;">银行卡</label>
+                                        <input name="inCardType" id="inCardType2" type="radio" value="2"><label for="inCardType2" style="font-size: 15px;">微信</label>
+                                        <input name="inCardType" id="inCardType3" type="radio" value="3"><label for="inCardType3" style="font-size: 15px;">支付宝</label>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div id="zr">
+                                            转入账号:
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <input name="inAccount" id="inAccount" class="easyui-combobox" style="width: 200px;"
+                                            panelheight="auto" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>备注：
+                                    </td>
+                                    <td>
+                                        <textarea name="Remark" id="Remark" rows="3" style="width: 250px;"></textarea>
+                                    </td>
+                                </tr>
+                            </table>
+                        </fieldset>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+    <div id="dlg-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItem()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <div id="dlgadd" class="easyui-dialog" style="width: 400px; height: 350px; padding: 3px 3px" closed="true" buttons="#dlgadd-buttons">
+        <form id="fmadd" class="easyui-form" method="post">
+            <input type="hidden" id="addType" name="addType" />
+            <table>
+                <tr>
+                    <td>
+                        <fieldset>
+                            <legend><span style="font-size: 14px; font-weight: bolder;" id="span">收入账户信息</span></legend>
+                            <table style="width: 100%; height: 200px">
+                                <tr>
+                                    <td>账号类型:
+                                    </td>
+                                    <td>
+                                        <input name="joinCardType" id="joinCardType0" type="radio" value="0"><label for="joinCardType0" style="font-size: 15px;">现金</label>
+                                        <input name="joinCardType" id="joinCardType1" type="radio" value="1"><label for="joinCardType1" style="font-size: 15px;">银行卡</label>
+                                        <input name="joinCardType" id="joinCardType2" type="radio" value="2"><label for="joinCardType2" style="font-size: 15px;">微信</label>
+                                        <input name="joinCardType" id="joinCardType3" type="radio" value="3"><label for="joinCardType3" style="font-size: 15px;">支付宝</label>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <div id="joinzr">
+                                            转入账号:
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <input name="joinAccount" id="joinAccount" class="easyui-combobox" style="width: 200px;"
+                                            panelheight="auto" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td id="joinMoneytd">转入金额:
+                                    </td>
+                                    <td>
+                                        <input name="joinMoney" id="joinMoney" data-options="min:0,precision:2,required:true"
+                                            class="easyui-numberbox" style="width: 200px;" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>资金来源:
+                                    </td>
+                                    <td>
+                                        <select class="easyui-combobox" id="joinSource" name="joinSource" style="width: 200px;" panelheight="auto" editable="false">
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>客户名称:</td>
+                                    <td>
+                                        <input id="AffectClient" name="AffectClient" style="width: 200px;" class="easyui-combobox" data-options="valueField:'ClientNum',textField:'Boss',editable:true" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>备注：
+                                    </td>
+                                    <td>
+                                        <textarea name="joinRemark" id="joinRemark" rows="3" style="width: 250px;"></textarea>
+                                    </td>
+                                </tr>
+                            </table>
+                        </fieldset>
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+    <div id="dlgadd-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveAdd()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgadd').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <div id="dlgDetail" class="easyui-dialog" style="width: 900px; height: 560px; padding: 3px 3px"
+        closed="true" buttons="#dlgDetail-buttons">
+        <div id="saPanel" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
+            <form id="fmd" class="easyui-form" method="post">
+                <table>
+                    <tr>
+                        <td style="text-align: right;">账户类型:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="ACardType" style="width: 70px;" panelheight="auto"
+                                data-options="onSelect:CtChange" />
+                            <option value="-1">全部</option>
+                            <option value="0">现金</option>
+                            <option value="1">银行卡</option>
+                            <option value="2">微信</option>
+                            <option value="3">支付宝</option>
+                            </select>
+                        </td>
+                        <td style="text-align: right;">账号别名:
+                        </td>
+                        <td>
+                            <input id="CardNum" name="Aliases" class="easyui-combobox" style="width: 120px;"
+                                data-option="valueField: 'BasicID',textField: 'Aliases'" panelheight="auto" />
+                        </td>
+                        <%-- <td style="text-align: right;">账号:
+                        </td>
+                        <td>
+                            <input id="CardNum" name="CardNum" class="easyui-combobox" style="width: 150px;"
+                                data-option="valueField: 'BasicID',textField: 'CardNum'" panelheight="auto" />
+                        </td>--%>
+                        <td style="text-align: right;">日期范围:
+                        </td>
+                        <td colspan="4">
+                            <input id="AStartDate" class="easyui-datebox" style="width: 100px">~
+                    <input id="AEndDate" class="easyui-datebox" style="width: 100px">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">收支类型:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="RType" style="width: 70px;" panelheight="auto">
+                                <option value="-1">全部</option>
+                                <option value="0">收入</option>
+                                <option value="1">支出</option>
+                            </select>
+                        </td>
+                        <td style="text-align: right;">收支来源:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="FromTO" style="width: 120px;" panelheight="auto">
+                                <option value="-1">全部</option>
+                                <option value="0">按订单收款</option>
+                                <option value="5">按账单收款</option>
+                                <option value="2">按报销单收款</option>
+                                <option value="3">按报销单付款</option>
+                                <option value="6">按进货单付款</option>
+                            </select>
+                        </td>
+                        <td style="text-align: right;">来源单号:
+                        </td>
+                        <td>
+                            <input id="AffectAwbNO" class="easyui-textbox" style="width: 100px;" />
+                        </td>
+                        <td style="text-align: right;">所属仓库:
+                        </td>
+                        <td>
+                            <input id="HID" class="easyui-combobox" style="width: 100px;" panelheight="auto" />
+                        </td>
+                        <td>
+                            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="QueryAccount()">&nbsp;查&nbsp;询&nbsp;</a>
+                        </td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+        <table id="gridDriver" class="easyui-datagrid">
+        </table>
+    </div>
+    <div id="dlgDetail-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" onclick="refund()">&nbsp;退&nbsp;款&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-arrow_rotate_anticlockwise" onclick="revoke()">&nbsp;撤&nbsp;销&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-clear" onclick="reset()">&nbsp;重&nbsp;置&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="AwbExport()">&nbsp;导&nbsp;出&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgDetail').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+        <form runat="server" id="fm1">
+            <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived_Click" />
+        </form>
+    </div>
+    <div id="dlgrefund" class="easyui-dialog" style="width: 450px; height: 300px; padding: 0px" closed="true" buttons="#dlgrefund-buttons">
+        <div id="saPanel" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
+            <table>
+                <tr>
+                    <td style="text-align: right;">订单号:</td>
+                    <td id="OrderNo"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">微信支付账单号:</td>
+                    <td id="WXPayOrderNo"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">订单金额:</td>
+                    <td id="refundMoney"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">优惠券金额:</td>
+                    <td id="couponMoney"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">退款金额:</td>
+                    <td>
+                        <input id="ActRefMoney" class="easyui-textbox" style="width: 100px;" /></td>
+                </tr>
+                <tr>
+                    <td></td>
+                    <td></td>
+                </tr>
+                <tr>
+                    <td colspan="2"><span style="color: #d27a7a; font-weight: bold;">注意：优惠券金额是要退款的订单已发放的优惠券中被使用的金额！</span></td>
+                </tr>
+                <tr>
+                    <td colspan="2"><span style="color: #d27a7a; font-weight: bold;">退款金额 = 订单金额 - 优惠券金额</span></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div id="dlgrefund-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" onclick="refundInfo()">&nbsp;确&nbsp;认&nbsp;退&nbsp;款&nbsp;</a>&nbsp;&nbsp;
+    </div>
+    <div id="dlgCashM" class="easyui-dialog" style="width: 600px; height: 400px; padding: 0px" closed="true" buttons="#dlgCashM-buttons">
+        <form id="fmCashM" class="easyui-form" method="post">
+            <input type="hidden" id="HPermisCashName" name="PermisCashName" />
+
+            <div id="saPanel">
+                <fieldset>
+                    <legend><span style="font-size: 14px; font-weight: bolder;" id="span">分配资金账号权限</span></legend>
+                    <table style="width: 100%;">
+                        <tr>
+                            <td>所属仓库:
+                            </td>
+                            <td>
+                                <input id="CHouseID" class="easyui-combobox" style="width: 300px;" panelheight="auto" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>员工姓名:</td>
+                            <td>
+
+                                <input id="CLoginName" name="LoginName" class="easyui-combobox" style="width: 300px;" data-options="url: 'financeApi.aspx?method=QueryUserByDepCode',valueField: 'LoginName',textField: 'UserName',required:true" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>资金账号:</td>
+                            <td>
+                                <input id="CPermisCashName" style="width: 300px;" class="easyui-combobox" data-options="valueField:'BasicID',textField:'Aliases',multiple:true" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <textarea id="PCSHOW" rows="6" style="width: 500px;"></textarea></td>
+                        </tr>
+                    </table>
+                </fieldset>
+            </div>
+        </form>
+    </div>
+    <div id="dlgCashM-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveCashManage()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgCashM').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <script type="text/javascript">
+
+        //保存
+        function saveCashManage() {
+            $.messager.progress({ msg: '请稍后,正在保存中...' });
+            $('#fmCashM').form('submit', {
+                url: '../Finance/financeApi.aspx?method=saveCashManage',
+                onSubmit: function () {
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    $.messager.progress("close");
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlgCashM').dialog('close'); 	// close the dialog
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+
+        //资金账号管理
+        function cashM() {
+            var IsCashManage = '<%=UserInfor.IsCashManage%>';
+            if (IsCashManage != "1") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '权限不足！', 'warning');
+                return;
+            }
+            $('#dlgCashM').dialog('open').dialog('setTitle', '资金账号权限管理');
+            $('#fmCashM').form('clear');
+            //所在仓库
+            $('#CHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    $('#CPermisCashName').combobox('clear');
+                    var url = '../Finance/financeApi.aspx?method=QueryBasicDataList&HouseID=' + rec.HouseID;
+                    $('#CPermisCashName').combobox('reload', url);
+                }
+            });
+            $('#CPermisCashName').combobox({
+                onSelect: function (rec) {
+                    var cn = $('#PCSHOW').val();
+                    cn = cn + rec.Aliases + ",";
+                    $('#PCSHOW').val(cn)
+
+                    var cnID = $('#HPermisCashName').val();
+                    cnID = cnID + rec.BasicID + ",";
+                    $('#HPermisCashName').val(cnID)
+
+                }
+            });
+
+            $('#CHouseID').combobox('textbox').bind('focus', function () { $('#CHouseID').combobox('showPanel'); });
+            $('#CLoginName').combobox('textbox').bind('focus', function () { $('#CLoginName').combobox('showPanel'); });
+            $('#CPermisCashName').combobox('textbox').bind('focus', function () { $('#CPermisCashName').combobox('showPanel'); });
+
+
+        }
+        function refundInfo() {
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请确认退款金额？', function (r) {
+                if (r) {
+                    $.messager.progress({ msg: '请稍后,处理中...' });
+                    $.ajax({
+                        url: "../Finance/financeApi.aspx?method=refund&WXPayOrderNo=" + $("#WXPayOrderNo").text() + "&ActRefMoney=" + $('#ActRefMoney').val(),
+                        success: function (data) {
+                            if (data == "SUCCESS") {
+                              $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '信息提示:退款成功！', 'warning');
+                        }
+                            else if (newdata.status == "FAIL") {
+                                  $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '信息提示:退款异常！', 'warning');
+                          }
+                            //var newdata = eval("(" + data + ")")
+                            //$.messager.progress("close");
+                            //if (newdata.status == "SUCCESS") {
+                        //  //      $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '信息提示:退款成功！', 'warning');
+                        //}
+                        //else if (newdata.status == "ABNORMAL") {
+                        ////    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '信息提示:退款异常！', 'warning');
+                        //}
+                        //else if (newdata.status == "PROCESSING") {
+                        ////    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '信息提示:退款处理中！', 'warning');
+                        //}
+                        //else if (newdata.status == "CLOSED") {
+                        ////    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '信息提示:退款关闭！', 'warning');
+                        //}
+
+                        $('#dlgrefund').dialog('close')
+                    }
+                })
+                }
+            });
+        }
+
+        //退款
+        function refund() {
+            var row = $('#gridDriver').datagrid('getSelections');
+            if (row == null || row == "" || row.length <= 0) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要撤销的数据！', 'warning'); return; }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定退款？', function (r) {
+                //console.log(row)
+                var OrderNo = row[0].WxOrderNo;
+                console.log(row[0])
+                //OrderNo = OrderNo.split(",")[0]
+                //console.log(OrderNo)
+                if (r) {
+                    $.ajax({
+                        url: "../Finance/financeApi.aspx?method=QueryWxOrder",
+                        type: "post",
+                        data: { OrderNo: OrderNo, HouseID: row[0].HouseID },
+                        success: function (data) {
+                            var newdata = eval("(" + data + ")")
+                            if (newdata.Result) {
+                                var Message = eval("(" + newdata.Message + ")")
+                                $("#OrderNo").text(Message.OrderNo);
+                                $("#WXPayOrderNo").text(Message.WXPayOrderNo);
+                                var refundMoney = parseFloat(Message.TotalCharge) //- parseFloat(Message.TransitFee)
+                                $("#refundMoney").text(refundMoney);
+                                $("#couponMoney").text(parseFloat(Message.InsuranceFee));
+
+                                $('#dlgrefund').dialog('open').dialog('setTitle', '退款详情');
+
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '信息提示:' + newdata.Message, 'warning');
+                                return;
+                            }
+                        }
+                    })
+                }
+
+            })
+        }
+        //撤销
+        function revoke() {
+            var row = $('#gridDriver').datagrid('getSelections');
+            if (row == null || row == "" || row.length <= 0) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要撤销的数据！', 'warning'); return; }
+            if (row[0].RevokeType == 1) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '此明细已经撤销！', 'warning'); return; }
+            if (row[0].FromTO == "7" || row[0].FromTO == "8") { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '此明细无法撤销！', 'warning'); return; }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定撤销？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(row)
+                    var formjson = $("#fm").serialize();
+                    $.ajax({
+                        async: false,
+                        url: "../Finance/financeApi.aspx?method=RevokeIncomePayDetail&" + formjson,
+                        type: "post",
+                        data: { data: json },
+                        success: function (msg) {
+                            $('#save').linkbutton('enable');
+                            var result = eval('(' + msg + ')');
+                            if (result.Result) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '撤销成功!', 'info'); QueryAccount();
+                            } else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '撤销失败：' + result.Message, 'warning'); }
+                        }
+                    });
+                }
+            });
+        }
+        function reset() {
+            $('#fmd').form('clear');
+            $('#gridDriver').datagrid('loadData', { total: 0, rows: [] });
+        }
+        //查询
+        function QueryAccount() {
+            $('#gridDriver').datagrid('clearSelections');
+            var gridOpts = $('#gridDriver').datagrid('options');
+            gridOpts.url = '../Finance/financeApi.aspx?method=QueryIncomePayDetail';
+            $('#gridDriver').datagrid('load', {
+                CardNum: $("#CardNum").combobox('getValue'),
+                CardType: $("#ACardType").combobox('getValue'),
+                StartDate: $('#AStartDate').datebox('getValue'),
+                EndDate: $('#AEndDate').datebox('getValue'),
+                RType: $("#RType").combobox('getValue'),
+                FromTO: $("#FromTO").combobox('getValue'),
+                AffectAwbNO: $("#AffectAwbNO").textbox('getValue'),
+                HouseID: $("#HID").combobox('getValue')
+            });
+        }
+        //收支明细
+        function detail() {
+            $('#dlgDetail').dialog('open').dialog('setTitle', '账号收支明细');
+            showDG();
+            $('#ACardType').combobox('setValue', '');
+            $('#CardNum').combobox('clear');
+            $('#gridDriver').datagrid('loadData', { total: 0, rows: [] });
+            //所在仓库
+            $('#HID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            $('#HID').combobox('setValue', $("#AHouseID").combobox('getValue'));
+        }
+        //收支明细
+        function editItemByID(Did) {
+            var row = $("#dg").datagrid('getData').rows[Did];
+            if (row) {
+                if (row.CardType == "0") {
+                    $('#dlgDetail').dialog('open').dialog('setTitle', row.HouseName + '现金账号收支明细');
+                } else if (row.CardType == "1") {
+                    $('#dlgDetail').dialog('open').dialog('setTitle', '账号：' + row.CardNum + '收支明细');
+                } else if (row.CardType == "1") {
+                    $('#dlgDetail').dialog('open').dialog('setTitle', '微信：' + row.Aliases + '收支明细');
+                } else {
+                    $('#dlgDetail').dialog('open').dialog('setTitle', '支付宝：' + row.Aliases + '收支明细');
+                }
+                showDG();
+                $('#ACardType').combobox('setValue', row.CardType);
+                $('#CardNum').combobox('clear');
+                $('#CardNum').combobox({
+                    url: '../Finance/financeApi.aspx?method=QueryCard&id=' + row.CardType,
+                    valueField: 'BasicID',
+                    textField: 'CardNum'
+                });
+                $('#CardNum').combobox('setValue', row.BasicID);
+                var gridOpts = $('#gridDriver').datagrid('options');
+                gridOpts.url = '../Finance/financeApi.aspx?method=QueryIncomePayDetail&CardNum=' + row.BasicID + '&CardType=' + row.CardType + '&StartDate=&EndDate=&HouseID=&RType=&FromTO=&AffectAwbNO=';
+            }
+        }
+        function showDG() {
+            var datenow = new Date();
+            //$('#StartDate').datebox('setValue', getLastDayFormatDate(datenow));
+            $('#AEndDate').datebox('setValue', getNowFormatDate(datenow));
+            $('#gridDriver').datagrid({
+                width: '100%',
+                height: '410px',
+                title: '账号收支明细', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: true, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'RecordID',
+                url: null,
+                toolbar: '',
+                columns: [[
+                    { title: '明细ID', field: 'RecordID', width: '55px' },
+                    { title: '所属仓库', field: 'HouseName', width: '60px' },
+                    {
+                        title: '账户类型', field: 'CardType', width: '60px',
+                        formatter: function (val, row, index) { if (val == "0") { return "现金"; } else if (val == "1") { return "银行卡"; } else if (val == "2") { return "微信"; } else if (val == "3") { return "支付宝"; } else { return ""; } }
+                    },
+                    { title: '账户别名', field: 'Aliases', width: '80px' },
+                    { title: '开户名', field: 'CardName', width: '80px' },
+                    { title: '帐号', field: 'CardNum', width: '150px' },
+                    { title: '开户行', field: 'Bank', width: '110px' },
+                    { title: '收支', field: 'RType', width: '40px', formatter: function (val, row, index) { if (val == "0") { return "收入"; } else { return "支出" } } },
+                    {
+                        title: '来源(支出)', field: 'FromTO', width: '80px', formatter: function (val, row, index) {
+                            if (val == "0") { return "按订单收款"; } else if (val == "2") { return "按报销单收款"; } else if (val == "3") { return "按报销单付款"; } else if (val == "5") { return "按账单收款"; } else if (val == "6") { return "按进货单付款"; } else if (val == "7") { return "撤销收款"; } else if (val == "8") { return "撤销付款"; } else if (val == "9") { return "投资转入"; } else if (val == "10") { return "借款转入"; } else if (val == "11") { return "代收快递"; } else if (val == "12") { return "代付快递"; } else if (val == "13") { return "其它业务收入"; } else if (val == "14") { return "其它业务支出"; } else if (val == "15") { return "短信费"; } else if (val == "16") { return "还款"; } else if (val == "17") { return "押金"; } else if (val == "18") { return "其它收入"; } else if (val == "19") { return "其它支出"; }
+                            else { return "" }
+                        }
+                    },
+                    { title: '来源单号', field: 'AffectAwbNO', width: '150px' },
+                    { title: '微信商城订单号', field: 'WxOrderNo', width: '150px' },
+                    { title: '客户名称', field: 'AffectClient', width: '100px' },
+                    { title: '金额', field: 'AffectCash', width: '60px', align: 'right' },
+                    { title: '余额', field: 'OverMoney', width: '60px', align: 'right' },
+                    { title: '操作时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter },
+                    {
+                        title: '备注', field: 'Memo', width: '150px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    }
+                ]],
+                rowStyler: function (index, row) {
+                    if (row.FromTO == "7" || row.FromTO == "8") { return "color:#D07A7A"; };
+                    if (row.RevokeType == 1) { return "color:#D3C7C7"; }
+                },
+                onLoadSuccess: function (data) { }
+            });
+        }
+        //导出数据
+        function AwbExport() {
+            var row = $("#gridDriver").datagrid('getData').rows[0];
+            if (row == null) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '没有数据可以进行导出，请重新查询！', 'warning'); return; }
+            var key = new Array();
+            key[0] = $("#CardNum").combobox('getValue');
+            key[1] = $("#ACardType").combobox('getValue');
+            key[2] = $("#HID").combobox('getValue');
+            key[3] = $('#AStartDate').datebox('getValue');
+            key[4] = $('#AEndDate').datebox('getValue');
+            key[5] = $("#RType").combobox('getValue');
+            key[6] = $("#FromTO").combobox('getValue');
+            key[7] = $("#AffectAwbNO").textbox('getValue');
+            $.ajax({
+                url: "../Finance/financeApi.aspx?method=QueryIncomePayDetailForExport&key=" + escape(key.toString()),
+                success: function (text) {
+                    if (text == "OK") {
+                        var obj = document.getElementById("<%=btnDerived.ClientID %>");
+                        obj.click();
+                    }
+                    else { mini.alert(text, "<%= Cargo.Common.GetSystemNameAndVersion()%>"); }
+                }
+            });
+        }
+        function CtChange(item) {
+            $('#CardNum').combobox({
+                url: '../Finance/financeApi.aspx?method=QueryCard&id=' + item.value,
+                valueField: 'BasicID',
+                textField: 'Aliases'
+            });
+        }
+        function cardChange(item) {
+            if (item) { $('#overMoney').val(item.OverMoney); }
+        }
+        function showCont() {
+            switch ($("input[name=outCardType]:checked").attr("id")) {
+                case "outCardType0":
+                    $("#zc").html("现金仓库:");
+                    $('#outAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=0',
+                        valueField: 'BasicID',
+                        textField: 'Aliases',
+                        onSelect: cardChange
+                    });
+                    break;
+                case "outCardType1":
+                    $("#zc").html("转出账号:");
+                    $('#outAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=1',
+                        valueField: 'BasicID',
+                        textField: 'CardNum',
+                        onSelect: cardChange
+                    });
+                    break;
+                case "outCardType2":
+                    $("#zc").html("转出微信:");
+                    $('#outAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=2',
+                        valueField: 'BasicID',
+                        textField: 'Aliases',
+                        onSelect: cardChange
+                    });
+                    break;
+                case "outCardType3":
+                    $("#zc").html("转出支付宝:");
+                    $('#outAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=3',
+                        valueField: 'BasicID',
+                        textField: 'Aliases',
+                        onSelect: cardChange
+                    });
+                    break;
+                default:
+                    break;
+            }
+        }
+        function inCont() {
+            switch ($("input[name=inCardType]:checked").attr("id")) {
+                case "inCardType0":
+                    $("#zr").html("现金仓库:");
+                    $('#inAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=0',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                case "inCardType1":
+                    $("#zr").html("转入账号:");
+                    $('#inAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=1',
+                        valueField: 'BasicID',
+                        textField: 'CardNum'
+                    });
+                    break;
+                case "inCardType2":
+                    $("#zr").html("转入微信:");
+                    $('#inAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=2',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                case "inCardType3":
+                    $("#zr").html("转入支付宝:");
+                    $('#inAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=3',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                default:
+                    break;
+            }
+        }
+        function joinCont() {
+            switch ($("input[name=joinCardType]:checked").attr("id")) {
+                case "joinCardType0":
+                    $("#joinzr").html("现金仓库:");
+                    $('#joinAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=0',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                case "joinCardType1":
+                    $("#joinzr").html("转入账号:");
+                    $('#joinAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=1',
+                        valueField: 'BasicID',
+                        textField: 'CardNum'
+                    });
+                    break;
+                case "joinCardType2":
+                    $("#joinzr").html("转入微信:");
+                    $('#joinAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=2',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                case "joinCardType3":
+                    $("#joinzr").html("转入支付宝:");
+                    $('#joinAccount').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=3',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                default:
+                    break;
+            }
+        }
+        //内部转账
+        function edit() {
+            $('#dlg').dialog('open').dialog('setTitle', '内部转账');
+            $('#fm').form('clear');
+        }
+        //新增收入
+        function add() {
+            $('#dlgadd').dialog('open').dialog('setTitle', '新增资金收入');
+            $('#fmadd').form('clear');
+            $("#span").html("收入账户信息");
+            $("#joinzr").html("转入账号:");
+            $("#joinMoneytd").html("转入金额:");
+            let option = [{ "value": "9", "text": "投资", "selected": true }, { "value": "10", "text": "借款" }, { "value": "11", "text": "代收快递" }, { "value": "18", "text": "其它" }];
+            $('#joinSource').combobox('loadData', option);
+            $("#addType").val("收入");
+        }
+        //新增支出
+        function del() {
+            $('#dlgadd').dialog('open').dialog('setTitle', '新增资金支出');
+            $('#fmadd').form('clear');
+            $("#span").html("支出账户信息");
+            $("#joinzr").html("转出账号:");
+            $("#joinMoneytd").html("转出金额:");
+            let option = [{ "value": "12", "text": "代付快递", "selected": true }, { "value": "15", "text": "短信费" }, { "value": "16", "text": "还款" }, { "value": "17", "text": "押金" }, { "value": "19", "text": "其它" }];
+            $('#joinSource').combobox('loadData', option);
+            $("#addType").val("支出");
+        }
+        //删除
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning'); return; }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除后不能恢复，确定删除？', function (r) {
+                $.messager.progress({ msg: '请稍后,正在保存中...' });
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: '../Finance/financeApi.aspx?method=DelBasicData&ty=1',
+                        type: 'post',
+                        dataType: 'json',
+                        data: { data: json },
+                        success: function (text) {
+                            $.messager.progress("close");
+                            if (text.Result == true) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info'); $('#dg').datagrid('reload'); }
+                            else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning'); }
+                        }
+                    });
+                }
+            });
+        }
+
+        //保存内部转账
+        function saveItem() {
+            $.messager.progress({ msg: '请稍后,正在保存中...' });
+            $('#fm').form('submit', {
+                url: '../Finance/financeApi.aspx?method=MoveMoney',
+                onSubmit: function () {
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    $.messager.progress("close");
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '转账成功!', 'info');
+                        $('#dlg').dialog('close'); 	// close the dialog
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '转账失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+        //保存新增
+        function saveAdd() {
+            $.messager.progress({ msg: '请稍后,正在保存中...' });
+            $('#fmadd').form('submit', {
+                url: '../Finance/financeApi.aspx?method=AddMoney',
+                onSubmit: function () {
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    $.messager.progress("close");
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '新增成功!', 'info');
+                        $('#dlgadd').dialog('close'); 	// close the dialog
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '新增失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+    </script>
+
+</asp:Content>

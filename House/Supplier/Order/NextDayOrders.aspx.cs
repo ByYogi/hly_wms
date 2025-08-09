@@ -1,0 +1,191 @@
+﻿using House.Entity.Cargo.Order;
+using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Supplier.Order
+{
+    public partial class NextDayOrders : BasePage
+    {
+
+        /// <summary>
+        /// 次日达订单List
+        /// </summary>
+        public List<CargoOrderEntity> NextDayOrdersEntityList
+        {
+            get
+            {
+                if (Session["NextDayOrdersEntityList"] == null)
+                {
+                    Session["NextDayOrdersEntityList"] = new List<CargoOrderEntity>();
+                }
+                return (List<CargoOrderEntity>)(Session["NextDayOrdersEntityList"]);
+            }
+            set
+            {
+                Session["NextDayOrdersEntityList"] = value;
+            }
+        }
+
+        /// <summary>
+        /// 次日达订单明细表List
+        /// </summary>
+        public List<CargoOrderGoodsEntity> NextDayOrderGoodsEntityList
+        {
+            get
+            {
+                if (Session["NextDayOrderGoodsEntityList"] == null)
+                {
+                    Session["NextDayOrderGoodsEntityList"] = new List<CargoOrderGoodsEntity>();
+                }
+                return (List<CargoOrderGoodsEntity>)(Session["NextDayOrderGoodsEntityList"]);
+            }
+            set
+            {
+                Session["NextDayOrderGoodsEntityList"] = value;
+            }
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+        /// <summary>
+        /// 导出次日达订单主表
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (NextDayOrdersEntityList.Count <= 0) { return; }
+
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("开单时间", typeof(string));
+
+            table.Columns.Add("订单号", typeof(string));
+            table.Columns.Add("数量", typeof(int));
+            table.Columns.Add("应得金额", typeof(decimal));
+            table.Columns.Add("订单总金额", typeof(decimal));
+            table.Columns.Add("客户名称", typeof(string));
+            table.Columns.Add("收货人", typeof(string));
+            table.Columns.Add("联系电话", typeof(string));
+
+            table.Columns.Add("收货地址", typeof(string));
+            table.Columns.Add("发货方式", typeof(string));
+            table.Columns.Add("支付状态", typeof(string));
+            table.Columns.Add("订单状态", typeof(string));
+            List<CargoPurchaseOrderEntity> tot = new List<CargoPurchaseOrderEntity>();
+            int i = 0;
+            foreach (var it in NextDayOrdersEntityList)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                newRows["订单号"] = it.OrderNo;
+                newRows["数量"] = it.Piece;
+                newRows["应得金额"] = it.TransportFee;
+                newRows["订单总金额"] = it.TotalCharge;
+                newRows["客户名称"] = it.AcceptUnit;
+                newRows["收货人"] = it.AcceptPeople;
+                newRows["联系电话"] = it.AcceptCellphone;
+                newRows["收货地址"] = it.AcceptAddress;
+                newRows["发货方式"] = GetDeliveryStr(it.DeliveryType);
+                newRows["支付状态"] = GetPayStatusStr(it.PayStatus);
+                newRows["订单状态"] = GetStatusStr(it.AwbStatus);
+                table.Rows.Add(newRows);
+
+            }
+            ToExcel.DataTableToExcel(table, "", "次日达订单数据表" + DateTime.Now.ToString("yyyyMMdd"));
+        }
+        /// <summary>
+        /// 导出次日达订单明细表
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click2(object sender, EventArgs e)
+        {
+            if (NextDayOrderGoodsEntityList.Count <= 0) { return; }
+
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("数量", typeof(int));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+
+            table.Columns.Add("载数", typeof(string));
+            table.Columns.Add("产地", typeof(string));
+            table.Columns.Add("批次", typeof(string));
+            table.Columns.Add("进仓价", typeof(decimal));
+            table.Columns.Add("销售价", typeof(decimal));
+            table.Columns.Add("操作时间", typeof(string));
+            List<CargoOrderGoodsEntity> tot = new List<CargoOrderGoodsEntity>();
+            int i = 0;
+            foreach (var it in NextDayOrderGoodsEntityList)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["品牌"] = it.TypeName;
+                newRows["数量"] = it.Piece;
+                newRows["规格"] = it.Specs;
+                newRows["花纹"] = it.Figure;
+                newRows["货品代码"] = it.GoodsCode;
+                newRows["载数"] = it.LoadSpeed;
+                newRows["产地"] = it.Born.Equals("0") ? "国产" : "进口";
+                newRows["批次"] = it.Batch;
+                newRows["进仓价"] = it.SupplySalePrice;
+                newRows["销售价"] = it.ActSalePrice;
+                newRows["操作时间"] = it.OP_DATE.ToString("yyyy-MM-dd HH:mm:ss");
+                table.Rows.Add(newRows);
+
+            }
+            ToExcel.DataTableToExcel(table, "", "次日达订单明细数据表" + DateTime.Now.ToString("yyyyMMdd"));
+        }
+
+        /// <summary>
+        /// 获取支付状态
+        /// </summary>
+        public string GetPayStatusStr(string status)
+        {
+            if (status.Equals("0")) { return "未付款"; }
+            if (status.Equals("1")) { return "已付款"; }
+            if (status.Equals("2")) { return "申请退款"; }
+            if (status.Equals("3")) { return "已退款"; }
+            else { return string.Empty; }
+        }
+
+        /// <summary>
+        /// 获取配送
+        /// </summary>
+        public string GetDeliveryStr(string status)
+        {
+            if (status.Equals("0")) { return "配送"; }
+            if (status.Equals("1")) { return "自提"; }
+            if (status.Equals("2")) { return "快递"; }
+            else { return string.Empty; }
+        }
+        /// <summary>
+        /// 获取订单状态
+        /// </summary>
+        public string GetStatusStr(string status)
+        {
+            if (status.Equals("0")) { return "已下单"; }
+            else if (status.Equals("1")) { return "出库中"; }
+            else if (status.Equals("2")) { return "已出库"; }
+            else if (status.Equals("3")) { return "已装车"; }
+            else if (status.Equals("4")) { return "已到达"; }
+            else if (status.Equals("5")) { return "已签收"; }
+            else if (status.Equals("6")) { return "已拣货"; }
+            else if (status.Equals("7")) { return "配送"; }
+            else if (status.Equals("8")) { return "到货确认"; }
+            else { return string.Empty; }
+        }
+    }
+
+}

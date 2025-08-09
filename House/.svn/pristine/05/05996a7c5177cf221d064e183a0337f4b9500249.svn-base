@@ -1,0 +1,395 @@
+﻿<%@ Page Title="云仓品牌加价" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="priceHouseBrand.aspx.cs" Inherits="Cargo.Price.priceHouseBrand" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script src="../JS/Rotate/jQueryRotate.2.2.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        //页面加载时执行
+        window.onload = function () {
+            adjustment();
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'BID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [[
+                    { title: '云仓加价编码', field: 'BID', checkbox: true },
+                    { title: '仓库名称', width: '120px ', field: 'HouseName' },
+                    { title: '品牌名称', width: '120px', field: 'TypeName' },
+                    {
+                        title: '云仓类型', width: '100px', field: 'CloudHouseType',
+                        formatter: function (value) { if (value == "0") { return "<span title='非云仓'>非云仓</span>"; } else if (value == "1") { return "<span title='云仓'>云仓</span>"; } else { return ""; } }
+                    },
+                    {
+                        title: '加价比例', width: '100px ', field: 'UpRate', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "%</span>";
+                        }
+                    },
+                    { title: '加价金额', width: '100px ', field: 'UpMoney' },
+                    //{
+                    //    title: '加价类型', width: '120px', field: 'UpType',
+                    //    formatter: function (value) { if (value == "0") { return "<span title='按比率加价'>按比率加价</span>"; } else if (value == "1") { return "<span title='按固定金额加价'>按固定金额加价</span>"; } else { return ""; } }
+                    //},
+                    { title: '操作时间', width: '180px', field: 'OPDATE', formatter: DateTimeFormatter }
+                ]],
+                onLoadSuccess: function (data) { },
+                onDblClickRow: function (index, row) { editItemByID(index); }
+            });
+
+
+            //品牌类型
+            $('#ASID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + 1, valueField: 'TypeID', textField: 'TypeName', AddField: 'PinyinName',
+                filter: function (q, row) {
+                    var opts = $(this).combobox('options');
+                    return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                },
+            });
+            //品牌类型
+            $('#TypeID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + 1, valueField: 'TypeID', textField: 'TypeName', AddField: 'PinyinName',
+                filter: function (q, row) {
+                    var opts = $(this).combobox('options');
+                    return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                },
+            });
+      
+            //所在仓库
+            $('#AHouseID').combobox({url: '../House/houseApi.aspx?method=CargoPermisionHouse',valueField: 'HouseID',textField: 'Name',});
+            $('#AHouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
+            
+            //所在仓库
+            $('#HouseID').combobox({ url: '../House/houseApi.aspx?method=CargoPermisionHouse', valueField: 'HouseID', textField: 'Name', });
+            //云仓类型联动
+            $('#HouseID').combobox({
+                onSelect: function (sp) {
+                    $('#CloudHouseType').combobox({
+                        url: "../House/houseApi.aspx?method=CloudHouseTypeID&HouseID=" + $("#HouseID").combobox('getValue'),
+                        valueField: 'value',
+                        textField: 'text',
+                        onLoadSuccess: function () {
+                            // 数据加载完成后，选中第一个选项
+                            var data = $(this).combobox('getData');
+                            if (data.length > 0) {
+                                $(this).combobox('setValue', data[0].value);
+                            }
+                        }
+                    });
+                }
+            });
+            // 绑定focus事件
+            $('#ASID').combobox('textbox').bind('focus', function () { $('#ASID').combobox('showPanel');});
+            $('#TypeID').combobox('textbox').bind('focus', function () { $('#TypeID').combobox('showPanel');});
+            $('#AHouseID').combobox('textbox').bind('focus', function () { $('#AHouseID').combobox('showPanel'); });
+            $('#HouseID').combobox({
+                panelHeight: 200, // 设置下拉列表的高度为100像素
+            });
+            $('#HouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+             
+
+        });
+        
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'priceApi.aspx?method=QueryHouseBrandPrice';
+            $('#dg').datagrid('load', {
+                HouseID: $("#AHouseID").combobox('getValue'),
+                TypeID: $("#ASID").combobox('getValue'),
+                CloudHouseType: $("#ACloudHouseType").combobox('getValue'),
+            });
+        }
+    </script>
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">区域大仓:
+                </td>
+                <td style="width: 10%">
+                    <input id="AHouseID" class="easyui-combobox" style="width: 100%;" />
+                </td>
+
+                <td style="text-align: right;">云仓类型:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="ACloudHouseType" style="width: 120px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">非云仓</option>
+                        <option value="1">云仓</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">分类品牌:</td>
+
+                <td>
+                    <input id="ASID" class="easyui-combobox" style="width: 120px;" data-options="valueField:'TypeID',textField:'TypeName'" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <input type="hidden" id="HiddenHouseID" />
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+     <a href="#" id="btnAdd" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addItem()">&nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;
+     <a href="#" id="btnUpdate" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editItem()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;
+     <a href="#" id="btnDel" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
+    </div>
+
+    <div id="dlg" class="easyui-dialog" style="width: 600px; height: 300px; padding: 0px"
+        closed="true" buttons="#dlg-buttons">
+        <div id="saPanel">
+            <form id="fm" class="easyui-form" method="post">
+                <input type="hidden" name="BID" />
+                <table>
+                    <%--          <tr>
+                        <td style="text-align: right;">一级产品:
+                        </td>
+                        <td>
+                            <input id="ParentID" name="ParentID" class="easyui-combobox" data-options="required:true" panelheight="auto" style="width: 250px;" />
+                        </td>
+                    </tr>--%>
+                    <tr>
+                        <td style="text-align: right;">区域大仓:
+                        </td>
+                        <td>
+                            <input id="HouseID" name="HouseID" class="easyui-combobox" style="width: 250px;" data-options="required:true" panelheight="auto" />
+                            <%--<input id="HouseID" name="HouseID" class="easyui-combobox" style="width: 250px;" data-options="valueField:'HouseID',textField:'HouseName',editable:true,required:true" />--%>
+                        </td>
+                    </tr>
+
+
+                    <tr>
+                        <td style="text-align: right;">云仓类型:
+                        </td>
+                        <td>
+                            <input id="CloudHouseType" name="CloudHouseType" class="easyui-combobox" style="width: 250px;"data-options="valueField:'value',textField:'text',editable:true,required:true"  />
+                          <%-- <select class="easyui-combobox" name="CloudHouseType" id="CloudHouseType" editable="false" style="width: 250px;" panelheight="auto" disabled="true">
+                              <option value="0">非云仓</option>
+                                <option value="1">云仓</option>
+                            </select>--%>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="text-align: right;">分类品牌:
+                        </td>
+                        <td>
+                            <input id="TypeID" name="TypeID" class="easyui-combobox" style="width: 250px;" data-options="valueField:'TypeID',textField:'TypeName',editable:true,required:true" />
+                        </td>
+                    </tr>
+                    <%--                    <tr>
+
+                        <td style="text-align: right;">加价类型:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" name="UpType" id="UpType" editable="false" style="width: 250px;" panelheight="auto" required="true">
+                                <option value="0">按比率加价</option>
+                                <option value="1">按固定金额加价</option>
+                            </select>
+                        </td>
+                    </tr>--%>
+                    <tr>
+                        <td style="text-align: right;">加价比率:
+                        </td>
+                        <td>
+                            <input name="UpRate" id="UpRate" class="easyui-numberbox" value="0.9" data-options="min:0,precision:2,required:true"
+                                style="width: 250px;">%
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">加价金额:
+                        </td>
+                        <td>
+                            <input name="UpMoney" id="UpMoney" class="easyui-numberbox" data-options="min:0,precision:2,required:true"
+                                style="width: 250px;">
+                        </td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+    </div>
+    <div id="dlg-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItem()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+
+    <script src="../JS/easy/js/ajaxfileupload.js" type="text/javascript"></script>
+    <script type="text/javascript">
+
+        //新增仓库品牌加价数据
+        function addItem() {
+            $('#dlg').dialog('open').dialog('setTitle', '新增云仓品牌加价信息');
+            $('#fm').form('clear');
+            $('#HouseID').numberbox('enable');
+            $('#TypeID').numberbox('enable');
+            //$('#UpRate').numberbox('enable');
+            $('#UpMoney').numberbox('enable');
+            //$('#UpType').numberbox('enable');
+            $('#CloudHouseType').numberbox('enable');
+            $('#UpRate').numberbox({
+                min: 0, // 最小值
+                precision: 2, // 小数精度
+                required: true, // 必填
+                value: 0.9, // 默认值
+                onChange: function (newValue, oldValue) {
+                    // 当值改变时触发
+                    if (newValue < 0.9) {
+                        // 显示错误提示
+                        $.messager.alert('错误', '输入值不能小于0.9', 'error');
+                        // 可以选择重置为默认值
+                        //$('#UpRate').numberbox('setValue', 0.9);
+                    }
+                }
+            });
+
+        }
+
+        //修改仓库品牌加价数据
+        function editItem() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#dlg').dialog('open').dialog('setTitle', '修改产品价格信息');
+                $('#fm').form('load', row);
+
+                $('#CloudHouseType').combobox({
+                    url: "../House/houseApi.aspx?method=CloudHouseTypeID&HouseID=" + $("#HouseID").combobox('getValue'),
+                    valueField: 'value',
+                    textField: 'text',
+                    onLoadSuccess: function () {
+                        // 数据加载完成后，选中第一个选项
+                        var data = $(this).combobox('getData');
+                        if (data.length > 0) {
+                            $(this).combobox('setValue', data[0].value);
+                        }
+                    }
+                });
+
+                $('#UpRate').numberbox({
+                    min: 0, // 最小值
+                    precision: 2, // 小数精度
+                    required: true, // 必填
+                    onChange: function (newValue, oldValue) {
+                        // 当值改变时触发
+                        if (newValue < 0.9) {
+                            // 显示错误提示
+                            $.messager.alert('错误', '输入值不能小于0.9', 'error');
+                            // 可以选择重置为默认值
+                            //$('#UpRate').numberbox('setValue', 0.9);
+                        }
+                    }
+                });
+
+                //var ParentID = "";
+                ////查询品牌信息
+                //$.ajax({
+                //    url: "../Product/productApi.aspx?method=QueryParentID&TypeID=" + row.TypeID,
+                //    cache: false,
+                //    async: false,
+                //    success: function (text) {
+                //        if (text.Result == null) { ParentID = text;}
+                //    }
+                //});
+                //$('#ParentID').combobox('setValue', ParentID);
+                var url = '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + 1;
+                $('#TypeID').combobox('reload', url);
+            }
+        }
+
+        //保存仓库品牌加价数据
+        function saveItem() {
+
+            $('#fm').form('submit', {
+                url: 'priceApi.aspx?method=SaveHouseBrandPrice',
+                onSubmit: function () {
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlg').dialog('close'); 	// close the dialog
+                        dosearch();
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+        //删除仓库品牌加价数据
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'priceApi.aspx?method=DelHouseBrandPrice',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dg').datagrid('clearSelections');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+
+
+    </script>
+</asp:Content>

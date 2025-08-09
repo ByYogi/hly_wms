@@ -1,0 +1,1371 @@
+﻿using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using Memcached.ClientLibrary;
+using Senparc.Weixin.MP.AdvancedAPIs;
+using Senparc.Weixin.MP.AdvancedAPIs.OAuth;
+using Senparc.Weixin.MP.AdvancedAPIs.TemplateMessage;
+using Senparc.Weixin.MP.TenPayLibV3;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Xml;
+using System.Xml.Linq;
+
+namespace Cargo.APP
+{
+    public partial class AppSer : System.Web.UI.Page
+    {
+        public static void WriteTextLog(string strMessage)
+        {
+            string path = AppDomain.CurrentDomain.BaseDirectory + @"System\Log\";
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            string fileFullPath = path + DateTime.Now.ToString("yyyy-MM-dd") + ".System.txt";
+            StringBuilder str = new StringBuilder();
+            str.Append("Time:    " + DateTime.Now.ToString() + "\r\n");
+            str.Append("Message: " + strMessage + "\r\n");
+            str.Append("-----------------------------------------------------------\r\n\r\n");
+            StreamWriter sw;
+            if (!File.Exists(fileFullPath))
+            {
+                sw = File.CreateText(fileFullPath);
+            }
+            else
+            {
+                sw = File.AppendText(fileFullPath);
+            }
+            sw.WriteLine(str.ToString());
+            sw.Close();
+        }
+        //缓存
+        protected MemcachedClient mc = new MemcachedClient();
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            //string DType = Convert.ToString(Request.Headers["dtype"]);
+            //if (string.IsNullOrEmpty(DType)) { WriteTextLog("缓存无值"); return; }
+            #region 缓存
+            string[] serverlist = ConfigurationSettings.AppSettings["memcachedServer"].Split('/');
+            SockIOPool pool = SockIOPool.GetInstance(ConfigurationSettings.AppSettings["PoolName"]);
+            pool.SetServers(serverlist);
+            pool.InitConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["InitConnections"]);//连接池初始容量
+            pool.MinConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MinConnections"]);//最小容量
+            pool.MaxConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MaxConnections"]);//最大容量
+            pool.SocketConnectTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketConnectTimeout"]);//数据读取超时时间
+            pool.SocketTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketTimeout"]);//Socket连接超时时间
+            pool.MaintenanceSleep = Convert.ToInt64(ConfigurationSettings.AppSettings["MaintenanceSleep"]);//线程池维护线程之间的休眠时间
+            pool.Failover = Convert.ToBoolean(ConfigurationSettings.AppSettings["Failover"]);//使用缓存服务器自动切换功能，当一台服务器死了可以自动切换到另外一台查找缓存
+
+            pool.Nagle = Convert.ToBoolean(ConfigurationSettings.AppSettings["Nagle"]);//禁用Nagle算法
+            pool.Initialize();
+            mc.PoolName = ConfigurationSettings.AppSettings["PoolName"];
+            mc.EnableCompression = true;
+            mc.CompressionThreshold = 10240;
+            #endregion
+            string methodName = string.Empty;
+            try
+            {
+                methodName = Request["method"];
+                if (String.IsNullOrEmpty(methodName)) return;
+                Type type = this.GetType();
+                MethodInfo method = type.GetMethod(methodName);
+                method.Invoke(this, null);
+            }
+            catch (Exception ex) { }
+        }
+        /// <summary>
+        /// 苹果提审检查
+        /// </summary>
+        public void AppleCheck()
+        {
+            string appVersion = Convert.ToString(Request["appVersion"]);
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            AppleCheckEntity result = bus.QueryAppleCheckEntity(new AppleCheckEntity { AppVersion = appVersion });
+
+            if (result == null || result.ID.Equals(0))
+            {
+                result.AppVersion = appVersion;
+                result.isOpenAppleLogin = "0";
+            }
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// APP版本检查功能
+        /// </summary>
+        public void CheckAppVersion()
+        {
+            string appVersion = Convert.ToString(Request["appVersion"]);
+            string osType = Convert.ToString(Request["osType"]);
+
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            APPVersionEntity result = bus.QueryLatestAppVersionEntity(new APPVersionEntity { AppType = osType });
+            result.update = 0;
+
+            if (result != null && !result.ID.Equals(0))
+            {
+                string[] cVer = appVersion.Split('.');//接口传过来 的
+                string[] nVer = result.AppVersion.Split('.');//数据 库的
+                if (cVer.Length.Equals(2))
+                {
+                    if (Convert.ToInt32(nVer[0]) > Convert.ToInt32(cVer[0]))
+                    {
+                        result.update = 1;//有新版本
+                    }
+                    else if (Convert.ToInt32(nVer[1]) > Convert.ToInt32(cVer[1]))
+                    {
+                        result.update = 1;//有新版本
+                    }
+                    else if (Convert.ToInt32(nVer[2]) > 0)
+                    {
+                        result.update = 1;//有新版本                    
+                    }
+                }
+                else
+                {
+                    if (Convert.ToInt32(nVer[0]) > Convert.ToInt32(cVer[0]))
+                    {
+                        result.update = 1;//有新版本
+                    }
+                    else if (Convert.ToInt32(nVer[1]) > Convert.ToInt32(cVer[1]))
+                    {
+                        result.update = 1;//有新版本
+                    }
+                    else if (Convert.ToInt32(nVer[2]) > Convert.ToInt32(cVer[2]))
+                    {
+                        result.update = 1;//有新版本                    
+                    }
+                }
+            }
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// APP登陆接口 微信登陆和手机号登陆
+        /// </summary>
+        /// <param name="context"></param>
+        public void AppLogin()
+        {
+            WXUserEntity wxUser = new WXUserEntity();
+            string versionN = Convert.ToString(Request.Headers["versionName"]);
+            string[] vStr = versionN.Split('.');
+            if (vStr.Length.Equals(3))
+            {
+                if (Convert.ToInt32(vStr[2]) < 8 && Convert.ToInt32(vStr[1]) <= 0)
+                {
+                    wxUser.DenyReason = "该版本已过期，请更新最新版本";
+                    goto RESU;
+                }
+            }
+            int LoginType = Convert.ToInt32(Request["LoginType"]);//登陆类型0：微信登陆1：手机号登陆
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            string dtoken = string.Empty;
+            if (LoginType.Equals(0))
+            {
+                #region 处理微信登陆
+                string UnionID = Convert.ToString(Request["UnionID"]);
+                string DevOpenID = Convert.ToString(Request["DevOpenID"]);
+                wxUser = bus.QueryWeixinUserByOpendID(new WXUserEntity { UnionID = UnionID, DevOpenID = DevOpenID });
+                if (wxUser.ID.Equals(0))
+                {
+                    //不存在客户数据 ，新增 
+                    string code = Convert.ToString(Request["Code"]);
+                    string nickname = Convert.ToString(Request["nickname"]);
+                    string province = Convert.ToString(Request["province"]);
+                    string city = Convert.ToString(Request["city"]);
+                    string country = Convert.ToString(Request["country"]);
+                    string headimgurl = Convert.ToString(Request["headimgurl"]);
+                    int sex = Convert.ToInt32(Request["sex"]);
+                    LogEntity log = new LogEntity();
+                    log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+                    log.Moudle = "微信服务号";
+                    log.Status = "0";
+                    log.NvgPage = "新增用户";
+                    log.UserID = DevOpenID;
+                    log.Operate = "A";
+                    wxUser.wxName = nickname;
+                    wxUser.Sex = sex;
+                    wxUser.Province = province;
+                    wxUser.City = city;
+                    wxUser.IsCertific = "0";
+                    wxUser.AvatarBig = headimgurl;
+                    wxUser.AvatarSmall = headimgurl;
+                    wxUser.ConsumerPoint = 10;
+                    wxUser.UnionID = UnionID;
+                    wxUser.DevOpenID = DevOpenID;
+                    wxUser.Country = country;
+                    bus.AddWeixinUser(wxUser, log);
+                }
+                wxUser = bus.QueryWeixinUserByOpendID(new WXUserEntity { UnionID = UnionID, DevOpenID = DevOpenID });
+                //实体转化为Json字符串
+                string userJson = JSON.Encode(wxUser);
+                //MD5加密
+                using (MD5 md5Hash = MD5.Create())
+                {
+                    dtoken = Common.GetMd5Hash(md5Hash, userJson);
+                    wxUser.Dtoken = dtoken;
+                }
+                #endregion
+            }
+            else if (LoginType.Equals(1))
+            {
+                string Mobile = Convert.ToString(Request["Cellphone"]);//手机号码
+                string Code = Convert.ToString(Request["Code"]);//登陆验证码
+                string cacheCode = Convert.ToString(CookiesHelper.Get(Mobile));
+                if (!Code.Equals(cacheCode))
+                {
+                    wxUser.DenyReason = "验证码不正确";
+                    goto RESU;
+                }
+                wxUser = bus.QueryWeixinUserByOpendID(new WXUserEntity { Cellphone = Mobile });
+                if (wxUser != null && !wxUser.ID.Equals(0))
+                {
+                    //实体转化为Json字符串
+                    string userJson = JSON.Encode(wxUser);
+                    //WriteTextLog(userJson);
+                    //MD5加密
+                    using (MD5 md5Hash = MD5.Create())
+                    {
+                        dtoken = Common.GetMd5Hash(md5Hash, userJson);
+                        wxUser.Dtoken = dtoken;
+                    }
+                }
+                else
+                {
+                    wxUser.DenyReason = "该手机号不存在";
+                    goto RESU;
+                }
+            }
+            //WriteTextLog("登陆" + dtoken);
+            mc.Add(dtoken, wxUser);
+        RESU:
+            //返回用户信息给APP
+            String json = JSON.Encode(wxUser);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 绑定店代码
+        /// </summary>
+        public void WxClientBind()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            //WriteTextLog("绑定" + DToken);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            String json = Request["data"];
+            WriteTextLog(json);
+            if (String.IsNullOrEmpty(json)) return;
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            WXUserEntity ent = new WXUserEntity();
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "微信服务号";
+            log.NvgPage = "店代码绑定";
+            log.Status = "0";
+            log.Operate = "U";
+            //log.UserID = WxUserInfo.wxOpenID;
+            try
+            {
+                string code = string.Empty;
+                foreach (Hashtable row in rows)
+                {
+                    if (!Common.IsInt(Convert.ToString(row["ClientNum"])))
+                    {
+                        msg.Result = false;
+                        msg.Message = "店代码请输入数字";
+                        goto RESU;
+                    }
+                    ent.ClientNum = Convert.ToInt32(row["ClientNum"]);
+                    ent.Cellphone = Convert.ToString(row["Cellphone"]);
+                    string start = Convert.ToString(row["start"]);//省市乡
+                    if (!string.IsNullOrEmpty(start))
+                    {
+                        string[] add = start.Split(' ');
+                        if (add.Length == 1)
+                        {
+                            ent.Province = add[0];
+                        }
+                        if (add.Length == 2)
+                        {
+                            ent.Province = add[0];
+                            ent.City = add[1];
+                        }
+                        if (add.Length == 3)
+                        {
+                            ent.Province = add[0];
+                            ent.City = add[1];
+                            ent.Country = add[2];
+                        }
+                    }
+                    code = Convert.ToString(row["CellCheckCode"]);
+                    //ent.wxOpenID = WxUserInfo.wxOpenID;
+                }
+                string cacheCode = Convert.ToString(CookiesHelper.Get(ent.Cellphone));
+                if (!code.Equals(cacheCode))
+                {
+                    msg.Result = false;
+                    msg.Message = "验证码不正确";
+                    goto RESU;
+                }
+                if (bus.IsCellphoneBind(ent))
+                {
+                    msg.Result = false;
+                    msg.Message = "该手机号码已绑定";
+                    goto RESU;
+                }
+                //绑定
+                if (bus.IsMaxBindingNum(ent))
+                {
+                    msg.Result = false;
+                    msg.Message = "同一个店代码最多允许绑定3个账号";
+                    goto RESU;
+                }
+                CargoClientBus client = new CargoClientBus();
+
+                if (!client.IsExistCargoClientNum(new CargoClientEntity { ClientNum = ent.ClientNum }))
+                {
+                    msg.Result = false;
+                    msg.Message = "店代码不存在,请确认后输入";
+                    goto RESU;
+                }
+                log.UserID = ent.Cellphone;
+                ent.ID = wxUser.ID;
+                CargoClientEntity wen = client.QueryCargoClient(ent.ClientNum);
+                ent.Name = string.IsNullOrEmpty(wen.ClientShortName) ? wen.ClientName : wen.ClientShortName;
+                bus.BindingClientNumAPP(ent, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+        RESU:
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            //Response.ContentType = "content-type";
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 绑定手机号
+        /// </summary>
+        public void wxUserRegeist()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            WXUserEntity ent = new WXUserEntity();
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            try
+            {
+                string code = string.Empty;
+                foreach (Hashtable row in rows)
+                {
+                    ent.Cellphone = Convert.ToString(row["Cellphone"]);
+                    code = Convert.ToString(row["CellCheckCode"]);
+                }
+                string cacheCode = Convert.ToString(CookiesHelper.Get(ent.Cellphone));
+                if (!code.Equals(cacheCode))
+                {
+                    msg.Result = false;
+                    msg.Message = "验证码不正确";
+                    goto RESU;
+                }
+                if (bus.IsCellphoneBind(ent))
+                {
+                    msg.Result = false;
+                    msg.Message = "该手机号码已绑定";
+                    goto RESU;
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+        RESU:
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 提交注册
+        /// </summary>
+        public void saveRegeist()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            //WriteTextLog("绑定" + DToken);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            WXUserEntity ent = new WXUserEntity();
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "微信服务号";
+            log.NvgPage = "用户注册";
+            log.Status = "0";
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    ent.Cellphone = Convert.ToString(row["Cellphone"]);
+                    ent.CompanyName = Convert.ToString(row["CompanyName"]).Replace("/", "-");
+                    ent.Name = Convert.ToString(row["Name"]).Replace("/", "-");
+                    ent.Address = Convert.ToString(row["Address"]).Replace("/", "-");
+                    ent.BusLicenseImg = Convert.ToString(row["BusLicenseImg"]);
+                    ent.IDCardImg = Convert.ToString(row["IDCardImg"]);
+                    ent.IDCardBackImg = Convert.ToString(row["IDCardBackImg"]);
+                    ent.UserType = "1";
+                    string start = Convert.ToString(row["start"]);//省市乡
+                    if (!string.IsNullOrEmpty(start))
+                    {
+                        string[] add = start.Split(' ');
+                        if (add.Length == 1)
+                        {
+                            ent.Province = add[0];
+                        }
+                        if (add.Length == 2)
+                        {
+                            ent.Province = add[0];
+                            ent.City = add[1];
+                        }
+                        if (add.Length == 3)
+                        {
+                            ent.Province = add[0];
+                            ent.City = add[1];
+                            ent.Country = add[2];
+                        }
+                    }
+                    ent.wxOpenID = "";
+                }
+                ent.ID = wxUser.ID;
+                log.UserID = ent.Cellphone;
+                ent.ConsumerPoint = 10;
+                //bus.UpdateWxUserRegeist(ent, log);
+                bus.AddAppCellphoneUser(ent, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //JSON
+            String res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        /// <summary>
+        /// 手机短信验证
+        /// </summary>
+        public void SendCode()
+        {
+            string PostUrl = ConfigurationManager.AppSettings["msgUrl"];
+            string Mobile = Convert.ToString(Request["Mobile"]);
+            if (!string.IsNullOrEmpty(Mobile))
+            {
+                CargoWeiXinBus bus = new CargoWeiXinBus();
+                WXMobileCodeEntity codeEnt = bus.QueryMobileCodeEntity(new WXMobileCodeEntity { Cellphone = Mobile, OP_DATE = DateTime.Now });
+                if (codeEnt.ID.Equals(0))
+                {
+                    bus.AddMobileCodeEntity(new WXMobileCodeEntity { Cellphone = Mobile });
+                }
+                if (codeEnt.SendNum > 5)
+                {
+                    WriteTextLog(Mobile + "超过次数");
+                    return;
+                    //JSON
+                    //String json = JSON.Encode("该手机号超过当天限制条数");
+                    //Response.Clear();
+                    //Response.Write(json);
+                }
+                string sname = ConfigurationManager.AppSettings["msgName"].ToString();
+                string spwd = ConfigurationManager.AppSettings["msgPwd"].ToString();
+                string scorpid = ConfigurationManager.AppSettings["msgCorpid"].ToString(); //企业代码
+                string sprdid = ConfigurationManager.AppSettings["msgPrdid"].ToString();   //产品id
+                string sdst = Mobile;                      //接收号码
+
+                string[] source = { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+                string code = "";
+                Random rd = new Random();
+                for (int i = 0; i < 5; i++)
+                {
+                    code += source[rd.Next(0, source.Length)];
+                }
+                if (code != "")
+                {
+                    //通过手机号和验证码存入缓存
+                    CookiesHelper.Insert(Mobile, code, 2);
+
+                    //JSON
+                    String json = JSON.Encode(code);
+                    Response.Clear();
+                    Response.Write(json);                                    //推送验证码到页面
+                }
+                string smsg = "【迪乐泰中国】尊敬的客户，您的验证码为：" + code;
+                string postStrTpl = string.Format("sname={0}&spwd={1}&scorpid={2}&sprdid={3}&sdst={4}&smsg={5}", sname, spwd, scorpid, sprdid, sdst, smsg);
+
+                string result = wxHttpUtility.SendHttpRequest(PostUrl, postStrTpl);
+                XmlDocument xmlDoc = new XmlDocument();
+                xmlDoc.LoadXml(result);
+                XmlElement rootNode = xmlDoc.DocumentElement;
+                string state = rootNode["State"].InnerText;
+                string msgState = rootNode["MsgState"].InnerText;
+
+                if (msgState == "提交成功")
+                {
+                    bus.UpdateMobileCodeEntity(new WXMobileCodeEntity { Cellphone = Mobile, SendNum = 1 });
+
+                    WriteTextLog(sdst + ":本次验证码发送成功，验证码：" + code);
+                    // Log.Info("ExpressAPI", sdst + ":本次验证码发送成功，验证码：" + code);
+                }
+                else
+                {
+                    WriteTextLog(sdst + ":本次验证码发送失败，验证码：" + code);
+                    // Log.Info("ExpressAPI", sdst + ":本次验证码发送失败，验证码：" + code);
+                }
+            }
+        }
+        /// <summary>
+        /// 保存营业执照照片
+        /// </summary>
+        public void SaveBusLicense()
+        {
+            string img = Request["imgbase64"];
+            string[] img_array = img.Split(',');
+            byte[] bytes = Convert.FromBase64String(img_array[1]);
+            string SavePath = "../Weixin/UploadFile/";
+            string modifyFileName = DateTime.Now.Year.ToString() + DateTime.Now.Month.ToString() + DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString() + DateTime.Now.Second.ToString() + DateTime.Now.Millisecond.ToString();
+            string path = Server.MapPath(SavePath + modifyFileName + ".jpg");
+
+            using (MemoryStream memoryStream = new MemoryStream(bytes, 0, bytes.Length))
+            {
+                //  转成图片
+                System.Drawing.Image image = System.Drawing.Image.FromStream(memoryStream);
+                image.Save(path);  // 将图片存到本地
+                image.Dispose();
+            }
+            ErrMessage msg = new ErrMessage();
+            msg.Message = modifyFileName + ".jpg";
+            msg.Result = true;
+            //JSON
+            String json = JSON.Encode(msg);
+            //Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 查询我的收货地址
+        /// </summary>
+        public void QueryWxAddressByWXID()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            List<WXUserAddressEntity> result = bus.QueryWxAddressByWXID(new WXUserAddressEntity { WXID = wxUser.ID });
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询我的优惠券
+        /// </summary>
+        public void QueryMyCoupon()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            List<WXCouponEntity> result = bus.QueryCouponData(new WXCouponEntity { WXID = wxUser.ID });
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询可用的规则
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public void QueryRuleBank()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            string RuleType = Convert.ToString(Request["RuleType"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoRuleBankEntity> result = bus.QueryRuleBank(new CargoRuleBankEntity { HouseID = wxUser.HouseID, RuleType = RuleType });
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 删除地址
+        /// </summary>
+        public void DeleteAddress()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "微信服务号";
+            log.Status = "0";
+            log.NvgPage = "地址管理";
+            log.UserID = wxUser.wxOpenID;
+            log.Operate = "D";
+            WXUserAddressEntity entity = new WXUserAddressEntity();
+            try
+            {
+                entity.ID = Convert.ToInt64(json);
+                bus.DeleteAddress(entity, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+
+        }
+        /// <summary>
+        /// 账单支付接口
+        /// </summary>
+        public void AccountPayOrder()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            ErrMessage msg = new ErrMessage();
+            msg.Result = true;
+            msg.Message = "保存成功";
+            string zj = Request["totalFee"];//总费用
+            string id = Request["id"];//待支付id集合
+            if (string.IsNullOrEmpty(id)) { WriteTextLog("ID有误"); msg.Result = false; msg.Message = "ID有误"; goto ERR; }
+
+            string orderno = GetOrderNumber();
+            decimal wxZJ = Convert.ToDecimal(zj) * 100;
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "微信服务号";
+            log.Status = "0";
+            log.NvgPage = "微信付款";
+            log.UserID = wxUser.wxOpenID;
+            log.Operate = "U";
+            List<WXOrderEntity> orderList = new List<WXOrderEntity>();
+            string[] idArr = id.Split('/');
+            for (int i = 0; i < idArr.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(idArr[i]))
+                {
+                    orderList.Add(new WXOrderEntity { ID = Convert.ToInt64(idArr[i]), AccountNo = orderno });
+                }
+            }
+            TenPayV3Info tenPayV3 = new TenPayV3Info(Common.GetdltOpenAPPID(), Common.GetdltOpenAppSecret(), ConfigurationManager.AppSettings["dltMachID"], ConfigurationManager.AppSettings["dltWxPayKey"], ConfigurationManager.AppSettings["dltWxPayTranUrl"]);
+            string prepayID = PayInfo("", "商城订单支付", wxUser.DevOpenID, wxZJ.ToString("F0"), orderno, tenPayV3);
+            //WriteTextLog(prepayID);
+            //设置支付参数
+            RequestHandler paySignReqHandler = new RequestHandler();
+            paySignReqHandler.SetParameter("appid", tenPayV3.AppId);
+            paySignReqHandler.SetParameter("partnerid", tenPayV3.MchId);
+            paySignReqHandler.SetParameter("prepayid", prepayID);
+            paySignReqHandler.SetParameter("package", string.Format("Sign={0}", "WXPay"));
+            paySignReqHandler.SetParameter("timestamp", TenPayV3Util.GetTimestamp());
+            paySignReqHandler.SetParameter("noncestr", TenPayV3Util.GetNoncestr());
+            //paySignReqHandler.SetParameter("signtype", "MD5");
+            string paySign = paySignReqHandler.CreateMd5Sign("key", tenPayV3.Key);
+
+            msg.Message = "{";
+            msg.Message += " \"appId\": \"" + tenPayV3.AppId + "\",";
+            msg.Message += " \"partnerId\": \"" + tenPayV3.MchId + "\",";
+            msg.Message += " \"prepayId\": \"" + prepayID + "\",";
+            msg.Message += " \"packageValue\": \"" + string.Format("Sign={0}", "WXPay") + "\",";
+            msg.Message += " \"timeStamp\": \"" + TenPayV3Util.GetTimestamp() + "\",";
+            msg.Message += " \"nonceStr\": \"" + TenPayV3Util.GetNoncestr() + "\",";
+            msg.Message += " \"sign\": \"" + paySign + "\",";
+            msg.Message += " \"orderNo\": \"" + orderno + "\"";
+            msg.Message += "}";
+            bus.UpdateWxOrderAccountByID(orderList, log);
+
+        ERR:
+            //JSON
+            String json = JSON.Encode(msg);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// APP商城重新支付订单
+        /// </summary>
+        public void AgainAppPayMallOrder()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            ErrMessage msg = new ErrMessage();
+            msg.Result = true;
+            msg.Message = "保存成功";
+            string OrderNo = Convert.ToString(Request["OrderNo"]);
+            if (string.IsNullOrEmpty(OrderNo))
+            {
+                msg.Result = false;
+                msg.Message = "订单号不能为空";
+                goto ERR;
+            }
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            List<WXOrderEntity> result = bus.QueryWeixinOrderInfo(1, 2, new WXOrderEntity { OrderNo = OrderNo });
+            if (result.Count <= 0)
+            {
+                msg.Result = false;
+                msg.Message = "订单有误";
+                goto ERR;
+            }
+            if (result[0].TotalCharge <= 0)
+            {
+                msg.Result = false;
+                msg.Message = "订单价格有误";
+                goto ERR;
+            }
+            TenPayV3Info tenPayV3 = new TenPayV3Info(Common.GetdltOpenAPPID(), Common.GetdltOpenAppSecret(), ConfigurationManager.AppSettings["dltMachID"], ConfigurationManager.AppSettings["dltWxPayKey"], ConfigurationManager.AppSettings["dltWxPayTranUrl"]);
+            int wxZJ = (int)(result[0].TotalCharge * 100);
+            string prepayID = PayInfo("", "商城订单支付", wxUser.DevOpenID, wxZJ.ToString(), OrderNo, tenPayV3);
+            WriteTextLog(prepayID);
+
+            //设置支付参数
+            RequestHandler paySignReqHandler = new RequestHandler();
+            paySignReqHandler.SetParameter("appid", tenPayV3.AppId);
+            paySignReqHandler.SetParameter("partnerid", tenPayV3.MchId);
+            paySignReqHandler.SetParameter("prepayid", prepayID);
+            paySignReqHandler.SetParameter("package", string.Format("Sign={0}", "WXPay"));
+            paySignReqHandler.SetParameter("timestamp", TenPayV3Util.GetTimestamp());
+            paySignReqHandler.SetParameter("noncestr", TenPayV3Util.GetNoncestr());
+            //paySignReqHandler.SetParameter("signtype", "MD5");
+            string paySign = paySignReqHandler.CreateMd5Sign("key", tenPayV3.Key);
+
+            msg.Message = "{";
+            msg.Message += " \"appId\": \"" + tenPayV3.AppId + "\",";
+            msg.Message += " \"partnerId\": \"" + tenPayV3.MchId + "\",";
+            msg.Message += " \"prepayId\": \"" + prepayID + "\",";
+            msg.Message += " \"packageValue\": \"" + string.Format("Sign={0}", "WXPay") + "\",";
+            msg.Message += " \"timeStamp\": \"" + TenPayV3Util.GetTimestamp() + "\",";
+            msg.Message += " \"nonceStr\": \"" + TenPayV3Util.GetNoncestr() + "\",";
+            msg.Message += " \"sign\": \"" + paySign + "\",";
+            msg.Message += " \"orderNo\": \"" + OrderNo + "\"";
+            msg.Message += "}";
+
+        ERR:
+            //JSON
+            String json = JSON.Encode(msg);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 保存APP商城订单
+        /// </summary>
+        public void AddAPPMailOrder()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            CargoPriceBus price = new CargoPriceBus();
+            //CargoPriceBus price = new CargoPriceBus();
+            ErrMessage msg = new ErrMessage();
+            msg.Result = true;
+            msg.Message = "保存成功";
+            string zj = Request["totalFee"];//前端传过来的订单金额
+            string piece = Request["piece"];//订单数量
+            string cart = Request["cart"];
+            string address = Request["address"];
+            string logicname = string.IsNullOrEmpty(Convert.ToString(Request["LogicName"])) ? "" : Convert.ToString(Request["LogicName"]);
+            string memo = Request["Memo"];
+            string CouponID = Request["CouponID"];
+            string RuleID = Request["RuleID"];
+            WXCouponEntity coupon = new WXCouponEntity();
+            if (!string.IsNullOrEmpty(CouponID))
+            {
+                coupon = bus.QueryCouponByID(new WXCouponEntity { ID = Convert.ToInt64(CouponID) });
+                if (!coupon.UseStatus.Equals("0"))
+                {
+                    msg.Result = false; msg.Message = "优惠券已使用"; goto ERR;
+                }
+            }
+            //满多少减多少
+            CargoRuleBankEntity mrule = new CargoRuleBankEntity();
+            if (!string.IsNullOrEmpty(RuleID))
+            {
+                mrule = price.QueryRuleBank(Convert.ToInt64(RuleID));
+            }
+            if (string.IsNullOrEmpty(piece)) { msg.Result = false; msg.Message = "数量有误"; goto ERR; }
+            if (string.IsNullOrEmpty(zj)) { msg.Result = false; msg.Message = "金额有误"; goto ERR; }
+            decimal hzj = 0.00M;
+            decimal wlfy = 0.00M;
+
+            ArrayList rows = (ArrayList)JSON.Decode(cart);
+            List<CargoProductShelvesEntity> pro = new List<CargoProductShelvesEntity>();
+            int oNum = 0;
+            foreach (Hashtable row in rows)
+            {
+                if (Convert.ToInt32(row["PC"]) <= 0) { continue; }
+                long ruleid = Convert.ToInt64(row["RuleID"]);
+                CargoRuleBankEntity rule = new CargoRuleBankEntity();
+                if (!ruleid.Equals(0))
+                {
+                    rule = price.QueryRuleBank(ruleid);
+                }
+                pro.Add(new CargoProductShelvesEntity
+                {
+                    ID = Convert.ToInt64(row["ID"]),
+                    OrderNum = Convert.ToInt32(row["PC"]),
+                    ModifyPrice = Convert.ToDecimal(row["PRICE"]),//原价
+                    OrderPrice = Convert.ToDecimal(row["PRICE"]) - Convert.ToDecimal(rule.CutEntry),//成交价
+                    CutEntry = rule.CutEntry
+                });
+                oNum += Convert.ToInt32(row["PC"]);
+                hzj += Convert.ToDecimal(row["PC"]) * (Convert.ToDecimal(row["PRICE"]) - Convert.ToDecimal(rule.CutEntry));
+            }
+            if (wxUser.HouseID.Equals(46) && wxUser.LogisID.Equals(34))
+            {
+                //四川仓库特殊处理运费
+                wlfy = oNum * wxUser.LogisFee;
+            }
+            if (!Convert.ToDecimal(zj).Equals(hzj + wlfy - coupon.Money - mrule.CutEntry))
+            {
+                msg.Result = false; msg.Message = "金额不相等,付款金额：" + (hzj + wlfy - coupon.Money - mrule.CutEntry).ToString() + ",回传金额：" + zj;
+                goto ERR;
+            }
+            TenPayV3Info tenPayV3 = new TenPayV3Info(Common.GetdltOpenAPPID(), Common.GetdltOpenAppSecret(), ConfigurationManager.AppSettings["dltMachID"], ConfigurationManager.AppSettings["dltWxPayKey"], ConfigurationManager.AppSettings["dltWxPayTranUrl"]);
+
+            WXUserAddressEntity addressEnt = new WXUserAddressEntity();
+            ArrayList addre = (ArrayList)JSON.Decode(address);
+            foreach (Hashtable dz in addre)
+            {
+                addressEnt.Name = Convert.ToString(dz["Name"]);
+                addressEnt.Province = Convert.ToString(dz["Province"]);
+                addressEnt.City = Convert.ToString(dz["City"]);
+                addressEnt.Country = Convert.ToString(dz["Country"]);
+                addressEnt.Address = Convert.ToString(dz["Address"]);
+                addressEnt.Cellphone = Convert.ToString(dz["Cellphone"]);
+            }
+            decimal wxZJ = Convert.ToDecimal(zj) * 100;
+            string orderno = GetOrderNumber();
+            WriteTextLog("APP订单：" + orderno);
+            //生成预支付订单ID
+            string prepayID = PayInfo("", "商城订单支付", wxUser.DevOpenID, wxZJ.ToString("F0"), orderno, tenPayV3);
+            //WriteTextLog(prepayID);
+            CargoLogisticEntity logicEnt = new CargoLogisticEntity();
+
+            #region 物流快递
+            if (wxUser.HouseID.Equals(9))
+            {
+                logicEnt.ID = 34;
+                logicEnt.LogisticName = "好来运速递";
+            }
+            else if (wxUser.HouseID.Equals(34))
+            {
+                logicEnt.ID = 62;
+                logicEnt.LogisticName = "新陆程物流";
+            }
+            else
+            {
+                if (wxUser.LogisID.Equals(0))
+                {
+                    if (string.IsNullOrEmpty(logicname))
+                    {
+                        if (wxUser.HouseID.Equals(1))
+                        {
+                            logicEnt.ID = 34;
+                            logicEnt.LogisticName = "好来运速递";
+                        }
+                    }
+                    else
+                    {
+                        CargoStaticBus staticbus = new CargoStaticBus();
+                        List<CargoLogisticEntity> logicEntity = staticbus.QueryAllLogistic(new CargoLogisticEntity { LogisticName = logicname });
+                        if (logicEntity.Count > 0)
+                        {
+                            logicEnt = logicEntity[0];
+                        }
+                    }
+                }
+                else
+                {
+                    if (!logicname.Equals(wxUser.LogicName))
+                    {
+                        CargoStaticBus staticbus = new CargoStaticBus();
+                        List<CargoLogisticEntity> logicEntity = staticbus.QueryAllLogistic(new CargoLogisticEntity { LogisticName = logicname });
+                        if (logicEntity.Count > 0)
+                        {
+                            logicEnt = logicEntity[0];
+                        }
+                    }
+                    else
+                    {
+                        logicEnt.ID = wxUser.LogisID;
+                        logicEnt.LogisticName = wxUser.LogicName;
+                    }
+                }
+            }
+            #endregion
+            //WriteTextLog(prepayID);
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "APP";
+            log.Status = "0";
+            log.NvgPage = "APP付款";
+            log.UserID = wxUser.wxOpenID;
+            log.Operate = "A";
+            string isAppFirst = "0";
+            //if (!bus.IsExistWeixinOrderPay(new WXOrderEntity { WXID = wxUser.ID, OrderType = "3" }))
+            //{
+            //    isAppFirst = "1";关闭送优惠券的功能
+            //}
+            bus.SaveWeixinOrder(new WXOrderEntity
+            {
+                OrderNo = orderno,
+                TotalCharge = Convert.ToDecimal(zj),
+                TransitFee = wlfy,
+                WXID = wxUser.ID,
+                PayStatus = "0",
+                OrderStatus = "0",
+                PayWay = "0",
+                RuleTitle = mrule.Title,
+                CouponID = !string.IsNullOrEmpty(CouponID) ? Convert.ToInt64(CouponID) : 0,//优惠券ID
+                OrderType = "3",//APP商城订单
+                //Piece = Convert.ToInt32(piece),
+                Piece = oNum,
+                Address = addressEnt.Address,
+                Cellphone = addressEnt.Cellphone,
+                City = addressEnt.City,
+                Province = addressEnt.Province,
+                Country = addressEnt.Country,
+                Name = addressEnt.Name,
+                HouseID = wxUser.HouseID,
+                Memo = memo,
+                LogisID = logicEnt.ID,
+                LogicName = logicEnt.LogisticName,
+                IsAppFirstOrder = isAppFirst,
+                productList = pro
+            }, log);
+            if (wxUser.LogisID.Equals(0))
+            {
+                bus.UpdateWxUserLogicName(new WXUserEntity { ID = wxUser.ID, wxName = wxUser.wxName, wxOpenID = wxUser.wxOpenID, LogicName = logicEnt.LogisticName, LogisID = logicEnt.ID }, log);
+            }
+            string noticeArray = string.Empty;
+            if (wxUser.HouseID.Equals(1))
+            {
+                //湖南仓库
+                noticeArray = Common.GetdltGetOrderNotice();
+            }
+            else if (wxUser.HouseID.Equals(3))
+            {
+                //湖北仓库
+                noticeArray = Common.GetdltGetHuBeiOrderNotice();
+            }
+            else if (wxUser.HouseID.Equals(11))
+            {
+                //西安迪乐泰 
+                noticeArray = Common.GetdltGetXiAnOrderNotice();
+            }
+            else if (wxUser.HouseID.Equals(12))
+            {
+                //梅州 揭阳仓库
+                noticeArray = Common.GetdltGetMeiZhouOrderNotice();
+            }
+            else if (wxUser.HouseID.Equals(9))
+            {
+                //广州仓库
+                noticeArray = Common.GetdltGetGuangZhouOrderNotice();
+            }
+            else if (wxUser.HouseID.Equals(34))
+            {
+                //广州仓库
+                noticeArray = Common.GetdltGetHaiNanOrderNotice();
+            }
+            else if (wxUser.HouseID.Equals(44))
+            {
+                //揭阳仓库
+                noticeArray = Common.GetdltGetJieYangOrderNotice();
+            }
+            else if (wxUser.HouseID.Equals(46))
+            {
+                //四川仓库
+                noticeArray = Common.GetdltGetSiChuanOrderNotice();
+            }
+            //WriteTextLog("开始推送");
+            SendTempleteMessage send = new SendTempleteMessage();
+            string token = Common.GetWeixinToken(Common.GetdltAPPID(), Common.GetdltAppSecret());
+            if (!string.IsNullOrEmpty(noticeArray))
+            {
+                string[] notice = noticeArray.Split('/');
+                for (int i = 0; i < notice.Length; i++)
+                {
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(notice[i]))
+                        {
+                            //推送客户消息
+                            TemplateMsg tmMs = new TemplateMsg
+                            {
+                                first = new TemplateDataItem("有新订单,请尽快确认订单并拣货出库发货！", "#173177"),
+                                keyword1 = new TemplateDataItem(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), "#173177"),
+                                keyword2 = new TemplateDataItem(piece + "条", "#173177"),
+                                keyword3 = new TemplateDataItem(zj + "元", "#173177"),
+                                keyword4 = new TemplateDataItem(addressEnt.Name + " " + addressEnt.Cellphone + " " + addressEnt.Province + " " + addressEnt.City + " " + addressEnt.Country + " " + addressEnt.Address, "#173177"),
+                                keyword5 = new TemplateDataItem("", "#173177"),
+                                remark = new TemplateDataItem("点击查看订单详情并确认订单!", "#173177")
+                            };
+
+                            string err = send.SendMessage(token, notice[i], "tocpvplR_z6_K6R8stAbMHhEeYhVm_BaQ3MF4iC9vDw", "http://dlt.neway5.com/Weixin/OrderInfoManager.aspx?orderNo=" + orderno, tmMs);
+                        }
+                    }
+                    catch (ApplicationException ex) { continue; }
+                }
+            }
+            //设置支付参数
+            RequestHandler paySignReqHandler = new RequestHandler();
+            paySignReqHandler.SetParameter("appid", tenPayV3.AppId);
+            paySignReqHandler.SetParameter("partnerid", tenPayV3.MchId);
+            paySignReqHandler.SetParameter("prepayid", prepayID);
+            paySignReqHandler.SetParameter("package", string.Format("Sign={0}", "WXPay"));
+            paySignReqHandler.SetParameter("timestamp", TenPayV3Util.GetTimestamp());
+            paySignReqHandler.SetParameter("noncestr", TenPayV3Util.GetNoncestr());
+            //paySignReqHandler.SetParameter("signtype", "MD5");
+            string paySign = paySignReqHandler.CreateMd5Sign("key", tenPayV3.Key);
+
+            msg.Message = "{";
+            msg.Message += " \"appId\": \"" + tenPayV3.AppId + "\",";
+            msg.Message += " \"partnerId\": \"" + tenPayV3.MchId + "\",";
+            msg.Message += " \"prepayId\": \"" + prepayID + "\",";
+            msg.Message += " \"packageValue\": \"" + string.Format("Sign={0}", "WXPay") + "\",";
+            msg.Message += " \"timeStamp\": \"" + TenPayV3Util.GetTimestamp() + "\",";
+            msg.Message += " \"nonceStr\": \"" + TenPayV3Util.GetNoncestr() + "\",";
+            msg.Message += " \"sign\": \"" + paySign + "\",";
+            msg.Message += " \"orderNo\": \"" + orderno + "\"";
+            msg.Message += "}";
+
+        ERR:
+            //JSON
+            String json = JSON.Encode(msg);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 微信预支付 返回预支付 ID
+        /// </summary>
+        /// <param name="attach"></param>
+        /// <param name="body"></param>
+        /// <param name="openid"></param>
+        /// <param name="price"></param>
+        /// <param name="orderNum"></param>
+        /// <returns></returns>
+        private string PayInfo(string attach, string body, string openid, string price, string orderNum, TenPayV3Info tenPayV3)
+        {
+            string prepayId = string.Empty;
+            RequestHandler requestHandler = new RequestHandler(HttpContext.Current);
+            //微信分配的公众账号ID（企业号corpid即为此appId）
+            requestHandler.SetParameter("appid", Common.GetdltOpenAPPID());
+            //附加数据，在查询API和支付通知中原样返回，该字段主要用于商户携带订单的自定义数据
+            requestHandler.SetParameter("attach", attach);
+            //商品或支付单简要描述
+            requestHandler.SetParameter("body", body);
+            //微信支付分配的商户号
+            requestHandler.SetParameter("mch_id", tenPayV3.MchId);
+            //随机字符串，不长于32位。
+            requestHandler.SetParameter("nonce_str", TenPayV3Util.GetNoncestr());
+            //接收微信支付异步通知回调地址，通知url必须为直接可访问的url，不能携带参数。
+            requestHandler.SetParameter("notify_url", tenPayV3.TenPayV3Notify);
+            //trade_type=JSAPI，此参数必传，用户在商户公众号appid下的唯一标识。
+            requestHandler.SetParameter("openid", openid);
+            //商户系统内部的订单号,32个字符内、可包含字母，自己生成
+            requestHandler.SetParameter("out_trade_no", "JSAPI" + orderNum);
+            //APP和网页支付提交用户端ip，Native支付填调用微信支付API的机器IP。
+            //requestHandler.SetParameter("spbill_create_ip", "127.0.0.1");
+            //订单总金额，单位为分，做过银联支付的朋友应该知道，代表金额为12位，末位分分
+            requestHandler.SetParameter("total_fee", price);
+            //取值如下：JSAPI，NATIVE，APP，我们这里使用JSAPI
+            requestHandler.SetParameter("trade_type", Senparc.Weixin.MP.TenPayV3Type.JSAPI.ToString());
+            //设置KEY
+            //requestHandler.SetKey(tenPayV3.Key);
+            string sign = requestHandler.CreateMd5Sign("key", tenPayV3.Key);
+            requestHandler.SetParameter("sign", sign);
+
+            string data = requestHandler.ParseXML();
+            requestHandler.GetDebugInfo();
+
+            //获取并返回预支付XML信息
+            string result = TenPayV3.Unifiedorder(data);
+            WriteTextLog(result);
+            var res = XDocument.Parse(result);
+            prepayId = res.Element("xml").Element("prepay_id").Value;
+            return prepayId;
+        }
+        private string GetOrderNumber()
+        {
+            string Number = DateTime.Now.ToString("yyMMddHHmmss");
+            return Number + Next(1000, 1).ToString();
+        }
+        private static int Next(int numSeeds, int length)
+        {
+            byte[] buffer = new byte[length];
+            System.Security.Cryptography.RNGCryptoServiceProvider Gen = new System.Security.Cryptography.RNGCryptoServiceProvider();
+            Gen.GetBytes(buffer);
+            uint randomResult = 0x0;
+            for (int i = 0; i < length; i++)
+            {
+                randomResult |= ((uint)buffer[i] << ((length - 1 - i) * 8));
+            }
+            return (int)(randomResult % numSeeds);
+        }
+        /// <summary>
+        /// 查询客户账单列表数据
+        /// </summary>
+        public void QueryClientAccount()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            if (wxUser.ClientNum.Equals(0)) { WriteTextLog("数据异常"); return; }
+            string CheckStatus = Convert.ToString(Request["CheckStatus"]);
+            int pIndex = Convert.ToInt32(Request["pageNum"]);
+            int pNum = Convert.ToInt32(Request["pageSize"]);
+            CargoClientBus bus = new CargoClientBus();
+            List<APPClientAccountEntity> result = bus.QueryClientAccountAPP(pIndex, pNum, new APPClientAccountEntity { ClientNum = wxUser.ClientNum, CheckStatus = CheckStatus });
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 根据账单号查询该账单的所有详细列表
+        /// </summary>
+        public void QueryAccountListByNo()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            String accountno = Request["data"];
+            if (String.IsNullOrEmpty(accountno)) return;
+
+            CargoClientBus bus = new CargoClientBus();
+            APPClientAccountEntity result = bus.QueryClientAccountInfo(new APPClientAccountEntity { AccountID = accountno });
+            //返回处理结果
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 保存电子签名接口
+        /// </summary>
+        public void SaveAccountElecSign()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            String AccountNo = Request["AccountNo"];
+            String SignImgAddress = Request["SignImgAddress"];
+            if (String.IsNullOrEmpty(AccountNo)) return;
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoClientBus bus = new CargoClientBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "APP客户账单";
+            log.Status = "0";
+            log.NvgPage = "账单签名";
+            log.UserID = wxUser.wxOpenID;
+            log.Operate = "U";
+            CargoClientAccountEntity entity = new CargoClientAccountEntity();
+            try
+            {
+                entity.AccountID = AccountNo;
+                entity.ElecSignImg = SignImgAddress;
+                entity.ElecSign = "1";
+                bus.SaveAccountElecSign(entity, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 查询客户账单付款数据
+        /// </summary>
+        public void QueryClientPayInfo()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            CargoClientBus bus = new CargoClientBus();
+            List<APPClientAccountEntity> result = bus.QueryClientPayInfoAPP(new APPClientAccountEntity { ClientNum = wxUser.ClientNum });
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询公告数据用以首页显示
+        /// </summary>
+        public void QueryIndexNoticeInfo()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            CargoStaticBus bus = new CargoStaticBus();
+            List<APPCargoNoticeEntity> result = bus.QueryNoticeForAPP(new CargoNoticeEntity { HouseID = wxUser.HouseID, NoticeType = "0", DelFlag = "0" });
+            //JSON
+            String json = JSON.Encode(result);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 公告列表查询方法
+        /// </summary>
+        public void QueryMyNotice()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoStaticBus bus = new CargoStaticBus();
+            List<APPCargoNoticeEntity> resAPP = new List<APPCargoNoticeEntity>();
+            List<APPCargoNoticeEntity> result = bus.QueryNoticeForAPP(new CargoNoticeEntity { HouseID = wxUser.HouseID, NoticeType = "0" });
+            int cuurIdx = (pageIndex > 1 ? (pageIndex - 1) * pageSize : 0);
+            //resAPP = result.GetRange(cuurIdx, pageSize);
+            if (result.Count < pageIndex * pageSize)
+            {
+                resAPP = result.GetRange(cuurIdx, result.Count - (pageIndex - 1) * pageSize);
+
+            }
+            else
+            {
+                resAPP = result.GetRange(cuurIdx, pageSize);
+            }
+            //JSON
+            String json = JSON.Encode(resAPP);
+            Response.Clear();
+            Response.ContentType = "Content-Type: application/json; charset=utf-8";
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询APP和电脑下单 的我的订单列表
+        /// </summary>
+        public void QueryMyOrderList()
+        {
+            string DToken = Convert.ToString(Request.Headers["dtoken"]);
+            if (string.IsNullOrEmpty(DToken)) { return; }
+            WXUserEntity wxUser = (WXUserEntity)mc.Get(DToken);
+            if (wxUser.ID.Equals(0)) { WriteTextLog("缓存无值"); return; }
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            string OrderStatus = Convert.ToString(Request["OrderStatus"]);//0待确认1待发货2待收货
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            CargoOrderBus orderbus = new CargoOrderBus();
+            List<WXOrderEntity> resAPP = new List<WXOrderEntity>();
+            List<WXOrderEntity> result = bus.QueryWeixinOrderInfo(1, 10000, new WXOrderEntity { WXID = wxUser.ID, OrderStatus = OrderStatus, CreateDate = Convert.ToDateTime("2021-07-01") });
+            List<WXOrderEntity> computerOrder = new List<WXOrderEntity>();
+            if (OrderStatus.Equals("2"))
+            {
+                computerOrder = orderbus.QueryMyOrderInfoForAPP(new WXOrderEntity { ClientNum = wxUser.ClientNum, OrderStatus = "2", CreateDate = Convert.ToDateTime("2021-07-01") });
+            }
+            else if (OrderStatus.Equals("1"))
+            {
+                computerOrder = orderbus.QueryMyOrderInfoForAPP(new WXOrderEntity { ClientNum = wxUser.ClientNum, OrderStatus = "0", CreateDate = Convert.ToDateTime("2021-07-01") });
+            }
+            else if (string.IsNullOrEmpty(OrderStatus))
+            {
+                computerOrder = orderbus.QueryMyOrderInfoForAPP(new WXOrderEntity { ClientNum = wxUser.ClientNum, OrderStatus = "", CreateDate = Convert.ToDateTime("2021-07-01") });
+            }
+            result.AddRange(computerOrder);
+            result = result.OrderByDescending(c => c.CreateDate).ToList();
+
+            int cuurIdx = (pageIndex > 1 ? (pageIndex - 1) * pageSize : 0);
+            //resAPP = result.GetRange(cuurIdx, pageSize);
+            if (result.Count < pageIndex * pageSize)
+            {
+                resAPP = result.GetRange(cuurIdx, result.Count - (pageIndex - 1) * pageSize);
+
+            }
+            else
+            {
+                resAPP = result.GetRange(cuurIdx, pageSize);
+            }
+
+            //JSON
+            String json = JSON.Encode(resAPP);
+            Response.Clear();
+            Response.Write(json);
+        }
+    }
+}

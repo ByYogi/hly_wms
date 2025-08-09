@@ -1,0 +1,55 @@
+﻿.container {
+    width: 1190px !important;
+}
+
+.login-box {
+    margin-bottom: -30px;
+    width: 100%;
+    min-height: 500px;
+    _height: 500px;
+    background: #f1f1f1;
+    background: url(image/wce.jpg) repeat;
+    background-size: cover;
+}
+
+.login-left {
+    position: absolute;
+    top: 30px;
+    left: 0;
+    right: 320px;
+    bottom: 0;
+}
+
+.login-right {
+    margin: 80px auto;
+    padding: 20px;
+    width: 300px;
+    text-align: left;
+    border: 1px solid #e5e5e5;
+    border-radius: 3px;
+    background: #fff;
+}
+
+.eg-footer-new ul {
+    list-style: none;
+    padding: 0;
+}
+
+.eg-footer-new a {
+    color: #999;
+}
+
+    .eg-footer-new a:active, .eg-footer-new a:focus, .eg-footer-new a:hover {
+        color: #0af;
+    }
+
+.footer-container {
+    position: relative;
+    bottom: 0;
+    margin-top: 40px;
+}
+
+    .footer-container .container {
+        padding-left: 0;
+        padding-right: 0;
+    }

@@ -1,0 +1,181 @@
+﻿using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using NPOI.HSSF.Record.Formula.Functions;
+using Org.BouncyCastle.Crypto.Engines;
+using Org.BouncyCastle.Crypto.Modes;
+using Org.BouncyCastle.Crypto.Parameters;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Web;
+using System.Web.Script.Serialization;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Interface
+{
+    public partial class MiniPayRefundSuccess : System.Web.UI.Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            string bodyData = string.Empty;
+            CargoOrderEntity entity = new CargoOrderEntity();
+            LogEntity logEntity = new LogEntity();
+            logEntity.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            logEntity.Moudle = "慧采云仓";
+            logEntity.Status = "0";
+            logEntity.NvgPage = "微信退款操作";
+            logEntity.UserID = "WxRefund";
+            logEntity.Operate = "U";
+            try
+            {
+                using (Stream inputStream = Request.InputStream)
+                {
+                    using (StreamReader reader = new StreamReader(inputStream, Encoding.UTF8))
+                    {
+                        bodyData = reader.ReadToEnd();
+                        //bodyData = "{\"id\":\"45632234-210e-5246-9f8e-b26807993945\",\"create_time\":\"2023-12-08T15:05:42+08:00\",\"resource_type\":\"encrypt-resource\",\"event_type\":\"REFUND.SUCCESS\",\"summary\":\"退款成功\",\"resource\":{\"original_type\":\"refund\",\"algorithm\":\"AEAD_AES_256_GCM\",\"ciphertext\":\"Vw3koCF3WTmA0mcxovxA/CtKepAqCeqjIU1LJK4CEqUdXWKldoaPJzwdy+28NfQ+NxqcE6S3Z99O5MfWFi5pb+hbpmNO1D32kaMFyTIuAFUQK6yUXPfgyDbZIrgGxRTfGrXS6VcsX1iHzW2NdPRUCPdJ6kh+ZmBKlOHDmmbz7rJgyVqVRA1uh6XrSbJi+5RTrppnNDipNsvN1iwhiFMFs1ASI+QP9x5gTniWdp/OVPlVZl0YOPTdFwLiMJ8sB0C+AOv7qresn2mrLo0mRbNZkGzhTii9VkpX2lQ2Zx8Hyqr4M8wf6XSCwg0i4j9e8S2qOtw+gd8oVb584pT9ryaZRff+bUf7Tyg2+4g4AfVaMBA4qAk3MvIS6uzNaJW1uglJ//oBzLT+lbv2qQrcueRryzDS1uqMg0pcLt/QnrmfyW7CHKefXBLVfmMsaBib2cEhYK6aN9kKylXWnH5JPff2qwB3VWfbjGlsezILg0Q98/ifrRqq1kSfY69VDW//XDB5/iO1Cj/mSzcN\",\"associated_data\":\"refund\",\"nonce\":\"PU49DAaoyiCK\"}}";
+                        Common.WriteTextLog("微信退款详情:"+bodyData);
+                        if (!string.IsNullOrEmpty(bodyData))
+                        {
+                            JavaScriptSerializer js = new JavaScriptSerializer();
+                            WxRefundEntity wx = js.Deserialize<WxRefundEntity>(JSON.Encode(bodyData));
+                            Common.WriteTextLog("微信退款ID:" + wx.id);
+                            string result = AesGcmDecryptByBouncyCastle(Common.GetHCYCWxPayAPIV3Key(), wx.resource.nonce, wx.resource.ciphertext, wx.resource.associated_data);
+                            Common.WriteTextLog("微信解密结果:" + result);
+                            WxRefund wxresult = js.Deserialize<WxRefund>(result);
+                            CargoFinanceBus bus = new CargoFinanceBus();
+                            CargoOrderEntity res = bus.QueryOrder(new CargoOrderEntity { WXPayOrderNo = wxresult.transaction_id });
+                            //int OrderNum = 0;
+                            //string OrderNo = Common.GetMaxOrderNumByCurrentDate(res.HouseID, "JC", out OrderNum);
+                            CargoFactoryOrderBus orderBus = new CargoFactoryOrderBus();
+                            if (wxresult.refund_status.Equals("SUCCESS"))
+                            {
+                                CargoOrderBus busOrder = new CargoOrderBus();
+                                CargoCashierEntity cargoCashier = new CargoCashierEntity();
+                                bus.UpdatePayStatus(res);
+                                //if (res.OrderStatus == 0)
+                                //{
+                                //    logEntity.Memo = "微信退款操作";
+                                //cargoCashier.AffectWX = wxresult.amount.total / 100;
+                                //cargoCashier.BasicID = 337;
+                                //cargoCashier.RType = "1";
+                                //cargoCashier.AffectCash = 0;
+                                //cargoCashier.AffectCard = 0;
+                                //cargoCashier.AffectAlipay = 0;
+                                //cargoCashier.FromTO = "19";
+                                //cargoCashier.AffectAwbNO = res.OrderNo;
+                                //cargoCashier.AffectClient = "";
+                                //cargoCashier.PayName = "";
+                                //cargoCashier.PayPhone = "";
+                                //cargoCashier.OP_ID = "";
+                                //cargoCashier.OP_DATE = DateTime.Now;
+                                //cargoCashier.UserName = "";
+                                //cargoCashier.TradeType = "0";
+                                //cargoCashier.Memo = "微信申请退款原" + res.TotalCharge + "元，共计退款" + wxresult.amount.refund / 100 + "元";
+                                //cargoCashier.PayDate = DateTime.Now;
+                                //bus.AddFinanceRecord(cargoCashier);
+                                //    busOrder.DeleteOrderInfo(new List<CargoOrderEntity>() { new CargoOrderEntity { OrderNo = Convert.ToString(res.OrderNo), OrderID = res.OrderID, DeleteID = "2029", DeleteName = "机器人" } }, logEntity);
+                                //}
+                                //else
+                                //{
+                                //    foreach (var item in res.goodsList)
+                                //    {
+                                //        CargoFactoryOrderEntity cargoFactoryOrder = new CargoFactoryOrderEntity();
+                                //        cargoFactoryOrder.FacOrderNo = OrderNo;
+                                //        cargoFactoryOrder.OrderType = 2;
+                                //        cargoFactoryOrder.HouseID = res.HouseID;
+                                //        cargoFactoryOrder.ProductID = Convert.ToString(item.ProductID);
+                                //        cargoFactoryOrder.Source = 24;
+                                //        cargoFactoryOrder.ProductName = "迪乐泰揭阳仓业务部";
+                                //        cargoFactoryOrder.BelongMonth = DateTime.Now.Month.ToString();
+                                //        cargoFactoryOrder.Born = item.Born;
+                                //        cargoFactoryOrder.Assort = item.Assort;
+                                //        cargoFactoryOrder.TypeID = item.TypeID;
+                                //        cargoFactoryOrder.Model = item.Model;
+                                //        cargoFactoryOrder.Specs = item.Specs;
+                                //        cargoFactoryOrder.LoadIndex = item.LoadIndex;
+                                //        cargoFactoryOrder.SpeedLevel = item.SpeedLevel;
+                                //        cargoFactoryOrder.Figure = item.Figure;
+                                //        cargoFactoryOrder.GoodsCode = item.GoodsCode;
+                                //        cargoFactoryOrder.Batch = item.Batch;
+                                //        cargoFactoryOrder.OrderNum = res.OrderNum;
+                                //        cargoFactoryOrder.ReplyNumber = res.OrderNum;
+                                //        cargoFactoryOrder.InCargoStatus = 0;
+                                //        cargoFactoryOrder.UnitPrice = (double)item.UnitPrice;
+                                //        cargoFactoryOrder.TradePrice = (double)item.TradePrice;
+                                //        cargoFactoryOrder.SalePrice = (double)item.SalePrice;
+                                //        cargoFactoryOrder.WhetherTax = 0;
+                                //        cargoFactoryOrder.CostPrice = (double)item.CostPrice;
+                                //        cargoFactoryOrder.TaxCostPrice = (double)item.TaxCostPrice;
+                                //        cargoFactoryOrder.NoTaxCostPrice = (double)item.NoTaxCostPrice;
+                                //        cargoFactoryOrder.SaleMoney = (double)(res.TotalCharge - res.TransitFee);
+                                //        cargoFactoryOrder.ReceiveName = "";
+                                //        cargoFactoryOrder.ReceiveCity = "";
+                                //        cargoFactoryOrder.ReceiveMobile = "";
+                                //        cargoFactoryOrder.OP_DATE = DateTime.Now;
+                                //        cargoFactoryOrder.Supplier = "";
+                                //        cargoFactoryOrder.SupplierAddress = "";
+                                //        res.OrderNo = OrderNo;
+                                //        res.OrderNum = OrderNum;
+                                //        orderBus._InsertData(cargoFactoryOrder);
+                                //        bus.UpdatePayStatus(res);
+                                //    }
+                                //}
+                            }
+                        }
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Common.WriteTextLog("微信退款回调接收失败！Message:"+ex.Message);
+                Hashtable Hasresult = new Hashtable();
+                Hasresult["code"] = "SUCCESS";
+                Response.Write(JSON.Encode(Hasresult));
+                Response.End();
+            }
+            finally {
+                Hashtable Hasresult = new Hashtable();
+                Hasresult["code"] = "SUCCESS";
+                Response.Write(JSON.Encode(Hasresult));
+                Response.End();
+            }
+
+
+        }
+        /// <summary>
+        /// 数据解密
+        /// </summary>
+        /// <param name="key">微信支付v3密钥</param>
+        /// <param name="nonce">随机串</param>
+        /// <param name="cipherData">密文</param>
+        /// <param name="associatedData">附加数据</param>
+        /// <returns></returns>
+        static string AesGcmDecryptByBouncyCastle(string key, string nonce, string cipherData, string associatedData)
+        {
+            var associatedBytes = associatedData == null ? null : Encoding.UTF8.GetBytes(associatedData);
+
+            var gcmBlockCipher = new GcmBlockCipher(new AesEngine());
+            var parameters = new AeadParameters(
+                new KeyParameter(Encoding.UTF8.GetBytes(key)),
+                128,  //128 = 16 * 8 => (tag size * 8)
+                Encoding.UTF8.GetBytes(nonce),
+                associatedBytes);
+            gcmBlockCipher.Init(false, parameters);
+
+            var data = Convert.FromBase64String(cipherData);
+            var plaintext = new byte[gcmBlockCipher.GetOutputSize(data.Length)];
+
+            var length = gcmBlockCipher.ProcessBytes(data, 0, data.Length, plaintext, 0);
+            gcmBlockCipher.DoFinal(plaintext, length);
+            return Encoding.UTF8.GetString(plaintext);
+        }
+    }
+}
+ 

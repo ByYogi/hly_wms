@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<discovery xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://schemas.xmlsoap.org/disco/">
+  <contractRef ref="http://xt.neway5.com/WebSer/neway.asmx?wsdl" docRef="http://xt.neway5.com/WebSer/neway.asmx" xmlns="http://schemas.xmlsoap.org/disco/scl/" />
+  <soap address="http://xt.neway5.com/WebSer/neway.asmx" xmlns:q1="http://tempuri.org/" binding="q1:newaySoap" xmlns="http://schemas.xmlsoap.org/disco/soap/" />
+  <soap address="http://xt.neway5.com/WebSer/neway.asmx" xmlns:q2="http://tempuri.org/" binding="q2:newaySoap12" xmlns="http://schemas.xmlsoap.org/disco/soap/" />
+</discovery>

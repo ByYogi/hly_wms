@@ -1,0 +1,99 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 微信优惠券数据实体 1.3.10.Tbl_WX_Coupon（优惠券数据表）
+    /// </summary>
+    [Serializable]
+    public class WXCouponEntity
+    {
+        public long ID { get; set; }
+        public long WXID { get; set; }
+        public decimal Money { get; set; }
+        public int Piece { get; set; }
+        public string UseStatus { get; set; }
+        /// <summary>
+        /// 优惠券获取时间
+        /// </summary>
+        public DateTime GainDate { get; set; }
+        /// <summary>
+        /// 优惠券使用时间
+        /// </summary>
+        public DateTime UseDate { get; set; }
+        public long OrderID { get; set; }
+        public string FromOrderNO { get; set; }
+        
+        public string OrderType { get; set; }
+        public DateTime OP_DATE { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        /// <summary>
+        /// 用户名
+        /// </summary>
+        public string Name { get; set; }
+        /// <summary>
+        /// 店代码 客户编码
+        /// </summary>
+        public int ClientNum { get; set; }
+        public Int64 ClientID { get; set; }
+        public int HouseID { get; set; }
+        public string HouseName { get; set; }
+        public string HouseIDStr { get; set; }
+        public string ClientName { get; set; }
+        public string CompanyName { get; set; }
+        public string OrderNo { get; set; }
+        public string Cellphone { get; set; }
+        public string Address { get; set; }
+        public string PinyinName { get; set; }
+        public string Remark { get; set; }
+        /// <summary>
+        /// 品牌代码
+        /// </summary>
+        public string TypeID { get; set; }
+        /// <summary>
+        /// 品牌名称
+        /// </summary>
+        public string TypeName { get; set; }
+        /// <summary>
+        /// 优惠券类型
+        /// </summary>
+        public string CouponType { get; set; }
+        /// <summary>
+        /// 供应商编码
+        /// </summary>
+        public int SuppClientNum { get; set; }
+        /// <summary>
+        /// 是否叠加
+        /// </summary>
+        public string IsSuperPosition { get; set; }
+        /// <summary>
+        /// 限制一条使用一张
+        /// 是否跟随订单数量 0：否1：是
+        /// </summary>
+        public string IsFollowQuantity { get; set; }
+
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,70 @@
+var cityData = [{
+	value: '1',
+	text: '轮胎',
+	children: [{
+		value: "9",
+		text: "优科豪马"
+	}, {
+		value: "345",
+		text: "维京"
+	}, {
+		value: "19",
+		text: "宝通"
+	}, {
+		value: "27",
+		text: "万力钻石"
+	}, {
+		value: "31",
+		text: "韩泰"
+	}, {
+		value: "32",
+		text: "邓禄普"
+	}, {
+		value: "33",
+		text: "东洋"
+	}, {
+		value: "34",
+		text: "马牌"
+	}, {
+		value: "36",
+		text: "米其林"
+	}, {
+		value: "39",
+		text: "固特异"
+	}, {
+	    value: "42",
+	    text: "倍耐力"
+	}, {
+	    value: "66",
+	    text: "固铂"
+	}, {
+	    value: "37",
+	    text: "海大"
+	}]
+}, {
+	value: '10',
+	text: '养护品',
+	children: [{
+		value: "24",
+		text: "壳牌"
+	}, {
+		value: "25",
+		text: "瓦尔塔电瓶"
+	}, {
+		value: "26",
+		text: "引能仕"
+	}, {
+		value: "28",
+		text: "嘉实多"
+	}]
+}, {
+	value: '20',
+	text: '赠品',
+	children: [{
+		value: "21",
+		text: "衣服"
+	}, {
+		value: "22",
+		text: "电瓶"
+	}]
+}]

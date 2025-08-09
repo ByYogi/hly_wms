@@ -1,0 +1,1246 @@
+﻿using StackExchange.Redis;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Threading.Tasks;
+using System.Web;
+
+namespace Dealer
+{
+    /// <summary>
+    /// StackExchangeRedis帮助类
+    /// </summary>
+    public sealed class RedisHelper
+    {
+        /// <summary>
+        /// Redis服务器地址
+        /// </summary>
+        private static readonly string ConnectionString = System.Configuration.ConfigurationManager.AppSettings["redis"];
+        private static readonly int DbIndex = int.Parse(System.Configuration.ConfigurationManager.AppSettings["redis_db"]);
+        private static readonly string PrefixKey = System.Configuration.ConfigurationManager.AppSettings["PrefixKey"];//前缀
+
+        /// <summary>
+        /// 添加 Key 的前缀
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        private static string AddKeyPrefix(string key)
+        {
+            return PrefixKey + "_" + key;
+        }
+        /// <summary>
+        /// token失效时间
+        /// 单位为分钟
+        /// </summary>
+        private static readonly int timeout = int.Parse(System.Configuration.ConfigurationManager.AppSettings["TokenTimeOutMinute"]);
+
+        /// <summary>
+        /// 静态变量锁
+        /// </summary>
+        private static object _locker = new Object();
+
+        /// <summary>
+        /// 静态实例
+        /// </summary>
+        private static ConnectionMultiplexer _instance = null;
+
+        /// <summary>
+        /// 使用一个静态属性来返回已连接的实例，如下列中所示。这样，一旦 ConnectionMultiplexer 断开连接，便可以初始化新的连接实例。
+        /// </summary>
+        private static ConnectionMultiplexer Instance
+        {
+            get
+            {
+                try
+                {
+                    if (_instance == null)
+                    {
+                        lock (_locker)
+                        {
+                            if (_instance == null || !_instance.IsConnected)
+                            {
+                                _instance = ConnectionMultiplexer.Connect(ConnectionString);
+                                //注册如下事件
+                                _instance.ConnectionFailed += MuxerConnectionFailed;
+                                _instance.ConnectionRestored += MuxerConnectionRestored;
+                                _instance.ErrorMessage += MuxerErrorMessage;
+                                _instance.ConfigurationChanged += MuxerConfigurationChanged;
+                                _instance.HashSlotMoved += MuxerHashSlotMoved;
+                                _instance.InternalError += MuxerInternalError;
+                            }
+                        }
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    //MyLog.WriteLog("未知错误", "StackTrace:" + ex.StackTrace);
+                    //LogHelper.Error(typeof(RedisHelper), string.Format("redis初始化异常,连接字符串={0}", ConnectionString), ex);
+                }
+                return _instance;
+            }
+        }
+
+
+        /// <summary>
+        /// 获取redis数据库对象
+        /// </summary>
+        /// <returns></returns>
+        private static IDatabase GetDatabase(int DbIndex)
+        {
+            return Instance.GetDatabase(DbIndex);
+        }
+
+        /// <summary>
+        /// 检查Key是否存在
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public static bool Exists(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                return false;
+            }
+            key = AddKeyPrefix(key);
+            try
+            {
+                return GetDatabase(DbIndex).KeyExists(key);
+
+            }
+            catch (Exception ex)
+            {
+                //MyLog.WriteLog("未知错误", "StackTrace:" + ex.StackTrace);
+                //LogHelper.Error(typeof(RedisHelper), string.Format("检查Key是否存在异常,缓存key={0}", key), ex);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 设置String类型的缓存对象(如果value是null或者空字符串则设置失败)
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <param name="ts">过期时间</param>
+        public static bool SetString(string key, string value, TimeSpan? ts = null)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+            try
+            {
+                key = AddKeyPrefix(key);
+                return GetDatabase(DbIndex).StringSet(key, value, ts);
+            }
+            catch (Exception ex)
+            {
+                //MyLog.WriteLog("未知错误", "StackTrace:" + ex.StackTrace);
+                //LogHelper.Error(typeof(RedisHelper), string.Format("设置string类型缓存异常,缓存key={0},缓存值={1}", key, value), ex);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 根据key获取String类型的缓存对象
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        public static string GetString(string key)
+        {
+            try
+            {
+                key = AddKeyPrefix(key);
+                return GetDatabase(DbIndex).StringGet(key);
+            }
+            catch (Exception ex)
+            {
+                //MyLog.WriteLog("未知错误", "StackTrace:" + ex.StackTrace);
+            }
+            return null;
+        }
+
+        public static string[] keys(string spattern)
+        {
+
+            //string pattern = spattern+ "*";
+            //var keys = _server.Keys(database: Instance.GetDatabase().Database, pattern: pattern); //StackExchange.Redis 会根据redis版本决定用keys还是   scan(>2.8) 
+
+            //var server = Instance.GetServer(ConnectionString);
+            // show all keys in database 0 that include "foo" in their name
+            List<string> list = new List<string>();
+            foreach (var key in Instance.GetServer(ConnectionString).Keys(database: Instance.GetDatabase(DbIndex).Database, pattern: spattern + "*"))
+            {
+                Console.WriteLine(key);
+                list.Add(key);
+            }
+            return list.ToArray();
+        }
+
+
+        /// <summary>
+        /// 设置Hash类型缓存对象(如果value没有公共属性则不设置缓存)
+        ///    会使用反射将object对象所有公共属性作为Hash列存储
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        public static void SetHash(string key, object value)
+        {
+            if (null == value)
+            {
+                return;
+            }
+            try
+            {
+                List<HashEntry> list = new List<HashEntry>();
+                Type type = value.GetType();
+                var propertyArray = type.GetProperties();
+                foreach (var property in propertyArray)
+                {
+                    string propertyName = property.Name;
+                    string propertyValue = Convert.ToString(property.GetValue(value, null));
+                    list.Add(new HashEntry(propertyName, propertyValue));
+                }
+                if (list.Count < 1)
+                {
+                    return;
+                }
+                IDatabase db = GetDatabase(DbIndex);
+                key = AddKeyPrefix(key);
+                db.HashSet(key, list.ToArray());
+            }
+            catch (Exception ex)
+            {
+                //MyLog.WriteLog("未知错误", "StackTrace:" + ex.StackTrace);
+            }
+        }
+
+        /// <summary>
+        /// 设置Hash类型缓存对象(用于存储对象)
+        /// </summary>
+        /// <param name="key">Key</param>
+        /// <param name="value">字典,key是列名 value是列的值</param>
+        public static void SetHash(string key, Dictionary<string, string> value)
+        {
+            if (null == value || value.Count < 1)
+            {
+                return;
+            }
+            try
+            {
+                HashEntry[] array = (from item in value select new HashEntry(item.Key, item.Value)).ToArray();
+                IDatabase db = GetDatabase(DbIndex);
+                key = AddKeyPrefix(key);
+                db.HashSet(key, array);
+            }
+            catch (Exception ex)
+            {
+                //MyLog.WriteLog("未知错误", "StackTrace:" + ex.StackTrace);
+                //LogHelper.Error(typeof(RedisHelper), string.Format("设置Hash类型缓存异常,缓存key={0},缓存对象值={1}", key, string.Join(",", value)), ex);
+            }
+        }
+
+        /// <summary>
+        /// 根据key和列数组从缓存中拿取数据(如果fieldList为空或者个数小于0返回null)
+        /// </summary>
+        /// <param name="key">缓存Key</param>
+        /// <param name="fieldList">列数组</param>
+        /// <returns>根据列数组构造一个字典,字典中的列与入参列数组相同,字典中的值是每一列的值</returns>
+        public static Dictionary<string, string> GetHash(string key, List<string> fieldList)
+        {
+            if (null == fieldList || fieldList.Count < 1)
+            {
+                return null;
+            }
+            try
+            {
+                Dictionary<string, string> dic = new Dictionary<string, string>();
+                RedisValue[] array = (from item in fieldList select (RedisValue)item).ToArray();
+                IDatabase db = GetDatabase(DbIndex);
+                key = AddKeyPrefix(key);
+                RedisValue[] redisValueArray = db.HashGet(key, array);
+                for (int i = 0; i < redisValueArray.Length; i++)
+                {
+                    string field = fieldList[i];
+                    string value = redisValueArray[i];
+                    dic.Add(field, value);
+                }
+                return dic;
+            }
+            catch (Exception ex)
+            {
+                //MyLog.WriteLog("未知错误", "StackTrace:" + ex.StackTrace);
+                //LogHelper.Error(typeof(RedisHelper), string.Format("获取Hash类型缓存异常,缓存key={0},列数组={1}", key, string.Join(",", fieldList)), ex);
+            }
+            return null;
+        }
+
+        #region Hash 操做
+
+        /// <summary>
+        /// 判断该字段是否存在 hash 中
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static bool HashExists(string redisKey, string hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashExists(redisKey, hashField);
+        }
+
+        /// <summary>
+        /// 从 hash 中移除指定字段
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static bool HashDelete(string redisKey, string hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashDelete(redisKey, hashField);
+        }
+
+        /// <summary>
+        /// 从 hash 中移除指定字段
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static long HashDelete(string redisKey, IEnumerable<RedisValue> hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashDelete(redisKey, hashField.ToArray());
+        }
+
+        /// <summary>
+        /// 在 hash 设定值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static bool HashSet(string redisKey, string hashField, string value)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashSet(redisKey, hashField, value);
+        }
+
+        /// <summary>
+        /// 在 hash 中设定值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashFields"></param>
+        public static void HashSet(string redisKey, IEnumerable<HashEntry> hashFields)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            _db.HashSet(redisKey, hashFields.ToArray());
+        }
+
+        /// <summary>
+        /// 在 hash 中获取值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static RedisValue HashGet(string redisKey, string hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashGet(redisKey, hashField);
+        }
+
+        /// <summary>
+        /// 在 hash 中获取值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static RedisValue[] HashGet(string redisKey, RedisValue[] hashField, string value)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashGet(redisKey, hashField);
+        }
+
+        /// <summary>
+        /// 从 hash 返回全部的字段值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static RedisValue[] HashKeys(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashKeys(redisKey);
+        }
+
+        /// <summary>
+        /// 返回 hash 中的全部值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static RedisValue[] HashValues(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashValues(redisKey);
+        }
+
+        /// <summary>
+        /// 在 hash 设定值（序列化）
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static bool HashSet<T>(string redisKey, string hashField, T value)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            var json = Serialize(value);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashSet(redisKey, hashField, json);
+        }
+
+        /// <summary>
+        /// 在 hash 中获取值（反序列化）
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static T HashGet<T>(string redisKey, string hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return Deserialize<T>(_db.HashGet(redisKey, hashField));
+        }
+
+        #region async
+
+        /// <summary>
+        /// 判断该字段是否存在 hash 中
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static async Task<bool> HashExistsAsync(string redisKey, string hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.HashExistsAsync(redisKey, hashField);
+        }
+
+        /// <summary>
+        /// 从 hash 中移除指定字段
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static async Task<bool> HashDeleteAsync(string redisKey, string hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.HashDeleteAsync(redisKey, hashField);
+        }
+
+        /// <summary>
+        /// 从 hash 中移除指定字段
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static async Task<long> HashDeleteAsync(string redisKey, IEnumerable<RedisValue> hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.HashDeleteAsync(redisKey, hashField.ToArray());
+        }
+
+        /// <summary>
+        /// 在 hash 设定值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static async Task<bool> HashSetAsync(string redisKey, string hashField, string value)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.HashSetAsync(redisKey, hashField, value);
+        }
+
+        /// <summary>
+        /// 在 hash 中设定值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashFields"></param>
+        public static async Task HashSetAsync(string redisKey, IEnumerable<HashEntry> hashFields)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            await _db.HashSetAsync(redisKey, hashFields.ToArray());
+        }
+
+        /// <summary>
+        /// 在 hash 中获取值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static async Task<RedisValue> HashGetAsync(string redisKey, string hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.HashGetAsync(redisKey, hashField);
+        }
+
+        /// <summary>
+        /// 在 hash 中获取值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static async Task<IEnumerable<RedisValue>> HashGetAsync(string redisKey, RedisValue[] hashField, string value)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.HashGetAsync(redisKey, hashField);
+        }
+
+        /// <summary>
+        /// 从 hash 返回全部的字段值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static async Task<IEnumerable<RedisValue>> HashKeysAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.HashKeysAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 返回 hash 中的全部值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static async Task<IEnumerable<RedisValue>> HashValuesAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.HashValuesAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 在 hash 设定值（序列化）
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public static async Task<bool> HashSetAsync<T>(string redisKey, string hashField, T value)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            var json = Serialize(value);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.HashSetAsync(redisKey, hashField, json);
+        }
+
+        /// <summary>
+        /// 在 hash 中获取值（反序列化）
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="hashField"></param>
+        /// <returns></returns>
+        public static async Task<T> HashGetAsync<T>(string redisKey, string hashField)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return Deserialize<T>(await _db.HashGetAsync(redisKey, hashField));
+        }
+
+        #endregion async
+
+        /// <summary>
+        /// 序列化
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
+        private static byte[] Serialize(object obj)
+        {
+            if (obj == null)
+                return null;
+
+            var binaryFormatter = new BinaryFormatter();
+            using (var memoryStream = new MemoryStream())
+            {
+                binaryFormatter.Serialize(memoryStream, obj);
+                var data = memoryStream.ToArray();
+                return data;
+            }
+        }
+
+        /// <summary>
+        /// 反序列化
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        private static T Deserialize<T>(byte[] data)
+        {
+            if (data == null)
+                return default(T);
+
+            var binaryFormatter = new BinaryFormatter();
+            using (var memoryStream = new MemoryStream(data))
+            {
+                var result = (T)binaryFormatter.Deserialize(memoryStream);
+                return result;
+            }
+        }
+
+        #endregion Hash 操做
+
+
+        #region List 操做
+
+        /// <summary>
+        /// 移除并返回存储在该键列表的第一个元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static string ListLeftPop(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.ListLeftPop(redisKey);
+        }
+
+        /// <summary>
+        /// 移除并返回存储在该键列表的最后一个元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static string ListRightPop(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.ListRightPop(redisKey);
+        }
+
+        /// <summary>
+        /// 移除列表指定键上与该值相同的元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public static long ListRemove(string redisKey, string redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.ListRemove(redisKey, redisValue);
+        }
+
+        /// <summary>
+        /// 在列表尾部插入值。若是键不存在，先建立再插入值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public static long ListRightPush(string redisKey, string redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.ListRightPush(redisKey, redisValue);
+        }
+
+        /// <summary>
+        /// 在列表头部插入值。若是键不存在，先建立再插入值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public static long ListLeftPush(string redisKey, string redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.ListLeftPush(redisKey, redisValue);
+        }
+
+        /// <summary>
+        /// 返回列表上该键的长度，若是不存在，返回 0
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static long ListLength(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.ListLength(redisKey);
+        }
+
+        /// <summary>
+        /// 返回在该列表上键所对应的元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static IEnumerable<RedisValue> ListRange(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.ListRange(redisKey);
+        }
+
+        /// <summary>
+        /// 移除并返回存储在该键列表的第一个元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static T ListLeftPop<T>(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return Deserialize<T>(_db.ListLeftPop(redisKey));
+        }
+
+        /// <summary>
+        /// 移除并返回存储在该键列表的最后一个元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static T ListRightPop<T>(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return Deserialize<T>(_db.ListRightPop(redisKey));
+        }
+
+        /// <summary>
+        /// 在列表尾部插入值。若是键不存在，先建立再插入值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public static long ListRightPush<T>(string redisKey, T redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.ListRightPush(redisKey, Serialize(redisValue));
+        }
+
+        /// <summary>
+        /// 在列表头部插入值。若是键不存在，先建立再插入值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public static long ListLeftPush<T>(string redisKey, T redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.ListLeftPush(redisKey, Serialize(redisValue));
+        }
+
+        #region List-async
+
+        /// <summary>
+        /// 移除并返回存储在该键列表的第一个元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<string> ListLeftPopAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.ListLeftPopAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 移除并返回存储在该键列表的最后一个元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<string> ListRightPopAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.ListRightPopAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 移除列表指定键上与该值相同的元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public async Task<long> ListRemoveAsync(string redisKey, string redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.ListRemoveAsync(redisKey, redisValue);
+        }
+
+        /// <summary>
+        /// 在列表尾部插入值。若是键不存在，先建立再插入值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public async Task<long> ListRightPushAsync(string redisKey, string redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.ListRightPushAsync(redisKey, redisValue);
+        }
+
+        /// <summary>
+        /// 在列表头部插入值。若是键不存在，先建立再插入值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public async Task<long> ListLeftPushAsync(string redisKey, string redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.ListLeftPushAsync(redisKey, redisValue);
+        }
+
+        /// <summary>
+        /// 返回列表上该键的长度，若是不存在，返回 0
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<long> ListLengthAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.ListLengthAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 返回在该列表上键所对应的元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<IEnumerable<RedisValue>> ListRangeAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.ListRangeAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 移除并返回存储在该键列表的第一个元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<T> ListLeftPopAsync<T>(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return Deserialize<T>(await _db.ListLeftPopAsync(redisKey));
+        }
+
+        /// <summary>
+        /// 移除并返回存储在该键列表的最后一个元素
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<T> ListRightPopAsync<T>(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return Deserialize<T>(await _db.ListRightPopAsync(redisKey));
+        }
+
+        /// <summary>
+        /// 在列表尾部插入值。若是键不存在，先建立再插入值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public async Task<long> ListRightPushAsync<T>(string redisKey, T redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.ListRightPushAsync(redisKey, Serialize(redisValue));
+        }
+
+        /// <summary>
+        /// 在列表头部插入值。若是键不存在，先建立再插入值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisValue"></param>
+        /// <returns></returns>
+        public async Task<long> ListLeftPushAsync<T>(string redisKey, T redisValue)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.ListLeftPushAsync(redisKey, Serialize(redisValue));
+        }
+
+        #endregion List-async
+
+        #endregion List 操做
+
+        #region SortedSet 操做
+
+        /// <summary>
+        /// SortedSet 新增
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="member"></param>
+        /// <param name="score"></param>
+        /// <returns></returns>
+        public bool SortedSetAdd(string redisKey, string member, double score)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.SortedSetAdd(redisKey, member, score);
+        }
+
+        /// <summary>
+        /// 在有序集合中返回指定范围的元素，默认状况下从低到高。
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public IEnumerable<RedisValue> SortedSetRangeByRank(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.SortedSetRangeByRank(redisKey);
+        }
+
+        /// <summary>
+        /// 返回有序集合的元素个数
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public long SortedSetLength(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.SortedSetLength(redisKey);
+        }
+
+        /// <summary>
+        /// 返回有序集合的元素个数
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="memebr"></param>
+        /// <returns></returns>
+        public bool SortedSetLength(string redisKey, string memebr)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.SortedSetRemove(redisKey, memebr);
+        }
+
+        /// <summary>
+        /// SortedSet 新增
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="member"></param>
+        /// <param name="score"></param>
+        /// <returns></returns>
+        public bool SortedSetAdd<T>(string redisKey, T member, double score)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            var json = Serialize(member);
+
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.SortedSetAdd(redisKey, json, score);
+        }
+
+        #region SortedSet-Async
+
+        /// <summary>
+        /// SortedSet 新增
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="member"></param>
+        /// <param name="score"></param>
+        /// <returns></returns>
+        public async Task<bool> SortedSetAddAsync(string redisKey, string member, double score)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.SortedSetAddAsync(redisKey, member, score);
+        }
+
+        /// <summary>
+        /// 在有序集合中返回指定范围的元素，默认状况下从低到高。
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<IEnumerable<RedisValue>> SortedSetRangeByRankAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.SortedSetRangeByRankAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 返回有序集合的元素个数
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<long> SortedSetLengthAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.SortedSetLengthAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 返回有序集合的元素个数
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="memebr"></param>
+        /// <returns></returns>
+        public async Task<bool> SortedSetRemoveAsync(string redisKey, string memebr)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.SortedSetRemoveAsync(redisKey, memebr);
+        }
+
+        /// <summary>
+        /// SortedSet 新增
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="member"></param>
+        /// <param name="score"></param>
+        /// <returns></returns>
+        public async Task<bool> SortedSetAddAsync<T>(string redisKey, T member, double score)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            var json = Serialize(member);
+
+            return await _db.SortedSetAddAsync(redisKey, json, score);
+        }
+
+        #endregion SortedSet-Async
+
+        #endregion SortedSet 操做
+
+        #region key 操做
+
+        /// <summary>
+        /// 移除指定 Key
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static bool KeyDelete(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.KeyDelete(redisKey);
+        }
+
+        /// <summary>
+        /// 移除指定 Key
+        /// </summary>
+        /// <param name="redisKeys"></param>
+        /// <returns></returns>
+        public long KeyDelete(IEnumerable<string> redisKeys)
+        {
+            var keys = redisKeys.Select(x => (RedisKey)(x));
+            IDatabase _db = GetDatabase(DbIndex);
+            return _db.KeyDelete(keys.ToArray());
+        }
+
+        /// <summary>
+        /// 校验 Key 是否存在
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static bool KeyExists(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.KeyExists(redisKey);
+        }
+
+        /// <summary>
+        /// 重命名 Key
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisNewKey"></param>
+        /// <returns></returns>
+        public bool KeyRename(string redisKey, string redisNewKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            redisNewKey = AddKeyPrefix(redisNewKey);
+            return _db.KeyRename(redisKey, redisNewKey);
+        }
+
+        /// <summary>
+        /// 设置 Key 的时间
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="expiry"></param>
+        /// <returns></returns>
+        public bool KeyExpire(string redisKey, TimeSpan? expiry)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.KeyExpire(redisKey, expiry);
+        }
+
+        #region key-async
+
+        /// <summary>
+        /// 移除指定 Key
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<bool> KeyDeleteAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.KeyDeleteAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 移除指定 Key
+        /// </summary>
+        /// <param name="redisKeys"></param>
+        /// <returns></returns>
+        public async Task<long> KeyDeleteAsync(IEnumerable<string> redisKeys)
+        {
+            var keys = redisKeys.Select(x => (RedisKey)(x));
+            IDatabase _db = GetDatabase(DbIndex);
+            return await _db.KeyDeleteAsync(keys.ToArray());
+        }
+
+        /// <summary>
+        /// 校验 Key 是否存在
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public async Task<bool> KeyExistsAsync(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.KeyExistsAsync(redisKey);
+        }
+
+        /// <summary>
+        /// 重命名 Key
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="redisNewKey"></param>
+        /// <returns></returns>
+        public async Task<bool> KeyRenameAsync(string redisKey, string redisNewKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            redisNewKey = AddKeyPrefix(redisNewKey);
+            return await _db.KeyRenameAsync(redisKey, redisNewKey);
+        }
+
+        /// <summary>
+        /// 设置 Key 的时间
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <param name="expiry"></param>
+        /// <returns></returns>
+        public async Task<bool> KeyExpireAsync(string redisKey, TimeSpan? expiry)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return await _db.KeyExpireAsync(redisKey, expiry);
+        }
+
+        #endregion key-async
+
+        #endregion key 操做
+        /// <summary>
+        /// 使用Redis incr 记录某个Key的调用次数
+        /// </summary>
+        /// <param name="key"></param>
+        public static long SaveInvokeCount(string key)
+        {
+            try
+            {
+                key = AddKeyPrefix(key);
+                return GetDatabase(DbIndex).StringIncrement(key);
+            }
+            catch { return -1; }
+        }
+
+        /// <summary>
+        /// 配置更改时
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerConfigurationChanged(object sender, EndPointEventArgs e)
+        {
+            //LogHelper.Warn(typeof(RedisHelper), "MuxerConfigurationChanged=>e.EndPoint=" + e.EndPoint, null);
+        }
+
+        /// <summary>
+        /// 发生错误时
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerErrorMessage(object sender, RedisErrorEventArgs e)
+        {
+            //LogHelper.Error(typeof(RedisHelper), "MuxerErrorMessage=>e.EndPoint=" + e.EndPoint + ",e.Message=" + e.Message, null);
+        }
+
+        /// <summary>
+        /// 重新建立连接
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerConnectionRestored(object sender, ConnectionFailedEventArgs e)
+        {
+            //LogHelper.Warn(typeof(RedisHelper), "MuxerConnectionRestored=>e.ConnectionType=" + e.ConnectionType + ",e.EndPoint=" + e.EndPoint + ",e.FailureType=" + e.FailureType, e.Exception);
+        }
+
+        /// <summary>
+        /// 连接失败
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerConnectionFailed(object sender, ConnectionFailedEventArgs e)
+        {
+            //LogHelper.Error(typeof(RedisHelper), "MuxerConnectionFailed=>e.ConnectionType=" + e.ConnectionType + ",e.EndPoint=" + e.EndPoint + ",e.FailureType=" + e.FailureType, e.Exception);
+        }
+
+        /// <summary>
+        /// 更改集群
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerHashSlotMoved(object sender, HashSlotMovedEventArgs e)
+        {
+            //LogHelper.Warn(typeof(RedisHelper), "MuxerHashSlotMoved=>" + e.NewEndPoint + ", OldEndPoint" + e.OldEndPoint, null);
+        }
+
+        /// <summary>
+        /// redis类库错误
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private static void MuxerInternalError(object sender, InternalErrorEventArgs e)
+        {
+            //LogHelper.Error(typeof(RedisHelper), "MuxerInternalError", e.Exception);
+        }
+    }
+}

@@ -1,0 +1,1371 @@
+﻿using House.Business.Cargo;
+using House.Entity.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Web;
+
+namespace Supplier
+{
+    /// <summary>
+    /// 静态类
+    /// </summary>
+    public static class Common
+    {
+        public static void WriteTextLog(string strMessage)
+        {
+            string path = AppDomain.CurrentDomain.BaseDirectory + @"System\Log\";
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+
+            string fileFullPath = path + DateTime.Now.ToString("yyyy-MM-dd") + ".System.txt";
+            StringBuilder str = new StringBuilder();
+            str.Append("Time:    " + DateTime.Now.ToString() + "\r\n");
+            str.Append("Message: " + strMessage + "\r\n");
+            str.Append("-----------------------------------------------------------\r\n\r\n");
+            StreamWriter sw;
+            if (!File.Exists(fileFullPath))
+            {
+                sw = File.CreateText(fileFullPath);
+            }
+            else
+            {
+                sw = File.AppendText(fileFullPath);
+            }
+            sw.WriteLine(str.ToString());
+            sw.Close();
+        }
+        public static string GetGTMCFile()
+        {
+            return ConfigurationSettings.AppSettings["GTMCFile"];
+        }
+
+        /// <summary>
+        /// 马牌系统接口Continoise
+        /// </summary>
+        /// <returns></returns>
+        public static string GetContinoise()
+        {
+            return ConfigurationSettings.AppSettings["Continoise"];
+        }
+        /// <summary>
+        /// 马牌系统接口ContiappSecret
+        /// </summary>
+        /// <returns></returns>
+        public static string GetContiappSecret()
+        {
+            return ConfigurationSettings.AppSettings["ContiappSecret"];
+        }
+        /// <summary>
+        /// 马牌系统接口Key
+        /// </summary>
+        /// <returns></returns>
+        public static string GetContiappKey()
+        {
+            return ConfigurationSettings.AppSettings["ContiappKey"];
+        }
+        /// <summary>
+        /// 电脑端保存照片文件
+        /// </summary>
+        /// <param name="imgFile"></param>
+        /// <param name="modifyFileName"></param>
+        /// <param name="IsChangeName"></param>
+        public static void SaveComputerPic(HttpPostedFile imgFile, ref string modifyFileName, bool IsChangeName)
+        {
+            string imgname = DateTime.Now.Year.ToString() + DateTime.Now.Month.ToString() + DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString() + DateTime.Now.Second.ToString() + DateTime.Now.Millisecond.ToString();
+            string[] fs = imgFile.FileName.Split('.');
+            if (IsChangeName)
+            {
+                modifyFileName = imgname;
+                #region 保存图片
+                switch (fs[fs.Length - 1].ToUpper().Trim())
+                {
+                    case "WPS": modifyFileName += ".wps"; break;
+                    case "TXT": modifyFileName += ".txt"; break;
+                    case "DOC": modifyFileName += ".doc"; break;
+                    case "DOCX": modifyFileName += ".docx"; break;
+                    case "XLS": modifyFileName += ".xls"; break;
+                    case "XLSX": modifyFileName += ".xlsx"; break;
+                    case "PPT": modifyFileName += ".ppt"; break;
+                    case "PPTX": modifyFileName += ".pptx"; break;
+                    case "PDF": modifyFileName += ".pdf"; break;
+                    case "JPG": modifyFileName += ".jpg"; break;
+                    case "GIF": modifyFileName += ".gif"; break;
+                    case "PNG": modifyFileName += ".png"; break;
+                    case "BMP": modifyFileName += ".bmp"; break;
+                    case "JPEG": modifyFileName += ".jpeg"; break;
+                    case "ZIP": modifyFileName += ".zip"; break;
+                    case "RAR": modifyFileName += ".rar"; break;
+                    default: modifyFileName += ".txt"; break;
+                }
+                #endregion
+            }
+            else
+            {
+                modifyFileName = imgname = imgFile.FileName;
+            }
+
+
+            string savePath = System.Web.HttpContext.Current.Server.MapPath("../upload/Approve/" + modifyFileName);
+            imgFile.SaveAs(savePath);
+        }
+        /// <summary>
+        /// 获取微信 公众服务号的Token 
+        /// </summary>
+        /// <param name="appID"></param>
+        /// <param name="appSecret"></param>
+        /// <returns></returns>
+        public static string GetWeixinToken(string appID, string appSecret)
+        {
+            string token = string.Empty;
+            //string token = Senparc.Weixin.MP.Containers.AccessTokenContainer.TryGetAccessToken(appid, appsecret);
+            try
+            {
+                token = Senparc.Weixin.MP.Containers.AccessTokenContainer.TryGetAccessToken(appID, appSecret);
+                Senparc.Weixin.MP.Entities.GetCallBackIpResult bip = Senparc.Weixin.MP.CommonAPIs.CommonApi.GetCallBackIp(token);
+                if (bip.errcode.Equals("40001"))
+                {
+                    //WriteTextLog(bip.errcode.ToString());
+                    Senparc.Weixin.MP.Containers.AccessTokenContainer.Register(appID, appSecret, "DLTWxToken");
+                    token = Senparc.Weixin.MP.Containers.AccessTokenContainer.TryGetAccessToken(appID, appSecret);
+                }
+            }
+            catch (Exception ex)
+            {
+                //WriteTextLog("Token:" + ex.Message);
+                Senparc.Weixin.MP.Containers.AccessTokenContainer.Register(appID, appSecret, "DLTWxToken");
+                token = Senparc.Weixin.MP.Containers.AccessTokenContainer.TryGetAccessToken(appID, appSecret);
+            }
+            return token;
+        }
+        /// <summary>
+        /// 接受迪乐泰支付成功通知的列表
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltPayOrderSuccessNotice()
+        {
+            return ConfigurationSettings.AppSettings["dltPayOrderSuccessNotice"];
+        }
+        /// <summary>
+        /// 接受迪乐泰下单成功通知的列表
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltGetOrderNotice()
+        {
+            return ConfigurationSettings.AppSettings["dltGetOrderNotice"];
+        }
+        /// <summary>
+        /// 湖北仓库接受商城下单通知
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltGetHuBeiOrderNotice()
+        {
+            return ConfigurationSettings.AppSettings["dltGetHuBeiOrderNotice"];
+        }
+        /// <summary>
+        /// 西安迪乐泰接受商城下单 通知
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltGetXiAnOrderNotice()
+        {
+            return ConfigurationSettings.AppSettings["dltGetXiAnOrderNotice"];
+        }
+        /// <summary>
+        /// 西安迪乐泰接受商城下单 通知
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltGetMeiZhouOrderNotice()
+        {
+            return ConfigurationSettings.AppSettings["dltGetMeiZhouOrderNotice"];
+        }
+        /// <summary>
+        /// 广州仓库迪乐泰 接受商城下单通知
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltGetGuangZhouOrderNotice()
+        {
+            return ConfigurationSettings.AppSettings["dltGetGuangZhouOrderNotice"];
+        }
+        /// <summary>
+        /// 海南仓库 接受商城下单通知
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltGetHaiNanOrderNotice()
+        {
+            return ConfigurationSettings.AppSettings["dltGetHaiNanOrderNotice"];
+        }
+        /// <summary>
+        /// 揭阳仓库商城 下单通知
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltGetJieYangOrderNotice()
+        {
+            return ConfigurationSettings.AppSettings["dltGetJieYangOrderNotice"];
+        }
+        /// <summary>
+        /// 四川 仓库商城 下单通知
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltGetSiChuanOrderNotice()
+        {
+            return ConfigurationSettings.AppSettings["dltGetSiChuanOrderNotice"];
+        }
+        /// <summary>
+        /// APP开发者平台
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltOpenAPPID()
+        {
+            return ConfigurationSettings.AppSettings["dltOpenAPPID"];
+        }
+        public static string GetdltOpenAppSecret()
+        {
+            return ConfigurationSettings.AppSettings["dltOpenAppSecret"];
+        }
+        /// <summary>
+        /// 获取迪乐泰中国微信服务号的Token
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltToken()
+        {
+            return ConfigurationSettings.AppSettings["dltToken"];
+        }
+        public static string GetdltTransfer_Url()
+        {
+            return ConfigurationSettings.AppSettings["dltTransfer_Url"];
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public static string GetdltAPPID()
+        {
+            return ConfigurationSettings.AppSettings["dltAPPID"];
+        }
+        public static string GetdltAppSecret()
+        {
+            return ConfigurationSettings.AppSettings["dltAppSecret"];
+        }
+        public static string GetdltEncodingAESKey()
+        {
+            return ConfigurationSettings.AppSettings["dltEncodingAESKey"];
+        }
+        /// <summary>
+        /// 微信企业号Token
+        /// </summary>
+        /// <returns></returns>
+        public static string GetQYToken()
+        {
+            return ConfigurationSettings.AppSettings["Token"];
+        }
+        /// <summary>
+        /// 微信企业号AesKey
+        /// </summary>
+        /// <returns></returns>
+        public static string GetQYEncodingAESKey()
+        {
+            return ConfigurationSettings.AppSettings["EncodingAESKey"];
+        }
+        /// <summary>
+        /// 微信企业号CorpID
+        /// </summary>
+        /// <returns></returns>
+        public static string GetQYCorpID()
+        {
+            return ConfigurationSettings.AppSettings["CorpID"];
+        }
+        /// <summary>
+        /// 获取回调URL路径
+        /// </summary>
+        /// <returns></returns>
+        public static string GetRedirect_Url()
+        {
+            return ConfigurationSettings.AppSettings["redirect_Url"];
+        }
+
+        /// <summary>
+        /// 微信企业号CorpSecret
+        /// </summary>
+        /// <returns></returns>
+        public static string GetQYCorpSecret()
+        {
+            return ConfigurationSettings.AppSettings["CorpSecret"];
+        }
+        /// <summary>
+        /// 获取系统名称
+        /// </summary>
+        public static string GetSystemName()
+        {
+            return ConfigurationSettings.AppSettings["SystemName"];
+        }
+        /// <summary>
+        /// 获取系统域名
+        /// </summary>
+        /// <returns></returns>
+        public static string GetSystemDomain()
+        {
+            return ConfigurationSettings.AppSettings["SystemDomain"];
+        }
+        /// <summary>
+        /// 获取系统版本
+        /// </summary>
+        /// <returns></returns>
+        public static string GetSystemVersion()
+        {
+            return ConfigurationSettings.AppSettings["SystemVersion"];
+        }
+        /// <summary>
+        /// 获取系统版本
+        /// </summary>
+        /// <returns></returns>
+        public static string GetMemcacheInfo()
+        {
+            return ConfigurationSettings.AppSettings["memcache"];
+        }
+        /// <summary>
+        /// 员工资料 保存照片文件
+        /// </summary>
+        /// <param name="imgFile"></param>
+        /// <param name="modifyFileName"></param>
+        /// <param name="IsSaveHLY">是否保存好来运服务器</param>
+        public static void SaveUserPic(HttpPostedFile imgFile, ref string FileName, ref string FilePath)
+        {
+            string imgname = DateTime.Now.Year.ToString() + DateTime.Now.Month.ToString() + DateTime.Now.Day.ToString() + DateTime.Now.Hour.ToString() + DateTime.Now.Minute.ToString() + DateTime.Now.Second.ToString() + DateTime.Now.Millisecond.ToString();
+            string[] fs = imgFile.FileName.Split('.');
+            FileName = imgname;
+            #region 保存图片
+            switch (fs[fs.Length - 1].ToUpper().Trim())
+            {
+                case "WPS": FileName += ".wps"; break;
+                case "TXT": FileName += ".txt"; break;
+                case "DOC": FileName += ".doc"; break;
+                case "DOCX": FileName += ".docx"; break;
+                case "XLS": FileName += ".xls"; break;
+                case "XLSX": FileName += ".xlsx"; break;
+                case "PPT": FileName += ".ppt"; break;
+                case "PPTX": FileName += ".pptx"; break;
+                case "PDF": FileName += ".pdf"; break;
+                case "JPG": FileName += ".jpg"; break;
+                case "GIF": FileName += ".gif"; break;
+                case "PNG": FileName += ".png"; break;
+                case "BMP": FileName += ".bmp"; break;
+                case "JPEG": FileName += ".jpeg"; break;
+                case "ZIP": FileName += ".zip"; break;
+                case "RAR": FileName += ".rar"; break;
+                default: FileName += ".txt"; break;
+            }
+            #endregion
+            FilePath = "../upload/ClientFile/" + FileName;
+            string savePath = System.Web.HttpContext.Current.Server.MapPath("../upload/ClientFile/" + FileName);
+            imgFile.SaveAs(savePath);
+        }
+        /// <summary>
+        /// 获取系统名称和版本号
+        /// </summary>
+        /// <returns></returns>
+        public static string GetSystemNameAndVersion()
+        {
+            return ConfigurationSettings.AppSettings["SystemName"] + " " + ConfigurationSettings.AppSettings["SystemVersion"];
+        }
+        /// <summary>
+        /// 获取统一账号平台的API
+        /// </summary>
+        public static string GethouseAPI()
+        {
+            return ConfigurationSettings.AppSettings["houseAPI"];
+        }
+        /// <summary>
+        /// 获取迪乐泰销售部门代码
+        /// </summary>
+        /// <returns></returns>
+        public static string GetDLTDepCode()
+        {
+            return ConfigurationSettings.AppSettings["dltDepCode"];
+        }
+        /// <summary>
+        /// 获取用户IP地址
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
+        public static string GetUserIP(HttpRequest request)
+        {
+            //另外一种取电脑IP的方法，通过Request
+            string x = request.ServerVariables["HTTP_X_FORWARDED_FOR"];
+            string y = request.ServerVariables["REMOTE_ADDR"];
+            if (string.IsNullOrEmpty(x))
+            {
+                return y;
+            }
+            return x;
+            //一种取电脑IP的方法，通过System.Net.Dns
+            //IPAddress[] ip = Dns.GetHostAddresses(Dns.GetHostName());
+            //if (ip.Length > 0)
+            //{
+            //    return ip[0].ToString();
+            //}
+        }
+
+        /// <summary>
+        /// 加密密码返回加密后的密文
+        /// 【1】前两位与第七，八位进行替换
+        /// 【2】转换成字节数据，将salt添加至未位
+        /// 【3】用SHA256加密，返回
+        /// </summary>
+        /// <param name="password"></param>
+        /// <param name="salt"></param>
+        /// <returns></returns>
+        public static string EncodePassword(string password)
+        {
+            string passOne = password.Substring(0, 2);
+            string passTwo = password.Substring(6, 2);
+            string passThree = password.Substring(2, 4);
+            string passFour = password.Substring(8, password.Length - 8);
+            string result = passTwo + passThree + passOne + passFour;
+
+            byte[] pass = Encoding.Unicode.GetBytes(result);
+            //byte[] saltByte = Convert.FromBase64String(salt);
+            //byte[] dst = new byte[pass.Length + saltByte.Length];
+            byte[] returnPassword = null;
+
+            //Buffer.BlockCopy(pass, 0, dst, 0, pass.Length);
+            //Buffer.BlockCopy(saltByte, 0, dst, pass.Length, saltByte.Length);
+
+            SHA256 sha = SHA256Cng.Create();
+            //SHA256 sha = new SHA256Managed();
+            returnPassword = sha.ComputeHash(pass);
+            sha.Clear();
+
+            return Convert.ToBase64String(returnPassword);
+        }
+        /// <summary>
+        /// 获取系统日期，带星期
+        /// </summary>
+        public static string GetSystemDate()
+        {
+            return DateTime.Today.ToLongDateString() + " 星期" + getWeekday(DateTime.Today.DayOfWeek);
+        }
+
+        /// <summary>
+        /// 返回星期几
+        /// </summary>
+        /// <param name="d"></param>
+        /// <returns></returns>
+        public static string getWeekday(DayOfWeek d)
+        {
+            string result;
+            switch (d)
+            {
+                case DayOfWeek.Friday:
+                    result = "五";
+                    break;
+                case DayOfWeek.Monday:
+                    result = "一";
+                    break;
+                case DayOfWeek.Saturday:
+                    result = "六";
+                    break;
+                case DayOfWeek.Sunday:
+                    result = "天";
+                    break;
+                case DayOfWeek.Thursday:
+                    result = "四";
+                    break;
+                case DayOfWeek.Tuesday:
+                    result = "二";
+                    break;
+                case DayOfWeek.Wednesday:
+                    result = "三";
+                    break;
+                default:
+                    result = "一";
+                    break;
+            }
+            return result;
+        }
+        /// <summary>
+        /// 返回当前日期，格式是：yyMMdd
+        /// </summary>
+        /// <returns></returns>
+        public static string GetNowDate()
+        {
+            return DateTime.Now.ToString("yyMMdd");
+        }
+        /// <summary>
+        /// 生成随机的四位数字 返回字符类型，不够四位前面补0
+        /// </summary>
+        /// <returns></returns>
+        public static string GetRandomFourNumString()
+        {
+            string result = string.Empty;
+            Random rd = new Random((int)DateTime.Now.Ticks);
+            int sd = rd.Next(1, 9999);
+            switch (sd.ToString().Length)
+            {
+                case 1:
+                    result += "000" + sd.ToString();
+                    break;
+                case 2:
+                    result += "00" + sd.ToString();
+                    break;
+                case 3:
+                    result += "0" + sd.ToString();
+                    break;
+                default:
+                    result = sd.ToString();
+                    break;
+            }
+            return result;
+        }
+        /// <summary>
+        /// 生成随机的四位数字
+        /// </summary>
+        /// <returns></returns>
+        public static int GetRandomFourNumInt()
+        {
+            Random rd = new Random((int)DateTime.Now.Ticks);
+            int sd = rd.Next(1000, 9999);
+            return sd;
+        }
+        /// <summary>
+        /// 生成随机的六位数字
+        /// </summary>
+        /// <returns></returns>
+        public static int GetRandomSixNum()
+        {
+            Random rd = new Random((int)DateTime.Now.Ticks);
+            int sd = rd.Next(100000, 999999);
+            return sd;
+        }
+        /// <summary>
+        /// 生成客户编码 随机的不重复的6位数字
+        /// </summary>
+        /// <returns></returns>
+        public static int GetClientNum()
+        {
+            int sd = GetRandomSixNum();
+            CargoClientBus bus = new CargoClientBus();
+            if (bus.IsExistCargoClientNum(new CargoClientEntity { ClientNum = sd }))
+            {
+                sd = GetClientNum();
+            }
+            return sd;
+        }
+        /// <summary>  
+        /// 转半角的函数(DBC case)  
+        /// </summary>  
+        /// <param name="input">任意字符串</param>  
+        /// <returns>半角字符串</returns>  
+        ///<remarks>  
+        ///全角空格为12288，半角空格为32  
+        ///其他字符半角(33-126)与全角(65281-65374)的对应关系是：均相差65248  
+        ///</remarks>  
+        public static string ToDBC(string input)
+        {
+            char[] c = input.ToCharArray();
+            for (int i = 0; i < c.Length; i++)
+            {
+                if (c[i] == 12288)
+                {
+                    c[i] = (char)32;
+
+                    continue;
+                }
+                if (c[i] > 65280 && c[i] < 65375)
+
+                    c[i] = (char)(c[i] - 65248);
+            }
+            return new string(c);
+        }
+        #region 一个用hash实现的加密解密方法
+        /// <summary>
+        /// 加密
+        /// </summary>
+        /// <param name="src"></param>
+        /// <returns></returns>
+        public static string EncryptStrByHash(string src)
+        {
+            if (src.Length == 0)
+            {
+                return "";
+            }
+            byte[] HaKey = System.Text.Encoding.ASCII.GetBytes((src + "Test").ToCharArray());
+            byte[] HaData = new byte[20];
+            HMACSHA1 Hmac = new HMACSHA1(HaKey);
+            CryptoStream cs = new CryptoStream(Stream.Null, Hmac, CryptoStreamMode.Write);
+            try
+            {
+                cs.Write(HaData, 0, HaData.Length);
+            }
+            finally
+            {
+                cs.Close();
+            }
+            string HaResult = System.Convert.ToBase64String(Hmac.Hash).Substring(0, 16);
+            byte[] RiKey = System.Text.Encoding.ASCII.GetBytes(HaResult.ToCharArray());
+            byte[] RiDataBuf = System.Text.Encoding.ASCII.GetBytes(src.ToCharArray());
+            byte[] EncodedBytes = { };
+            MemoryStream ms = new MemoryStream();
+            RijndaelManaged rv = new RijndaelManaged();
+            cs = new CryptoStream(ms, rv.CreateEncryptor(RiKey, RiKey), CryptoStreamMode.Write);
+            try
+            {
+                cs.Write(RiDataBuf, 0, RiDataBuf.Length);
+                cs.FlushFinalBlock();
+                EncodedBytes = ms.ToArray();
+            }
+            finally
+            {
+                ms.Close();
+                cs.Close();
+            }
+            return HaResult + System.Convert.ToBase64String(EncodedBytes);
+        }
+
+        /// <summary>
+        /// 解密
+        /// </summary>
+        /// <param name="src"></param>
+        /// <returns></returns>
+        public static string DecrypStrByHash(string src)
+        {
+            if (src.Length < 40) return "";
+            byte[] SrcBytes = System.Convert.FromBase64String(src.Substring(16));
+            byte[] RiKey = System.Text.Encoding.ASCII.GetBytes(src.Substring(0, 16).ToCharArray());
+            byte[] InitialText = new byte[SrcBytes.Length];
+            RijndaelManaged rv = new RijndaelManaged();
+            MemoryStream ms = new MemoryStream(SrcBytes);
+            CryptoStream cs = new CryptoStream(ms, rv.CreateDecryptor(RiKey, RiKey), CryptoStreamMode.Read);
+            try
+            {
+                cs.Read(InitialText, 0, InitialText.Length);
+            }
+            finally
+            {
+                ms.Close();
+                cs.Close();
+            }
+            System.Text.StringBuilder Result = new System.Text.StringBuilder();
+            for (int i = 0; i < InitialText.Length; ++i) if (InitialText[i] > 0) Result.Append((char)InitialText[i]);
+            return Result.ToString();
+        }
+
+        #endregion
+        /// <summary>
+        /// 读取JSON文件
+        /// </summary>
+        /// <param name="filepath"></param>
+        /// <returns></returns>
+        public static string GetFileJson(string filepath)
+        {
+            string json = string.Empty;
+            using (FileStream fs = new FileStream(filepath, FileMode.Open, System.IO.FileAccess.Read, FileShare.ReadWrite))
+            {
+                using (StreamReader sr = new StreamReader(fs, Encoding.GetEncoding("gb2312")))
+                {
+                    json = sr.ReadToEnd().ToString();
+                }
+            }
+            return json;
+        }
+        /// <summary>
+        /// 返回轮胎最高速度
+        /// </summary>
+        /// <param name="filepath">Json文件地址</param>
+        /// <param name="speedLevel">速度级别</param>
+        /// <returns></returns>
+        public static int ReturnTyreSpeed(string filepath, string speedLevel)
+        {
+            int result = 0;
+            string json = string.Empty;
+            using (FileStream fs = new FileStream(filepath, FileMode.Open, System.IO.FileAccess.Read, FileShare.ReadWrite))
+            {
+                using (StreamReader sr = new StreamReader(fs, Encoding.GetEncoding("gb2312")))
+                {
+                    json = sr.ReadToEnd().ToString();
+                }
+            }
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            foreach (Hashtable row in rows)
+            {
+                if (speedLevel.Equals(Convert.ToString(row["id"])))
+                {
+                    result = Convert.ToInt32(row["text"]);//最高速度
+                    break;
+                }
+            }
+            return result;
+        }
+        public static string GetMaxAccountNo(string hCode, int hID)
+        {
+            string result = string.Empty;
+            CargoClientBus bus = new CargoClientBus();
+
+            int oNum = bus.GetMaxAccountNumByCurDate(new CargoClientAccountEntity { HouseID = hID, StartDate = DateTime.Now, EndDate = DateTime.Now });
+            string oStr = string.Empty;
+            switch ((oNum + 1).ToString().Length)
+            {
+                case 1:
+                    oStr = "000" + (oNum + 1).ToString();
+                    break;
+                case 2:
+                    oStr = "00" + (oNum + 1).ToString();
+                    break;
+                case 3:
+                    oStr = "0" + (oNum + 1).ToString();
+                    break;
+                default:
+                    oStr = (oNum + 1).ToString();
+                    break;
+            }
+            result = hCode + DateTime.Now.ToString("yyMMdd") + oStr;
+            return result;
+        }
+        /// <summary>
+        /// 获取当前仓库当前日期的最大顺序号
+        /// </summary>
+        /// <param name="hID"></param>
+        /// <param name="hCode"></param>
+        /// <returns></returns>
+        public static string GetMaxOrderNumByCurrentDate(int hID, string hCode, out int OrderNum, int nextNum = 0)
+        {
+            string result = string.Empty;
+            CargoOrderBus bus = new CargoOrderBus();
+
+            //int oNum = bus.GetMaxOrderNumByCurrentDate(new CargoOrderEntity { HouseID = hID, StartDate = DateTime.Now, EndDate = DateTime.Now }) + nextNum;
+
+            string key = hID.ToString() + "_" + DateTime.Now.ToString("yyyyMMdd");
+            int oNum = 0;
+            if (!RedisHelper.HashExists("HouseOrderNo", key))
+            {
+                //不存在缓存
+                int oMaxNum = bus.GetMaxOrderNumByCurrentDate(new CargoOrderEntity { HouseID = hID, StartDate = DateTime.Now, EndDate = DateTime.Now }) + nextNum;
+                RedisHelper.HashSet("HouseOrderNo", key, (oMaxNum + 1).ToString());
+
+            }
+            else
+            {
+                oNum = Convert.ToInt32(RedisHelper.HashGet("HouseOrderNo", key));
+                RedisHelper.HashSet("HouseOrderNo", key, (oNum + 1).ToString());
+            }
+
+
+            string oStr = string.Empty;
+            switch ((oNum + 1).ToString().Length)
+            {
+                case 1:
+                    oStr = "00" + (oNum + 1).ToString();
+                    break;
+                case 2:
+                    oStr = "0" + (oNum + 1).ToString();
+                    break;
+                default:
+                    oStr = (oNum + 1).ToString();
+                    break;
+            }
+            result = hCode.Trim() + DateTime.Now.ToString("yyMMdd") + oStr;
+            OrderNum = oNum + 1;
+            return result;
+        }
+
+        /// <summary>
+        /// 检验是否是合法的日期格式
+        /// </summary>
+        /// <param name="strDate"></param>
+        /// <returns></returns>
+        public static bool IsDateLegal(string strDate)
+        {
+            DateTime dt;
+            return (DateTime.TryParse(strDate, out dt));
+        }
+        /// <summary>   
+        /// 计算文本长度，区分中英文字符，中文算两个长度，英文算一个长度
+        /// </summary>
+        /// <param name="Text">需计算长度的字符串</param>
+        /// <returns>int</returns>
+        public static int Text_Length(string Text)
+        {
+            int len = 0;
+            for (int i = 0; i < Text.Length; i++)
+            {
+                byte[] byte_len = Encoding.Default.GetBytes(Text.Substring(i, 1));
+                if (byte_len.Length > 1)
+                    len += 2;  //如果长度大于1，是中文，占两个字节，+2
+                else
+                    len += 1;  //如果长度等于1，是英文，占一个字节，+1
+            }
+            return len;
+        }
+        /// 判断字符串是否与指定正则表达式匹配
+        /// 要验证的字符串
+        /// 正则表达式
+        /// 验证通过返回true
+        public static bool IsMatch(string input, string regularExp)
+        {
+            return Regex.IsMatch(input, regularExp);
+        }
+        /// 
+
+        /// 验证非负整数（正整数 + 0）
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsUnMinusInt(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.UnMinusInteger);
+        }
+        /// 验证正整数
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsPlusInt(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.PlusInteger);
+        }
+        /// 验证非正整数（负整数 + 0） 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsUnPlusInt(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.UnPlusInteger);
+        }
+        /// 验证负整数
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsMinusInt(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.MinusInteger);
+        }
+        /// 验证整数
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsInt(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Integer);
+        }
+        /// 验证非负浮点数（正浮点数 + 0）
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsUnMinusFloat(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.UnMinusFloat);
+        }
+        /// 验证正浮点数
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsPlusFloat(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.PlusFloat);
+        }
+        /// 验证非正浮点数（负浮点数 + 0）
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsUnPlusFloat(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.UnPlusFloat);
+        }
+        /// 验证负浮点数
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsMinusFloat(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.MinusFloat);
+        }
+        /// 验证浮点数
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsFloat(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Float);
+        }
+
+        /// 验证由26个英文字母组成的字符串
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsLetter(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Letter);
+        }
+        /// 验证由中文组成的字符串
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsChinese(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Chinese);
+        }
+        /// 
+
+        /// 验证由26个英文字母的大写组成的字符串
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsUpperLetter(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.UpperLetter);
+        }
+
+        /// 
+
+        /// 验证由26个英文字母的小写组成的字符串
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsLowerLetter(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.LowerLetter);
+        }
+
+        /// 
+
+        /// 验证由数字和26个英文字母组成的字符串
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsNumericOrLetter(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.NumericOrLetter);
+        }
+
+        /// 
+
+        /// 验证由数字组成的字符串
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsNumeric(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Numeric);
+        }
+        /// 
+        /// 验证由数字和26个英文字母或中文组成的字符串
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsNumericOrLetterOrChinese(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.NumbericOrLetterOrChinese);
+        }
+
+        /// 
+
+        /// 验证由数字、26个英文字母或者下划线组成的字符串
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsNumericOrLetterOrUnderline(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.NumericOrLetterOrUnderline);
+        }
+
+        /// 
+
+        /// 验证email地址
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsEmail(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Email);
+        }
+
+        /// 
+
+        /// 验证URL
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsUrl(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Url);
+        }
+
+        /// 
+
+        /// 验证电话号码
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsTelephone(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Telephone);
+        }
+
+        /// 
+
+        /// 验证手机号码
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsMobile(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Mobile);
+        }
+
+        /// 
+
+        /// 通过文件扩展名验证图像格式
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsImageFormat(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.ImageFormat);
+        }
+
+        /// 
+
+        /// 验证IP
+        /// 
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsIP(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.IP);
+        }
+        /// 验证日期（YYYY-MM-DD）
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsDate(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Date);
+        }
+        /// 验证日期和时间（YYYY-MM-DD HH:MM:SS）
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsDateTime(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.DateTime);
+        }
+        /// 验证颜色（#ff0000）
+        /// 要验证的字符串
+        /// 验证通过返回true
+        public static bool IsColor(string input)
+        {
+            return Regex.IsMatch(input, RegularExp.Color);
+        }
+        /// <summary> 
+        /// 取得HTML中所有图片的 URL。 
+        /// </summary> 
+        /// <param name="sHtmlText">HTML代码</param> 
+        /// <returns>图片的URL列表</returns> 
+        public static string[] GetHtmlImageUrlList(string sHtmlText)
+        {
+            // 定义正则表达式用来匹配 img 标签 
+            Regex regImg = new Regex(@"<img\b[^<>]*?\bsrc[\s\t\r\n]*=[\s\t\r\n]*[""']?[\s\t\r\n]*(?<imgUrl>[^\s\t\r\n""'<>]*)[^<>]*?/?[\s\t\r\n]*>", RegexOptions.IgnoreCase);
+
+            // 搜索匹配的字符串 
+            MatchCollection matches = regImg.Matches(sHtmlText);
+            int i = 0;
+            string[] sUrlList = new string[matches.Count];
+
+            // 取得匹配项列表 
+            foreach (Match match in matches)
+                sUrlList[i++] = match.Groups["imgUrl"].Value;
+            return sUrlList;
+        }
+        /// <summary>
+        /// MD5加密
+        /// </summary>
+        /// <param name="md5Hash"></param>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static string GetMd5Hash(MD5 md5Hash, string input)
+        {
+            byte[] data = md5Hash.ComputeHash(Encoding.UTF8.GetBytes(input));
+            StringBuilder sBuilder = new StringBuilder();
+            for (int i = 0; i < data.Length; i++)
+            {
+                sBuilder.Append(data[i].ToString("x2"));
+            }
+            return sBuilder.ToString();
+        }
+        /// <summary>
+        /// 解密判断
+        /// </summary>
+        /// <param name="md5Hash"></param>
+        /// <param name="input"></param>
+        /// <param name="hash"></param>
+        /// <returns></returns>
+        public static bool VerifyMd5Hash(MD5 md5Hash, string input, string hash)
+        {
+            string hashOfInput = GetMd5Hash(md5Hash, input);
+            StringComparer comparer = StringComparer.OrdinalIgnoreCase;
+            if (0 == comparer.Compare(hashOfInput, hash))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 获得运单总收入的百分比
+        /// </summary>
+        /// <returns></returns>
+        public static decimal GetProfitPCT()
+        {
+            return Convert.ToDecimal(ConfigurationSettings.AppSettings["ProfitPCT"]);
+        }
+        /// <summary>
+        /// 在指定的字符串列表CnStr中检索符合拼音索引字符串
+        /// </summary>
+        /// <param name="CnStr">汉字字符串</param>
+        /// <returns>相对应的汉语拼音首字母串</returns>
+        public static string GetSpellCode(string CnStr)
+        {
+            string strTemp = "";
+            for (int i = 0; i < CnStr.Length; i++)
+            {
+                strTemp += GetCharSpellCode(CnStr.Substring(i, 1));
+            }
+            return strTemp;
+        }
+        /// <summary>
+        /// 截取字符长度
+        /// </summary>
+        /// <param name="str">被截取的字符串</param>
+        /// <param name="len">所截取的长度</param>
+        /// <returns>子字符串</returns>
+        public static string CutString(string str, int len)
+        {
+            if (str == null || str.Length == 0 || len <= 0)
+            {
+                return string.Empty;
+            }
+            int l = str.Length;
+            #region 计算长度
+            int clen = 0;
+            while (clen < len && clen < l)
+            {
+                //每遇到一个中文，则将目标长度减一。
+                if ((int)str[clen] > 128) { len--; }
+                clen++;
+            }
+            #endregion
+
+            if (clen < l)
+            {
+                return str.Substring(0, clen) + "...";
+            }
+            else
+            {
+                return str;
+            }
+        }
+        /// <summary>
+        /// 得到一个汉字的拼音第一个字母，如果是一个英文字母则直接返回大写字母
+        /// </summary>
+        /// <param name="CnChar">单个汉字</param>
+        /// <returns>单个大写字母</returns>
+        private static string GetCharSpellCode(string CnChar)
+        {
+
+            long iCnChar;
+
+            byte[] ZW = System.Text.Encoding.Default.GetBytes(CnChar);
+
+            //如果是字母，则直接返回首字母
+
+            if (ZW.Length == 1)
+            {
+
+                return CutString(CnChar.ToUpper(), 1);
+
+            }
+            else
+            {
+
+                // get the array of byte from the single char
+
+                int i1 = (short)(ZW[0]);
+
+                int i2 = (short)(ZW[1]);
+
+                iCnChar = i1 * 256 + i2;
+
+            }
+
+            // iCnChar match the constant
+
+            if ((iCnChar >= 45217) && (iCnChar <= 45252))
+            {
+
+                return "A";
+
+            }
+
+            else if ((iCnChar >= 45253) && (iCnChar <= 45760))
+            {
+
+                return "B";
+
+            }
+            else if ((iCnChar >= 45761) && (iCnChar <= 46317))
+            {
+
+                return "C";
+
+            }
+            else if ((iCnChar >= 46318) && (iCnChar <= 46825))
+            {
+
+                return "D";
+
+            }
+            else if ((iCnChar >= 46826) && (iCnChar <= 47009))
+            {
+
+                return "E";
+
+            }
+            else if ((iCnChar >= 47010) && (iCnChar <= 47296))
+            {
+
+                return "F";
+
+            }
+            else if ((iCnChar >= 47297) && (iCnChar <= 47613))
+            {
+
+                return "G";
+
+            }
+            else if ((iCnChar >= 47614) && (iCnChar <= 48118))
+            {
+
+                return "H";
+
+            }
+            else if ((iCnChar >= 48119) && (iCnChar <= 49061))
+            {
+
+                return "J";
+
+            }
+            else if ((iCnChar >= 49062) && (iCnChar <= 49323))
+            {
+
+                return "K";
+
+            }
+            else if ((iCnChar >= 49324) && (iCnChar <= 49895))
+            {
+
+                return "L";
+
+            }
+            else if ((iCnChar >= 49896) && (iCnChar <= 50370))
+            {
+
+                return "M";
+
+            }
+            else if ((iCnChar >= 50371) && (iCnChar <= 50613))
+            {
+
+                return "N";
+
+            }
+            else if ((iCnChar >= 50614) && (iCnChar <= 50621))
+            {
+
+                return "O";
+
+            }
+            else if ((iCnChar >= 50622) && (iCnChar <= 50905))
+            {
+
+                return "P";
+
+            }
+            else if ((iCnChar >= 50906) && (iCnChar <= 51386))
+            {
+
+                return "Q";
+
+            }
+            else if ((iCnChar >= 51387) && (iCnChar <= 51445))
+            {
+
+                return "R";
+
+            }
+            else if ((iCnChar >= 51446) && (iCnChar <= 52217))
+            {
+
+                return "S";
+
+            }
+            else if ((iCnChar >= 52218) && (iCnChar <= 52697))
+            {
+
+                return "T";
+
+            }
+            else if ((iCnChar >= 52698) && (iCnChar <= 52979))
+            {
+
+                return "W";
+
+            }
+            else if ((iCnChar >= 52980) && (iCnChar <= 53640))
+            {
+
+                return "X";
+
+            }
+            else if ((iCnChar >= 53689) && (iCnChar <= 54480))
+            {
+
+                return "Y";
+
+            }
+            else if ((iCnChar >= 54481) && (iCnChar <= 55289))
+            {
+
+                return "Z";
+
+            }
+            else
+
+                return ("?");
+
+        }
+    }
+}
+public struct RegularExp
+{
+    public const string Chinese = @"^[\u4E00-\u9FA5\uF900-\uFA2D]+$";
+    public const string Color = "^#[a-fA-F0-9]{6}";
+    public const string Date = @"^((((1[6-9]|[2-9]\d)\d{2})-(0?[13578]|1[02])-(0?[1-9]|[12]\d|3[01]))|(((1[6-9]|[2-9]\d)\d{2})-(0?[13456789]|1[012])-(0?[1-9]|[12]\d|30))|(((1[6-9]|[2-9]\d)\d{2})-0?2-(0?[1-9]|1\d|2[0-8]))|(((1[6-9]|[2-9]\d)(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00))-0?2-29-))$";
+    public const string DateTime = @"^((((1[6-9]|[2-9]\d)\d{2})-(0?[13578]|1[02])-(0?[1-9]|[12]\d|3[01]))|(((1[6-9]|[2-9]\d)\d{2})-(0?[13456789]|1[012])-(0?[1-9]|[12]\d|30))|(((1[6-9]|[2-9]\d)\d{2})-0?2-(0?[1-9]|1\d|2[0-8]))|(((1[6-9]|[2-9]\d)(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00))-0?2-29-)) (20|21|22|23|[0-1]?\d):[0-5]?\d:[0-5]?\d$";
+    public const string Email = @"^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$";
+    public const string Float = @"^(-?\d+)(\.\d+)?$";
+    public const string ImageFormat = @"\.(?i:jpg|bmp|gif|ico|pcx|jpeg|tif|png|raw|tga)$";
+    public const string Integer = @"^-?\d+$";
+    public const string IP = @"^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$";
+    public const string Letter = "^[A-Za-z]+$";
+    public const string LowerLetter = "^[a-z]+$";
+    public const string MinusFloat = @"^(-(([0-9]+\.[0-9]*[1-9][0-9]*)|([0-9]*[1-9][0-9]*\.[0-9]+)|([0-9]*[1-9][0-9]*)))$";
+    public const string MinusInteger = "^-[0-9]*[1-9][0-9]*$";
+    public const string Mobile = "^0{0,1}13[0-9]{9}$";
+    public const string NumbericOrLetterOrChinese = @"^[A-Za-z0-9\u4E00-\u9FA5\uF900-\uFA2D]+$";
+    public const string Numeric = "^[0-9]+$";
+    public const string NumericOrLetter = "^[A-Za-z0-9]+$";
+    public const string NumericOrLetterOrUnderline = @"^\w+$";
+    public const string PlusFloat = @"^(([0-9]+\.[0-9]*[1-9][0-9]*)|([0-9]*[1-9][0-9]*\.[0-9]+)|([0-9]*[1-9][0-9]*))$";
+    public const string PlusInteger = "^[0-9]*[1-9][0-9]*$";
+    public const string Telephone = @"(\d+-)?(\d{4}-?\d{7}|\d{3}-?\d{8}|^\d{7,8})(-\d+)?";
+    public const string UnMinusFloat = @"^\d+(\.\d+)?$";
+    public const string UnMinusInteger = @"\d+$";
+    public const string UnPlusFloat = @"^((-\d+(\.\d+)?)|(0+(\.0+)?))$";
+    public const string UnPlusInteger = @"^((-\d+)|(0+))$";
+    public const string UpperLetter = "^[A-Z]+$";
+    public const string Url = @"^http(s)?://([\w-]+\.)+[\w-]+(/[\w- ./?%&=]*)?$";
+}

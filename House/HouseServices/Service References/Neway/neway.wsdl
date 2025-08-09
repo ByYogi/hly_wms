@@ -1,0 +1,548 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://tempuri.org/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" targetNamespace="http://tempuri.org/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://tempuri.org/">
+      <s:element name="QueryAwbStatusList">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="awbno" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="BelongSystem" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="QueryAwbStatusListResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="QueryAwbStatusListResult" type="tns:ArrayOfAwbStatus" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfAwbStatus">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="AwbStatus" nillable="true" type="tns:AwbStatus" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="AwbStatus">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="BelongSystem" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="TID" type="s:long" />
+          <s:element minOccurs="1" maxOccurs="1" name="AwbID" type="s:long" />
+          <s:element minOccurs="0" maxOccurs="1" name="AwbNo" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="TruckFlag" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="CurrentLocation" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="LastHour" type="s:decimal" />
+          <s:element minOccurs="1" maxOccurs="1" name="ArriveTime" nillable="true" type="s:dateTime" />
+          <s:element minOccurs="0" maxOccurs="1" name="DetailInfo" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="OP_ID" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="OP_DATE" type="s:dateTime" />
+          <s:element minOccurs="0" maxOccurs="1" name="UserName" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="CheckStatus" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Signer" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="SignTime" nillable="true" type="s:dateTime" />
+          <s:element minOccurs="0" maxOccurs="1" name="FilePath" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="TbFilePath" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Latitude" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Longitude" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Files" type="tns:ArrayOfAwbFilesEntity" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfAwbFilesEntity">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="AwbFilesEntity" nillable="true" type="tns:AwbFilesEntity" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="AwbFilesEntity">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="BelongSystem" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="AwbNo" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="AwbID" type="s:long" />
+          <s:element minOccurs="0" maxOccurs="1" name="FileName" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="FileType" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="FileSize" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="FilePath" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="TbFilePath" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="OP_ID" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="OP_DATE" type="s:dateTime" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="AuthHeader" type="tns:AuthHeader" />
+      <s:complexType name="AuthHeader">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="1" name="UserName" type="s:string" />
+          <s:element minOccurs="0" maxOccurs="1" name="Password" type="s:string" />
+        </s:sequence>
+        <s:anyAttribute />
+      </s:complexType>
+      <s:element name="QueryAwbFileList">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="1" maxOccurs="1" name="AwbID" type="s:long" />
+            <s:element minOccurs="0" maxOccurs="1" name="AwbNo" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="QueryAwbFileListResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="QueryAwbFileListResult" type="tns:ArrayOfAwbFilesEntity" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="QueryAwbStatus">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="awbno" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="QueryAwbStatusResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="QueryAwbStatusResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AddReturnAwb">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="FileUrl" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="AwbCode" type="s:string" />
+            <s:element minOccurs="0" maxOccurs="1" name="signer" type="s:string" />
+            <s:element minOccurs="1" maxOccurs="1" name="signTime" type="s:dateTime" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="AddReturnAwbResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="AddReturnAwbResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="QueryAwb">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="awbno" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="QueryAwbResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="QueryAwbResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="ArrayOfAwbStatus" nillable="true" type="tns:ArrayOfAwbStatus" />
+      <s:element name="ArrayOfAwbFilesEntity" nillable="true" type="tns:ArrayOfAwbFilesEntity" />
+      <s:element name="string" nillable="true" type="s:string" />
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="QueryAwbStatusListSoapIn">
+    <wsdl:part name="parameters" element="tns:QueryAwbStatusList" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusListSoapOut">
+    <wsdl:part name="parameters" element="tns:QueryAwbStatusListResponse" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusListAuthHeader">
+    <wsdl:part name="AuthHeader" element="tns:AuthHeader" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbFileListSoapIn">
+    <wsdl:part name="parameters" element="tns:QueryAwbFileList" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbFileListSoapOut">
+    <wsdl:part name="parameters" element="tns:QueryAwbFileListResponse" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbFileListAuthHeader">
+    <wsdl:part name="AuthHeader" element="tns:AuthHeader" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusSoapIn">
+    <wsdl:part name="parameters" element="tns:QueryAwbStatus" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusSoapOut">
+    <wsdl:part name="parameters" element="tns:QueryAwbStatusResponse" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusAuthHeader">
+    <wsdl:part name="AuthHeader" element="tns:AuthHeader" />
+  </wsdl:message>
+  <wsdl:message name="AddReturnAwbSoapIn">
+    <wsdl:part name="parameters" element="tns:AddReturnAwb" />
+  </wsdl:message>
+  <wsdl:message name="AddReturnAwbSoapOut">
+    <wsdl:part name="parameters" element="tns:AddReturnAwbResponse" />
+  </wsdl:message>
+  <wsdl:message name="AddReturnAwbAuthHeader">
+    <wsdl:part name="AuthHeader" element="tns:AuthHeader" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbSoapIn">
+    <wsdl:part name="parameters" element="tns:QueryAwb" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbSoapOut">
+    <wsdl:part name="parameters" element="tns:QueryAwbResponse" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusListHttpGetIn">
+    <wsdl:part name="awbno" type="s:string" />
+    <wsdl:part name="BelongSystem" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusListHttpGetOut">
+    <wsdl:part name="Body" element="tns:ArrayOfAwbStatus" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbFileListHttpGetIn">
+    <wsdl:part name="AwbID" type="s:string" />
+    <wsdl:part name="AwbNo" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbFileListHttpGetOut">
+    <wsdl:part name="Body" element="tns:ArrayOfAwbFilesEntity" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusHttpGetIn">
+    <wsdl:part name="awbno" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AddReturnAwbHttpGetIn">
+    <wsdl:part name="FileUrl" type="s:string" />
+    <wsdl:part name="AwbCode" type="s:string" />
+    <wsdl:part name="signer" type="s:string" />
+    <wsdl:part name="signTime" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AddReturnAwbHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbHttpGetIn">
+    <wsdl:part name="awbno" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbHttpGetOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusListHttpPostIn">
+    <wsdl:part name="awbno" type="s:string" />
+    <wsdl:part name="BelongSystem" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusListHttpPostOut">
+    <wsdl:part name="Body" element="tns:ArrayOfAwbStatus" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbFileListHttpPostIn">
+    <wsdl:part name="AwbID" type="s:string" />
+    <wsdl:part name="AwbNo" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbFileListHttpPostOut">
+    <wsdl:part name="Body" element="tns:ArrayOfAwbFilesEntity" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusHttpPostIn">
+    <wsdl:part name="awbno" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbStatusHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="AddReturnAwbHttpPostIn">
+    <wsdl:part name="FileUrl" type="s:string" />
+    <wsdl:part name="AwbCode" type="s:string" />
+    <wsdl:part name="signer" type="s:string" />
+    <wsdl:part name="signTime" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="AddReturnAwbHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbHttpPostIn">
+    <wsdl:part name="awbno" type="s:string" />
+  </wsdl:message>
+  <wsdl:message name="QueryAwbHttpPostOut">
+    <wsdl:part name="Body" element="tns:string" />
+  </wsdl:message>
+  <wsdl:portType name="newaySoap">
+    <wsdl:operation name="QueryAwbStatusList">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">根据运单号查询运单跟踪状态，返回List自己组装</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbStatusListSoapIn" />
+      <wsdl:output message="tns:QueryAwbStatusListSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbFileList">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">根据运单号查询签收图片，返回List自己组装</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbFileListSoapIn" />
+      <wsdl:output message="tns:QueryAwbFileListSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbStatus">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">根据运单号查询运单跟踪状态，返回字符串直接显示</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbStatusSoapIn" />
+      <wsdl:output message="tns:QueryAwbStatusSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AddReturnAwb">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">东方海外上传回单照片签收</wsdl:documentation>
+      <wsdl:input message="tns:AddReturnAwbSoapIn" />
+      <wsdl:output message="tns:AddReturnAwbSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwb">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">查询运单信息</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbSoapIn" />
+      <wsdl:output message="tns:QueryAwbSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:portType name="newayHttpGet">
+    <wsdl:operation name="QueryAwbStatusList">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">根据运单号查询运单跟踪状态，返回List自己组装</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbStatusListHttpGetIn" />
+      <wsdl:output message="tns:QueryAwbStatusListHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbFileList">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">根据运单号查询签收图片，返回List自己组装</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbFileListHttpGetIn" />
+      <wsdl:output message="tns:QueryAwbFileListHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbStatus">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">根据运单号查询运单跟踪状态，返回字符串直接显示</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbStatusHttpGetIn" />
+      <wsdl:output message="tns:QueryAwbStatusHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AddReturnAwb">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">东方海外上传回单照片签收</wsdl:documentation>
+      <wsdl:input message="tns:AddReturnAwbHttpGetIn" />
+      <wsdl:output message="tns:AddReturnAwbHttpGetOut" />
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwb">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">查询运单信息</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbHttpGetIn" />
+      <wsdl:output message="tns:QueryAwbHttpGetOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:portType name="newayHttpPost">
+    <wsdl:operation name="QueryAwbStatusList">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">根据运单号查询运单跟踪状态，返回List自己组装</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbStatusListHttpPostIn" />
+      <wsdl:output message="tns:QueryAwbStatusListHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbFileList">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">根据运单号查询签收图片，返回List自己组装</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbFileListHttpPostIn" />
+      <wsdl:output message="tns:QueryAwbFileListHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbStatus">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">根据运单号查询运单跟踪状态，返回字符串直接显示</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbStatusHttpPostIn" />
+      <wsdl:output message="tns:QueryAwbStatusHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="AddReturnAwb">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">东方海外上传回单照片签收</wsdl:documentation>
+      <wsdl:input message="tns:AddReturnAwbHttpPostIn" />
+      <wsdl:output message="tns:AddReturnAwbHttpPostOut" />
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwb">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">查询运单信息</wsdl:documentation>
+      <wsdl:input message="tns:QueryAwbHttpPostIn" />
+      <wsdl:output message="tns:QueryAwbHttpPostOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="newaySoap" type="tns:newaySoap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="QueryAwbStatusList">
+      <soap:operation soapAction="http://tempuri.org/QueryAwbStatusList" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+        <soap:header message="tns:QueryAwbStatusListAuthHeader" part="AuthHeader" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbFileList">
+      <soap:operation soapAction="http://tempuri.org/QueryAwbFileList" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+        <soap:header message="tns:QueryAwbFileListAuthHeader" part="AuthHeader" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbStatus">
+      <soap:operation soapAction="http://tempuri.org/QueryAwbStatus" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+        <soap:header message="tns:QueryAwbStatusAuthHeader" part="AuthHeader" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AddReturnAwb">
+      <soap:operation soapAction="http://tempuri.org/AddReturnAwb" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+        <soap:header message="tns:AddReturnAwbAuthHeader" part="AuthHeader" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwb">
+      <soap:operation soapAction="http://tempuri.org/QueryAwb" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="newaySoap12" type="tns:newaySoap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="QueryAwbStatusList">
+      <soap12:operation soapAction="http://tempuri.org/QueryAwbStatusList" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+        <soap12:header message="tns:QueryAwbStatusListAuthHeader" part="AuthHeader" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbFileList">
+      <soap12:operation soapAction="http://tempuri.org/QueryAwbFileList" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+        <soap12:header message="tns:QueryAwbFileListAuthHeader" part="AuthHeader" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbStatus">
+      <soap12:operation soapAction="http://tempuri.org/QueryAwbStatus" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+        <soap12:header message="tns:QueryAwbStatusAuthHeader" part="AuthHeader" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AddReturnAwb">
+      <soap12:operation soapAction="http://tempuri.org/AddReturnAwb" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+        <soap12:header message="tns:AddReturnAwbAuthHeader" part="AuthHeader" use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwb">
+      <soap12:operation soapAction="http://tempuri.org/QueryAwb" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="newayHttpGet" type="tns:newayHttpGet">
+    <http:binding verb="GET" />
+    <wsdl:operation name="QueryAwbStatusList">
+      <http:operation location="/QueryAwbStatusList" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbFileList">
+      <http:operation location="/QueryAwbFileList" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbStatus">
+      <http:operation location="/QueryAwbStatus" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AddReturnAwb">
+      <http:operation location="/AddReturnAwb" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwb">
+      <http:operation location="/QueryAwb" />
+      <wsdl:input>
+        <http:urlEncoded />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="newayHttpPost" type="tns:newayHttpPost">
+    <http:binding verb="POST" />
+    <wsdl:operation name="QueryAwbStatusList">
+      <http:operation location="/QueryAwbStatusList" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbFileList">
+      <http:operation location="/QueryAwbFileList" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwbStatus">
+      <http:operation location="/QueryAwbStatus" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="AddReturnAwb">
+      <http:operation location="/AddReturnAwb" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="QueryAwb">
+      <http:operation location="/QueryAwb" />
+      <wsdl:input>
+        <mime:content type="application/x-www-form-urlencoded" />
+      </wsdl:input>
+      <wsdl:output>
+        <mime:mimeXml part="Body" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="neway">
+    <wsdl:port name="newaySoap" binding="tns:newaySoap">
+      <soap:address location="http://xt.neway5.com/WebSer/neway.asmx" />
+    </wsdl:port>
+    <wsdl:port name="newaySoap12" binding="tns:newaySoap12">
+      <soap12:address location="http://xt.neway5.com/WebSer/neway.asmx" />
+    </wsdl:port>
+    <wsdl:port name="newayHttpGet" binding="tns:newayHttpGet">
+      <http:address location="http://xt.neway5.com/WebSer/neway.asmx" />
+    </wsdl:port>
+    <wsdl:port name="newayHttpPost" binding="tns:newayHttpPost">
+      <http:address location="http://xt.neway5.com/WebSer/neway.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

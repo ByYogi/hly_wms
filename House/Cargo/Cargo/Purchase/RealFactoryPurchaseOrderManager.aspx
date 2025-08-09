@@ -1,0 +1,1445 @@
+﻿<%@ Page Title="采购订单管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="RealFactoryPurchaseOrderManager.aspx.cs" Inherits="Cargo.Purchase.RealFactoryPurchaseOrderManager" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script src="../JS/Rotate/jQueryRotate.2.2.js" type="text/javascript"></script>
+    <script src="../JS/Lodop/LodopFuncs.js" type="text/javascript"></script>
+    <style type="text/css">
+        .commTblStyle_8 th {
+            border: 1px solid rgb(205, 205, 205);
+            text-align: center;
+            color: rgb(255, 255, 255);
+            line-height: 28px;
+            background-color: rgb(15, 114, 171);
+        }
+
+        .commTblStyle_8 tr.BlankRow td {
+            line-height: 10px;
+        }
+
+        .commTblStyle_8 tr td {
+            border: 1px solid rgb(205, 205, 205);
+            text-align: center;
+            line-height: 20px;
+        }
+
+            .commTblStyle_8 tr td.left {
+                text-align: right;
+                padding-right: 10px;
+                font-weight: bold;
+                white-space: nowrap;
+                background-color: rgb(239, 239, 239);
+            }
+
+            .commTblStyle_8 tr td.right {
+                text-align: left;
+                padding-left: 10px;
+            }
+
+        .commTblStyle_8 .whiteback {
+            background-color: rgb(255, 255, 255);
+        }
+
+        /*流程图样式*/
+        .processBar {
+            float: left;
+            width: 100px;
+            margin-top: 15px;
+        }
+
+            .processBar .bar {
+                background: rgb(230, 224, 236);
+                height: 3px;
+                position: relative;
+                width: 100px;
+                margin-left: 10px;
+            }
+
+            .processBar .b-select {
+                background: rgb(96, 72, 124);
+            }
+
+            .processBar .bar .c-step {
+                position: absolute;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: rgb(230, 224, 236);
+                left: -12px;
+                top: 50%;
+                margin-top: -4px;
+            }
+
+            .processBar .bar .c-select {
+                width: 10px;
+                height: 10px;
+                margin: -5px -1px;
+                background: rgb(96, 72, 124);
+            }
+
+        .main-hide {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+        }
+
+        .poetry {
+            color: rgb(41, 41, 41);
+            font-family: KaiTi_GB2312, KaiTi, STKaiti;
+            font-size: 16px;
+            background-color: transparent;
+            font-weight: bold;
+            font-style: normal;
+            text-decoration: none;
+        }
+
+        button {
+            width: 80px;
+            line-height: 30px;
+            font-size: 11px;
+            color: rgb(116, 42, 149);
+            text-align: center;
+            border-radius: 6px;
+            border: 1px solid #e2e2e2;
+            cursor: pointer;
+            background-color: #fff;
+            outline: none;
+        }
+
+            button:hover {
+                border: 1px solid rgb(179, 161, 200);
+            }
+    </style>
+    <script src="../JS/easy/js/datagrid-groupview.js" type="text/javascript"></script>
+    <%--<script src="../JS/Date/CheckActivX.js" type="text/javascript"></script>--%>
+    <script src="../JS/Lodop/LodopFuncs.js" type="text/javascript"></script>
+    <script charset="utf-8" src="https://map.qq.com/api/gljs?v=1.exp&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77"></script>
+    <script type="text/javascript">
+        window.onload = function () {
+            //$.ajaxSetup({ async: true });
+            document.body.style.overflow = 'hidden';
+            adjustment();
+            document.body.style.overflow = 'auto';
+        }
+        $(window).resize(function () {
+            document.body.style.overflow = 'hidden';
+            adjustment();
+            document.body.style.overflow = 'auto';
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - Number($("div[name='SelectDiv1']").outerHeight(true)) - 405;
+            $('#dg').datagrid({ height: height });
+        }
+        //页面加载显示遮罩层防止用户看见未加载CSS的页面
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //加载完成后关闭遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+
+        $(document).ready(function () {
+            showGrid();
+            var columns = [];
+            columns.push({ title: '', field: 'PurOrderID', checkbox: true });
+            columns.push({ title: '提交时间', field: 'CreateDate', width: '125px', formatter: DateTimeFormatter });
+            columns.push({ title: '采购单号', field: 'PurOrderNo', });
+            columns.push({ title: '需求部门', field: 'PurDepart', });
+            columns.push({ title: '采购数量', field: 'Piece', align: 'right' });
+            columns.push({ title: '回告数量', field: 'ReplyNum', align: 'right' });
+            columns.push({ title: '采购费用', field: 'TransportFee', align: 'right' });
+            columns.push({ title: '合计费用', field: 'TotalCharge', align: 'right' });
+            columns.push({
+                title: '是否含税', field: 'WhetherTax', width: '60px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='不含税'>不含税</span>"; }
+                    else if (val == "1") { return "<span title='含税'>含税</span>"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({ title: '供应商', field: 'PurchaserName', });
+            columns.push({
+                title: '采购单类型', field: 'PurchaseType', width: '60px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='工厂采购'>工厂采购</span>"; }
+                    else if (val == "1") { return "<span title='市场采购'>市场采购</span>"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({
+                title: '入库单类型', field: 'PurchaseInStoreType', width: '60px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='入仓单'>入仓单</span>"; }
+                    else if (val == "1") { return "<span title='调货单'>调货单</span>"; }
+                    else if (val == "2") { return "<span title='提送单'>提送单</span>"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({ title: '开单员', field: 'CreateAwb', });
+            columns.push({ title: '下一审批人', field: 'NextCheckName', });
+            columns.push({
+                title: '审批状态', field: 'ApplyStatus', width: '60px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='已提交'>已提交</span>"; }
+                    else if (val == "1") { return "<span title='已通过'>已通过</span>"; }
+                    else if (val == "2") { return "<span title='已拒审'>已拒审</span>"; }
+                    else if (val == "3") { return "<span title='已结束'>已结束</span>"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({
+                title: '付款方式', field: 'PaymentMethod', width: '60px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='月结'>月结</span>"; }
+                    else if (val == "1") { return "<span title='周结'>周结</span>"; }
+                    else if (val == "2") { return "<span title='现结'>现结</span>"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({
+                title: '转账账户', field: 'TransferAccount', width: '60px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='对公'>对公</span>"; }
+                    else if (val == "1") { return "<span title='对私'>对私</span>"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({
+                title: '入库状态', field: 'PurchaseInStoreState', width: '60px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='未入库'>未入库</span>"; }
+                    else if (val == "1") { return "<span title='已入库'>已入库</span>"; }
+                    else if (val == "2") { return "<span title='部分入库'>部分入库</span>"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({
+                title: '单据上传', field: 'IsDocument', width: '60px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='否'>否</span>"; }
+                    else if (val == "1") { return "<span title='是'>是</span>"; }
+                    else { return ""; }
+                }
+            });
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'PurOrderID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [columns],
+                onLoadSuccess: function (data) { },
+                onClickRow: function (index, row) {
+                    $('#dg').datagrid('clearSelections');
+                    $('#dg').datagrid('selectRow', index);
+                    showGrid();
+                    $('#dgSave').datagrid('clearSelections');
+                    $('#outDg').datagrid('clearSelections');
+
+                    $('#dgSave').datagrid('loadData', { total: 0, rows: [] });
+                    $('#outDg').datagrid('loadData', { total: 0, rows: [] });
+
+                    var gridOpts = $('#dgSave').datagrid('options');
+                    gridOpts.url = 'purchaseApi.aspx?method=cargoRealFactoryPurchaseHouses&PurOrderID=' + row.PurOrderID;
+
+                    var gridOptsoutDg = $('#outDg').datagrid('options');
+                    gridOptsoutDg.url = 'purchaseApi.aspx?method=cargoRealFactoryPurchaseOrderGoods&PurOrderID=' + row.PurOrderID
+
+                },
+                onDblClickRow: function (index, row) { /*plOutCargo(row);*/ }
+            });
+            var datenow = new Date();
+            $('#StartDate').datebox('setValue', getNowFormatDate(datenow));
+            //$('#StartDate').datebox('setValue', '2025-04-01');
+            $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
+            $('#StartDate').datebox('textbox').bind('focus', function () { $('#StartDate').datebox('showPanel'); });
+            $('#EndDate').datebox('textbox').bind('focus', function () { $('#EndDate').datebox('showPanel'); });
+            //采购部门
+            $('#APurDepartID').combobox({
+                url: '../Client/clientApi.aspx?method=QueryCargoClientSupplier&ClientType=4&UpClientID=1', valueField: 'ClientNum', textField: 'ClientName',
+            });
+            $('#APurchaseType').combobox('textbox').bind('focus', function () { $('#APurchaseType').combobox('showPanel'); });
+            $('#AApplyStatus').combobox('textbox').bind('focus', function () { $('#AApplyStatus').combobox('showPanel'); });
+            $('#APurDepartID').combobox('textbox').bind('focus', function () { $('#APurDepartID').combobox('showPanel'); });
+            $('#APurchaseInStoreType').combobox('textbox').bind('focus', function () { $('#APurchaseInStoreType').combobox('showPanel'); });
+        })
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'purchaseApi.aspx?method=QueryCargoRealPurchase';
+            $('#dg').datagrid('load', {
+                PurOrderNo: $('#APurOrderNo').val(),
+                PurchaserName: $('#PurchaserName').val(),
+                PurDepartID: $("#APurDepartID").combobox('getValue'),
+                ApplyStatus: $("#AApplyStatus").combobox('getValue'),
+                PurchaseType: $("#APurchaseType").combobox('getValue'),
+                PurchaseInStoreType: $("#APurchaseInStoreType").combobox('getValue'),
+                StartDate: $('#StartDate').datebox('getValue'),
+                EndDate: $('#EndDate').datebox('getValue'),
+                APurchaseInStoreState: $("#APurchaseInStoreState").combobox('getValue'),
+                APurchaseUploadDoc: $("#APurchaseUploadDoc").combobox('getValue'),
+            });
+        }
+    </script>
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <%--此div用于在界面未完全加载样式前显示内容--%>
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 100%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">采购单号:</td>
+                <td>
+                    <input id="APurOrderNo" class="easyui-textbox" data-options="prompt:'请输入采购单号'" style="width: 100px" /></td>
+                <td style="text-align: right;">需求部门:</td>
+                <td>
+                    <input id="APurDepartID" class="easyui-combobox" data-options="" panelheight="auto" editable="false" style="width: 120px" /></td>
+                <td style="text-align: right;">供应商:</td>
+                <td>
+                    <input id="PurchaserName" class="easyui-textbox" data-options="prompt:'请输入供应商名称'" style="width: 100px" /></td>
+                <td style="text-align: right;">审批状态:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="AApplyStatus" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">已提交</option>
+                        <option value="2">已拒审</option>
+                        <option value="1">已通过</option>
+                        <option value="3">已结束</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">采购单类型:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="APurchaseType" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">工厂采购</option>
+                        <option value="1">市场采购</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">开单时间:
+                </td>
+                <td>
+                    <input id="StartDate" class="easyui-datebox" style="width: 100px" />~<input id="EndDate" class="easyui-datebox" style="width: 100px" />
+                </td>
+
+                <td style="text-align: right;">入库类型:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="APurchaseInStoreType" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">入仓单</option>
+                        <option value="1">调货单</option>
+                        <option value="2">提送单</option>
+                    </select>
+                </td>
+
+                <td style="text-align: right;">入库状态:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="APurchaseInStoreState" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">未入库</option>
+                        <option value="1">已入库</option>
+                        <option value="2">部分入库</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">上传单据:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="APurchaseUploadDoc" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="1">是</option>
+                        <option value="0">否</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <table style="width: 100%">
+        <tr>
+            <td style="width: 30%; height: 400px; margin: 0px; padding: 0px;">
+                <table id="dgSave" class="easyui-datagrid">
+                </table>
+            </td>
+            <td style="width: 70%; height: 400px; margin: 0px; padding: 0px;">
+                <table id="outDg" class="easyui-datagrid">
+                </table>
+            </td>
+        </tr>
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+        <%--    <a href="#" id="btnAdd" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addItem()">&nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;
+    <a href="#" id="btnUpdate" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editItem()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;--%>
+        <a href="#" id="btnDel" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" id="btnApproval" class="easyui-linkbutton" iconcls="icon-auto_type" plain="false" onclick="ApprovalProcess()">&nbsp;采购审批&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" id="btnApprovalRevoked" class="easyui-linkbutton" iconcls="icon-auto_type" plain="false" onclick="ApprovalProcessRevoked()">&nbsp;撤销审批&nbsp;</a>&nbsp;&nbsp;
+    <a href="#" id="btnApprove" class="easyui-linkbutton" iconcls="icon-sitemap_color" plain="false" onclick="QuerydlgApproval()">&nbsp;审批流程图&nbsp;</a>&nbsp;&nbsp;
+    <a href="#" id="btnTransferType" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="UpdateTransferType()">&nbsp;更改转账类型&nbsp;</a>&nbsp;&nbsp;
+    <a href="#" id="btnAPExport" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="APExport()">&nbsp;导&nbsp;出&nbsp;</a>&nbsp;&nbsp;
+    <a href="#" id="OrderPrint" class="easyui-linkbutton" iconcls="icon-printer" plain="false" onclick="OrderPrint()">采购单打印</a>&nbsp;&nbsp;
+         <form runat="server" id="fm1">
+             <asp:Button ID="btnExport" runat="server" Style="display: none;" Text="导出" OnClick="btnExport_Click" />
+         </form>
+    </div>
+    <div id="toolbDgSave">
+        <a href="#" id="btnAdd" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="UpdateETATime()">&nbsp;填写到货时间&nbsp;</a>&nbsp;&nbsp;
+    </div>
+    <!--Begin 填写到货时间-->
+    <div id="dlgETRTime" class="easyui-dialog" style="width: 400px; height: 300px; padding: 0px"
+        closed="true" buttons="#dlgETRTime-buttons">
+        <form id="fmLogic" class="easyui-form" method="post">
+            <input type="hidden" name="FPID" id="BFPID" />
+            <input type="hidden" name="PurOrderID" id="BPurOrderID" />
+            <input type="hidden" name="HouseName" id="BHouseName" />
+
+            <div id="saPanel">
+                <table>
+                    <tr>
+                        <td style="text-align: right;">预计到货时间:
+                        </td>
+                        <td>
+                            <input name="ETATime" id="BETATime" class="easyui-datebox" style="width: 150px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">物流公司:
+                        </td>
+                        <td>
+                            <input name="LogisID" id="BLogisID" class="easyui-combobox" data-options="panelHeight:'200px',valueField:'ID',textField:'LogisticName',url:'../systempage/sysService.aspx?method=QueryAllLogistic',required:true"
+                                panelheight="auto" style="width: 150px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">物流单号:
+                        </td>
+                        <td>
+                            <input name="LogisAwbNo" id="BLogisAwbNo" class="easyui-textbox" style="width: 150px;" />
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </form>
+    </div>
+    <div id="dlgETRTime-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveETRTime()">&nbsp;&nbsp;保&nbsp;存&nbsp;&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgETRTime').dialog('close')">&nbsp;&nbsp;取&nbsp;消&nbsp;&nbsp;</a>
+    </div>
+    <!--End 填写到货时间-->
+
+    <div id="toolbDgOut">
+        <a href="#" id="btnOutAdd" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="UpdatePurchaseGoods()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;
+          <a href="#" id="btnOutDel" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelPurchaseGoods()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
+    </div>
+    <!--Begin 修改回告数量和采购价格-->
+    <div id="dlgReplyNum" class="easyui-dialog" style="width: 400px; height: 300px; padding: 0px"
+        closed="true" buttons="#dlgReplyNum-buttons">
+        <form id="fmReply" class="easyui-form" method="post">
+            <input type="hidden" name="GoodsID" id="CGoodsID" />
+            <input type="hidden" name="FPID" id="CFPID" />
+            <input type="hidden" name="PurOrderID" id="CPurOrderID" />
+            <div id="saPanel">
+                <table>
+                    <tr>
+                        <td style="text-align: right;">采购数量:
+                        </td>
+                        <td>
+                            <input name="Piece" id="CPiece" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 200px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">回告数量:
+                        </td>
+                        <td>
+                            <input name="ReplyPiece" id="CReplyPiece" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 200px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">采购价格:
+                        </td>
+                        <td>
+                            <input name="PurchasePrice" id="CPurchasePrice" class="easyui-numberbox" data-options="min:0,precision:2" style="width: 200px;" />
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </form>
+    </div>
+    <div id="dlgReplyNum-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="UpdatePurchaseReplyNum()">&nbsp;&nbsp;保&nbsp;存&nbsp;&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+     <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgReplyNum').dialog('close')">&nbsp;&nbsp;取&nbsp;消&nbsp;&nbsp;</a>
+    </div>
+    <!--End 修改回告数量和采购价格-->
+
+    <!--订单审批流程图-->
+    <div id="dlgApproval" class="easyui-dialog" style="width: 900px; height: 500px; padding: 1px 1px"
+        closed="true" closable="false" buttons="#dlgApproval-buttons">
+        <div id="lblApproval">
+        </div>
+    </div>
+    <div id="dlgApproval-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+            onclick="javascript:$('#dlgApproval').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <!--订单审批流程图-->
+    <object id="LODOP_OB" title="dd" classid="clsid:2105C259-1E0C-4534-8141-A753534CB4CA"
+        width="0px" height="0px">
+        <embed id="LODOP_EM" type="application/x-print-lodop" width="0px" height="0px"></embed>
+    </object>
+    <!--Begin 审批操作-->
+    <div id="dlgAP" class="easyui-dialog" style="width: 500px; height: 300px; padding: 0px"
+        closed="true" buttons="#dlgAP-buttons">
+        <form id="fmAP" class="easyui-form" method="post">
+            <div id="saPanel">
+                <table>
+                    <input type="hidden" name="PurOrderNo" id="APPurOrderNO" />
+                    <input type="hidden" name="PurOrderID" id="APPurOrderID" />
+                    <tr>
+                        <td style="text-align: right;">审核操作:
+                        </td>
+                        <td>
+                            <input name="ApplyStatus" id="ApplyStatus1" type="radio" value="1" /><label for="ApplyStatus1" style="font-size: 15px;">通过</label>
+                            <input name="ApplyStatus" id="ApplyStatus2" type="radio" value="2" /><label for="ApplyStatus2" style="font-size: 15px;">驳回</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">审核原因:
+                        </td>
+                        <td>
+                            <textarea id="CheckResult" rows="5" name="CheckResult" style="width: 300px;"></textarea>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </form>
+    </div>
+    <!--Begin 更改转账类型操作-->
+    <div id="dlgTT" class="easyui-dialog" style="width: 400px; height: 200px; padding: 0px"
+        closed="true" buttons="#dlgTT-buttons">
+        <form id="fmTT" class="easyui-form" method="post">
+            <div id="TT_saPanel">
+                <table>
+                    <input type="hidden" name="TTPurOrderNO" id="TTPurOrderNO" />
+                    <input type="hidden" name="TTPurOrderID" id="TTPurOrderID" />
+                    <tr>
+                        <td style="text-align: right;">付款方式:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="PaymentMethod" name="PaymentMethod" data-options="required:true,editable:false" style="width: 250px;" panelheight="auto">
+                                <option value="0">月付</option>
+                                <option value="1">周结</option>
+                                <option value="2">现结</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">转账账户:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="TransferAccount" name="TransferAccount" data-options="required:true,editable:false" style="width: 250px;" panelheight="auto">
+                                <option value="0">对公</option>
+                                <option value="1">对私</option>
+                            </select>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </form>
+    </div>
+    <div id="dlgAP-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveAP()">&nbsp;&nbsp;保&nbsp;存&nbsp;&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgAP').dialog('close')">&nbsp;&nbsp;取&nbsp;消&nbsp;&nbsp;</a>
+    </div>
+    <div id="dlgTT-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveTT()">&nbsp;&nbsp;保&nbsp;存&nbsp;&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgTT').dialog('close')">&nbsp;&nbsp;取&nbsp;消&nbsp;&nbsp;</a>
+    </div>
+    <!--End 审批操作-->
+    <script type="text/javascript">
+        //删除采购单
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+            return;
+        }
+        $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除该采购单？', function (r) {
+            if (r) {
+                var json = JSON.stringify(rows)
+                $.ajax({
+                    url: 'purchaseApi.aspx?method=DelPurchaseOrder',
+                    type: 'post', dataType: 'json', data: { data: json },
+                    success: function (text) {
+                        //var result = eval('(' + msg + ')');
+                        if (text.Result == true) {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                            $('#dg').datagrid('reload');
+                            $('#outDg').datagrid('reload');
+                            $('#dgSave').datagrid('reload');
+                        }
+                        else {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                        }
+                    }
+                });
+            }
+        });
+        }
+
+        //修改数据
+        function UpdatePurchaseReplyNum() {
+            $('#fmReply').form('submit', {
+                url: 'purchaseApi.aspx?method=UpdatePurchaseReplyNum',
+                onSubmit: function () {
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
+                    $('#dlgReplyNum').dialog('close'); 	// close the dialog
+                    $('#outDg').datagrid('reload');
+                    $('#dgSave').datagrid('reload');
+                    $('#dg').datagrid('reload');
+                } else {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                }
+            }
+        })
+        }
+
+        //修改采购数量回告数量和采购价格
+        function UpdatePurchaseGoods() {
+            var row = $('#outDg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'info');
+                return;
+            }
+            if (row) {
+                $('#dlgReplyNum').dialog('open').dialog('setTitle', ' 修改采购数据');
+                $('#fmReply').form('clear');
+                $('#CPiece').numberbox('setValue', row.Piece);
+                $('#CReplyPiece').numberbox('setValue', row.ReplyPiece);
+                $('#CPurchasePrice').numberbox('setValue', row.PurchasePrice);
+                $('#CGoodsID').val(row.GoodsID);
+                $('#CFPID').val(row.FPID);
+                $('#CPurOrderID').val(row.PurOrderID);
+            }
+        }
+
+        function editItemByID(Did) {
+            var row = $("#outDg").datagrid('getData').rows[Did];
+            if (row) {
+                $('#dlgReplyNum').dialog('open').dialog('setTitle', ' 修改采购数据');
+                $('#fmReply').form('clear');
+                $('#CPiece').numberbox('setValue', row.Piece);
+                $('#CReplyPiece').numberbox('setValue', row.ReplyPiece);
+                $('#CPurchasePrice').numberbox('setValue', row.PurchasePrice);
+                $('#CGoodsID').val(row.GoodsID);
+                $('#CFPID').val(row.FPID);
+                $('#CPurOrderID').val(row.PurOrderID);
+            }
+        }
+
+        //删除明细
+        function DelPurchaseGoods() {
+            var rows = $('#outDg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+            return;
+        }
+        $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除该明细？', function (r) {
+            if (r) {
+                var json = JSON.stringify(rows)
+                $.ajax({
+                    url: 'purchaseApi.aspx?method=DelPurchaseGoods',
+                    type: 'post', dataType: 'json', data: { data: json },
+                    success: function (text) {
+                        //var result = eval('(' + msg + ')');
+                        if (text.Result == true) {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                            $('#outDg').datagrid('reload');
+                            $('#dgSave').datagrid('reload');
+                            $('#dg').datagrid('reload');
+                        }
+                        else {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                        }
+                    }
+                });
+            }
+        });
+        }
+        //保存预计到货时间
+        function saveETRTime() {
+            $('#fmLogic').form('submit', {
+                url: 'purchaseApi.aspx?method=UpdateETRTimeLogisAwbNo',
+                onSubmit: function () {
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
+                    $('#dlgETRTime').dialog('close'); 	// close the dialog
+                    //var gridOpts = $('#dgSave').datagrid('options');
+                    //gridOpts.url = 'purchaseApi.aspx?method=cargoRealFactoryPurchaseHouses&PurOrderID=' + $('#BPurOrderID').val();
+                    $('#dgSave').datagrid('reload');
+                } else {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                }
+            }
+        })
+        }
+        //填写预计到货时间和物流单号
+        function UpdateETATime() {
+            var row = $('#dgSave').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'info');
+                return;
+            }
+            if (row) {
+                $('#dlgETRTime').dialog('open').dialog('setTitle', ' 填写预计到货时间和物流单号');
+                $('#fmLogic').form('clear');
+                $('#BLogisAwbNo').textbox('setValue', row.LogisAwbNo);
+                $('#BLogisID').combobox('setValue', row.LogisID);
+                $('#BFPID').val(row.FPID);
+                $('#BPurOrderID').val(row.PurOrderID);
+                $('#BHouseName').val(row.HouseName);
+                $('#BETATime').datebox('setValue', DateTimeFormatter(row.ETATime));
+
+            }
+        }
+        //弹出定时关闭的消息框
+        function alert_autoClose(title, msg, icon) {
+            var interval;
+            var time = 500;
+            var x = 2;  //只接受整数
+            $.messager.alert(title, msg, icon, function () { });
+            interval = setInterval(fun, time);
+            function fun() {
+                --x;
+                if (x == 0) {
+                    clearInterval(interval);
+                    $(".messager-body").window('close');
+                }
+            };
+        }
+        function DateTimeFormatter(val) {
+            if (val == null || val == '') {
+                return ''
+            }
+            var dt = parseToDate(getDate(val));
+            if (dt.format("yyyy-MM-dd") == "1901-01-01") {
+                return ""
+            }
+            if (dt.format("yyyy-MM-dd") == "1900-01-01") {
+                return ""
+            }
+            if (dt.format("yyyy-MM-dd") == "0001-01-01") {
+                return ""
+            }
+            if (dt.format("yyyy-MM-dd") == "1-01-01") {
+                return ""
+            }
+            return dt.format("yyyy-MM-dd hh:mm:ss")
+        }
+        //显示列表
+        function showGrid() {
+            var columns = [];
+            columns.push({ title: '到仓仓库', field: 'HouseName', });
+            columns.push({ title: '采购数量', field: 'OrderNum', align: 'right' });
+            columns.push({ title: '回告数量', field: 'ReplyNum', align: 'right', });
+            columns.push({ title: '预计到货时间', field: 'ETATime', formatter: DateFormatter });
+            columns.push({ title: '承运物流', field: 'LogisticName', });
+            columns.push({ title: '物流单号', field: 'LogisAwbNo', });
+
+            $('#dgSave').datagrid({
+                width: '100%',
+                height: '100%',
+                title: '', //标题内容
+                rownumbers: true,
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                pagination: false, //分页是否显示
+                //pageSize: 15, //每页多少条
+                //pageList: [15, 30],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: true, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'FPID',
+                rownumbers: true,
+                url: null,
+                toolbar: '#toolbDgSave',
+                columns: [columns],
+                onClickRow: function (index, row) {
+                    $('#dgSave').datagrid('clearSelections');
+                    $('#dgSave').datagrid('selectRow', index);
+
+                    $('#outDg').datagrid('loadData', { total: 0, rows: [] });
+
+                    var gridOptsoutDg = $('#outDg').datagrid('options');
+                    gridOptsoutDg.url = 'purchaseApi.aspx?method=cargoRealFactoryPurchaseOrderGoods&PurOrderID=' + row.PurOrderID + '&FPID=' + row.FPID;
+                    $('#outDg').datagrid('reload');
+                },
+                rowStyler: function (index, row) { }
+            });
+
+            var colu = [];
+            colu.push({ title: '', field: 'GoodsID', checkbox: true });
+            colu.push({ title: '品牌', field: 'TypeName', });
+            colu.push({ title: '产品编码', field: 'ProductCode', });
+            colu.push({ title: '产品名称', field: 'GoodsName', });
+            colu.push({ title: '规格', field: 'Specs', });
+            colu.push({ title: '花纹', field: 'Figure', });
+            colu.push({ title: '货品代码', field: 'GoodsCode', });
+            colu.push({ title: '载重指数', field: 'LoadIndex', });
+            colu.push({ title: '速度级别', field: 'SpeedLevel', });
+            colu.push({ title: '采购数量', field: 'Piece', align: 'right', });
+            colu.push({ title: '回告数量', field: 'ReplyPiece', align: 'right', });
+            colu.push({ title: '采购价格', field: 'PurchasePrice', align: 'right', });
+            colu.push({ title: '入库数量', field: 'InPiece', align: 'right', });
+            colu.push({
+                title: '入库状态', field: 'InCargoStatus', align: 'right',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='未入库'>未入库</span>"; }
+                    else if (val == "1") { return "<span title='已入库'>已入库</span>"; }
+                    else if (val == "2") { return "<span title='部分入库'>部分入库</span>"; }
+                    else { return ""; }
+                }
+            });
+
+            $('#outDg').datagrid({
+                width: '100%',
+                height: '100%',
+                title: '', //标题内容
+                rownumbers: true,
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'GoodsID',
+                rownumbers: true,
+                url: null,
+                toolbar: '#toolbDgOut',
+                columns: [colu],
+                onClickRow: function (index, row) {
+                    $('#outDg').datagrid('clearSelections');
+                    $('#outDg').datagrid('selectRow', index);
+                },
+                onDblClickRow: function (index, row) { editItemByID(index); },
+                rowStyler: function (index, row) { }
+            });
+        }
+        //查看审批流程
+        function QuerydlgApproval() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'info');
+                return;
+            }
+            if (row) {
+                $('#dlgApproval').dialog('open').dialog('setTitle', '查看采购单：' + row.PurOrderNo + ' 的审核流程图');
+                $.ajax({
+                    url: "../Order/orderApi.aspx?method=QueryExpenseRoutAtOrderNo&OrderNo=" + row.PurOrderNo + "&CreateAwbID=" + row.CreateAwbID + "&CreateAwb=" + row.CreateAwb + "&HouseID=93",
+                    cache: false,
+                    success: function (text) {
+                        var ldl = document.getElementById("lblApproval");
+                        ldl.innerHTML = text;
+                    }
+                });
+            }
+        }
+
+        //判断是否可进行审批
+        function ApprovalProcess() {
+
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'info');
+            return;
+        }
+        if (row.ApplyStatus == "3") {
+            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '该订单已审批结束，请勿重复审批', 'info');
+            return;
+        }
+        //判断是否可进行审批
+        if (row) {
+            $.ajax({
+                url: "purchaseApi.aspx?method=IsApprovalProcess&PurOrderNo=" + row.PurOrderNo + "&CreateAwbID=" + row.CreateAwbID + "&CreateAwb=" + row.CreateAwb,
+                cache: false,
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (!result.Result) {
+                        //否
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', result.Message, 'warning');
+                    } else {
+                        //是
+                        $('#dlgAP').dialog('open').dialog('setTitle', '审批订单：' + row.PurOrderNo);
+                        $('#fmAP').form('clear');
+                        $('#APPurOrderNO').val(row.PurOrderNo);
+                        $('#APPurOrderID').val(row.PurOrderID);
+
+                        //var ldl = document.getElementById("dlgAP");
+                    }
+                }
+            });
+
+            }
+        }
+
+        //判断是否可撤销审批
+        function ApprovalProcessRevoked() {
+
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'info');
+            return;
+        }
+        if (row.ApplyStatus == "0") {
+            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '该订单未审批', 'info');
+            return;
+        }
+        //console.log('row', row)
+        //判断是否可进行审批
+        if (row) {
+            $.ajax({
+                url: "purchaseApi.aspx?method=IsApprovalProcessRevoked&PurOrderNo=" + row.PurOrderNo + "&CreateAwbID=" + row.CreateAwbID + "&CreateAwb=" + row.CreateAwb,
+                cache: false,
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (!result.Result) {
+                        //否
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', "来货导入已存在数据，无法撤销审批", 'warning');
+                    } else {
+                        //是
+                        $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定撤销该条审批？', function (r) {
+                            if (r) {
+
+                                var json = JSON.stringify(row)
+                                $.ajax({
+                                    url: 'purchaseApi.aspx?method=RevokedApprovalProcessNo',
+                                    type: 'post', dataType: 'json', data: { data: json },
+                                    success: function (text) {
+                                        //var result = eval('(' + msg + ')');
+                                        if (text.Result == true) {
+                                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '撤销成功!', 'info');
+                                            $('#outDg').datagrid('reload');
+                                            $('#dgSave').datagrid('reload');
+                                            $('#dg').datagrid('reload');
+                                        }
+                                        else {
+                                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                        }
+                                    }
+                                });
+                            }
+                        });
+
+
+
+                    }
+                }
+            });
+
+            }
+        }
+
+        //更改转账类型
+        function UpdateTransferType() {
+
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'info');
+            return;
+        }
+       <%--     if (row.ApplyStatus == "3") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '该订单已审批结束，请勿重复审批', 'info');
+                return;
+            }--%>
+            //判断是否可进行审批
+            if (row) {
+                $('#dlgTT').dialog('open').dialog('setTitle', '更改转账类型：' + row.PurOrderNo);
+                $('#fmTT').form('clear');
+                $('#TTPurOrderNO').val(row.PurOrderNo);
+                $('#TTPurOrderID').val(row.PurOrderID);
+
+                row.PaymentMethod = row.PaymentMethod == -1 ? null : row.PaymentMethod
+                row.TransferAccount = row.TransferAccount == -1 ? null : row.TransferAccount
+                $('#fmTT').form('load', row);
+
+            }
+        }
+        //导出
+        function APExport() {
+            var row = $('#dg').datagrid('getSelected');
+            var rowCount = $('#outDg').datagrid("getRows").length;
+            var rowss = $('#dg').datagrid('getRows').length;
+            if (rowss == 0) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '没有数据可以进行导出，请重新查询！', 'warning'); return; }
+
+        var gridOpts = $('#dg').datagrid('options');
+        var key = {
+            page: gridOpts.pageNumber,
+            rows: gridOpts.pageSize,
+            PurOrderNo: $('#APurOrderNo').val(),
+            PurDepartID: $("#APurDepartID").combobox('getValue'),
+            ApplyStatus: $("#AApplyStatus").combobox('getValue'),
+            PurchaseType: $("#APurchaseType").combobox('getValue'),
+            PurchaseInStoreType: $("#APurchaseInStoreType").combobox('getValue'),
+            StartDate: $('#StartDate').datebox('getValue'),
+            EndDate: $('#EndDate').datebox('getValue'),
+            APurchaseInStoreState: $("#APurchaseInStoreState").combobox('getValue'),
+            APurchaseUploadDoc: $("#APurchaseUploadDoc").combobox('getValue'),
+        }
+
+        $.ajax({
+            url: "purchaseApi.aspx?method=QueryAPForExport",
+            data: key,
+            success: function (text) {
+                if (text == "OK") { var obj = document.getElementById("<%=btnExport.ClientID %>"); obj.click(); }
+                else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
+            }
+        });
+        }
+        var LODOP;
+        //采购单打印
+        function OrderPrint() {
+            LODOP = getLodop(document.getElementById('LODOP_OB'), document.getElementById('LODOP_EM'));
+            //LODOP.SET_SHOW_MODE("LANDSCAPE_DEFROTATED", 1);
+            LODOP.SET_SHOW_MODE("PREVIEW_IN_NEW_WINDOW", 1)
+            var griddata = $('#outDg').datagrid('getRows');
+            var Maingriddata = $('#dg').datagrid('getSelected');
+            var houseData = {};
+            $.ajax({
+                url: "purchaseApi.aspx?method=GetHouseData&HouseID=" + Maingriddata.HouseID,
+                cache: false, async: false, dataType: "text",
+                success: function (text) {
+                    houseData = JSON.parse(text);
+                }, error: function () {
+                }
+            });
+            var js = 0, Alltotal = 0, AllPiece = 0; p = 1; pie = 0; total = 0; AllSalePrice = 0;
+
+            Alltotal = 12;
+            for (var k = 0; k < griddata.length; k++) {
+                pie = Number(griddata[k].Piece);
+                total = Number(pie) * Number(griddata[k].ActSalePrice);
+                //Alltotal += total;
+                AllPiece += Number(pie);
+            }
+
+            for (var i = 0; i < griddata.length; i++) {
+                //console.log(Maingriddata, griddata, houseData)
+                if (i == (p - 1) * 10) {
+                    if (p > 1) {
+                        LODOP.NewPage();
+                    }
+                    p++;
+                    LODOP.SET_PRINT_PAGESIZE(3, 2100, 30, "");
+                    LODOP.ADD_PRINT_RECT(-2, 2, 788, 522, 0, 1);
+                    LODOP.ADD_PRINT_LINE(31, 3, 32, 791, 0, 1);
+                    LODOP.ADD_PRINT_LINE(58, 3, 57, 791, 0, 1);
+                    LODOP.ADD_PRINT_LINE(86, 82, 31, 83, 0, 1);
+                    LODOP.ADD_PRINT_LINE(56, 657, 31, 658, 0, 1);
+                    LODOP.ADD_PRINT_LINE(87, 3, 86, 791, 0, 1);
+                    LODOP.ADD_PRINT_LINE(110, 3, 109, 791, 0, 1);
+                    LODOP.ADD_PRINT_LINE(133, 82, 86, 83, 0, 1);
+                    LODOP.ADD_PRINT_LINE(134, 3, 133, 791, 0, 1);
+                    LODOP.ADD_PRINT_LINE(86, 347, 57, 348, 0, 1);
+                    LODOP.ADD_PRINT_LINE(86, 444, 57, 445, 0, 1);
+                    LODOP.ADD_PRINT_LINE(56, 575, 31, 576, 0, 1);
+                    LODOP.ADD_PRINT_LINE(396, 3, 395, 791, 0, 1);
+                    LODOP.ADD_PRINT_LINE(479, 58, 395, 59, 0, 1);
+                    LODOP.ADD_PRINT_LINE(453, 190, 434, 190, 0, 1);
+
+                    LODOP.ADD_PRINT_LINE(415, 3, 414, 791, 0, 1);
+                    //LODOP.ADD_PRINT_LINE(479, 553, 395, 554, 0, 1);
+                    LODOP.ADD_PRINT_LINE(520, 648, 395, 649, 0, 1);
+                    LODOP.ADD_PRINT_LINE(435, 3, 434, 791, 0, 1);
+
+                    LODOP.ADD_PRINT_LINE(455, 3, 454, 648, 0, 1);
+                    LODOP.ADD_PRINT_LINE(480, 3, 479, 648, 0, 1);
+                    LODOP.ADD_PRINT_LINE(454, 255, 435, 255, 0, 1);
+                    LODOP.ADD_PRINT_LINE(454, 450, 435, 450, 0, 1);
+                    LODOP.ADD_PRINT_LINE(86, 575, 57, 576, 0, 1);
+                    LODOP.ADD_PRINT_LINE(87, 657, 57, 658, 0, 1);
+
+
+                    LODOP.ADD_PRINT_TEXT(1, 206, 571, 33, Maingriddata.PurchaserName + '发货清单');
+                    LODOP.SET_PRINT_STYLEA(0, "FontName", "新宋体");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 19);
+                    LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+
+
+                    LODOP.SET_PRINT_STYLEA(0, "Stretch", 1);
+                    LODOP.ADD_PRINT_TEXT(37, 5, 87, 25, "收货地址：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+                    LODOP.ADD_PRINT_TEXT(37, 86, 492, 25, houseData.Address);
+                    //if ($('#AAcceptAddress').textbox('getValue').length > 38) {
+                    //    LODOP.SET_PRINT_STYLEA(0, "FontSize", 9);
+                    //} else if ($('#AAcceptAddress').textbox('getValue').length > 33) {
+                    //    LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+                    //} else {
+                    //    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    //}
+                    LODOP.ADD_PRINT_TEXT(37, 583, 85, 26, "发货日期：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(37, 657, 115, 25, getNowFormatDate(Maingriddata.CreateDate));
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+
+
+                    LODOP.ADD_PRINT_TEXT(64, 5, 87, 25, "物流公司：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+                    LODOP.ADD_PRINT_TEXT(64, 86, 254, 25, '好来运速递');
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(66, 583, 85, 25, "发货单号：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(66, 668, 127, 25, Maingriddata.PurOrderNo);
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+
+                    LODOP.ADD_PRINT_TEXT(64, 353, 85, 25, "到达城市：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "Alignment", 3);
+                    LODOP.ADD_PRINT_TEXT(65, 448, 130, 25, houseData.DepCity);
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+
+                    LODOP.ADD_PRINT_TEXT(90, 7, 85, 25, "收货单位：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+                    LODOP.ADD_PRINT_TEXT(114, 7, 85, 25, '发货单位：');
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);// 
+
+
+                    LODOP.ADD_PRINT_TEXT(90, 86, 705, 25, houseData.CargoDepart);//收货人
+
+
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+
+                     <%--var hous = '<%= HouseName%>';--%>
+                    var hous = 1;
+                    var sendUnit = '广州狄乐汽车服务有限公司';
+                    var sendPhone = '13822154649';
+                    var sphone = Maingriddata.Telephone;
+
+                    //if (saleName == "邱小彬") {
+                    //    LODOP.ADD_PRINT_TEXT(114, 86, 705, 25, "新陆城配  13802517097，13318794144");//填业务员
+                    //} else {
+                    //    LODOP.ADD_PRINT_TEXT(114, 86, 705, 25, sendUnit + " " + $('#SaleManName').val() + " " + sendPhone);//填业务员
+                    //}
+                    LODOP.ADD_PRINT_TEXT(114, 86, 705, 25, Maingriddata.PurchaserName + " " + sphone);//填业务员
+                    //LODOP.ADD_PRINT_TEXT(Top, Left, Width, Height, strContent);
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(135, 46, 80, 24, "品牌");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(135, 136, 80, 24, "编码");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    //LODOP.ADD_PRINT_TEXT(135, 210, 80, 24, "产品名称");
+                    //LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+
+                    LODOP.ADD_PRINT_TEXT(135, 235, 80, 24, "规格");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(135, 385, 80, 24, "花纹");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(135, 545, 100, 24, "货品代码");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(135, 660, 80, 24, "载速");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    //LODOP.ADD_PRINT_TEXT(135, 545, 46, 24, "周期");
+                    //LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+
+                    LODOP.ADD_PRINT_TEXT(135, 715, 100, 24, "采购数量");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    //LODOP.ADD_PRINT_TEXT(135, 614, 100, 24, "回告");
+                    //LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    //LODOP.ADD_PRINT_TEXT(135, 674, 100, 24, "入库");
+                    //LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    //LODOP.ADD_PRINT_TEXT(135, 734, 100, 24, "状态");
+                    //LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+
+                    LODOP.ADD_PRINT_LINE(153, 3, 152, 791, 0, 1);
+                    LODOP.ADD_PRINT_TEXT(397, 16, 54, 25, "总计");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(397, 265, 69, 19, AllPiece);
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+                    LODOP.ADD_PRINT_TEXT(416, 13, 61, 25, "总 计");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+                    LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+
+
+
+                    //LODOP.ADD_PRINT_TEXT(397, 667, 105, 19, Alltotal);
+                    //LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    //LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+
+                    LODOP.ADD_PRINT_TEXT(416, 241, 304, 25, number2text(AllPiece));
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+                    LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+
+
+
+
+                    LODOP.ADD_PRINT_TEXT(436, 16, 66, 22, "制表：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(436, 84, 100, 19, Maingriddata.CreateAwb);
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(436, 200, 61, 22, "司机：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.ADD_PRINT_TEXT(460, 11, 58, 28, "备 注");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+                    LODOP.ADD_PRINT_TEXT(456, 72, 505, 29, Maingriddata.Remark);
+                    //if ($("#AHouseID").combobox('getValue') == "65") {
+                    //    LODOP.ADD_PRINT_TEXT(456, 72, 505, 29, $('#ARemark').val() + " " + $('#HHAwbNo').val());
+                    //} else {
+                    //    LODOP.ADD_PRINT_TEXT(456, 72, 505, 29, $('#ARemark').val());
+                    //}
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+
+                    LODOP.ADD_PRINT_TEXT(437, 466, 93, 22, "物流结算：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    var PaymentMethod = "";
+                    switch (Maingriddata.PaymentMethod) {
+                        case 0:
+                            PaymentMethod = "月付"
+                            break;
+                        case 1:
+                            PaymentMethod = "周结"
+                            break;
+                        case 2:
+                            PaymentMethod = "现结"
+                            break;
+                        default: break;
+                    }
+                    LODOP.ADD_PRINT_TEXT(437, 584, 78, 22, PaymentMethod);
+
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+                    var beizu = '注：第一联结算联（白）、第二联收货人留存（红）、第三联对账联（黄）';
+                    //if (hous.indexOf('湖北') != -1) {
+                    //    beizu = '湖北优科豪马轮胎代理迪乐泰公司感谢与您的合作，谢谢！';
+                    //}
+                    LODOP.ADD_PRINT_TEXT(484, 11, 645, 26, beizu);
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+
+                    LODOP.ADD_PRINT_IMAGE(416, 650, 133, 133, "<img src='../CSS/image/kjfkm.png'/>");
+                    LODOP.SET_PRINT_STYLEA(0, "Stretch", 2);
+
+                }
+                //LODOP.ADD_PRINT_LINE(Top1, Left1, Top2, Left2, LineStyle, LineWidth);
+                LODOP.ADD_PRINT_LINE(176 + (i - (p - 2) * 10) * 23, 3, 175 + (i - (p - 2) * 10) * 23, 791, 0, 1);
+                LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 25, 134 + (i - (p - 2) * 10) * 23, 26, 0, 1);
+                //品牌
+                LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 95, 134 + (i - (p - 2) * 10) * 23, 96, 0, 1);
+                //产品代码
+                LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 205, 134 + (i - (p - 2) * 10) * 23, 206, 0, 1);
+                ////名称
+                //LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 295, 134 + (i - (p - 2) * 10) * 23, 296, 0, 1);
+                //规格
+                LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 295, 134 + (i - (p - 2) * 10) * 23, 296, 0, 1);
+                //花纹
+                LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 500, 134 + (i - (p - 2) * 10) * 23, 501, 0, 1);
+                //货品代码
+                LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 650, 134 + (i - (p - 2) * 10) * 23, 651, 0, 1);
+                //载速
+                LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 700, 134 + (i - (p - 2) * 10) * 23, 700, 0, 1);
+                ////采购数量
+                //LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 600, 134 + (i - (p - 2) * 10) * 23, 601, 0, 1);
+
+
+
+                //LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 657, 134 + (i - (p - 2) * 10) * 23, 658, 0, 1);
+                //LODOP.ADD_PRINT_LINE(174 + (i - (p - 2) * 10) * 23, 701, 134 + (i - (p - 2) * 10) * 23, 702, 0, 1);
+
+                js++;
+                pie = 0;//Number(griddata[i].Piece);
+                total = 0;// Number(pie) * Number(griddata[i].ActSalePrice);
+                //LODOP.ADD_PRINT_TEXT(Top, Left, Width, Height, strContent);
+                LODOP.ADD_PRINT_TEXT(156 + (i - (p - 2) * 10) * 23, 6, 25, 23, js);
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                LODOP.ADD_PRINT_TEXT(155 + (i - (p - 2) * 10) * 23, 33, 85, 23, griddata[i].TypeName);//品牌
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                LODOP.ADD_PRINT_TEXT(155 + (i - (p - 2) * 10) * 23, 100, 150, 23, griddata[i].ProductCode);//产品编码
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                //LODOP.ADD_PRINT_TEXT(155 + (i - (p - 2) * 10) * 23, 182, 200, 23, griddata[i].GoodsName);//产品名称
+                //LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                LODOP.ADD_PRINT_TEXT(155 + (i - (p - 2) * 10) * 23, 210, 100, 23, griddata[i].Specs);//规格 
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                LODOP.ADD_PRINT_TEXT(155 + (i - (p - 2) * 10) * 23, 300, 300, 23, griddata[i].Figure);//花纹
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                LODOP.ADD_PRINT_TEXT(155 + (i - (p - 2) * 10) * 23, 504, 200, 23, griddata[i].GoodsCode);//货品代码
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                LODOP.ADD_PRINT_TEXT(155 + (i - (p - 2) * 10) * 23, 660, 200, 23, griddata[i].LoadIndex + griddata[i].SpeedLevel);//速度级别
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                LODOP.ADD_PRINT_TEXT(155 + (i - (p - 2) * 10) * 23, 720, 200, 23, griddata[i].Piece);//采购数量 
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+
+
+            }
+            //LODOP.PRINT_DESIGN();
+            LODOP.PREVIEW();
+
+        }
+
+        /**
+ * @description 数字转中文
+ * @param {Number|String}   num     数字[正整数]
+ * @param {String}          type    文本类型，lower|upper，默认upper
+ * @example number2text(100000000) => "壹亿元整"
+ */
+        function number2text(number, type = 'upper') {
+            // 配置
+            const confs = {
+                lower: {
+                    num: ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'],
+                    unit: ['', '十', '百', '千', '万'],
+                    level: ['', '万', '亿']
+                },
+                upper: {
+                    num: ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'],
+                    unit: ['', '拾', '佰', '仟'],
+                    level: ['', '万', '亿']
+                },
+                decimal: {
+                    unit: ['分', '角']
+                },
+                maxNumber: 999999999999.99
+            }
+            // 过滤不合法参数
+            if (Number(number) > confs.maxNumber) {
+                console.error(`The maxNumber is ${confs.maxNumber}. ${number} is bigger than it!`)
+                return false
+            }
+            const conf = confs[type]
+            const numbers = String(Number(number).toFixed(2)).split('.')
+            const integer = numbers[0].split('')
+            const decimal = Number(numbers[1]) === 0 ? [] : numbers[1].split('')
+            // 四位分级
+            const levels = integer.reverse().reduce((pre, item, idx) => {
+                let level = pre[0] && pre[0].length < 4 ? pre[0] : []
+                let value = item === '0' ? conf.num[item] : conf.num[item] + conf.unit[idx % 4]
+                level.unshift(value)
+                if (level.length === 1) {
+                    pre.unshift(level)
+                } else {
+                    pre[0] = level
+                }
+                return pre
+            }, [])
+            // 整数部分
+            const _integer = levels.reduce((pre, item, idx) => {
+                let _level = conf.level[levels.length - idx - 1]
+                let _item = item.join('').replace(/(零)\1+/g, '$1') // 连续多个零字的部分设置为单个零字
+                // 如果这一级只有一个零字，则去掉这级
+                if (_item === '零') {
+                    _item = ''
+                    _level = ''
+                    // 否则如果末尾为零字，则去掉这个零字
+                } else if (_item[_item.length - 1] === '零') {
+                    _item = _item.slice(0, _item.length - 1)
+                }
+                return pre + _item + _level
+            }, '')
+            // 小数部分
+            let _decimal = decimal
+                .map((item, idx) => {
+                    const unit = confs.decimal.unit
+                    const _unit = item !== '0' ? unit[unit.length - idx - 1] : ''
+                    return `${conf.num[item]}${_unit}`
+                })
+                .join('')
+            // 如果是整数，则补个整字
+            return `${_integer}` 
+        }
+
+
+        //审批操作
+        function saveAP() {
+            //if () {
+
+
+            //} else {
+            //    //审批通过
+            //}
+
+            $.messager.progress({ msg: '请稍后,正在保存中...' });
+            $('#fmAP').form('submit', {
+                url: 'purchaseApi.aspx?method=UpdateApprovalProcessNo',
+                onSubmit: function () {
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    $.messager.progress("close");
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '审批成功！', 'warning');
+                    //alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '审批成功!', 'info');
+                    $('#dlgAP').dialog('close');
+                    $('#dg').datagrid('reload');
+                } else {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                }
+            }
+        })
+        }
+        //更改转账类型操作
+        function saveTT() {
+            //$.messager.progress({ msg: '请稍后,正在保存中...' });
+            $('#fmTT').form('submit', {
+                url: 'purchaseApi.aspx?method=UpdateTransferType',
+                onSubmit: function () {
+                    var IsVerification = $(this).form('enableValidation').form('validate')
+                    if (IsVerification) {
+                        $.messager.progress({ msg: '请稍后,正在保存中...' });
+                    }
+                    return IsVerification;
+                },
+                success: function (msg) {
+                    $.messager.progress("close");
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                    ////////$.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功！', 'warning');
+                    //alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '审批成功!', 'info');
+                    $('#dlgTT').dialog('close');
+                    $('#dg').datagrid('reload');
+                } else {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                }
+            }
+        })
+        }
+    </script>
+</asp:Content>

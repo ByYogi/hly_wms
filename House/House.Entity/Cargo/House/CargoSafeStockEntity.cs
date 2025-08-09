@@ -1,0 +1,129 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    public class CargoSafeStockEntity
+    {
+        /// <summary>
+        /// 表主键
+        /// </summary>
+        [Description("表主键")]
+        public Int64 SID { get; set; }
+        public int HouseIDInt { get; set; }
+        /// <summary>
+        /// 区域大仓
+        /// </summary>
+        [Description("区域大仓")]
+        public string HouseID { get; set; }
+        /// <summary>
+        /// 仓库ID
+        /// </summary>
+        [Description("仓库ID")]
+        public int AreaID { get; set; }
+        /// <summary>
+        /// 产品类型ID
+        /// </summary>
+        [Description("产品类型ID")]
+        public int TypeID { get; set; }
+        /// <summary>
+        /// 规格
+        /// </summary>
+        [Description("规格")]
+        public string Specs { get; set; }
+        /// <summary>
+        /// 花纹
+        /// </summary>
+        [Description("花纹")]
+        public string Figure { get; set; }
+        /// <summary>
+        /// 货品代码
+        /// </summary>
+        [Description("货品代码")]
+        public string GoodsCode { get; set; }
+        /// <summary>
+        /// 载重指数
+        /// </summary>
+        [Description("载重指数")]
+        public string LoadIndex { get; set; }
+        /// <summary>
+        /// 速度级别
+        /// </summary>
+        [Description("速度级别")]
+        public string SpeedLevel { get; set; }
+        /// <summary>
+        /// 安全库存数量
+        /// </summary>
+        [Description("安全库存")]
+        public int StockNum { get; set; }
+        [Description("最小库存")]
+        public int MinStock { get; set; }
+        [Description("最大库存")]
+        public int MaxStock { get; set; }
+        /// <summary>
+        /// 操作员
+        /// </summary>
+        [Description("操作员")]
+        public string OPID { get; set; }
+        /// <summary>
+        /// 操作时间
+        /// </summary>
+        [Description("操作时间")]
+        public DateTime OP_DATE { get; set; }
+        /// <summary>
+        /// 区域大仓名称
+        /// </summary>
+        [Description("区域大仓名称")]
+        public string HouseName { get; set; }
+        /// <summary>
+        /// 所属仓库名称
+        /// </summary>
+        [Description("所属仓库名称")]
+        public string AreaName { get; set; }
+        /// <summary>
+        /// 产品类型名称
+        /// </summary>
+        [Description("产品类型名称")]
+        public string TypeName { get; set; }
+        /// <summary>
+        /// 产品一级分类ID
+        /// </summary>
+        [Description("产品一级分类ID")]
+        public int ParentID { get; set; }
+        /// <summary>
+        /// 产品一级分类名称
+        /// </summary>
+        [Description("产品一级分类名称")]
+        public string ParentName { get; set; }
+        public string ProductCode { get; set; }
+        public string ProductName { get; set; }
+        public string Model { get; set; }
+        public int ExcelNo { get; set; }
+        /// <summary>
+        /// 当前库存数量
+        /// </summary>
+        public int CurNum { get; set; }
+        /// <summary>
+        /// 相差库存数量
+        /// </summary>
+        public int LessNum { get; set; }
+        /// <summary>
+        /// 销售数量
+        /// </summary>
+        public int SaleNum { get; set; }
+        /// <summary>
+        /// 周期批次DOT
+        /// </summary>
+
+        public string Batch { get; set; }
+
+        public string HouseIDStr { get; set; }
+
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+    }
+
+}

@@ -1,0 +1,262 @@
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Transactions;
+using House.Entity;
+using House.Entity.Cargo;
+using House.Manager.Cargo;
+using House.Manager;
+using System.Data;
+
+namespace House.Business.Cargo
+{
+    public class CargoProductBasicPriceBus
+    {
+        private CargoProductBasicPriceManeger man = new CargoProductBasicPriceManeger();
+
+        public Hashtable QueryProductBasicPrice(int pIndex, int pNum, CargoProductBasicPriceEntity entity)
+        {
+            return man.QueryProductBasicPrice(pIndex, pNum, entity);
+        }
+
+
+        /// <summary>
+        /// 查询所有轮胎品牌
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductTypeEntity> QueryAllBrand()
+        {
+            return man.QueryAllBrand();
+        }
+        public List<CargoProductTypeEntity> QueryAllBrand(CargoProductTypeEntity entity)
+        {
+            return man.QueryAllBrand(entity);
+        }
+
+        /// <summary>
+        /// 查询所有仓库
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductBasicPriceEntity> QueryAllHouse()
+        {
+            return man.QueryAllHouse();
+        }
+
+        /// <summary>
+        /// 查询是否存在当前导入数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public DataTable IsExistInputData(CargoProductBasicPriceEntity entity)
+        {
+            return man.IsExistInputData(entity);
+        }
+        /// <summary>
+        /// 查询是否存在当前年月的数据
+        /// </summary>
+        /// <param name="year"></param>
+        /// <param name="month"></param>
+        /// <returns></returns>
+        public int IsExistInputData(string HouseID, string year, string month)
+        {
+            return man.IsExistInputData(HouseID, year, month);
+        }
+
+        /// <summary>
+        /// 保存导入数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void SaveProductBasicPriceData(List<CargoProductBasicPriceEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductBasicPriceEntity> lw = new LogWrite<CargoProductBasicPriceEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.SaveProductBasicPriceData(entity);
+                    log.Memo = "";
+                    //foreach (var it in entity)
+                    //{
+                    //    lw.WriteLog(it, log);
+                    //}
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "导入基础价格失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 删除数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void DelPriceBasic(List<CargoProductBasicPriceEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductBasicPriceEntity> lw = new LogWrite<CargoProductBasicPriceEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelPriceBasic(entity);
+                    log.Memo = "删除产品基础价格：订单年份";
+                    foreach (var it in entity)
+                    {
+                        log.Memo += it.ProYear + "，订单月份：" + it.ProMonth + "，货品代码:" + it.GoodsCode;
+                    }
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除产品基础价格失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改基础价格数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdatePriceBasic(CargoProductBasicPriceEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductBasicPriceEntity> lw = new LogWrite<CargoProductBasicPriceEntity>();
+            try
+            {
+                man.UpdatePriceBasic(entity);
+                log.Memo = "修改产品基础价格";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品基础价格，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 新增产品基础价格
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void InsertPriceBasic(CargoProductBasicPriceEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductBasicPriceEntity> lw = new LogWrite<CargoProductBasicPriceEntity>();
+            try
+            {
+                man.InsertPriceBasic(entity);
+                log.Memo = "新增产品基础价格";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增产品基础价格，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+        public DataTable QueryProductBasicDate(List<int> HouseIDList, List<int> BelongMonthList)
+        {
+            return man.QueryProductBasicDate(HouseIDList, BelongMonthList);
+        }
+        public DataTable QueryProductSpecDate(CargoProductEntity entity)
+        {
+            return man.QueryProductSpecDate(entity);
+        }
+
+        /// <summary>
+        /// 复制基础价格
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void SaveCopyPriceBasicData(CargoProductBasicPriceEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductBasicPriceEntity> lw = new LogWrite<CargoProductBasicPriceEntity>();
+            try
+            {
+                man.SaveCopyPriceBasicData(entity);
+                log.Memo = "复制产品基础价格";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "复制产品基础价格，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 复制全部基础价格
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void SaveAllCopyPriceBasicData(CargoProductBasicPriceEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductBasicPriceEntity> lw = new LogWrite<CargoProductBasicPriceEntity>();
+            try
+            {
+                man.SaveAllCopyPriceBasicData(entity);
+                log.Memo = "复制产品基础价格";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "复制产品基础价格，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 同步价格数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void SynchronizePriceBasic(List<CargoProductBasicPriceEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductBasicPriceEntity> lw = new LogWrite<CargoProductBasicPriceEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+
+                    man.SynchronizePriceBasic(entity);
+                    log.Memo = "同步产品基础价格：订单年份";
+                    foreach (var it in entity)
+                    {
+                        log.Memo += it.ProYear + "，订单月份：" + it.ProMonth + "，货品代码:" + it.GoodsCode + "，产品编码:" + it.ProductCode + ",进仓价:" + it.InHousePrice.ToString() + ",单价:" + it.UnitPrice.ToString() + ",门店价:" + it.TradePrice.ToString() + ",成本价:" + it.CostPrice.ToString() + ",最终成本价:" + it.FinalCostPrice.ToString() + ",是否云仓:" + it.CloudHouseType;
+                    }
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+    }
+}

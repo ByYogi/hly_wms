@@ -1,0 +1,333 @@
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="MyOutHouse.aspx.cs" Inherits="Cargo.QY.MyOutHouse" %>
+
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>出库扫描</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <link href="../Weixin/WeUI/CSS/weui.min.css" rel="stylesheet" />
+    <link href="../Weixin/WeUI/CSS/style.css" rel="stylesheet" />
+    <link href="../Weixin/WeUI/CSS/jquery-weui.css" rel="stylesheet" />
+    <link href="../Weixin/WeUI/CSS/weuix.min.css" rel="stylesheet" />
+    <script src="JS/jweixin-1.2.0.js"></script>
+</head>
+<body ontouchstart>
+    <audio id="chatAudio">
+        <source src="../upload/audio/OutSuc.mp3" type="audio/mpeg" />
+    </audio>
+    <audio id="failAudio">
+        <source src="../upload/audio/OutFail.mp3" type="audio/mpeg" />
+    </audio>
+    <audio id="ScanfailAudio">
+        <source src="../upload/audio/fail.mp3" type="audio/mpeg" />
+    </audio>
+    <div class="weui-cells" style="margin-top: 0px;">
+        <div class="weui-cell" style="font-size: 13px;">
+            <div class="weui-cell__bd">
+                <p>所属仓库：</p>
+            </div>
+            <input class="weui-input" id="HouseID" type="text" style="width: 80%; text-align: right;" value="" />
+        </div>
+        <div class="weui-cell" style="font-size: 13px;">
+            <div class="weui-cell__bd">
+                <p>订单号码：</p>
+            </div>
+            <input class="weui-input" id="OrderNo" type="text" style="width: 80%; text-align: right;" value="" />
+        </div>
+        <div class="weui-cell" style="font-size: 13px;">
+            <div class="weui-cell__bd">
+                <p>出发到达：</p>
+            </div>
+            <div class="weui-cell__ft" id="Dest"></div>
+        </div>
+        <div class="weui-cell" style="font-size: 13px;">
+            <div class="weui-cell__bd">
+                <p>客户名称：</p>
+            </div>
+            <div class="weui-cell__ft" id="AcceptName"></div>
+        </div>
+        <div class="weui-cell" style="font-size: 13px;">
+            <div class="weui-cell__bd">
+                <p>出库数量：</p>
+            </div>
+            <div class="weui-cell__ft" id="Piece"></div>
+        </div>
+        <div class="weui-cell" style="font-size: 13px;">
+            <div class="weui-cell__bd">
+                <p>送货方式：</p>
+            </div>
+            <div class="weui-cell__ft" id="DeliveryType"></div>
+        </div>
+        <div class="weui-cell" style="font-size: 13px;">
+            <div class="weui-cell__bd">
+                <p>订单备注：</p>
+            </div>
+            <div class="weui-cell__ft" id="Remark"></div>
+        </div>
+
+    </div>
+    <div style="margin-top: 1px; margin-bottom: 1px;">
+        <a href="javascript:ScanMove();" class="weui-btn bg-green">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;扫描标签&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</a>
+    </div>
+    <div style="text-align: center; margin-top: 5px" id="ZScan"></div>
+    <div class="weui-cells" style="margin-top: 5px;">
+        <div id="ltlUnCheck">
+        </div>
+    </div>
+
+    <script src="../Weixin/WeUI/JS/jquery-2.1.4.js"></script>
+    <script src="../Weixin/WeUI/JS/fastclick.js"></script>
+    <script src="../Weixin/WeUI/JS/jquery-weui.js"></script>
+    <script type="text/javascript">
+        var HouseList = new Array();
+        var CurHID;
+        var mn;
+        $(function () {
+            //FastClick.attach(document.body);
+            configjssdk();
+            BindHouseData();
+            //ajaxpage("");
+
+        });
+        function BindHouseData() {
+            var hPer = "<%=QyUserInfo.CargoPermisID%>";
+            var hPerName = '<%=QyUserInfo.CargoPermisName%>';
+            var hPerArray = hPer.split(',');
+            var hPerNameArray = hPerName.split(',');
+            for (var i = 0; i < hPerArray.length; i++) {
+                var info = { "value": hPerArray[i], "title": hPerNameArray[i] };
+                HouseList.push(info);
+            }
+            $("#HouseID").select({
+                title: "请选择所属仓库",
+                items: HouseList,
+                onChange: function (d) { },
+                onClose: function (d) {
+                    if (d.data.values != undefined && d.data.values != "") {
+                        CurHID = d.data.values;
+                        QueryHouseOrder();
+                    }
+                },
+                onOpen: function () { },
+            });
+            CurHID = "<%=QyUserInfo.HouseID%>";
+            QueryHouseOrder();
+            $('#HouseID').val("<%=QyUserInfo.HouseName%>");
+        }
+        //查询仓库订单
+        function QueryHouseOrder() {
+            $.ajax({
+                url: 'qyServices.aspx?method=QueryOrderData',
+                type: 'post', dataType: 'json', data: { HouseID: CurHID, OrderNo: "", OrderModel: "0", StartDate: 25 },
+                beforeSend: function () { $.showLoading(); },
+                success: function (rs) {
+                    $.hideLoading();
+                    if (rs.length > 0) {
+                        var MList = new Array();
+                        mn = rs[0].OrderNo;
+                        //$('#OrderNo').html(rs[0].OrderNo);
+                        $('#Dest').html(rs[0].Dep + "---" + rs[0].Dest);
+                        $('#AcceptName').html(rs[0].AcceptPeople + " " + rs[0].AcceptCellphone);
+                        $('#Piece').html(rs[0].Piece);
+                        $('#Remark').html(rs[0].Remark);
+                        var OrderType = "电脑订单";
+                        if (rs[0].OrderType == "4") {
+                            OrderType = "小程序单";
+                        }
+                        else if (rs[0].OrderType == "1") {
+                            OrderType = "企业微信单";
+                        }
+                        else if (rs[0].OrderType == "3") {
+                            OrderType = "APP单";
+                        } 
+                        var DeliveryTypeStr = "急送";
+                        if (rs[0].DeliveryType == "1") {
+                            DeliveryTypeStr = "自提";
+                        }
+                        else if (rs[0].DeliveryType == "2") {
+                            DeliveryTypeStr = "普送";
+                        }
+                        var CheckStatus = "已支付";
+                        if (rs[0].CheckStatus != "1") {
+                            CheckStatus = "未支付";
+                        }
+                        $('#DeliveryType').html(OrderType + "&nbsp;&nbsp;" + DeliveryTypeStr + "&nbsp;&nbsp;<span style='color:red;'>" + CheckStatus + "</span>");
+                        var zN = 0, sN = 0, nN = 0;
+                        if (rs[0].ContainerShowEntity.length > 0) {
+                            for (var j = 0; j < rs[0].ContainerShowEntity.length; j++) {
+                                zN += Number(rs[0].ContainerShowEntity[j].Piece);//订单要出库数量
+                                sN += Number(rs[0].ContainerShowEntity[j].OldPiece);//已扫描数量
+                                var ws = Number(rs[0].ContainerShowEntity[j].Piece) - Number(rs[0].ContainerShowEntity[j].OldPiece);
+                                $('#ltlUnCheck').append("<div class=\"weui-cell\"><div class=\"weui-cell__bd weui-cell_primary\"><div class=\"weui_cell_title\" style=\"font-size: 12px;\">品牌：" + rs[0].ContainerShowEntity[j].TypeName + "&nbsp;产品ID：" + rs[0].ContainerShowEntity[j].ProductID + "&nbsp;规格：<span style=\"font-weight:bold;\">" + rs[0].ContainerShowEntity[j].Specs + "  " + rs[0].ContainerShowEntity[j].Figure + " " + rs[0].ContainerShowEntity[j].LoadIndex + rs[0].ContainerShowEntity[j].SpeedLevel + "</span></div><div class=\"weui_cell_info\" style=\"font-size: 12px;\">货位：<span style=\"font-weight:bold;\">" + rs[0].ContainerShowEntity[j].ContainerCode + "</span>&nbsp;批次：<span style=\"font-weight:bold;\">" + rs[0].ContainerShowEntity[j].Batch + "</span></div></div><div class=\"weui-cell__ft\"><div class=\"weui_cell_title\" style=\"font-size: 13px;\">出库数量：" + rs[0].ContainerShowEntity[j].Piece + "条</div><div class=\"weui_cell_info\" id=\"" + rs[0].ContainerShowEntity[j].ContainerNum + "\"><span style=\"font-size: 15px; color: red;\">未：" + ws + "条</span>&nbsp;&nbsp;<span style=\"font-size: 15px; color: green;\">已：" + rs[0].ContainerShowEntity[j].OldPiece + "条</span></div></div></div>");
+                            }
+                        }
+                        nN = zN - sN;
+                        $('#ZScan').html("总未扫描：<span style=\"font-weight: bold; color: red; font-size: 20px;\">" + nN + "</span>&nbsp;条&nbsp;&nbsp;&nbsp;&nbsp;已扫描：<span style=\"font-weight: bold; color: darkgreen; font-size: 20px;\">" + sN + "</span>&nbsp;条");
+                        for (var i = 0; i < rs.length; i++) {
+                            MList.push(rs[i].OrderNo);
+                        }
+                        //$("#OrderNo").empty();
+                        $("#OrderNo").val("");
+                        $("#OrderNo").select({
+                            title: "请选择出库订单号",
+                            items: MList,
+                            onChange: function (d) { },
+                            onClose: function (d) {
+                                if (d.data.values != undefined && d.data.values != "") {
+                                    ajaxpage(CurHID, d.data.values);
+                                    mn = d.data.values;
+                                }
+                            },
+                            onOpen: function () { },
+                        });
+                        $("#OrderNo").select("update", { items: MList });
+                        ajaxpage(CurHID, mn);
+                        $('#OrderNo').val(mn)
+                    }
+                    else {
+                        $.toast("无待出库订单", 'warning')
+                    }
+
+                }
+            });
+        }
+
+        function ScanMove() {
+            wx.scanQRCode({
+                desc: 'scanQRCode desc',
+                needResult: 1, // 默认为0，扫描结果由企业微信处理，1则直接返回扫描结果，
+                scanType: ["qrCode", "barCode"], // 可以指定扫二维码还是条形码（一维码），默认二者都有
+                success: function (res) {
+                    if (res.resultStr == "" || res.resultStr == undefined) {
+                        //mui.alert('扫描标签条码有误', '系统提示', function () { });
+                        $('#ScanfailAudio')[0].play();
+                        $.toast("扫描标签条码有误", "forbidden");
+                        return;
+                    }
+                    var TagCode = res.resultStr;
+                    $.ajax({
+                        url: 'qyServices.aspx?method=ScanOrderOutOK',
+                        type: 'post', dataType: 'json', data: { OrderNo: mn, TagCode: TagCode },
+                        success: function (res) {
+                            if (res.Result) {
+                                $('#chatAudio')[0].play();
+                                var zN = 0, sN = 0, nN = 0;
+                                //操作成功
+                                var g = eval(res.Message);
+                                for (var i = 0; i < g.length; i++) {
+                                    zN += Number(g[i].Piece);
+                                    sN += Number(g[i].OldPiece);
+                                    var ws = Number(g[i].Piece) - Number(g[i].OldPiece);
+                                    $('#' + g[i].ContainerNum + '').html("<span style=\"font-size: 15px; color: red;\">未扫描：" + ws + "条</span>&nbsp;&nbsp;<span style=\"font-size: 15px; color: green;\">已扫描：" + g[i].OldPiece + "条</span>");
+                                }
+                                nN = zN - sN;
+                                $('#ZScan').html("未扫描：<span style=\"font-weight: bold; color: red; font-size: 17px;\">" + nN + "</span>&nbsp;条&nbsp;&nbsp;&nbsp;&nbsp;已扫描：<span style=\"font-weight: bold; color: darkgreen; font-size: 17px;\">" + sN + "</span>&nbsp;条");
+                            }
+                            else {
+                                $('#failAudio')[0].play();
+                                $.toptip(res.Message, 'warning')
+                                //$.toast(res.Message, "forbidden");
+                            }
+                        }
+                    });
+                },
+                error: function (res) {
+                    if (res.errMsg.indexOf('function_not_exist') > 0) {
+                        //alert('版本过低请升级')
+                        $.toast("版本过低请升级", "forbidden");
+                        //mui.alert('版本过低请升级', '系统提示', function () { });
+                    }
+                }
+            });
+        }
+        function ajaxpage(HID, OrderNo) {
+            $('#ltlUnCheck').html("");
+            $.ajax({
+                type: "POST", dataType: "json", data: { HouseID: HID, OrderNo: OrderNo, OrderModel: "0", StartDate: 25 },
+                url: 'qyServices.aspx?method=QueryOrderData',
+                beforeSend: function () { $.showLoading(); },
+                success: function (rs) {
+                    $.hideLoading();
+                    for (var i = 0; i < rs.length; i++) {
+                        $('#OrderNo').html(rs[0].OrderNo);
+                        $('#Dest').html(rs[0].Dep + "---" + rs[0].Dest);
+                        $('#AcceptName').html(rs[0].AcceptPeople + " " + rs[0].AcceptCellphone);
+                        $('#Piece').html(rs[0].Piece);
+                        $('#Remark').html(rs[0].Remark);
+                        var OrderType = "电脑订单";
+                        if (rs[0].OrderType == "4") {
+                            OrderType = "小程序单";
+                        }
+                        else if (rs[0].OrderType == "1") {
+                            OrderType = "企业微信单";
+                        } 
+                        else if (rs[0].OrderType == "3") {
+                            OrderType = "APP单";
+                        } 
+
+                        var DeliveryTypeStr = "急送";
+                        if (rs[0].DeliveryType == "1") {
+                            DeliveryTypeStr = "自提";
+                        }
+                        else if (rs[0].DeliveryType == "2") {
+                            DeliveryTypeStr = "普送";
+                        }
+                        var CheckStatus = "已支付";
+                        if (rs[0].CheckStatus != "1") {
+                            CheckStatus = "未支付";
+                        }
+                        $('#DeliveryType').html(OrderType +"&nbsp;&nbsp;"+DeliveryTypeStr + "&nbsp;&nbsp;<span style='color:red;'>" + CheckStatus + "</span>");
+
+                        var zN = 0, sN = 0, nN = 0;
+                        if (rs[i].ContainerShowEntity.length > 0) {
+                            for (var j = 0; j < rs[i].ContainerShowEntity.length; j++) {
+                                zN += Number(rs[i].ContainerShowEntity[j].Piece);
+                                sN += Number(rs[i].ContainerShowEntity[j].OldPiece);
+                                var ws = Number(rs[i].ContainerShowEntity[j].Piece) - Number(rs[i].ContainerShowEntity[j].OldPiece);
+                                $('#ltlUnCheck').append("<div class=\"weui-cell\"><div class=\"weui-cell__bd weui-cell_primary\"><div class=\"weui_cell_title\" style=\"font-size: 12px;\">品牌：" + rs[0].ContainerShowEntity[j].TypeName + "&nbsp;产品ID：" + rs[0].ContainerShowEntity[j].ProductID + "&nbsp;规格：<span style=\"font-weight:bold;\">" + rs[0].ContainerShowEntity[j].Specs + "  " + rs[0].ContainerShowEntity[j].Figure + " " + rs[0].ContainerShowEntity[j].LoadIndex + rs[0].ContainerShowEntity[j].SpeedLevel + "</span></div><div class=\"weui_cell_info\" style=\"font-size: 12px;\">货位：<span style=\"font-weight:bold;\">" + rs[0].ContainerShowEntity[j].ContainerCode + "</span>&nbsp;批次：<span style=\"font-weight:bold;\">" + rs[0].ContainerShowEntity[j].Batch + "</span></div></div><div class=\"weui-cell__ft\"><div class=\"weui_cell_title\" style=\"font-size: 13px;\">出库数量：" + rs[0].ContainerShowEntity[j].Piece + "条</div><div class=\"weui_cell_info\" id=\"" + rs[0].ContainerShowEntity[j].ContainerNum + "\"><span style=\"font-size: 15px; color: red;\">未：" + ws + "条</span>&nbsp;&nbsp;<span style=\"font-size: 15px; color: green;\">已：" + rs[0].ContainerShowEntity[j].OldPiece + "条</span></div></div></div>");
+                            }
+                        }
+                        nN = zN - sN;
+                        $('#ZScan').html("总未扫描：<span style=\"font-weight: bold; color: red; font-size: 20px;\">" + nN + "</span>&nbsp;条&nbsp;&nbsp;&nbsp;&nbsp;已扫描：<span style=\"font-weight: bold; color: darkgreen; font-size: 20px;\">" + sN + "</span>&nbsp;条");
+                    }
+                }
+            });
+        }
+        function configjssdk() {
+            var weixinUrl = location.href.split('#')[0];//;
+            //配置jssdk
+            $.ajax({
+                type: "post",
+                url: "qyServices.aspx?method=configJssdk",
+                dataType: "json",
+                data: { Url: weixinUrl },
+                cache: false,
+                ifModified: true,
+                async: false,
+                success: function (msg) {
+                    var json = eval(msg);
+                    var config = {};
+                    config.beta = true;
+                    config.appId = json.appId;
+                    config.nonceStr = json.nonceStr;
+                    config.signature = json.signature;
+                    config.debug = false;        // 添加你需要的JSSDK的权限
+                    config.jsApiList = ['scanQRCode', 'chooseImage', 'openLocation', 'getLocation', 'uploadImage', 'downloadImage', 'getLocalImgData', 'previewImage'];
+                    config.timestamp = parseInt(json.timestamp);
+                    wx.config(config);
+                    wx.ready(function () {
+                        //alert("jssdk配置成功");
+                        //console("jssdk配置成功");
+                        //wx.config(config);
+                    });
+                    wx.error(function (res) {
+                        alert(JSON.stringify(res));
+                    });
+                }
+            })
+        }
+    </script>
+</body>
+</html>

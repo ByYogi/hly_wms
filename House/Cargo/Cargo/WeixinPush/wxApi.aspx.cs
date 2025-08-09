@@ -1,0 +1,251 @@
+﻿using House.Business;
+using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using House.Entity.House;
+using Senparc.Weixin.MP.AdvancedAPIs.TemplateMessage;
+using Senparc.Weixin.MP.Containers;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Text.RegularExpressions;
+using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using Cargo.Interface;
+using System.Web.Hosting;
+using System.Collections.Specialized;
+using System.Security.Cryptography;
+using System.Web.Script.Serialization;
+using iText.Kernel.Pdf;
+using House.Entity.Cargo.Order;
+using NPOI.POIFS.Storage;
+using static NPOI.HSSF.Util.HSSFColor;
+using System.ServiceModel;
+using NPOI.HSSF.Record.Formula.Functions;
+using static Cargo.Order.orderApi;
+using Senparc.Weixin.Helpers;
+using System.Configuration;
+using House.Entity.Cargo.Product;
+using Senparc.Weixin.MP.TenPayLibV3;
+using Cargo.QY;
+using System.Web.Routing;
+using NPOI.POIFS.Properties;
+using Cargo.Weixin;
+using System.Runtime.Remoting.Contexts;
+using iText.Kernel.Geom;
+using Senparc.Weixin.MP.AdvancedAPIs.MerChant;
+using Senparc.Weixin.MP.AppStore;
+using System.Drawing;
+using Org.BouncyCastle.Asn1.Ocsp;
+
+namespace Cargo.WeixinPush
+{
+    public partial class wxApi : BasePage
+    {
+        public static string FilePath { get; set; }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            string methodName = string.Empty;
+            try
+            {
+                methodName = Request["method"];
+                if (methodName== "wxUpFile")
+                {
+                    string AccountNO = Convert.ToString(Request["AccountNO"]);
+                    if (Request.Files.Count > 0)
+                    {
+                        HttpPostedFile signatureFile = Request.Files["signature"];
+                        if (signatureFile != null && signatureFile.ContentLength > 0)
+                        {
+                            var pathName = signatureFile.FileName;
+                            var Suffix = pathName.Split('.')[1];
+                            string filePath = Server.MapPath("~/upload/Signature/") + $@"{AccountNO}."+ Suffix;
+                            signatureFile.SaveAs(filePath);
+
+                            FilePath = filePath;
+                        }
+                    }
+                }
+                if (String.IsNullOrEmpty(methodName)) return;
+                Type type = this.GetType();
+                MethodInfo method = type.GetMethod(methodName);
+                method.Invoke(this, null);
+
+            }
+            catch (Exception ex)
+            {
+                LogBus bus = new LogBus();
+                LogEntity log = new LogEntity();
+                log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+                log.Operate = "";
+                log.Moudle = "";
+                log.Status = "1";
+                log.NvgPage = "";
+                log.UserID = UserInfor == null ? "" : UserInfor.LoginName.Trim();
+                log.Memo = methodName + " " + ex.Message + " " + ex.StackTrace;
+                bus.InsertLog(log);
+            }
+
+        }
+
+        public void QueryServiceOrderData()
+        {
+            var Days= Common.GetSerViceSupplierDay();
+            Days = string.IsNullOrEmpty(Days) ? "1" : Days;
+            CargoWeiXinBus cargoWeiXinBus = new CargoWeiXinBus();
+            string OpenID = Convert.ToString(Request["openid"]); //"oUu1467ZwKwBTyq7qea8LSULNRdc";
+            string currdate = Convert.ToString(Request["currdate"]); 
+            Common.WriteTextLog("供应商销售数据openid：" + OpenID);
+            var list = cargoWeiXinBus.QueryServiceOrderData(OpenID, Days, currdate);
+
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+
+        public void QueryWxDetailData()
+        {
+            CargoWeiXinBus cargoWeiXinBus = new CargoWeiXinBus();
+            string OpenID = Convert.ToString(Request["openid"]); //"oluY8vksVHoHiGsYBBsCwnPpNz38";
+            var list = cargoWeiXinBus.QueryWxDetailData(OpenID);
+
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 更新用户门店数据
+        /// </summary>
+        public void UpdateWxStoresData()
+        {
+            LogBus bus = new LogBus();
+            WxClientUserEntity wxClientUser = new WxClientUserEntity();
+            CargoWeiXinBus cargoWeiXinBus = new CargoWeiXinBus();
+            string OpenID = Convert.ToString(Request["wxOpenID"]); //"";
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "微信推送";
+            log.NvgPage = "个人详情";
+            log.Status = "0";
+            log.UserID = UserInfor == null ? "" : UserInfor.LoginName.Trim();
+
+            try
+            {
+                wxClientUser.ClientNum = Convert.ToString(Request["ClientNum"]);
+                wxClientUser.Cellphone = Convert.ToString(Request["Cellphone"]);
+                wxClientUser.wxOpenID = Convert.ToString(Request["wxOpenID"]);
+                wxClientUser.UserType = Convert.ToInt32(Request["UserType"]);
+                Common.WriteTextLog($@"门店信息 0001 ClientNum:{wxClientUser.ClientNum} 
+                Cellphone:{wxClientUser.Cellphone} wxOpenID:{wxClientUser.wxOpenID} UserType:{wxClientUser.UserType}");
+                cargoWeiXinBus.UpdateWxStoresData(wxClientUser, log);
+                Common.WriteTextLog("门店信息 0002 ");
+                msg.Message = log.Memo.Contains("更新用户数据")? "绑定成功" : "绑定失败";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Clear();
+            Response.Write(res);
+        }
+
+
+        public List<WxClientUserEntity> QueryWxSupplierOpenID()
+        {
+            CargoWeiXinBus cargoWeiXinBus = new CargoWeiXinBus();
+            var list = cargoWeiXinBus.QueryWxSupplierOpenID();
+
+            return list;
+        }
+
+
+        public void QueryWxSupplierBillData()
+        {
+            CargoWeiXinBus cargoWeiXinBus = new CargoWeiXinBus();
+            //string OpenID = Convert.ToString(Request["openid"]); //"oluY8vksVHoHiGsYBBsCwnPpNz38";
+            string AccountNO = Convert.ToString(Request["AccountNO"]);
+
+            var list = cargoWeiXinBus.QueryWxSupplierBillData(AccountNO);
+
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        public void wxUpFile()
+        {
+            CargoWeiXinBus bus = new CargoWeiXinBus();
+            CargoSuppClientAccountEntity entity = new CargoSuppClientAccountEntity();
+            
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "微信推送";
+            log.NvgPage = "用户签名";
+            log.Status = "0";
+            log.UserID = UserInfor == null ? "" : UserInfor.LoginName.Trim();
+
+            string AccountNO = Convert.ToString(Request["AccountNO"]);
+            entity.AccountNO = AccountNO;
+            entity.ElecSignDate = DateTime.Now;
+            entity.ElecSignImg = FilePath;
+            entity.ElecSign = 1;
+
+            bus.UpdateWxSuppSignature(entity,log);
+
+            // 返回JSON响应 
+            Response.Clear();
+            Response.ContentType = "application/json";
+            Response.Write("{\"success\":true}");
+            Response.End();
+        }
+
+        public void GetPicture()
+        {
+            string imagePath = Request["pathUrl"]; // 获取前端传递的路径 
+            if (File.Exists(imagePath))
+            {
+                byte[] fileBytes = File.ReadAllBytes(imagePath);
+                //string base64String = Convert.ToBase64String(imageBytes);
+
+                // 设置响应头 
+                Response.Clear();
+                Response.ContentType = "application/octet-stream";
+                Response.AddHeader("Content-Disposition", "attachment; filename=" + System.IO.Path.GetFileName(imagePath));
+                Response.AddHeader("Content-Length", fileBytes.Length.ToString());
+
+                // 输出二进制流 
+                Response.BinaryWrite(fileBytes);
+                Response.Flush();
+            }
+
+        }
+        /// <summary>
+        /// 获取退款数据
+        /// </summary>
+        public void QueryRefundOrderData()
+        {
+            CargoWeiXinBus cargoWeiXinBus = new CargoWeiXinBus();
+            string orderNo = Convert.ToString(Request["orderNo"]);
+            var list = cargoWeiXinBus.QueryRefundOrderData(orderNo);
+
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+    }
+}

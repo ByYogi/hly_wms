@@ -1,0 +1,332 @@
+﻿<%@ Page Title="公告管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="NoticeUserView.aspx.cs" Inherits="Cargo.systempage.Notice" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <link href="../JS/KindEditer/themes/default/default.css" rel="stylesheet" />
+    <link href="../JS/KindEditer/plugins/code/prettify.css" rel="stylesheet" />
+    <script type="text/javascript" src="../JS/KindEditer/kindeditor-all.js"></script>
+    <script type="text/javascript" src="../JS/KindEditer/lang/zh-CN.js"></script>
+    <script src="../JS/KindEditer/plugins/code/prettify.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        var editor;
+        $(function () {
+            KindEditor.ready(function (K) {
+                editor = K.create('#Memo', {
+                    cssPath: '../JS/KindEditer/plugins/code/prettify.css',
+                    uploadJson: '../Product/upload.ashx',
+                    fileManagerJson: '../asp.net/file_manager_json.ashx',
+                    allowFileManager: true,
+                    afterCreate: function () { }
+                });
+                prettyPrint();
+            });
+        });
+    </script>
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        //页面加载时执行
+        window.onload = function () {
+            adjustment();
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: 20, //每页多少条
+                pageList: [20, 50],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [[
+                    { title: '', field: 'ID', checkbox: true, width: '5%' },
+                    {
+                        title: '所属仓库', field: 'HouseName', width: '6%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '公告标题', field: 'Title', width: '30%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '公告类型', field: 'NoticeType', width: '5%',
+                        formatter: function (value) {
+                            if (value == "0") { return "<span title='商城公告'>商城公告</span>"; }
+                            else if (value == "1") { return "<span title='到货通知'>到货通知</span>"; }
+                            else if (value == "2") { return "<span title='小程序公告'>小程序公告</span>"; }
+                        }
+                    },
+                    {
+                        title: '公告状态', field: 'DelFlag', width: '5%',
+                        formatter: function (value) {
+                            if (value == "0") { return "<span title='有效'>有效</span>"; }
+                            else if (value == "1") { return "<span title='失效'>失效</span>"; }
+                        }
+                    },
+                    {
+                        title: '已读状态', field: 'ReadStatus', width: '5%',
+                        formatter: function (value) {
+                            if (value == "0") { return "<span title='未读'>未读</span>"; }
+                            else if (value == "1") { return "<span title='已读'>已读</span>"; }
+                        }
+                    },
+                    {
+                        title: '用户', field: 'ClientNum', width: '4%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '操作人', field: 'OPName', width: '5%', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    { title: '操作时间', field: 'OP_DATE', width: '10%', formatter: DateTimeFormatter }
+                ]],
+                onLoadSuccess: function (data) { },
+                onDblClickRow: function (index, row) { editItemByID(index); }
+            });
+            //所在仓库
+            $('#HID').combobox({ url: '../House/houseApi.aspx?method=CargoPermisionHouse', valueField: 'HouseID', textField: 'Name', });
+            //所在仓库
+            $('#HouseID').combobox({ url: '../House/houseApi.aspx?method=CargoPermisionHouse', valueField: 'HouseID', textField: 'Name', });
+            $('#HID').combobox('textbox').bind('focus', function () { $('#HID').combobox('showPanel'); });
+            $('#HouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+            $('#ADelFlag').combobox('textbox').bind('focus', function () { $('#ADelFlag').combobox('showPanel'); });
+            $('#ANoticeType').combobox('textbox').bind('focus', function () { $('#ANoticeType').combobox('showPanel'); });
+            dosearch()
+        });
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'sysService.aspx?method=QueryCargoNoticeUser';
+            $('#dg').datagrid('load', {
+                Title: $('#ATitle').val(),
+                NoticeType: $("#ANoticeType").combobox('getValue'),
+                DelFlag: $("#ADelFlag").combobox('getValue'),
+                HID: $("#HID").combobox('getValue')
+            });
+        }
+    </script>
+</asp:Content>
+
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">所属仓库:
+                </td>
+                <td style="width: 10%">
+                    <input id="HID" class="easyui-combobox" style="width: 100px;" />
+                </td>
+                <td style="text-align: right;">公告标题:
+                </td>
+                <td style="width: 10%">
+                    <input id="ATitle" class="easyui-textbox" data-options="prompt:'请输入公告标题'" style="width: 100px">
+                </td>
+                <td style="text-align: right;">公告类型:
+                </td>
+                <td style="width: 10%">
+                    <select class="easyui-combobox" id="ANoticeType" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">商城公告</option>
+                        <option value="1">到货通知</option>
+                        <option value="2">小程序公告</option>
+                        <option value="3">公司通知</option>
+                        <option value="4">销售政策</option>
+                        <option value="5">行业情报</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">公告状态:
+                </td>
+                <td style="width: 10%">
+                    <select class="easyui-combobox" id="ADelFlag" style="width: 80px;" panelheight="auto">
+                        <option value="0">有效</option>
+                        <option value="1">失效</option>
+                        <option value="-1">全部</option>
+                    </select>
+                </td>
+
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-email_open" plain="false" onclick="oneClickNoticeUserRead()">&nbsp;一键已读&nbsp;</a>&nbsp;&nbsp;
+        <%--        <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addItem()"> &nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editItem()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>--%>
+    </div>
+    <div id="dlg" class="easyui-dialog" style="width: 800px; height: 500px; padding: 0px"
+        closed="true" buttons="#dlg-buttons">
+        <div id="saPanel">
+            <form id="fm" class="easyui-form" method="post">
+                <input type="hidden" name="ID" />
+                <table>
+                    <tr>
+                        <td style="text-align: right;">所属仓库:
+                        </td>
+                        <td>
+                            <input id="HouseID" name="HouseID" class="easyui-combobox" style="width: 100px;" />
+                        </td>
+
+                        <td style="text-align: right;">公告标题:
+                        </td>
+                        <td>
+                            <input name="Title" class="easyui-textbox" data-options="prompt:'请输入公告标题',required:true"
+                                style="width: 400px;">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="text-align: right;">公告类型:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" name="NoticeType" id="NoticeType" style="width: 100px;"
+                                panelheight="auto" required="true">
+                                <option value="0">商城公告</option>
+                                <option value="1">到货通知</option>
+                                <option value="2">小程序公告</option>
+                            </select>
+                        </td>
+                        <td style="text-align: right;">公告状态:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="DelFlag" name="DelFlag" style="width: 100px;"
+                                panelheight="auto" required="true">
+                                <option value="0">有效</option>
+                                <option value="1">失效</option>
+                            </select>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="text-align: right;">公告内容:
+                        </td>
+                        <td colspan="3">
+                            <textarea id="Memo" name="Memo" cols="100" rows="8" style="width: 700px; height: 330px; visibility: hidden;"></textarea>
+                        </td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+    </div>
+    <div id="dlg-buttons">
+        <%--<a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItem()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;--%>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+
+    <script type="text/javascript">
+        //新增公告信息
+        function addItem() {
+            $('#dlg').dialog('open').dialog('setTitle', '新增公告信息');
+            $('#fm').form('clear');
+            $('#DelFlag').combobox('select', '0');
+            $('#HouseID').combobox('enable');
+        }
+        //修改公告信息
+        function editItem() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#dlg').dialog('open').dialog('setTitle', '修改公告信息');
+                $('#fm').form('clear');
+                $('#fm').form('load', row);
+                $('#HouseID').combobox('disable');
+                $.ajax({
+                    async: false, cache: false, dataType: "json",
+                    url: "sysService.aspx?method=QueryNoticeByID&ID=" + row.ID,
+                    success: function (text) {
+                        editor.html(text.Memo);
+                    }
+                });
+            }
+        }
+        //修改公告信息
+        function editItemByID(Did) {
+            var row = $("#dg").datagrid('getData').rows[Did];
+            if (row) {
+                $('#dlg').dialog('open').dialog('setTitle', '修改公告信息');
+                $('#fm').form('clear');
+                $('#fm').form('load', row);
+                $('#HouseID').combobox('disable');
+                $.ajax({
+                    async: false, cache: false, dataType: "json",
+                    url: "sysService.aspx?method=QueryNoticeByID&ID=" + row.ID,
+                    success: function (text) {
+                        editor.html(text.Memo);
+                    }
+                });
+
+                //新增已读信息
+                $.ajax({
+                    async: false, cache: false, dataType: "json",
+                    url: "sysService.aspx?method=SaveCargoNoticeUserView&ID=" + row.ID + "&update=" + 0 + "&ReadStatus=" + 1 + "&MessageType=" + 0 + "&Title=" + row.Title,
+                    success: function (text) {
+                        if (text.Result == true) {
+                            $('#dg').datagrid('reload');
+                            QueryIsNoticeView();
+                        }
+                    }
+                });
+            }
+        }
+        function oneClickNoticeUserRead() {
+            $.ajax({
+                url: 'sysService.aspx?method=OneClickNoticeUserRead',
+                type: 'post',
+                dataType: 'json',
+                success: function (text) {
+                    if (text.Result == true) {
+                        $('#dg').datagrid('reload');
+                        QueryIsNoticeView();
+                    }
+                }
+            });
+        }
+        //是否显示未读信息提示
+        function QueryIsNoticeView() {
+            window.parent.QueryIsNoticeView();
+        }
+
+
+    </script>
+
+</asp:Content>

@@ -1,0 +1,329 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Order
+{
+    public partial class orderReturnManager : BasePage
+    {
+        public string Un = string.Empty;
+        public string Ln = string.Empty;
+        public string HouseName = string.Empty;
+        public string PickTitle = string.Empty;
+        public string SendTitle = string.Empty;
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            Un = UserInfor.UserName.Trim();
+            Ln = UserInfor.LoginName.Trim();
+            HouseName = UserInfor.HouseName.Trim();
+            PickTitle = UserInfor.PickTitle;
+            SendTitle = UserInfor.SendTitle;
+        }
+
+        public Hashtable QueryOrderInfoList
+        {
+            get
+            {
+                if (Session["QueryOrderInfoList"] == null)
+                {
+                    Session["QueryOrderInfoList"] = new Hashtable();
+                }
+                return (Hashtable)(Session["QueryOrderInfoList"]);
+            }
+            set
+            {
+                Session["QueryOrderInfoList"] = value;
+            }
+        }
+        public List<CargoOrderEntity> QueryReturnOrderInfoList
+        {
+            get
+            {
+                if (Session["QueryReturnOrderInfoList"] == null)
+                {
+                    Session["QueryReturnOrderInfoList"] = new List<CargoOrderEntity>();
+                }
+                return (List<CargoOrderEntity>)(Session["QueryReturnOrderInfoList"]);
+            }
+            set
+            {
+                Session["QueryReturnOrderInfoList"] = value;
+            }
+        }
+        /// <summary>
+        /// 导出订单列表
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            var List = QueryOrderInfoList["rows"];
+            IEnumerable<object> list = List as IEnumerable<object>;
+            if (list.Count() <= 0) { return; }
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("退货单号", typeof(string));
+            table.Columns.Add("出发站", typeof(string));
+            table.Columns.Add("到达站", typeof(string));
+            table.Columns.Add("退货件数", typeof(string));
+            table.Columns.Add("退货金额", typeof(string));
+            table.Columns.Add("合计", typeof(string));
+            table.Columns.Add("退货原因", typeof(string));
+            table.Columns.Add("客户名称", typeof(string));
+            table.Columns.Add("收货人", typeof(string));
+            table.Columns.Add("联系手机", typeof(string));
+            table.Columns.Add("收货地址", typeof(string));
+            table.Columns.Add("业务员", typeof(string));
+            table.Columns.Add("开单员", typeof(string));
+            table.Columns.Add("开单时间", typeof(string));
+            table.Columns.Add("订单状态", typeof(string));
+            table.Columns.Add("下单方式", typeof(string));
+            table.Columns.Add("物流公司名称", typeof(string));
+            table.Columns.Add("物流公司单号", typeof(string));
+            table.Columns.Add("物流配送费用", typeof(string));
+
+            int i = 0;
+            string orderno = string.Empty;
+            foreach (var it in list)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["退货单号"] = it.GetType().GetProperty("OrderNo").GetValue(it, null).ToString(); ;
+                newRows["出发站"] = it.GetType().GetProperty("Dep").GetValue(it, null).ToString();
+                newRows["到达站"] = it.GetType().GetProperty("Dest").GetValue(it, null).ToString();
+                newRows["退货件数"] = it.GetType().GetProperty("Piece").GetValue(it, null).ToString(); ;
+                newRows["退货金额"] = it.GetType().GetProperty("TotalCharge").GetValue(it, null).ToString();
+                newRows["合计"] = it.GetType().GetProperty("TotalCharge").GetValue(it, null).ToString();
+                newRows["退货原因"] = it.GetType().GetProperty("Remark").GetValue(it, null).ToString();
+                newRows["客户名称"] = it.GetType().GetProperty("AcceptUnit").GetValue(it, null).ToString();
+                newRows["收货人"] = it.GetType().GetProperty("AcceptPeople").GetValue(it, null).ToString();
+                newRows["联系手机"] = it.GetType().GetProperty("AcceptCellphone").GetValue(it, null).ToString();
+                newRows["收货地址"] = it.GetType().GetProperty("AcceptAddress").GetValue(it, null).ToString();
+                newRows["业务员"] = it.GetType().GetProperty("SaleManName").GetValue(it, null).ToString();
+                newRows["开单员"] = it.GetType().GetProperty("CreateAwb").GetValue(it, null).ToString();
+                newRows["开单时间"] = it.GetType().GetProperty("CreateDate").GetValue(it, null).ToString();
+                newRows["订单状态"] = GetText(it.GetType().GetProperty("AwbStatus").GetValue(it, null).ToString(), "AwbStatus");
+                newRows["下单方式"] = GetText(it.GetType().GetProperty("OrderType").GetValue(it, null).ToString(), "OrderType");
+                newRows["物流公司名称"] = it.GetType().GetProperty("LogisticName").GetValue(it, null).ToString();
+                newRows["物流公司单号"] = it.GetType().GetProperty("LogisAwbNo").GetValue(it, null).ToString();
+                newRows["物流配送费用"] = it.GetType().GetProperty("DeliveryFee").GetValue(it, null).ToString();
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "退货订单列表");
+        }
+        protected void btnOrderInfo_Click(object sender, EventArgs e)
+        {
+            List<CargoOrderEntity> list = QueryReturnOrderInfoList;
+            if (list.Count() <= 0) { return; }
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("退货单号", typeof(string));
+            table.Columns.Add("出发站", typeof(string));
+            table.Columns.Add("到达站", typeof(string));
+            table.Columns.Add("客户名称", typeof(string));
+            table.Columns.Add("收货人", typeof(string));
+            table.Columns.Add("联系手机", typeof(string));
+            table.Columns.Add("收货地址", typeof(string));
+            table.Columns.Add("业务员", typeof(string));
+            table.Columns.Add("开单员", typeof(string));
+            table.Columns.Add("开单时间", typeof(string));
+            table.Columns.Add("退货件数", typeof(string));
+            table.Columns.Add("关联订单", typeof(string));
+            table.Columns.Add("业务员价", typeof(string));
+            table.Columns.Add("型号", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("批次", typeof(string));
+            table.Columns.Add("产品名称", typeof(string));
+            table.Columns.Add("产品类型", typeof(string));
+            table.Columns.Add("归属部门", typeof(string));
+            table.Columns.Add("货位代码", typeof(string));
+            table.Columns.Add("所在区域", typeof(string));
+            table.Columns.Add("所在仓库", typeof(string));
+            table.Columns.Add("载重指数", typeof(string));
+            table.Columns.Add("速度级别", typeof(string));
+            table.Columns.Add("最高速度", typeof(string));
+            table.Columns.Add("尺寸", typeof(string));
+            table.Columns.Add("单价", typeof(string));
+            table.Columns.Add("操作时间", typeof(string));
+            table.Columns.Add("订单状态", typeof(string));
+            table.Columns.Add("下单方式", typeof(string));
+            table.Columns.Add("物流公司名称", typeof(string));
+            table.Columns.Add("物流公司单号", typeof(string));
+            table.Columns.Add("物流配送费用", typeof(string));
+            table.Columns.Add("产品来源", typeof(string));
+
+            int i = 0;
+            string orderno = string.Empty;
+            foreach (var it in list)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["退货单号"] = it.GetType().GetProperty("OrderNo").GetValue(it, null).ToString(); ;
+                newRows["出发站"] = it.GetType().GetProperty("Dep").GetValue(it, null).ToString();
+                newRows["到达站"] = it.GetType().GetProperty("Dest").GetValue(it, null).ToString();
+                newRows["客户名称"] = it.GetType().GetProperty("AcceptUnit").GetValue(it, null).ToString();
+                newRows["收货人"] = it.GetType().GetProperty("AcceptPeople").GetValue(it, null).ToString();
+                newRows["联系手机"] = it.GetType().GetProperty("AcceptCellphone").GetValue(it, null).ToString();
+                newRows["收货地址"] = it.GetType().GetProperty("AcceptAddress").GetValue(it, null).ToString();
+                newRows["业务员"] = it.GetType().GetProperty("SaleManName").GetValue(it, null).ToString();
+                newRows["开单员"] = it.GetType().GetProperty("CreateAwb").GetValue(it, null).ToString();
+                newRows["开单时间"] = it.GetType().GetProperty("CreateDate").GetValue(it, null).ToString();
+                newRows["退货件数"] = it.GetType().GetProperty("Piece").GetValue(it, null).ToString(); ;
+                newRows["关联订单"] = it.GetType().GetProperty("RelateOrderNo").GetValue(it, null).ToString();
+                newRows["业务员价"] = it.GetType().GetProperty("ActSalePrice").GetValue(it, null).ToString();
+                newRows["型号"] = it.GetType().GetProperty("Model").GetValue(it, null).ToString();
+                newRows["规格"] = it.GetType().GetProperty("Specs").GetValue(it, null).ToString();
+                newRows["花纹"] = it.GetType().GetProperty("Figure").GetValue(it, null).ToString();
+                newRows["批次"] = it.GetType().GetProperty("Batch").GetValue(it, null).ToString();
+                newRows["产品名称"] = it.GetType().GetProperty("ProductName").GetValue(it, null).ToString();
+                newRows["产品类型"] = it.GetType().GetProperty("TypeID").GetValue(it, null).ToString();
+                newRows["归属部门"] = it.GetType().GetProperty("BelongDepart").GetValue(it, null).ToString();
+                newRows["货位代码"] = it.GetType().GetProperty("ContainerCode").GetValue(it, null).ToString();
+                newRows["所在区域"] = it.GetType().GetProperty("AreaName").GetValue(it, null).ToString();
+                newRows["所在仓库"] = it.GetType().GetProperty("HouseName").GetValue(it, null).ToString();
+                newRows["载重指数"] = it.GetType().GetProperty("LoadIndex").GetValue(it, null).ToString();
+                newRows["速度级别"] = it.GetType().GetProperty("SpeedLevel").GetValue(it, null).ToString();
+                newRows["最高速度"] = it.GetType().GetProperty("SpeedMax").GetValue(it, null).ToString();
+                newRows["尺寸"] = it.GetType().GetProperty("Size").GetValue(it, null).ToString();
+                newRows["单价"] = it.GetType().GetProperty("UnitPrice").GetValue(it, null).ToString();
+                newRows["操作时间"] = it.GetType().GetProperty("OP_DATE").GetValue(it, null).ToString();
+                newRows["订单状态"] = GetText(it.GetType().GetProperty("AwbStatus").GetValue(it, null).ToString(), "AwbStatus");
+                newRows["下单方式"] = GetText(it.GetType().GetProperty("OrderType").GetValue(it, null).ToString(), "OrderType");
+                newRows["物流公司名称"] = it.GetType().GetProperty("LogisticName").GetValue(it, null).ToString();
+                newRows["物流公司单号"] = it.GetType().GetProperty("LogisAwbNo").GetValue(it, null).ToString();
+                newRows["物流配送费用"] = it.GetType().GetProperty("DeliveryFee").GetValue(it, null).ToString();
+                newRows["产品来源"] = it.GetType().GetProperty("SourceName").GetValue(it, null).ToString();
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "退货订单详情");
+        }
+        private string GetText(string value, string id)
+        {
+            string retStr = string.Empty;
+            if (id.Contains("ClientType"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "普通客户";
+                else if (value.Trim() == "1")
+                    retStr = "合同客户";
+                else if (value.Trim() == "2")
+                    retStr = "VIP客户";
+            }
+            switch (id)
+            {
+                case "AwbStatus":
+                    if (value.Trim() == "0")
+                        retStr = "已下单";
+                    else if (value.Trim() == "1")
+                        retStr = "出库中";
+                    else if (value.Trim() == "2")
+                        retStr = "已出库";
+                    else if (value.Trim() == "3")
+                        retStr = "运输在途";
+                    else if (value.Trim() == "4")
+                        retStr = "已到达";
+                    else if (value.Trim() == "5")
+                        retStr = "已签收";
+                    else if (value.Trim() == "6")
+                        retStr = "已拣货";
+                    else if (value.Trim() == "7")
+                        retStr = "正在配送";
+                    break;
+                case "CheckOutType":
+                    if (value.Trim() == "0")
+                        retStr = "现付";
+                    else if (value.Trim() == "1")
+                        retStr = "周期";
+                    else if (value.Trim() == "2")
+                        retStr = "月结";
+                    else if (value.Trim() == "3")
+                        retStr = "到付";
+                    else if (value.Trim() == "4")
+                        retStr = "代收";
+                    else if (value.Trim() == "5")
+                        retStr = "微信付款";
+                    else if (value.Trim() == "6")
+                        retStr = "额度付款";
+                    break;
+                case "OrderType":
+                    if (value.Trim() == "0")
+                        retStr = "电脑下单";
+                    else if (value.Trim() == "1")
+                        retStr = "企业号下单";
+                    else if (value.Trim() == "2")
+                        retStr = "商城订单";
+                    else if (value.Trim() == "3")
+                        retStr = "APP订单";
+                    else if (value.Trim() == "4")
+                        retStr = "小程序下单";
+                    break;
+                case "PayWay":
+                    if (value.Trim() == "0")
+                        retStr = "微信付款";
+                    else if (value.Trim() == "1")
+                        retStr = "额度付款";
+                    else if (value.Trim() == "2")
+                        retStr = "积分兑换";
+                    break;
+                case "FinanceSecondCheck":
+                    if (value.Trim() == "0")
+                        retStr = "未审";
+                    else if (value.Trim() == "1")
+                        retStr = "已审";
+                    break;
+                case "CheckStatus":
+                    if (value.Trim() == "0")
+                        retStr = "未结算";
+                    else if (value.Trim() == "1")
+                        retStr = "已结算";
+                    else if (value.Trim() == "2")
+                        retStr = "未结清";
+                    break;
+                case "ThrowGood":
+                    if (value.Trim() == "0")
+                        retStr = "客户单";
+                    else if (value.Trim() == "1")
+                        retStr = "抛货单";
+                    else if (value.Trim() == "2")
+                        retStr = "调货单";
+                    else if (value.Trim() == "3")
+                        retStr = "代发单";
+                    else if (value.Trim() == "4")
+                        retStr = "周期胎";
+                    else if (value.Trim() == "5")
+                        retStr = "长和订单";
+                    else if (value.Trim() == "6")
+                        retStr = "商贸订单";
+                    else if (value.Trim() == "7")
+                        retStr = "祺航订单";
+                    else if (value.Trim() == "8")
+                        retStr = "其它订单";
+                    else if (value.Trim() == "9")
+                        retStr = "理赔单";
+                    else if (value.Trim() == "10")
+                        retStr = "移库单";
+                    else if (value.Trim() == "11")
+                        retStr = "展示单";
+                    else if (value.Trim() == "12")
+                        retStr = "OES客户单";
+                    else if (value.Trim() == "13")
+                        retStr = "自有零售店单";
+                    else if (value.Trim() == "14")
+                        retStr = "报量单";
+                    else if (value.Trim() == "15")
+                        retStr = "速配单";
+                    break;
+            }
+            return retStr;
+        }
+    }
+}

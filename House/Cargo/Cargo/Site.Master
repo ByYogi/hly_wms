@@ -1,0 +1,29 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Site.master.cs" Inherits="Cargo.Site" %>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head id="Head1" runat="server">
+    <title>
+        <%= Cargo.Common.GetSystemNameAndVersion()%></title>
+    <link rel="shortcut icon" type="image/x-icon" href="CSS/image/dlqf.ico" media="screen" />
+    <link href="JS/easy/css/default/easyui.css" rel="stylesheet" type="text/css" />
+    <link href="JS/easy/css/icon.css" rel="stylesheet" type="text/css" />
+
+    <script src="../JS/easy/js/jquery.min.js" type="text/javascript"></script>
+
+    <script src="../JS/easy/js/jquery.easyui.min.js" type="text/javascript"></script>
+
+    <script src="../JS/easy/js/validator.js" type="text/javascript" charset="gbk"></script>
+
+    <script src="../JS/easy/js/easyui-lang-zh_CN.js" type="text/javascript"></script>
+
+    <script src="../JS/Date/ComJs.js" type="text/javascript"></script>
+
+    <asp:ContentPlaceHolder ID="head" runat="server">
+    </asp:ContentPlaceHolder>
+</head>
+<body>
+    <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server">
+    </asp:ContentPlaceHolder>
+</body>
+</html>

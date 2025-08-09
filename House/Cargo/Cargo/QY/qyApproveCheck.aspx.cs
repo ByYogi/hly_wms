@@ -1,0 +1,167 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using House.Business.Cargo;
+using House.Entity.Cargo;
+namespace Cargo.QY
+{
+    public partial class qyApproveCheck : QYBasePage
+    {
+        public WXOrderEntity wxOrder = new WXOrderEntity();
+        public long OID = 0;
+        public string OrderType = string.Empty;
+        public string ApplyStatus = string.Empty;
+        public string CheckResult = string.Empty;
+        public string WXORDER = string.Empty;
+        public string ApplyName = string.Empty;
+        public string IsCheck = string.Empty;
+        public string ty = string.Empty;
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if (!IsPostBack)
+            {
+                ty = Convert.ToString(Request["ty"]);
+                string OrderNo = Convert.ToString(Request["OrderNo"]);
+                OID = Convert.ToInt64(Request["OID"]);
+                if (OID.Equals(0)) { return; }
+                OrderType = Convert.ToString(Request["OrderType"]);
+                CargoOrderBus bus = new CargoOrderBus();
+                CargoHouseBus houseBus = new CargoHouseBus();
+                QiyeBus qy = new QiyeBus();
+                QyOrderUpdatePriceEntity qyU = qy.QueryOrderUpdatePriceEntity(new QyOrderUpdatePriceEntity { OID = OID });
+                if (qyU.OID.Equals(0))
+                {
+                    return;
+                }
+                ApplyStatus = qyU.ApplyStatus;
+                CheckResult = qyU.CheckResult;
+                ApplyName = qyU.ApplyName;
+                wxOrder.SaleManID = qyU.SaleManName;
+                if (!QyUserInfo.CheckRole.Contains(qyU.CheckID))
+                {
+                    IsCheck = "0";
+                }
+                CargoFinanceBus f = new CargoFinanceBus();
+                List<CargoExpenseApproveRoutEntity> result = f.QueryExpenseRout(new CargoExpenseApproveRoutEntity { ExID = OID, ApproveType = "1" });
+                string res = "<h3 style=\"color:#49b348;padding-left:5px;\">审批流程</h3><ul class=\"weui-comment\">";
+                if (result.Count > 0)
+                {
+                    foreach (var it in result)
+                    {
+                        string opera = string.Empty;
+                        switch (it.Opera)
+                        {
+                            case "0": opera = "<span class=\"mui-h5\">通过</span>"; break;
+                            case "1": opera = "<span class=\"mui-h5\">拒审</span>"; break;
+                            case "2": opera = "<span class=\"mui-h5\">结束</span>"; break;
+                            case "3": opera = "<span class=\"mui-h5\">提交申请</span>"; break;
+                            case "5": opera = "<span class=\"mui-h5\" style=\"color:#8ec160\">评论</span>"; break;
+                            default: break;
+                        }
+                        res += "<li class=\"weui-comment-item\" style=\"padding-left:10px;border-bottom:1px solid #f5f5f5\"><div class=\"weui-comment-li\"><span class=\"check\" style=\"font-size:12px;padding-right:30px;\">" + opera + "</span></div><div class=\"userinfo\"><strong class=\"nickname\" style=\"font-size:12px;\">" + it.UserName + "</strong></div><div class=\"weui-comment-msg\" style=\"color:black;\">" + it.Result + "</div><p class=\"time\">" + it.OperaDate.ToString("yyyy-MM-dd HH:mm:ss") + "</p></li>";
+                    }
+                }
+                res += "</ul>";
+                ltlRoute.Text = res;
+                if (OrderType.Equals("0"))
+                {
+                    WXORDER = "商城订单";
+                    //商城订单
+                    List<WXOrderEntity> wolist = bus.QueryWeixinOrder(new WXOrderEntity { OrderNo = OrderNo });
+                    if (wolist.Count > 0)
+                    {
+                        wxOrder = wolist[0];
+                        wxOrder.Memo = qyU.Reason;
+                        CargoWeiXinBus wxbus = new CargoWeiXinBus();
+                        //推送给客户的所属业务员消息
+                        WXUserAddressEntity clerkEntity = wxbus.QueryWxAreaClient(new WXUserAddressEntity { Province = wolist[0].Province, City = wolist[0].City });
+                        //wxOrder.SaleManID = clerkEntity.UserName;
+                        switch (wolist[0].HouseID)
+                        {
+                            case 1: wxOrder.OutHouseName = "湖南仓库"; break;
+                            case 3: wxOrder.OutHouseName = "湖北仓库"; break;
+                            case 9: wxOrder.OutHouseName = "广州仓库"; break;
+                            case 11: wxOrder.OutHouseName = "西安迪乐泰"; break;
+                            case 34: wxOrder.OutHouseName = "海南仓库"; break;
+                            case 44: wxOrder.OutHouseName = "揭阳仓库"; break;
+                            case 45: wxOrder.OutHouseName = "广东仓库"; break;
+                            case 46: wxOrder.OutHouseName = "四川仓库"; break;
+                            case 48: wxOrder.OutHouseName = "重庆仓库"; break;
+                            default:
+                                break;
+                        }
+                    }
+                    List<QyOrderUpdateGoodsEntity> goods = qy.queryOrderUpdateGoodsByOID(OID);
+                    if (goods.Count > 0)
+                    {
+                        foreach (var it in goods)
+                        {
+                            string cp = string.Empty;
+                            if (QyUserInfo.UserID.Equals("0006") || QyUserInfo.UserID.Equals("1079") || QyUserInfo.UserID.Equals("0007"))
+                            {
+                                cp = it.CostPrice.ToString();
+                            }
+                            ltlGoods.Text += "<div class=\"weui-cell\" style=\"padding-left: 2px; padding-right: 10px; padding-top: 5px; padding-bottom: 5px;\"><div class=\"weui-cell__hd\" style=\"width: 45%\"><label class=\"weui-label\" style=\"width: 100%\">" + it.Title + "<br />周期：" + it.Batch + "</label></div><div class=\"weui-cell__hd\" style=\"width: 10%\">" + it.OrderNum.ToString() + "</div><div class=\"weui-cell__hd\" style=\"width: 15%\">" + cp + "</div><div class=\"weui-cell__hd\" style=\"width: 15%\">￥" + it.OrderPrice.ToString() + "</div><div class=\"weui-cell__bd\" style=\"width: 15%;font-size:13px;font-weight:bolder;color:red;\">￥" + it.ModifyPrice.ToString("F2") + "</div></div>";
+                        }
+                    }
+                }
+                else
+                {
+                    WXORDER = "电脑订单";
+                    //电脑订单
+                    CargoOrderEntity orderEnt = bus.QueryOrderInfoByOrderID(qyU.OrderID);
+                    if (!orderEnt.OrderID.Equals(0))
+                    {
+
+                        wxOrder.Name = orderEnt.AcceptPeople;
+                        wxOrder.OrderNo = orderEnt.OrderNo;
+                        wxOrder.Country = orderEnt.Dest;
+                        wxOrder.Cellphone = orderEnt.AcceptCellphone;
+                        wxOrder.TotalCharge = orderEnt.TotalCharge;
+                        wxOrder.PayClientName = orderEnt.PayClientName;
+                        wxOrder.Memo = qyU.Reason;
+                        //wxOrder.SaleManID = orderEnt.SaleManName;
+                        CargoHouseEntity houseEnt = houseBus.QueryCargoHouseByID(orderEnt.HouseID);
+                        wxOrder.OutHouseName = houseEnt.Name;
+                        //switch (orderEnt.HouseID)
+                        //{
+                        //    case 1: wxOrder.OutHouseName = "湖南仓库"; break;
+                        //    case 3: wxOrder.OutHouseName = "湖北仓库"; break;
+                        //    case 9: wxOrder.OutHouseName = "广州仓库"; break;
+                        //    case 11: wxOrder.OutHouseName = "西安迪乐泰"; break;
+                        //    case 34: wxOrder.OutHouseName = "海南仓库"; break;
+                        //    case 44: wxOrder.OutHouseName = "揭阳仓库"; break;
+                        //    case 45: wxOrder.OutHouseName = "广东仓库"; break;
+                        //    case 46: wxOrder.OutHouseName = "四川仓库"; break;
+                        //    case 48: wxOrder.OutHouseName = "重庆仓库"; break;
+                        //    default:
+                        //        break;
+                        //}
+                        List<QyOrderUpdateGoodsEntity> goods = qy.queryOrderUpdateGoodsByOIDComputer(OID);
+                        if (goods.Count > 0)
+                        {
+                            foreach (var it in goods)
+                            {
+                                string cp = it.CostPrice.ToString("F2");
+                                string dj=it.UnitPrice.ToString("F2");
+                                //if (QyUserInfo.UserID.Equals("0006") || QyUserInfo.UserID.Equals("1079") || QyUserInfo.UserID.Equals("0001") || QyUserInfo.UserID.Equals("2105") || QyUserInfo.UserID.Equals("1061"))
+                                //{
+                                //    cp = it.CostPrice.ToString();
+                                //}
+                                string spcTitle = it.TypeName + it.Specs + " " + it.LoadIndex.ToString() + it.SpeedLevel + "<br />" + it.Figure ;
+                                if (!it.TypeParentID.Equals(1))
+                                {
+                                    spcTitle = it.TypeName + it.Specs + " " + it.Model + " " + it.Figure;
+                                }
+                                ltlGoods.Text += "<div class=\"weui-cell\" style=\"padding-left: 2px; padding-right: 10px; padding-top: 5px; padding-bottom: 5px;\"><div class=\"weui-cell__hd\" style=\"width: 35%\"><label class=\"weui-label\" style=\"width: 100%\">" + spcTitle + "<br />周期：" + it.Batch + "</label></div><div class=\"weui-cell__hd\" style=\"width: 10%\">" + it.OrderNum.ToString() + "</div><div class=\"weui-cell__hd\" style=\"width: 15%\">￥" + cp + "</div><div class=\"weui-cell__hd\" style=\"width: 15%\">￥" + dj + "</div><div class=\"weui-cell__hd\" style=\"width: 15%\">￥" + it.OrderPrice.ToString("F2") + "</div><div class=\"weui-cell__bd\" style=\"width: 15%;font-size:13px;font-weight:bolder;color:red;\">￥" + it.ModifyPrice.ToString("F2") + "</div></div>";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

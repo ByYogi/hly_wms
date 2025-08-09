@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+	<startup>
+
+		<supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.8"/>
+	</startup>
+	<appSettings>
+		<!--每月定时日期 每月的2号开始服务-->
+		<add key="FixTime" value="2"/>
+		<!--每月2号的零辰2号启动服务-->
+		<add key="FixHour" value="2"/>
+		<!--获取新陆程数据的天数-->
+		<add key="XLCDay" value="2"/>
+		<add key="HouseID" value="1,3,11,12,34"/>
+		<!--迪乐泰中国微信服务号配置-->
+		<add key="dltWeixinID" value="gh_dfb8c8d6aa27"/>
+		<add key="dltToken" value="dltChina"/>
+		<add key="dltAPPID" value="wx313c4914e65e09ce"/>
+		<add key="dltAppSecret" value="365a4453144d71ee205f1a3b996c954b"/>
+		<!--迪乐泰中国微信服务号配置-->
+		<!--迪乐泰中国微信接收通知人-->
+		<add key="AcceptNotice" value="okt9_5oTsjUBEelCCPrBNqBgqoHE"/>
+		<!--迪乐泰中国微信接收通知人-->
+		<!--人工智能机器人账号-->
+		<add key="RobotID" value="2029"/>
+		<add key="RobotName" value="机器人"/>
+		<!--人工智能机器人账号-->
+		<!--好来运企业微信-->
+		<add key="HLYQyCorpID" value="wx5bf912a3b8774d14"/>
+		<!--好来运接口配置  Ture：打开，False：关闭-->
+		<add key="HLYOpen" value="true"/>
+		<add key="HLYAwbStatusURL" value="http://api.haolaiyun.com:8803/api/Xlc/InsertAwbnoStatus/Add"/>
+		<!--<add key="HLYAwbStatusURL" value="http://xlc.hlyex.net/Order.ashx?action=InsertAwbnoStateData"/>-->
+		<add key="HLYToken" value="20a16B04c20d4e60Fc66n43fd2U2"/>
+		<add key="HLYAwbURL" value="http://api.haolaiyun.com:8803/api/Xlc/InsertAwbno/Add"/>
+		<!--<add key="HLYAwbURL" value="http://xlc.hlyex.net/Order.ashx?action=InsertAwbnoData"/>-->
+
+		<add key="HLYAPI" value="http://14.23.159.115:8803"/>
+		<!--<add key="HLYAPI" value="http://14.23.159.115:9001"/>-->
+		<!--正式-->
+		<!--<add key="HLYAPI" value="http://14.23.159.115:9003/"/>-->
+		<!--快递100接口Key-->
+		<add key="KD100_Key" value="nPwSlPrm5472"/>
+		<!--快递100智能判断快递公司接口-->
+		<add key="KD100_AutoNum" value="http://www.kuaidi100.com/autonumber/auto"/>
+		<!--快递100实时查询接口Customer-->
+		<add key="KD100_QueryCustomer" value="ACA8A637BDC0363FD604C39F3D762DBC"/>
+		<!--快递100实时查询接口地址-->
+		<add key="KD100_Query" value="https://poll.kuaidi100.com/poll/query.do"/>
+		<!--快递100订阅接口地址-->
+		<add key="KD100_PollAddress" value="https://poll.kuaidi100.com/poll"/>
+		<!--马牌接口测试环境-->
+		<add key="ContiTestUrl" value="https://qcdms.continental-tires.cn"/>
+		<!--马牌接口正式环境-->
+		<add key="ContiUrl" value="https://qcdms.continental-tires.cn"/>
+		<!--马牌库存同步接口-->
+		<add key="ContiStockSync" value="/api/openapi/stock/sync"/>
+		<!--马牌库存DOT同步接口-->
+		<add key="ContiStockDOTSync" value="/api/openapi/stock/dotSync"/>
+		<!--马牌订单增量同步接口-->
+		<add key="ContiOrderSync" value="/api/remote/openPlatform/saleOrderByStatusList"/>
+		<!--马牌出库单查询同步接口-->
+		<add key="ContiOutHouseOrderSync" value="/api/remote/openWms/getWmsDoHeaderInfoPage"/>
+		<!--马牌出库单状态同步接口-->
+		<add key="ContiOutOrderStatusSync" value="/api/openapi/out/sync"/>
+
+
+		<!--云配加价-->
+		<add key="MarkupPrice" value="15.00"/>
+		<!--云配加价-->
+		<!--科技公司小程序 慧采云仓配置-->
+		<add key="HCYCAppID" value="wxe3be9ccbf381b0bc"/>
+		<add key="HCYCAppSecret" value="790911e59ab2c6a806f1f2603a0ebba9"/>
+	</appSettings>
+	<connectionStrings>
+		<add name="DefaultConnection" connectionString="Data Source = |SQL/CE|"/>
+	</connectionStrings>
+	<system.serviceModel>
+		<bindings>
+			<basicHttpBinding>
+				<binding name="newaySoap"/>
+			</basicHttpBinding>
+			<customBinding>
+				<binding name="newaySoap12">
+					<textMessageEncoding messageVersion="Soap12"/>
+					<httpTransport/>
+				</binding>
+			</customBinding>
+		</bindings>
+		<client>
+			<endpoint address="http://xt.neway5.com/WebSer/neway.asmx" binding="basicHttpBinding" bindingConfiguration="newaySoap" contract="Neway.newaySoap" name="newaySoap"/>
+		</client>
+	</system.serviceModel>
+</configuration>

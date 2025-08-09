@@ -1,0 +1,92 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.House
+{
+    public partial class SafeSnap : BasePage
+    {
+        public List<CargoSafeStockEntity> CargoSafeStockData
+        {
+            get
+            {
+                if (Session["CargoSafeStockData"] == null)
+                {
+                    Session["CargoSafeStockData"] = new List<CargoSafeStockEntity>();
+                }
+                return (List<CargoSafeStockEntity>)(Session["CargoSafeStockData"]);
+            }
+            set
+            {
+                Session["CargoSafeStockData"] = value;
+            }
+        }
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (CargoSafeStockData.Count <= 0) { return; }
+
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("区域大仓", typeof(string));
+            table.Columns.Add("所属仓库", typeof(string));
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("产品编码", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            //table.Columns.Add("型号", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            table.Columns.Add("载重指数", typeof(string));
+            table.Columns.Add("速度级别", typeof(string));
+            table.Columns.Add("安全库存", typeof(int));
+            table.Columns.Add("在库库存", typeof(int));
+            table.Columns.Add("补货数量", typeof(int));
+            table.Columns.Add("销售数量", typeof(int));
+            int i = 0;
+            int TStockNum = 0, TCurNum = 0, TLessNum = 0, SaleNum=0;
+            foreach (var it in CargoSafeStockData)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["区域大仓"] = it.HouseName;
+                newRows["所属仓库"] = it.AreaName;
+                newRows["产品编码"] = it.ProductCode;
+                newRows["品牌"] = it.TypeName;
+                newRows["规格"] = it.Specs.Trim();
+                newRows["花纹"] = it.Figure.Trim();
+                //newRows["型号"] = it.Model.Trim();
+                newRows["货品代码"] = it.GoodsCode.Trim();
+                newRows["载重指数"] = it.LoadIndex;
+                newRows["速度级别"] = it.SpeedLevel;
+                newRows["安全库存"] = it.StockNum;
+                newRows["在库库存"] = it.CurNum;
+                newRows["补货数量"] = it.LessNum;
+                newRows["销售数量"] = it.SaleNum;
+                //newRows["产地"] = it.Born.Equals("0") ? "国产" : "进口";
+
+                table.Rows.Add(newRows);
+                TStockNum += it.StockNum; TCurNum += it.CurNum; TLessNum += it.LessNum;SaleNum += it.SaleNum;
+            }
+            DataRow footRow = table.NewRow();
+            footRow["区域大仓"] = "汇总：";
+            footRow["安全库存"] = TStockNum;
+            footRow["在库库存"] = TCurNum;
+            footRow["补货数量"] = TLessNum;
+            footRow["销售数量"] = SaleNum;
+            table.Rows.Add(footRow);
+
+            ToExcel.DataTableToExcel(table, "", "安全库存数据表");
+
+        }
+    }
+}

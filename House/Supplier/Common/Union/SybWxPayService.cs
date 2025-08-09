@@ -1,0 +1,225 @@
+﻿using House.Entity.Cargo;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Web;
+
+namespace Supplier
+{
+    public class SybWxPayService
+    {
+        #region 支付
+        /// <summary>
+        /// 支付
+        /// </summary>
+        /// <param name="trxamt"></param>
+        /// <param name="reqsn"></param>
+        /// <param name="paytype"></param>
+        /// <param name="body"></param>
+        /// <param name="remark"></param>
+        /// <param name="acct"></param>
+        /// <param name="authcode"></param>
+        /// <param name="notify_url"></param>
+        /// <param name="limit_pay"></param>
+        /// <returns></returns>
+        public Dictionary<String,String> pay(long trxamt,String reqsn,String paytype,String body,String remark,String acct,String authcode,String notify_url,String limit_pay){
+		    Dictionary<String,String> paramDic = buildBasicParam();
+		    paramDic.Add("trxamt", trxamt.ToString());//交易金额 单位为分
+            paramDic.Add("reqsn", reqsn);//商户交易单号
+            paramDic.Add("paytype", paytype);//交易方式  W06  微信小程序支付
+            paramDic.Add("body", body);//订单标题
+            paramDic.Add("remark", remark);//备注
+            paramDic.Add("acct", acct); //支付平台用户标识  微信小程序-用户小程序的openid
+            paramDic.Add("authcode", authcode);//支付授权码
+            paramDic.Add("notify_url", notify_url);//交易结果通知地址
+            paramDic.Add("limit_pay", limit_pay); // 支付限制 no_credit--指定不能使用信用卡支付
+            paramDic.Add("signtype", "RSA");//签名方式
+            paramDic.Add("sign", AppUtil.signParam(paramDic));//签名
+            return doRequest(paramDic,"/pay");
+	    }
+        /// <summary>
+        /// 统一扫码接口
+        /// </summary>
+        /// <param name="trxamt"></param>
+        /// <param name="reqsn"></param>
+        /// <param name="paytype"></param>
+        /// <param name="body"></param>
+        /// <param name="remark"></param>
+        /// <param name="acct"></param>
+        /// <param name="authcode"></param>
+        /// <param name="limit_pay"></param>
+        /// <returns></returns>
+		public Dictionary<String,String> scanpay(long trxamt,String reqsn,String paytype,String body,String remark,String acct,String authcode,String limit_pay){
+		    Dictionary<String,String> paramDic = buildBasicParam();
+		    paramDic.Add("trxamt", trxamt.ToString());
+		    paramDic.Add("reqsn", reqsn);
+		    paramDic.Add("body", body);
+		    paramDic.Add("remark", remark);
+		    paramDic.Add("authcode", authcode);
+		    paramDic.Add("limit_pay", limit_pay);
+            paramDic.Add("signtype", "RSA");
+            paramDic.Add("sign", AppUtil.signParam(paramDic));
+            return doRequest(paramDic,"/scanpay");
+	    }
+        /// <summary>
+        /// 统一撤销接口
+        /// </summary>
+        /// <param name="trxamt"></param>
+        /// <param name="reqsn"></param>
+        /// <param name="oldtrxid"></param>
+        /// <param name="oldreqsn"></param>
+        /// <returns></returns>
+        public Dictionary<String,String> cancel(long trxamt,String reqsn,String oldtrxid,String oldreqsn){
+		    Dictionary<String,String> paramDic = buildBasicParam();
+		    paramDic.Add("trxamt", trxamt.ToString());
+		    paramDic.Add("reqsn", reqsn);
+		    paramDic.Add("oldtrxid", oldtrxid);
+		    paramDic.Add("oldreqsn", oldreqsn);
+            paramDic.Add("signtype", "RSA");
+            paramDic.Add("sign", AppUtil.signParam(paramDic));
+		    return doRequest(paramDic,"/cancel");
+	    }
+        /// <summary>
+        /// 统一退款接口
+        /// </summary>
+        /// <param name="trxamt"></param>
+        /// <param name="reqsn"></param>
+        /// <param name="oldtrxid"></param>
+        /// <param name="oldreqsn"></param>
+        /// <returns></returns>
+        public Dictionary<String,String> refund(long trxamt,String reqsn,String oldtrxid,String oldreqsn){
+            Dictionary<String, String> paramDic = buildBasicParam();
+            paramDic.Add("trxamt", trxamt.ToString()); //交易金额 单位为分
+            paramDic.Add("reqsn", reqsn);//商户交易单号
+            paramDic.Add("oldtrxid", oldtrxid);//原交易的收银宝平台流水
+            paramDic.Add("oldreqsn", oldreqsn);//原交易的商户订单号
+            paramDic.Add("signtype", "RSA");//签名方式
+            paramDic.Add("sign", AppUtil.signParam(paramDic));//签名
+            return doRequest(paramDic, "/refund");
+        }
+        /// <summary>
+        /// 统一查询接口
+        /// </summary>
+        /// <param name="reqsn"></param>
+        /// <param name="trxid"></param>
+        /// <returns></returns>
+        public Dictionary<String,String> query(String reqsn,String trxid){
+		    Dictionary<String,String> paramDic = buildBasicParam();
+		    paramDic.Add("reqsn", reqsn);
+		    paramDic.Add("trxid", trxid);
+            paramDic.Add("signtype", "RSA");
+            paramDic.Add("sign", AppUtil.signParam(paramDic));
+            return doRequest(paramDic, "/query");
+	    }
+
+        /// <summary>
+        /// 拼接配置值
+        /// </summary>
+        /// <returns></returns>
+        private Dictionary<String, String> buildBasicParam()
+        {
+            Dictionary<String, String> paramDic = new Dictionary<String, String>();
+            paramDic.Add("cusid", AppConstants.CUSID);
+            paramDic.Add("appid", AppConstants.APPID);
+            paramDic.Add("version", AppConstants.APIVERSION);
+            paramDic.Add("randomstr", DateTime.Now.ToFileTime().ToString());
+            return paramDic;
+
+        }
+
+        /// <summary>
+        /// 拼接链接
+        /// </summary>
+        /// <param name="param"></param>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        private Dictionary<String, String> doRequest(Dictionary<String, String> param, String url)
+        {
+            String rsp = HttpUtil.CreatePostHttpResponse(AppConstants.API_URL + url, param, Encoding.UTF8);
+            Dictionary<String, String> rspDic = (Dictionary<String, String>)JsonConvert.DeserializeObject(rsp, typeof(Dictionary<String, String>));
+            if ("SUCCESS".Equals(rspDic["retcode"]))//验签
+            {
+                //bool isTrue = AppUtil.validSign(rspDic);
+                bool isTrue = true;
+                if (isTrue)
+                {
+                    return rspDic;
+                    // throw new Exception("验签成功");
+                }
+                else
+                    throw new Exception("验签失败");
+
+            }
+            else
+            {
+                throw new Exception(rspDic["retmsg"]);
+                //return param;
+            }
+        }
+
+        #endregion
+
+        #region 余额分账 BILL
+        /// <summary>
+        /// 余额分账接口
+        /// </summary>
+        /// <param name="bizContent"></param>
+        /// <returns></returns>
+        public Dictionary<String, String> bill(string bizContent)
+        {
+            //String blankStr = BuildParamStr(param);
+            //string jsonString = JsonConvert.SerializeObject(bizContent);
+            //jsonString = "{\"bizUserId\":\"A9GR9JB0JJTOG\",\"outOrderNo\":\"1747884145863\",\"amount\":4,\"splitRule\":\"{\\\"feeTakeMchId\\\":\\\"A9GR9JB0JJTOG\\\",\\\"type\\\":\\\"0\\\",\\\"splitRuleList\\\":[{\\\"transMessage\\\":\\\"测试余额分账\\\",\\\"subOutOrderNo\\\":\\\"1747884145863-1\\\",\\\"value\\\":\\\"4\\\",\\\"bizUserId\\\":\\\"99GPQ7D6C7SHS\\\"}]}\",\"notifyUrl\":\"https://test.xchjst.com/api/notify\"}";
+            Dictionary<String, String> paramDic = new Dictionary<string, string>();
+            paramDic.Add("appId", AppConstants.APPIDBILL);//商户号
+            paramDic.Add("bizContent", bizContent);//分账信息
+            paramDic.Add("charset", "utf-8");//分账信息
+            paramDic.Add("format", "json");//交易金额 单位为分
+            paramDic.Add("method", "jst.kernel.BizSettlementService.drawCommission");//商户交易单号
+            paramDic.Add("version", AppConstants.APIVERSION);//交易结果通知地址
+            paramDic.Add("timestamp", "20250522112226"); // 支付限制 no_credit--指定不能使用信用卡支付   DateTime.Now.ToString("yyyyMMddHHmmss")
+            paramDic.Add("signType", "RSA");//签名方式
+            paramDic.Add("sign", AppUtil.signParamBILL(paramDic));//签名
+            return doRequestBill(paramDic);
+        }
+        /// <summary>
+        /// 拼接链接
+        /// </summary>
+        /// <param name="param"></param>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        private Dictionary<String, String> doRequestBill(Dictionary<String, String> param)
+        {
+            // 将对象序列化为JSON字符串
+            string jsonString = JsonConvert.SerializeObject(param);
+
+
+            String rsp = HttpUtil.CreatePostHttpResponseJson(AppConstants.API_URLBILL , jsonString);
+            Dictionary<String, String> rspDic = (Dictionary<String, String>)JsonConvert.DeserializeObject(rsp, typeof(Dictionary<String, String>));
+            if ("000000".Equals(rspDic["respCode"]))//验签
+            {
+                //bool isTrue = AppUtil.validSign(rspDic);
+                bool isTrue = true;
+                if (isTrue)
+                {
+                    return rspDic;
+                    // throw new Exception("验签成功");
+                }
+                else
+                    throw new Exception("验签失败");
+
+            }
+            else
+            {
+                throw new Exception(rspDic["respMsg"]);
+                //return param;
+            }
+        }
+        #endregion
+
+    }
+}

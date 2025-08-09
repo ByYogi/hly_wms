@@ -1,0 +1,65 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 公告新闻数据实体1.5.8.Tbl_Cargo_Notice（商城公告数据表）
+    /// </summary>
+    [Serializable]
+    public class CargoNoticeEntity
+    {
+        public int ID { get; set; }
+        [Description("标题")]
+        public string Title { get; set; }
+        [Description("公告类型")]
+        public string NoticeType { get; set; }
+        [Description("所属仓库")]
+        public int HouseID { get; set; }
+        public string Memo { get; set; }
+        [Description("操作人")]
+        public string OPName { get; set; }
+        public DateTime OP_DATE { get; set; }
+        public string HouseName { get; set; }
+        public string DelFlag { get; set; }
+        public int ClientNum { get; set; }
+        public int ReadStatus { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 云仓新订单通知实体
+    /// </summary>
+    [Serializable]
+    public class CargoNewOrderNoticeEntity
+    {
+        public string HouseName { get; set; }
+        public string OrderNo { get; set; }
+        public string ProductInfo { get; set; }
+        public string OrderNum { get; set; }
+        public string DeliveryName { get; set; }
+        public string ClientInfo { get; set; }
+        public string ReceivePeople { get; set; }
+    }
+}

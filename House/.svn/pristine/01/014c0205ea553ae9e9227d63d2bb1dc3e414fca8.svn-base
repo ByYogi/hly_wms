@@ -1,0 +1,75 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Product
+{
+    public partial class BasicSpecManager : BasePage
+    {
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (CargoProductBasicSpescExport.Count <= 0) { return; }
+
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("产品编码", typeof(string));
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("型号", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            table.Columns.Add("载重指数", typeof(string));
+            table.Columns.Add("速度级别", typeof(string));
+            table.Columns.Add("产地", typeof(string));
+            int i = 0;
+
+            foreach (var it in CargoProductBasicSpescExport)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["产品编码"] = it.ProductCode;
+                newRows["品牌"] = it.TypeName;
+                newRows["规格"] = it.Specs.Trim();
+                newRows["花纹"] = it.Figure.Trim();
+                newRows["型号"] = it.Model.Trim();
+                newRows["货品代码"] = it.GoodsCode.Trim();
+                newRows["载重指数"] = it.LoadIndex;
+                newRows["速度级别"] = it.SpeedLevel;
+                newRows["产地"] = it.Born.Equals("0") ? "国产" : "进口";
+
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "产品基础数据表");
+        }
+        public List<CargoProductEntity> CargoProductBasicSpescExport
+        {
+            get
+            {
+                if (Session["CargoProductBasicSpescExport"] == null)
+                {
+                    Session["CargoProductBasicSpescExport"] = new List<CargoProductEntity>();
+                }
+                return (List<CargoProductEntity>)(Session["CargoProductBasicSpescExport"]);
+            }
+            set
+            {
+                Session["CargoProductBasicSpescExport"] = value;
+            }
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+    }
+}

@@ -1,0 +1,3110 @@
+﻿using House.Business.Cargo;
+using House.Entity.Cargo;
+using House.Entity;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using House.Entity.House;
+using System.Collections;
+using House.Business;
+using Senparc.Weixin.MP.AdvancedAPIs.MerChant;
+using System.Security.Cryptography;
+using NPOI.HSSF.Record.Formula.Functions;
+using NPOI.HSSF.Model;
+using static NPOI.HSSF.Util.HSSFColor;
+using System.Web.Routing;
+using System.Data;
+using System.Text.RegularExpressions;
+using NPOI.POIFS.FileSystem;
+using System.Drawing;
+
+namespace Dealer
+{
+    public partial class FormService : BasePage
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            string methodName = string.Empty;
+            try
+            {
+                methodName = Request["method"];
+                if (String.IsNullOrEmpty(methodName)) return;
+                Type type = this.GetType();
+                MethodInfo method = type.GetMethod(methodName);
+                method.Invoke(this, null);
+            }
+            catch (Exception ex)
+            {
+                LogBus bus = new LogBus();
+                LogEntity log = new LogEntity();
+                log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+                log.Operate = "";
+                log.Moudle = "";
+                log.Status = "1";
+                log.NvgPage = "";
+                log.UserID = UserInfor == null ? "" : UserInfor.LoginName.Trim();
+                log.Memo = methodName + " " + ex.Message + " " + ex.StackTrace;
+                bus.InsertLog(log);
+            }
+        }
+        public void Login()
+        {
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Operate = "L";
+            log.Moudle = "用户登陆";
+            log.Status = "0";
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            string json = string.Empty;
+            try
+            {
+                //进行数据处理
+                String UserName = Convert.ToString(Request["uname"]);
+                String Pwd = Convert.ToString(Request["upwd"]).Trim();
+                String chkSave = Convert.ToString(Request["chkSave"]);
+                if (string.IsNullOrEmpty(UserName))
+                {
+                    msg.Message = "用户名不能为空";
+                    //返回处理结果
+                    json = JSON.Encode(msg);
+                    Response.Clear();
+                    Response.Write(json);
+                    Response.End();
+                    return;
+                }
+                if (string.IsNullOrEmpty(Pwd))
+                {
+                    msg.Message = "密码不能为空";
+                    //返回处理结果
+                    json = JSON.Encode(msg);
+                    Response.Clear();
+                    Response.Write(json);
+                    Response.End();
+                    return;
+                }
+                if (Pwd.Trim().Length < 8)
+                {
+                    msg.Message = "密码不正确";
+                    //返回处理结果
+                    json = JSON.Encode(msg);
+                    Response.Clear();
+                    Response.Write(json);
+                    Response.End();
+                    return;
+                }
+                CargoClientBus bus = new CargoClientBus();
+                CargoClientEntity client = bus.QueryCargoClient(Convert.ToInt32(UserName));
+                if (!client.ClientID.Equals(0) && client.LoginPwd.Equals(Common.EncodePassword(Pwd)))
+                {
+                    msg.Result = true;
+                    msg.Message = "登陆成功";
+                    #region 设置Cookie
+                    HttpCookie Cookie = CookiesHelper.GetCookie("UserLoginInfo");
+                    if (Cookie != null && Cookie["chkSave"] != null && Cookie["loginid"] != null)
+                    {
+                        CookiesHelper.SetCookie("UserLoginInfo", "loginid", UserName, DateTime.Now.AddDays(-1));
+                        CookiesHelper.SetCookie("UserLoginInfo", UserName, Pwd, DateTime.Now.AddDays(-1));
+                    }
+                    Cookie = new HttpCookie("UserLoginInfo");
+                    Cookie.Values.Add("loginid", UserName);
+                    Cookie.Values.Add(UserName, Pwd);
+                    if (chkSave.Equals("1"))
+                    {
+                        Cookie.Expires = DateTime.Now.AddYears(100);//cookies有效时间一年
+                    }
+                    else
+                    {
+                        Cookie.Expires = DateTime.Now;//cookies有效时间为浏览器进程
+                    }
+                    Cookie.Values.Add("chkSave", chkSave.ToString().ToUpper());
+                    CookiesHelper.AddCookie(Cookie);
+                    #endregion
+                    CargoHouseBus house = new CargoHouseBus();
+                    CargoHouseEntity houseEnt = house.QueryCargoHouseByID(client.HouseID);
+                    Session["user"] = new SystemUserEntity { UserID = Convert.ToInt32(client.ClientID), LoginName = client.ClientNum.ToString(), UserName = client.ClientName, HouseID = client.HouseID, DepCity = houseEnt.DepCity, SaleManID = client.UserID, SaleManName = client.UserName };
+                }
+                else
+                {
+                    msg.Message = "用户名或密码不正确";
+                    //返回处理结果
+                    json = JSON.Encode(msg);
+                    Response.Clear();
+                    Response.Write(json);
+                    Response.End();
+                    return;
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            json = JSON.Encode(msg);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+
+        /// <summary>
+        /// 修改密码
+        /// </summary>
+        public void ChangeClientPwd()
+        {
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            try
+            {
+                if (msg.Result)
+                {
+                    if (string.IsNullOrEmpty(Convert.ToString(Request["LoginName"])))
+                    {
+                        msg.Message = "登陆名不能为空";
+                        msg.Result = false;
+                    }
+                }
+                if (msg.Result)
+                {
+                    if (string.IsNullOrEmpty(Convert.ToString(Request["Password"])))
+                    {
+                        msg.Message = "密码不能为空";
+                        msg.Result = false;
+                    }
+                }
+                if (msg.Result)
+                {
+                    if (string.IsNullOrEmpty(Convert.ToString(Request["NewPwd"])))
+                    {
+                        msg.Message = "确认密码不能为空";
+                        msg.Result = false;
+                    }
+                }
+                if (msg.Result)
+                {
+                    if (Convert.ToString(Request["Password"]).Length < 8)
+                    {
+                        msg.Message = "密码长度不足8位";
+                        msg.Result = false;
+                    }
+                }
+                if (msg.Result)
+                {
+                    if (Convert.ToString(Request["NewPwd"]).Length < 8)
+                    {
+                        msg.Message = "确认密码长度不足8位";
+                        msg.Result = false;
+                    }
+                }
+                if (msg.Result)
+                {
+                    if (!Convert.ToString(Request["Password"]).Trim().ToUpper().Equals(Convert.ToString(Request["NewPwd"]).Trim().ToUpper()))
+                    {
+                        msg.Message = "两次输入的密码必须一致";
+                        msg.Result = false;
+                    }
+                }
+                if (msg.Result)
+                {
+                    LogEntity log = new LogEntity();
+                    log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+                    log.Moudle = "客户管理";
+                    log.NvgPage = "客户修改密码";
+                    log.UserID = UserInfor.LoginName.Trim();
+                    log.Operate = "U";
+                    log.Status = "0";
+                    CargoClientBus bus = new CargoClientBus();
+                    int type = bus.ChangeClientPwd(new CargoClientEntity { ClientNum = Convert.ToInt32(Request["LoginName"]), LoginPwd = Common.EncodePassword(Convert.ToString(Request["NewPwd"]).Trim()) }, log);
+
+
+                    if (type == 0)
+                    {
+                        msg.Result = true;
+                        msg.Message = "修改成功";
+                    }
+                    else
+                    {
+                        msg.Result = false;
+                        msg.Message = "修改失败";
+                    }
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        /// <summary>
+        /// 查询订单数据
+        /// </summary>
+        public void QueryOrderInfo()
+        {
+            CargoOrderEntity queryEntity = new CargoOrderEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            queryEntity.OrderNo = Convert.ToString(Request["OrderNo"]);
+            queryEntity.CargoPermisID = UserInfor.HouseID.ToString();
+            queryEntity.PayClientNum = Convert.ToInt32(UserInfor.LoginName);
+            if (Convert.ToString(Request["AwbStatus"]) != "-1")
+            {
+                queryEntity.AwbStatus = Convert.ToString(Request["AwbStatus"]);
+            }
+            if (Convert.ToString(Request["CheckStatus"]) != "-1")
+            {
+                queryEntity.CheckStatus = Convert.ToString(Request["CheckStatus"]);
+            }
+            //2021-01-30 添加客户名称查询条件
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["AcceptPeople"]))) { queryEntity.AcceptPeople = Convert.ToString(Request["AcceptPeople"]); }
+            queryEntity.OrderModel = "0";
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoOrderBus bus = new CargoOrderBus();
+            Hashtable list = bus.QueryOrderInfo(pageIndex, pageSize, queryEntity);
+            //if (list != null) { QueryOrderInfoList = list; }
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        public Hashtable QueryOrderInfoList
+        {
+            get
+            {
+                if (Session["QueryOrderInfoList"] == null)
+                {
+                    Session["QueryOrderInfoList"] = new Hashtable();
+                }
+                return (Hashtable)(Session["QueryOrderInfoList"]);
+            }
+            set
+            {
+                Session["QueryOrderInfoList"] = value;
+            }
+        }
+        /// <summary>
+        /// 查询订单数据导出
+        /// </summary>
+        public void QueryOrderInfoExport()
+        {
+            string err = "OK";
+            CargoOrderEntity queryEntity = new CargoOrderEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            queryEntity.OrderNo = Convert.ToString(Request["OrderNo"]);
+            queryEntity.CargoPermisID = UserInfor.HouseID.ToString();
+            queryEntity.PayClientNum = Convert.ToInt32(UserInfor.LoginName);
+            if (Convert.ToString(Request["AwbStatus"]) != "-1")
+            {
+                queryEntity.AwbStatus = Convert.ToString(Request["AwbStatus"]);
+            }
+            if (Convert.ToString(Request["CheckStatus"]) != "-1")
+            {
+                queryEntity.CheckStatus = Convert.ToString(Request["CheckStatus"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["AcceptPeople"]))) { queryEntity.AcceptPeople = Convert.ToString(Request["AcceptPeople"]); }
+            CargoOrderBus bus = new CargoOrderBus();
+            Hashtable list = bus.QueryOrderInfo(1, 10000, queryEntity);
+            if (list != null) { QueryOrderInfoList = list; }
+
+            String json = JSON.Encode(err);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+
+        /// <summary>
+        /// 查询符合规则的优惠信息
+        /// </summary>
+        public void QueryPriceRuleBankInfo()
+        {
+            string houseID = Request["HouseID"];
+            string typeID = Request["TypeID"];
+            string specs = Request["Specs"];
+            string figure = Request["Figure"];
+            string loadIndex = Request["LoadIndex"];
+            string speedLevel = Request["SpeedLevel"];
+            string batch = Request["Batch"];
+            string clientNum = Request["ClientNum"];
+            if (!string.IsNullOrEmpty(batch) && !batch.Equals("0"))
+            {
+                string aB = batch.Substring(0, 2);
+                string bB = batch.Substring(2, batch.Length - 2);
+                batch = bB + aB;
+            }
+            if (!string.IsNullOrEmpty(houseID) && !string.IsNullOrEmpty(typeID))
+            {
+                CargoOrderEntity entity = new CargoOrderEntity();
+                entity.HouseID = Convert.ToInt32(houseID);
+                entity.TypeID = Convert.ToInt32(typeID);
+                entity.ClientNum = Convert.ToInt32(clientNum);
+
+                CargoClientBus client = new CargoClientBus();
+                DateTime time = DateTime.Now;
+                CargoClientEntity clientEnt = client.QueryCargoClientTarget(new CargoClientEntity { ClientNum = Convert.ToInt32(UserInfor.LoginName), StartDate = time.AddDays(1 - time.Day), EndDate = time.AddDays(1 - time.Day).AddMonths(1).AddDays(-1) });
+
+                CargoPriceBus bus = new CargoPriceBus();
+                DataTable dt = bus.QueryPriceRuleBankInfo(entity);
+                PriceRuleReturnEntity prrEnter = new PriceRuleReturnEntity();
+                string res = "<div style='text-align: left;'>可使用优惠：</div><div id='rule' class='easyui-tabs' style='width: 100%; height: 180px;'>";
+                #region 限购
+                bool quotaNumType = false;
+                int QuotaNum = -1;
+                string QuotaSpecs = "";
+                string QuotaFigure = "";
+                int QuotaStartBatch = -1;
+                int QuotaEndBatch = -1;
+                //规格、花纹、周期匹配
+                DataRow[] rows = dt.Select("RuleType=4 and Specs='" + specs + "' and Figure='" + figure + "' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "</td><td style='text-align: right;'><input type='hidden' id='LimitNum' value='" + rows[i]["LimitNum"] + "' /><input type='hidden' id='LimitID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='LimitTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='4' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                    QuotaNum = Convert.ToInt32(rows[i]["LimitNum"]);
+                    QuotaSpecs = rows[i]["Specs"].ToString();
+                    QuotaFigure = rows[i]["Figure"].ToString();
+                    QuotaStartBatch = Convert.ToInt32(rows[i]["StartBatch"]);
+                    QuotaEndBatch = Convert.ToInt32(rows[i]["EndBatch"]);
+                    entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                    entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                    dt.Rows.Remove(rows[i]);
+                    int num = 0;
+                    DataTable oridt = bus.QueryClientOrderInfo(entity);
+                    DataRow[] orirows = oridt.Select("Specs='" + specs + "' and Figure='" + figure + "' and Batch >=" + QuotaStartBatch + " and Batch <=" + QuotaEndBatch);
+                    for (int j = 0; j < orirows.Count(); j++)
+                    {
+                        num += Convert.ToInt32(orirows[j]["Piece"]);
+                    }
+                    QuotaNum = QuotaNum - num;
+                    quotaNumType = true;
+                    break;
+                }
+                //规格、花纹匹配
+                if (!quotaNumType)
+                {
+                    rows = dt.Select("RuleType=4 and Specs='" + specs + "' and Figure='" + figure + "'");
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "</td><td style='text-align: right;'><input type='hidden' id='LimitNum' value='" + rows[i]["LimitNum"] + "' /><input type='hidden' id='LimitID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='LimitTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='4' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        QuotaNum = Convert.ToInt32(rows[i]["LimitNum"]);
+                        QuotaSpecs = rows[i]["Specs"].ToString();
+                        QuotaFigure = rows[i]["Figure"].ToString();
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Specs='" + specs + "' and Figure='" + figure + "'");
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        QuotaNum = QuotaNum - num;
+                        quotaNumType = true;
+                        break;
+                    }
+                }
+                //规格、周期匹配
+                if (!quotaNumType)
+                {
+                    rows = dt.Select("RuleType=4 and Specs='" + specs + "' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "</td><td style='text-align: right;'><input type='hidden' id='LimitNum' value='" + rows[i]["LimitNum"] + "' /><input type='hidden' id='LimitID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='LimitTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='4' /></td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        QuotaNum = Convert.ToInt32(rows[i]["LimitNum"]);
+                        QuotaSpecs = rows[i]["Specs"].ToString();
+                        QuotaStartBatch = Convert.ToInt32(rows[i]["StartBatch"]);
+                        QuotaEndBatch = Convert.ToInt32(rows[i]["EndBatch"]);
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Specs='" + specs + "' and Batch >=" + QuotaStartBatch + " and Batch <=" + QuotaEndBatch);
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        QuotaNum = QuotaNum - num;
+                        quotaNumType = true;
+                        break;
+                    }
+                }
+                //花纹、周期匹配
+                if (!quotaNumType)
+                {
+                    rows = dt.Select("RuleType=4 and Figure='" + figure + "' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;'>" + rows[i]["Figure"] + "</td><td style='text-align: right;'><input type='hidden' id='LimitNum' value='" + rows[i]["LimitNum"] + "' /><input type='hidden' id='LimitID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='LimitTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='4' /></td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        QuotaNum = Convert.ToInt32(rows[i]["LimitNum"]);
+                        QuotaFigure = rows[i]["Figure"].ToString();
+                        QuotaStartBatch = Convert.ToInt32(rows[i]["StartBatch"]);
+                        QuotaEndBatch = Convert.ToInt32(rows[i]["EndBatch"]);
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Figure='" + figure + "' and Batch >=" + QuotaStartBatch + " and Batch <=" + QuotaEndBatch);
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        QuotaNum = QuotaNum - num;
+                        quotaNumType = true;
+                        break;
+                    }
+                }
+                //规格匹配
+                if (!quotaNumType)
+                {
+                    rows = dt.Select("RuleType=4 and Specs='" + specs + "'");
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "</td><td style='text-align: right;'><input type='hidden' id='LimitNum' value='" + rows[i]["LimitNum"] + "' /><input type='hidden' id='LimitID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='LimitTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='4' /></td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        QuotaNum = Convert.ToInt32(rows[i]["LimitNum"]);
+                        QuotaSpecs = rows[i]["Specs"].ToString();
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Specs='" + specs + "'");
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        QuotaNum = QuotaNum - num;
+                        quotaNumType = true;
+                        break;
+                    }
+                }
+                //花纹匹配
+                if (!quotaNumType)
+                {
+                    rows = dt.Select("RuleType=4 and Figure='" + figure + "'");
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;'>" + rows[i]["Figure"] + "</td><td style='text-align: right;'><input type='hidden' id='LimitNum' value='" + rows[i]["LimitNum"] + "' /><input type='hidden' id='LimitID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='LimitTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='4' /></td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        QuotaNum = Convert.ToInt32(rows[i]["LimitNum"]);
+                        QuotaFigure = rows[i]["Figure"].ToString();
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Figure='" + figure + "'");
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        QuotaNum = QuotaNum - num;
+                        quotaNumType = true;
+                        break;
+                    }
+                }
+                //周期匹配
+                if (!quotaNumType)
+                {
+                    rows = dt.Select("RuleType=4 and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td><td style='text-align: right;'><input type='hidden' id='LimitNum' value='" + rows[i]["LimitNum"] + "' /><input type='hidden' id='LimitID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='LimitTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='4' /></td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        QuotaNum = Convert.ToInt32(rows[i]["LimitNum"]);
+                        QuotaStartBatch = Convert.ToInt32(rows[i]["StartBatch"]);
+                        QuotaEndBatch = Convert.ToInt32(rows[i]["EndBatch"]);
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Batch >=" + QuotaStartBatch + " and Batch <=" + QuotaEndBatch);
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        QuotaNum = QuotaNum - num;
+                        quotaNumType = true;
+                        break;
+                    }
+                }
+                #endregion
+                #region 满赠
+                bool FullDiscountType = false;
+                int FullDiscountSum = -1;
+                string FullDiscountSpecs = "";
+                string FullDiscountFigure = "";
+                int FullDiscountStartBatch = -1;
+                int FullDiscountEndBatch = -1;
+                //规格、花纹、周期匹配
+                rows = dt.Select("RuleType=1 and Specs='" + specs + "' and Figure='" + figure + "' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "</td><td style='text-align: right;'><input type='hidden' id='FullDiscountFull' value='" + rows[i]["FullEntry"] + "' /><input type='hidden' id='FullDiscountCut' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='FullDiscountID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='FullDiscountTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='1' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                    FullDiscountSum = 0;
+                    FullDiscountSpecs = rows[i]["Specs"].ToString();
+                    FullDiscountFigure = rows[i]["Figure"].ToString();
+                    FullDiscountStartBatch = Convert.ToInt32(rows[i]["StartBatch"]);
+                    FullDiscountEndBatch = Convert.ToInt32(rows[i]["EndBatch"]);
+                    entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                    entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                    dt.Rows.Remove(rows[i]);
+                    int num = 0;
+                    DataTable oridt = bus.QueryClientOrderInfo(entity);
+                    DataRow[] orirows = oridt.Select("Specs='" + specs + "' and Figure='" + figure + "' and Batch >=" + FullDiscountStartBatch + " and Batch <=" + FullDiscountEndBatch);
+                    for (int j = 0; j < orirows.Count(); j++)
+                    {
+                        num += Convert.ToInt32(orirows[j]["Piece"]);
+                    }
+                    FullDiscountSum = FullDiscountSum + num;
+                    FullDiscountType = true;
+                    break;
+                }
+                //规格、花纹匹配
+                if (!FullDiscountType)
+                {
+                    rows = dt.Select("RuleType=1 and Specs='" + specs + "' and Figure='" + figure + "'");
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "</td><td style='text-align: right;'><input type='hidden' id='FullDiscountFull' value='" + rows[i]["FullEntry"] + "' /><input type='hidden' id='FullDiscountCut' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='FullDiscountID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='FullDiscountTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='1' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        FullDiscountSum = 0;
+                        FullDiscountSpecs = rows[i]["Specs"].ToString();
+                        FullDiscountFigure = rows[i]["Figure"].ToString();
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Specs='" + specs + "' and Figure='" + figure + "'");
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        FullDiscountSum = FullDiscountSum + num;
+                        FullDiscountType = true;
+                        break;
+                    }
+                }
+                //规格、周期匹配
+                if (!FullDiscountType)
+                {
+                    rows = dt.Select("RuleType=1 and Specs='" + specs + "' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "</td><td style='text-align: right;'><input type='hidden' id='FullDiscountFull' value='" + rows[i]["FullEntry"] + "' /><input type='hidden' id='FullDiscountCut' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='FullDiscountID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='FullDiscountTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='1' /></td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        FullDiscountSum = 0;
+                        FullDiscountSpecs = rows[i]["Specs"].ToString();
+                        FullDiscountStartBatch = Convert.ToInt32(rows[i]["StartBatch"]);
+                        FullDiscountEndBatch = Convert.ToInt32(rows[i]["EndBatch"]);
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Specs='" + specs + "' and Batch >=" + FullDiscountStartBatch + " and Batch <=" + FullDiscountEndBatch);
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        FullDiscountSum = FullDiscountSum + num;
+                        FullDiscountType = true;
+                        break;
+                    }
+                }
+                //花纹、周期匹配
+                if (!FullDiscountType)
+                {
+                    rows = dt.Select("RuleType=1 and Figure='" + figure + "' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;'>" + rows[i]["Figure"] + "</td><td style='text-align: right;'><input type='hidden' id='FullDiscountFull' value='" + rows[i]["FullEntry"] + "' /><input type='hidden' id='FullDiscountCut' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='FullDiscountID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='FullDiscountTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='1' /></td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        FullDiscountSum = 0;
+                        FullDiscountFigure = rows[i]["Figure"].ToString();
+                        FullDiscountStartBatch = Convert.ToInt32(rows[i]["StartBatch"]);
+                        FullDiscountEndBatch = Convert.ToInt32(rows[i]["EndBatch"]);
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Figure='" + figure + "' and Batch >=" + FullDiscountStartBatch + " and Batch <=" + FullDiscountEndBatch);
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        FullDiscountSum = FullDiscountSum + num;
+                        FullDiscountType = true;
+                        break;
+                    }
+                }
+                //规格匹配
+                if (!FullDiscountType)
+                {
+                    rows = dt.Select("RuleType=1 and Specs='" + specs + "'");
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "</td><td style='text-align: right;'><input type='hidden' id='FullDiscountFull' value='" + rows[i]["FullEntry"] + "' /><input type='hidden' id='FullDiscountCut' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='FullDiscountID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='FullDiscountTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='1' /></td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        FullDiscountSum = 0;
+                        FullDiscountSpecs = rows[i]["Specs"].ToString();
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Specs='" + specs + "'");
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        FullDiscountSum = FullDiscountSum + num;
+                        FullDiscountType = true;
+                        break;
+                    }
+                }
+                //花纹匹配
+                if (!FullDiscountType)
+                {
+                    rows = dt.Select("RuleType=1 and Figure='" + figure + "'");
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;'>" + rows[i]["Figure"] + "</td><td style='text-align: right;'><input type='hidden' id='FullDiscountFull' value='" + rows[i]["FullEntry"] + "' /><input type='hidden' id='FullDiscountCut' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='FullDiscountID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='FullDiscountTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='1' /></td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        FullDiscountSum = 0;
+                        FullDiscountFigure = rows[i]["Figure"].ToString();
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Figure='" + figure + "'");
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        FullDiscountSum = FullDiscountSum + num;
+                        FullDiscountType = true;
+                        break;
+                    }
+                }
+                //周期匹配
+                if (!FullDiscountType)
+                {
+                    rows = dt.Select("RuleType=1 and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                    for (int i = 0; i < rows.Count(); i++)
+                    {
+                        res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td><td style='text-align: right;'><input type='hidden' id='FullDiscountFull' value='" + rows[i]["FullEntry"] + "' /><input type='hidden' id='FullDiscountCut' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='FullDiscountID' value='" + rows[i]["ID"] + "' /><input type='hidden' id='FullDiscountTitle' value='" + rows[i]["Title"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='1' /></td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr></table></div>";
+                        FullDiscountSum = 0;
+                        FullDiscountStartBatch = Convert.ToInt32(rows[i]["StartBatch"]);
+                        FullDiscountEndBatch = Convert.ToInt32(rows[i]["EndBatch"]);
+                        entity.StartDate = Convert.ToDateTime(rows[i]["StartDate"]);
+                        entity.EndDate = Convert.ToDateTime(rows[i]["EndDate"]);
+                        dt.Rows.Remove(rows[i]);
+                        int num = 0;
+                        DataTable oridt = bus.QueryClientOrderInfo(entity);
+                        DataRow[] orirows = oridt.Select("Batch >=" + FullDiscountStartBatch + " and Batch <=" + FullDiscountEndBatch);
+                        for (int j = 0; j < orirows.Count(); j++)
+                        {
+                            num += Convert.ToInt32(orirows[j]["Piece"]);
+                        }
+                        FullDiscountSum = FullDiscountSum + num;
+                        FullDiscountType = true;
+                        break;
+                    }
+                }
+                #endregion
+                #region 直减优惠
+                //规格、花纹、载重、速度、周期匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='" + figure + "' and LoadIndex='" + loadIndex + "' and SpeedLevel='" + speedLevel + "' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>载重：</td><td style='text-align: left;' colspan='2'>" + rows[i]["LoadIndex"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>速度：</td><td style='text-align: left;' colspan='2'>" + rows[i]["SpeedLevel"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、花纹、载重、周期匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='" + figure + "' and LoadIndex='" + loadIndex + "' and SpeedLevel='' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>载重：</td><td style='text-align: left;' colspan='2'>" + rows[i]["LoadIndex"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、花纹、速度、周期匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='" + figure + "' and LoadIndex='' and SpeedLevel='" + speedLevel + "' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>速度：</td><td style='text-align: left;' colspan='2'>" + rows[i]["SpeedLevel"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、花纹、载重、速度匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='" + figure + "' and LoadIndex='" + loadIndex + "' and SpeedLevel='" + speedLevel + "' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>载重：</td><td style='text-align: left;' colspan='2'>" + rows[i]["LoadIndex"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>速度：</td><td style='text-align: left;' colspan='2'>" + rows[i]["SpeedLevel"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、花纹、载重匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='" + figure + "' and LoadIndex='" + loadIndex + "' and SpeedLevel='' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>载重：</td><td style='text-align: left;' colspan='2'>" + rows[i]["LoadIndex"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、花纹、速度匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='" + figure + "' and SpeedLevel='" + speedLevel + "' and LoadIndex='' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>速度：</td><td style='text-align: left;' colspan='2'>" + rows[i]["SpeedLevel"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、花纹、周期匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='" + figure + "' and SpeedLevel='' and LoadIndex='' and StartBatch <=" + batch + " and EndBatch >=" + batch);
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、花纹匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='" + figure + "' and SpeedLevel='' and LoadIndex='' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' colspan='2'>" + rows[i]["Figure"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、周期匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and StartBatch <=" + batch + " and EndBatch >=" + batch + " and Figure='' and SpeedLevel='' and LoadIndex=''");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、载重匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='' and SpeedLevel='' and LoadIndex='" + loadIndex + "' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>载重：</td><td style='text-align: left;' colspan='2'>" + rows[i]["LoadIndex"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格、速度匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='' and SpeedLevel='" + speedLevel + "' and LoadIndex='' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>速度：</td><td style='text-align: left;' colspan='2'>" + rows[i]["SpeedLevel"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //花纹、载重、速度匹配
+                rows = dt.Select("RuleType=6 and Figure='" + figure + "' and LoadIndex='" + loadIndex + "' and SpeedLevel='" + speedLevel + "' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' >" + rows[i]["Figure"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>载重：</td><td style='text-align: left;' colspan='2'>" + rows[i]["LoadIndex"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>速度：</td><td style='text-align: left;' colspan='2'>" + rows[i]["SpeedLevel"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //花纹、载重匹配
+                rows = dt.Select("RuleType=6 and Specs='' and Figure='" + figure + "' and LoadIndex='" + loadIndex + "' and SpeedLevel='' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' >" + rows[i]["Figure"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>载重：</td><td style='text-align: left;' colspan='2'>" + rows[i]["LoadIndex"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //花纹、速度匹配
+                rows = dt.Select("RuleType=6 and Specs='' and Figure='" + figure + "' and SpeedLevel='" + speedLevel + "' and LoadIndex='' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' >" + rows[i]["Figure"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>速度：</td><td style='text-align: left;' colspan='2'>" + rows[i]["SpeedLevel"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //花纹、周期匹配
+                rows = dt.Select("RuleType=6 and Figure='" + figure + "' and StartBatch <=" + batch + " and EndBatch >=" + batch + " and Specs='' and SpeedLevel='' and LoadIndex=''");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' >" + rows[i]["Figure"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //规格匹配
+                rows = dt.Select("RuleType=6 and Specs='" + specs + "' and Figure='' and SpeedLevel='' and LoadIndex='' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>规格：</td><td style='text-align: left;' >" + rows[i]["Specs"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: right;width: 40px;'></td><td style='text-align: left;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //花纹匹配
+                rows = dt.Select("RuleType=6 and Figure='" + figure + "' and Specs='' and SpeedLevel='' and LoadIndex='' and StartBatch=0 and EndBatch=0");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>花纹：</td><td style='text-align: left;' >" + rows[i]["Figure"] + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "</td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                //周期匹配
+                rows = dt.Select("RuleType=6 and StartBatch <=" + batch + " and EndBatch >=" + batch + " and Specs='' and Figure='' and SpeedLevel='' and LoadIndex=''");
+                for (int i = 0; i < rows.Count(); i++)
+                {
+                    string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                    if (SuitClientNum.Contains(UserInfor.LoginName) || string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()))
+                    {
+                        if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                        {
+                            res += "<div title='" + rows[i]["Title"] + "' style='padding: 20px;'><table style='width: 100%;'><tr><td style='text-align: right;width: 40px;'>批次：</td><td style='text-align: left;' colspan='2'>" + rows[i]["StartBatch"] + "---" + rows[i]["EndBatch"] + "</td></tr><tr><td style='text-align: right;width: 40px;'>期限：</td><td style='text-align: left;' colspan='2'>" + Convert.ToDateTime(rows[i]["StartDate"]).ToString("yyyy-MM-dd") + "---" + Convert.ToDateTime(rows[i]["EndDate"]).ToString("yyyy-MM-dd") + "<div style='float: right;margin-top: -20px;'>使用<input class='RuleBankCheck' type='checkbox' id='" + rows[i]["ID"] + "' name='" + rows[i]["SuitClientNum"] + (rows[i]["Regular"].ToString().Equals("0") ? "" : "常规促销") + "' value='" + rows[i]["Title"] + "' style='zoom: 200%;' /></div><input type='hidden' id='CutTitle" + rows[i]["ID"] + "' value='" + rows[i]["Title"] + "' /><input type='hidden' id='CutEntry" + rows[i]["ID"] + "' value='" + rows[i]["CutEntry"] + "' /><input type='hidden' id='RuleType" + rows[i]["ID"] + "' value='6' /></td></tr><tr><td style='text-align: left;font-weight: bold;color: #e97b46;' colspan='2'>" + rows[i]["RuleName"] + "</td></tr></table></div>";
+                        }
+                    }
+                    dt.Rows.Remove(rows[i]);
+                }
+                #endregion
+                res += "</div>";
+                prrEnter.Html = res;
+                prrEnter.QuotaNum = QuotaNum;
+                prrEnter.QuotaSpecs = QuotaSpecs;
+                prrEnter.QuotaFigure = QuotaFigure;
+                prrEnter.QuotaStartBatch = QuotaStartBatch;
+                prrEnter.QuotaEndBatch = QuotaEndBatch;
+                prrEnter.FullDiscountSum = FullDiscountSum;
+                prrEnter.FullDiscountSpecs = FullDiscountSpecs;
+                prrEnter.FullDiscountFigure = FullDiscountFigure;
+                prrEnter.FullDiscountStartBatch = FullDiscountStartBatch;
+                prrEnter.FullDiscountEndBatch = FullDiscountEndBatch;
+                String json = JSON.Encode(prrEnter);
+                Response.Write(json);
+                Response.End();
+            }
+        }
+        /// <summary>
+        /// 查询指定ID的优惠细则
+        /// </summary>
+        public void QueryPriceRuleBankInfoToID()
+        {
+            string clientNum = Request["ClientNum"];
+            string ruleID = Request["RuleID"];
+            string ruleType = Request["RuleType"];
+            string houseID = Request["HouseID"];
+            string typeID = Request["TypeID"];
+            string specs = Request["Specs"];
+            string figure = Request["Figure"];
+            string batch = Request["Batch"];
+            string OrderNo = Request["OrderNo"];
+            RuleBankReturnEntity rbrEntity = new RuleBankReturnEntity();
+            try
+            {
+                if (!string.IsNullOrEmpty(ruleID))
+                {
+                    RuleBankReturnEntity entity = new RuleBankReturnEntity();
+                    entity.RuleID = ruleID;
+                    CargoPriceBus bus = new CargoPriceBus();
+                    List<CargoRuleBankEntity> list = bus.QueryPriceRuleBankInfoToID(entity);
+                    CargoOrderEntity orEntity = new CargoOrderEntity();
+                    orEntity.HouseID = Convert.ToInt32(houseID);
+                    orEntity.TypeID = Convert.ToInt32(typeID);
+                    orEntity.ClientNum = Convert.ToInt32(clientNum);
+                    rbrEntity.Result = true;
+                    foreach (var item in list)
+                    {
+                        if (item.RuleType == ruleType)
+                        {
+                            switch (item.RuleType)
+                            {
+                                case "0":
+                                    rbrEntity.RuleType = "0";
+                                    rbrEntity.RuleContent = item.FullEntry.ToString();
+                                    rbrEntity.RuleID = Convert.ToString(item.ID);
+                                    rbrEntity.RuleTitle = item.Title;
+                                    break;
+                                case "1":
+                                    rbrEntity.RuleType = "1";
+                                    rbrEntity.RuleContent = item.ProductID.ToString();
+                                    rbrEntity.RuleID = Convert.ToString(item.ID);
+                                    rbrEntity.RuleTitle = item.Title;
+                                    break;
+                                case "2":
+                                    rbrEntity.RuleType = "2";
+                                    rbrEntity.RuleContent = item.SaleEntry.ToString();
+                                    rbrEntity.RuleID = Convert.ToString(item.ID);
+                                    rbrEntity.RuleTitle = item.Title;
+                                    break;
+                                case "3":
+                                    rbrEntity.RuleType = "3";
+                                    rbrEntity.RuleContent = item.ProductID.ToString();
+                                    rbrEntity.RuleID = Convert.ToString(item.ID);
+                                    rbrEntity.RuleTitle = item.Title;
+                                    break;
+                                case "4":
+                                    int num = 0;
+                                    orEntity.StartDate = item.StartDate;
+                                    orEntity.EndDate = item.EndDate;
+                                    orEntity.OrderNo = OrderNo;
+                                    DataTable oridt = bus.QueryClientOrderInfo(orEntity);
+                                    string str = "1=1";
+                                    if (!string.IsNullOrEmpty(item.Specs))
+                                    {
+                                        str += " and Specs='" + item.Specs + "'";
+                                    }
+                                    if (!string.IsNullOrEmpty(item.Figure))
+                                    {
+                                        str += " and Figure='" + item.Figure + "'";
+                                    }
+                                    if (item.StartBatch != 0)
+                                    {
+                                        str += " and Batch >=" + item.StartBatch + " and Batch <=" + item.EndBatch;
+                                    }
+                                    DataRow[] orirows = oridt.Select(str);
+                                    for (int j = 0; j < orirows.Count(); j++)
+                                    {
+                                        num += Convert.ToInt32(orirows[j]["Piece"]);
+                                    }
+                                    rbrEntity.RuleType = "4";
+                                    rbrEntity.RuleContent = (item.LimitNum - num).ToString();
+                                    rbrEntity.RuleID = Convert.ToString(item.ID);
+                                    rbrEntity.RuleTitle = item.Title;
+                                    break;
+                                case "6":
+                                    rbrEntity.RuleType = "6";
+                                    rbrEntity.RuleContent = item.CutEntry.ToString();
+                                    rbrEntity.RuleID = Convert.ToString(item.ID);
+                                    rbrEntity.RuleTitle = item.Title;
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                rbrEntity.Result = false;
+                rbrEntity.RuleType = "-1";
+                rbrEntity.RuleContent = ex.Message;
+            }
+            //返回处理结果
+            string res = JSON.Encode(rbrEntity);
+            Response.Write(res);
+            Response.End();
+        }
+        /// <summary>
+        /// 简易开单保存方法
+        /// </summary>
+        public void saveSimpleOrderData()
+        {
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            CargoHouseBus house = new CargoHouseBus();
+            msg.Result = true;
+            string json = Request["submitData"];
+            ArrayList goods = (ArrayList)JSON.Decode(json);
+            CargoClientBus client = new CargoClientBus();
+            if (goods.Count <= 0)
+            {
+                msg.Message = "没有产品数据";
+                msg.Result = false;
+                //返回处理结果
+                string res = JSON.Encode(msg);
+                Response.Write(res);
+                Response.End();
+                return;
+            }
+
+            CargoOrderBus bus = new CargoOrderBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.NvgPage = "新增销售单";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "A";
+            log.Status = "0";
+
+            CargoOrderEntity ent = new CargoOrderEntity();
+            List<CargoOrderGoodsEntity> entDest = new List<CargoOrderGoodsEntity>();
+            List<CargoContainerShowEntity> outHouseList = new List<CargoContainerShowEntity>();
+            //List<QyOrderUpdateGoodsEntity> goods = new List<QyOrderUpdateGoodsEntity>();
+
+            try
+            {
+                int HouseID = Convert.ToInt32(Request["HouseID"]);
+                CargoHouseEntity houseEnt = house.QueryCargoHouseByID(HouseID);
+                string HouseCode = houseEnt.HouseCode;
+                string HouseName = houseEnt.Name;
+
+                CargoOrderEntity order = bus.QueryUnpaidOrder(UserInfor.LoginName);
+                if (order != null && order.Piece > 0)
+                {
+                    msg.Message = "您有" + order.Piece + "笔订单金额" + order.TotalCharge + "元未结算";
+                    msg.Result = false;
+                    //返回处理结果
+                    string res = JSON.Encode(msg);
+                    Response.Write(res);
+                    Response.End();
+                    return;
+                }
+
+                #region 赋值
+                ent.HAwbNo = Convert.ToString(Request["HAwbNo"]);//关联订单号
+
+                ent.Dep = houseEnt.DepCity;
+                ent.Dest = Convert.ToString(Request["AAcceptCity"]);
+                ent.Piece = string.IsNullOrEmpty(Convert.ToString(Request["Piece"])) ? 0 : Convert.ToInt32(Request["Piece"]);
+                ent.Weight = 0; ent.Volume = 0; ent.TransitFee = 0;
+                ent.DeliveryFee = 0; ent.OtherFee = 0;
+                ent.TotalCharge = string.IsNullOrEmpty(Convert.ToString(Request["TotalCharge"])) ? 0 : Convert.ToDecimal(Request["TotalCharge"]);
+                ent.TransportFee = ent.TotalCharge;
+                ent.InsuranceFee = ent.TotalCharge - (string.IsNullOrEmpty(Convert.ToString(Request["PayTotalCharge"])) ? 0 : Convert.ToDecimal(Request["PayTotalCharge"]));
+                if (!ent.TotalCharge.Equals(string.IsNullOrEmpty(Convert.ToString(Request["PayTotalCharge"])) ? 0 : Convert.ToDecimal(Request["PayTotalCharge"])))
+                {
+                    CargoClientEntity clientEntity = client.QueryCargoClient(Convert.ToInt32(UserInfor.LoginName), UserInfor.HouseID);
+                    if (clientEntity.RebateMoney < ent.InsuranceFee)
+                    {
+                        ent.InsuranceFee = clientEntity.RebateMoney;
+                    }
+                }
+                ent.TotalCharge = ent.TotalCharge - ent.InsuranceFee;
+                ent.Rebate = 0;
+                ent.HouseID = HouseID;
+                ent.HouseName = HouseName;
+                ent.OutHouseName = HouseName;
+                ent.CheckOutType = "0";
+                ent.TrafficType = "0";// 内部订单
+                ent.DeliveryType = "0";//Convert.ToString(Request["DeliveryType"]);
+                ent.AcceptAddress = Convert.ToString(Request["AcceptAddress"]);
+                ent.AcceptPeople = Convert.ToString(Request["AAcceptPeople"]);
+                ent.AcceptUnit = string.IsNullOrEmpty(Convert.ToString(Request["AAcceptUnit"])) ? ent.AcceptPeople : Convert.ToString(Request["AAcceptUnit"]);
+                ent.AcceptTelephone = Convert.ToString(Request["AAcceptTelephone"]);
+                ent.AcceptCellphone = Convert.ToString(Request["AAcceptCellphone"]);
+                ent.CreateAwb = UserInfor.UserName;
+                ent.CreateAwbID = UserInfor.LoginName;
+                ent.CreateDate = DateTime.Now;
+                ent.OP_ID = UserInfor.LoginName;
+                ent.SaleManID = string.IsNullOrEmpty(UserInfor.SaleManID) ? UserInfor.LoginName : UserInfor.SaleManID;
+                ent.SaleManName = string.IsNullOrEmpty(UserInfor.SaleManName) ? UserInfor.UserName : UserInfor.SaleManName;
+                ent.SaleCellPhone = Convert.ToString(Request["SaleCellPhone"]);
+                ent.Remark = Convert.ToString(Request["Remark"]);
+                ent.ThrowGood = "21";
+                ent.IsPrintPrice = string.IsNullOrEmpty(Convert.ToString(Request["IsPrintPrice"])) ? 0 : 1;
+                ent.TranHouse = "";
+                ent.PostponeShip = "1";
+                ent.LogisID = 62;
+                ent.ClientNum = Convert.ToInt32(UserInfor.LoginName);
+                ent.PayClientNum = Convert.ToInt32(UserInfor.LoginName);
+                ent.PayClientName = UserInfor.UserName;//付款人客户姓名
+                ent.ClientID = UserInfor.UserID;
+                #endregion
+                int pieceSum = 0;
+                string outID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString();//出库单号
+
+                CargoInterfaceBus interBus = new CargoInterfaceBus();
+                CargoProductBus product = new CargoProductBus();
+                List<CargoInterfaceEntity> goodList = new List<CargoInterfaceEntity>();
+                int Discount = 0;
+                for (int i = 0; i < goods.Count; i++)
+                {
+                    Hashtable ht = (Hashtable)goods[i];
+                    //如果件数为空或为0则忽略处理
+                    if (string.IsNullOrEmpty(Convert.ToString(ht["Piece"])))
+                    {
+                        continue;
+                    }
+                    if ((Convert.ToInt32(ht["InPiece"]) - Convert.ToInt32(ht["Piece"])).Equals(0))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        goodList.Add(new CargoInterfaceEntity
+                        {
+                            ProductName = Convert.ToString(ht["ProductName"]),
+                            GoodsCode = Convert.ToString(ht["GoodsCode"]),
+                            TypeID = Convert.ToInt32(ht["TypeID"]),
+                            Model = Convert.ToString(ht["Model"]),
+                            Specs = Convert.ToString(ht["Specs"]),
+                            //Batch = Convert.ToString(ht["Batch"]),
+                            BatchYear = Convert.ToInt32(ht["BatchYear"]),
+                            StockNum = Convert.ToInt32(ht["InPiece"]) - Convert.ToInt32(ht["Piece"]),
+                            Figure = Convert.ToString(ht["Figure"]),
+                            RuleType = Convert.ToString(ht["RuleType"]).Trim(),
+                            RuleID = Convert.ToString(ht["RuleID"]).Trim(),
+                            RuleTitle = Convert.ToString(ht["RuleTitle"]).Trim(),
+                            SuitClientNum = Convert.ToString(ht["SuitClientNum"]).Trim(),
+                            SystemSalePrice = Convert.ToDecimal(ht["SystemSalePrice"]),
+                            ActSalePrice = Convert.ToDecimal(ht["ActSalePrice"])
+                        });
+                        if (Convert.ToString(ht["RuleType"]).Trim().IndexOf('6') > -1 && string.IsNullOrEmpty(Convert.ToString(ht["SuitClientNum"])))
+                        {
+                            Discount = Discount + (Convert.ToInt32(ht["InPiece"]) - Convert.ToInt32(ht["Piece"]));
+                        }
+                    }
+                }
+                DateTime dt = DateTime.Now;
+                CargoClientEntity clientEnt = client.QueryCargoClientTarget(new CargoClientEntity { ClientNum = Convert.ToInt32(UserInfor.LoginName), StartDate = dt.AddDays(1 - dt.Day), EndDate = dt.AddDays(1 - dt.Day).AddMonths(1).AddDays(-1) });
+                if (Math.Truncate(Convert.ToDouble(clientEnt.LimitMoney) + Math.Round(Convert.ToDouble(ent.Piece - Discount) * 10 / 85, 3)) < Discount)
+                {
+                    msg.Message = "特价产品超过可下单额度";
+                    msg.Result = false;
+                    //返回处理结果
+                    string res = JSON.Encode(msg);
+                    Response.Write(res);
+                    Response.End();
+                    return;
+                }
+                ent.UserRulePiece = Discount;
+                int OrderNum = 0;
+                ent.OrderNo = Common.GetMaxOrderNumByCurrentDate(HouseID, HouseCode, out OrderNum);
+                ent.OrderNum = OrderNum;//最新订单顺序号
+                //int pieceSum = 0;
+                foreach (var itt in goodList)
+                {
+                    pieceSum += itt.StockNum;
+                    int piece = itt.StockNum;
+                    //如果周期为空，产品类型是轮胎，则判断当前日期是本年的第几周，不能出一年以前周期轮胎
+                    int BatckWeek = 0;
+                    int parentID = 0;
+                    List<CargoProductTypeEntity> ptype = product.QueryProductType(new CargoProductTypeEntity { TypeID = itt.TypeID, ParentID = -1 });
+                    if (ptype.Count > 0) { parentID = ptype[0].ParentID; }
+                    CargoInterfaceEntity queryEntity = new CargoInterfaceEntity
+                    {
+                        HouseID = ent.HouseID,
+                        AreaID = 4225,//4225
+                        TypeID = itt.TypeID,
+                        ParentID = parentID,
+                        Specs = itt.Specs,
+                        Figure = itt.Figure,
+                        SpeedLevel = itt.SpeedLevel,
+                        GoodsCode = itt.GoodsCode,
+                        LoadIndex = itt.LoadIndex,
+                        ActSalePrice = itt.SystemSalePrice,
+                        //Batch = itt.Batch
+                        BatchYear = itt.BatchYear
+                    };
+                    List<CargoInterfaceEntity> stockList = interBus.queryCargoStock(queryEntity);
+                    if (stockList.Count <= 0)
+                    {
+                        msg.Message = "规格：" + queryEntity.Specs + "，花纹：" + queryEntity.Figure + "库存为空";
+                        msg.Result = false;
+                        //返回处理结果
+                        string res = JSON.Encode(msg);
+                        Response.Write(res);
+                        Response.End();
+                        return;
+                    }
+                    if (stockList.Sum(c => c.StockNum) < piece)
+                    {
+                        msg.Message = "规格：" + queryEntity.Specs + "，花纹：" + queryEntity.Figure + "库存不足，库存只剩：" + stockList.Sum(c => c.StockNum).ToString();
+                        msg.Result = false;
+                        //返回处理结果
+                        string res = JSON.Encode(msg);
+                        Response.Write(res);
+                        Response.End();
+                        return;
+                    }
+                  
+                    //减库存规则，一周期早的先出先进先出，二数量和库存数刚好一样的先出
+                    foreach (var it in stockList)
+                    {
+                        if (it.StockNum <= 0) { continue; }
+                        CargoContainerShowEntity cargo = new CargoContainerShowEntity();
+                        cargo.OrderNo = ent.OrderNo;//订单号
+                        cargo.OutCargoID = outID;
+                        cargo.ContainerID = it.ContainerID;
+                        cargo.TypeID = it.TypeID;
+                        cargo.ProductID = it.ProductID;
+
+                        cargo.ID = it.ContainerGoodsID;//库存表ID
+
+                        cargo.HouseName = it.HouseName;
+                        cargo.ProductName = it.ProductName;
+                        cargo.Model = it.Model;
+                        cargo.Specs = it.Specs;
+                        cargo.Figure = it.Figure;
+                        #region 减库存逻辑
+                        if (piece < it.StockNum)
+                        {
+                            //部分出
+                            entDest.Add(new CargoOrderGoodsEntity
+                            {
+                                OrderNo = ent.OrderNo,
+                                ProductID = it.ProductID,
+                                HouseID = ent.HouseID,
+                                AreaID = it.AreaID,
+                                Piece = piece,
+                                ActSalePrice = itt.ActSalePrice,
+                                ContainerCode = it.ContainerCode,
+                                OutCargoID = outID,
+                                RuleType = itt.RuleType,
+                                RuleID = itt.RuleID,
+                                RuleTitle = itt.RuleTitle,
+                                SuitClientNum = itt.SuitClientNum,
+                                OP_ID = log.UserID
+                            });
+                            cargo.Piece = piece;
+                            cargo.InPiece = it.StockNum;
+
+                            outHouseList.Add(cargo);
+                            break;
+                        }
+                        if (piece.Equals(it.StockNum))
+                        {
+                            //要出库件数和第一条库存件数刚刚好，则就全部出
+                            entDest.Add(new CargoOrderGoodsEntity
+                            {
+                                OrderNo = ent.OrderNo,
+                                ProductID = it.ProductID,
+                                HouseID = ent.HouseID,
+                                AreaID = it.AreaID,
+                                Piece = piece,
+                                ActSalePrice = itt.ActSalePrice,
+                                ContainerCode = it.ContainerCode,
+                                OutCargoID = outID,
+                                RuleType = itt.RuleType,
+                                RuleID = itt.RuleID,
+                                RuleTitle = itt.RuleTitle,
+                                SuitClientNum = itt.SuitClientNum,
+                                OP_ID = log.UserID
+                            });
+                            cargo.Piece = piece;
+                            cargo.InPiece = it.StockNum;
+
+                            outHouseList.Add(cargo);
+                            break;
+                        }
+                        if (piece > it.StockNum)
+                        {
+                            //全部出
+                            entDest.Add(new CargoOrderGoodsEntity
+                            {
+                                OrderNo = ent.OrderNo,
+                                ProductID = it.ProductID,
+                                HouseID = ent.HouseID,
+                                AreaID = it.AreaID,
+                                Piece = it.StockNum,
+                                ActSalePrice = itt.ActSalePrice,
+                                ContainerCode = it.ContainerCode,
+                                OutCargoID = outID,
+                                RuleType = itt.RuleType,
+                                RuleID = itt.RuleID,
+                                RuleTitle = itt.RuleTitle,
+                                SuitClientNum = itt.SuitClientNum,
+                                OP_ID = log.UserID
+                            });
+                            cargo.Piece = it.StockNum;
+                            cargo.InPiece = it.StockNum;
+
+                            outHouseList.Add(cargo);
+                            piece = piece - it.StockNum;
+                            continue;
+                        }
+                        #endregion
+                    }
+                }
+                if (!ent.Piece.Equals(pieceSum))
+                {
+                    msg.Message = "出库件数不一致";
+                    msg.Result = false;
+                    //返回处理结果
+                    string res = JSON.Encode(msg);
+                    Response.Write(res);
+                    Response.End();
+                    return;
+                }
+                ent.AwbStatus = "0";
+                ent.OrderType = "0";
+                ent.goodsList = entDest;
+                ent.BusinessID = "21";
+                ent.FinanceSecondCheck = "1";
+                ent.FinanceSecondCheckName = UserInfor.UserName;
+                ent.FinanceSecondCheckDate = DateTime.Now;
+                if (msg.Result)
+                {
+                    bus.AddOrderInfo(ent, outHouseList, log);
+                    msg.Message = ent.OrderNo + "/" + outID;//订单号和出库单号
+                }
+            }
+            catch (ApplicationException ex) { msg.Message = ex.Message; msg.Result = false; }
+            //返回处理结果
+            string ress = JSON.Encode(msg);
+            Response.Write(ress);
+            Response.End();
+        }
+        /// <summary>
+        /// 删除订单
+        /// </summary>
+        public void DelOrder()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoOrderEntity> list = new List<CargoOrderEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            CargoOrderBus bus = new CargoOrderBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.Status = "0";
+            log.NvgPage = "订单管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            int HouseID = 0;
+
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    CargoOrderEntity ord = bus.QueryOrderInfo(new CargoOrderEntity { OrderNo = Convert.ToString(row["OrderNo"]) });
+                    HouseID = ord.HouseID;
+                    if (HouseID != 0)
+                    {
+                        if (ord.CheckStatus.Equals("1"))
+                        {
+                            msg.Message = Convert.ToString(row["OrderNo"]) + "已结清，无法删除";
+                            msg.Result = false;
+                            break;
+                        }
+                        if (ord.CheckStatus.Equals("2"))
+                        {
+                            msg.Message = Convert.ToString(row["OrderNo"]) + "结算中，无法删除";
+                            msg.Result = false;
+                            break;
+                        }
+                        if (ord.AwbStatus != "0")
+                        {
+                            if (UserInfor.LoginName != "1000" && UserInfor.LoginName != "2076")
+                            {
+                                msg.Message = Convert.ToString(row["OrderNo"]) + "已出库，无法删除";
+                                msg.Result = false;
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (row["HouseID"].ToString() != "47")
+                        {
+                            msg.Message = Convert.ToString(row["OrderNo"]) + "未查询到订单数据";
+                            msg.Result = false;
+                            break;
+                        }
+                    }
+                    list.Add(new CargoOrderEntity
+                    {
+                        OrderID = Convert.ToInt64(row["OrderID"]),
+                        OrderNo = Convert.ToString(row["OrderNo"]),
+                        Dep = Convert.ToString(row["Dep"]),
+                        Dest = Convert.ToString(row["Dest"]),
+                        Piece = Convert.ToInt32(row["Piece"]),
+                        TransportFee = Convert.ToDecimal(row["TransportFee"]),
+                        TransitFee = Convert.ToDecimal(row["TransitFee"]),
+                        DeliveryFee = Convert.ToDecimal(row["DeliveryFee"]),
+                        InsuranceFee = Convert.ToDecimal(row["InsuranceFee"]),
+                        OtherFee = Convert.ToDecimal(row["OtherFee"]),
+                        TotalCharge = Convert.ToDecimal(row["TotalCharge"]),
+                        AcceptUnit = Convert.ToString(row["AcceptUnit"]),
+                        AcceptPeople = Convert.ToString(row["AcceptPeople"]),
+                        AcceptTelephone = Convert.ToString(row["AcceptTelephone"]),
+                        AcceptCellphone = Convert.ToString(row["AcceptCellphone"]),
+                        AcceptAddress = Convert.ToString(row["AcceptAddress"]),
+                        SaleManName = Convert.ToString(row["SaleManName"]),
+                        CreateAwb = Convert.ToString(row["CreateAwb"]),
+                        CreateAwbID = UserInfor.LoginName,
+                        CreateDate = Convert.ToDateTime(row["CreateDate"]),
+                        LogisAwbNo = Convert.ToString(row["LogisAwbNo"]),
+                        LogisticName = Convert.ToString(row["LogisticName"]),
+                        WXOrderNo = Convert.ToString(row["WXOrderNo"]),
+                        OutHouseName = Convert.ToString(row["OutHouseName"]),
+                        ThrowGood = Convert.ToString(row["ThrowGood"]),
+                        PayClientNum = Convert.ToInt32(row["PayClientNum"]),
+                        Remark = Convert.ToString(row["Remark"]),
+                        HouseID = HouseID,
+                        TrafficType = Convert.ToString(row["TrafficType"]),
+                        DeleteID = UserInfor.LoginName,
+                        PostponeShip = Convert.ToString(row["PostponeShip"]),
+                        DeleteName = UserInfor.UserName,
+                        LogisID = Convert.ToInt32(row["LogisID"])
+                    });
+                }
+                if (msg.Result)
+                {
+                    bus.DeleteOrderInfo(list, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+                foreach (var it in list)
+                {
+                    if (it.PostponeShip.Equals("2"))
+                    {
+                        bus.UpdateCargoOrderPush(new CargoOrderPushEntity { OrderNo = it.OrderNo, PushType = "2", PushStatus = "0", Dest = it.Dest, Piece = it.Piece, AcceptUnit = it.AcceptUnit, AcceptAddress = it.AcceptAddress, AcceptPeople = it.AcceptPeople, AcceptTelephone = it.AcceptTelephone, AcceptCellphone = it.AcceptCellphone, ClientNum = it.ClientNum.ToString(), LogisID = it.LogisID }, log);
+                    }
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+        ERROR:
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+
+        /// <summary>
+        /// 修改订单
+        /// </summary>
+        public void updateOrderData()
+        {
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            CargoOrderEntity ent = new CargoOrderEntity();
+            CargoOrderBus bus = new CargoOrderBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.NvgPage = "修改订单";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            log.Status = "0";
+            CargoOrderEntity ord = new CargoOrderEntity();
+            try
+            {
+                ent.OrderID = Convert.ToInt64(Request["OrderID"]);
+                ent.OrderNo = Convert.ToString(Request["OrderNo"]);
+                ent.ThrowGood = "21";
+                ord = bus.QueryOrderInfoByOrderID(ent.OrderID);
+                if (ord.CheckStatus.Equals("1"))
+                {
+                    msg.Message = ent.OrderNo + "已结清，无法修改"; msg.Result = false;
+                }
+                if (ord.CheckStatus.Equals("2"))
+                {
+                    msg.Message = ent.OrderNo + "结算中，无法修改"; msg.Result = false;
+                }
+
+                if (msg.Result)
+                {
+                    #region 赋值
+                    ent.HAwbNo = ord.HAwbNo;
+                    ent.Dep = UserInfor.DepCity;
+                    ent.Dest = Convert.ToString(Request["AcceptCity"]);
+                    ent.Piece = ord.Piece;
+                    ent.Weight = ord.Weight;
+                    ent.Volume = ord.Volume;
+                    ent.InsuranceFee = ord.InsuranceFee;
+                    ent.TransitFee = ord.TransitFee;
+                    ent.TransportFee = ord.TransportFee;
+                    ent.DeliveryFee = ord.DeliveryFee;
+                    ent.OtherFee = ord.OtherFee;
+                    ent.TotalCharge = ord.TotalCharge;
+                    ent.Rebate = ord.Rebate;
+
+                    ent.CheckOutType = ord.CheckOutType;
+                    //ent.ReturnAwb = string.IsNullOrEmpty(Convert.ToString(Request["ReturnAwb"])) ? 0 : Convert.ToInt32(Request["ReturnAwb"]);
+                    ent.TrafficType = ord.TrafficType;
+                    ent.DeliveryType = ord.DeliveryType;
+                    ent.AcceptUnit = Convert.ToString(Request["AcceptUnit"]);
+                    ent.AcceptAddress = Convert.ToString(Request["AcceptAddress"]);
+                    ent.AcceptPeople = Convert.ToString(Request["AcceptPeople"]);
+                    ent.AcceptPeople = ent.AcceptPeople.Split(',')[0];
+                    ent.AcceptTelephone = Convert.ToString(Request["AcceptTelephone"]);
+                    ent.AcceptCellphone = Convert.ToString(Request["AcceptCellphone"]);
+                    ent.CreateAwb = ord.CreateAwb;
+                    ent.CreateDate = ord.CreateDate;
+                    ent.OP_ID = UserInfor.LoginName.Trim();
+                    ent.SaleManID = ord.SaleManID;
+                    ent.SaleManName = ord.SaleManName;
+                    ent.SaleCellPhone = ord.SaleCellPhone;
+                    ent.Remark = Convert.ToString(Request["Remark"]);
+                    ent.LogisID = ord.LogisID;
+                    ent.LogisAwbNo = ord.LogisAwbNo;
+                    ent.ClientNum = ord.ClientNum;
+                    ent.IsPrintPrice = ord.IsPrintPrice;
+                    //ent.TranHouse = Convert.ToString(Request["TranHouse"]);
+                    ent.TranHouse = ord.TranHouse;
+
+                    #endregion
+
+                    ent.HouseID = ord.HouseID;
+
+                    ent.PayClientNum = ord.PayClientNum;
+                    ent.PayClientName = ord.PayClientName;
+
+                    if (msg.Result)
+                    {
+                        bus.UpdateOrderBaseInfo(ent, log);
+                        msg.Result = true;
+                        msg.Message = ent.OrderNo;//订单号和出库单号
+                    }
+                }
+            }
+            catch (ApplicationException ex) { msg.Message = ex.Message; msg.Result = false; }
+
+        ERROR:
+            //返回处理结果
+            string ress = JSON.Encode(msg);
+            Response.Write(ress);
+            Response.End();
+        }
+
+        /// <summary>
+        /// 拉上订单
+        /// </summary>
+        public void DrawUpOrder()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            List<CargoContainerShowEntity> entityList = new List<CargoContainerShowEntity>();
+            msg.Result = true;
+
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.Status = "0";
+            log.NvgPage = "订单管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                CargoContainerShowEntity entity = new CargoContainerShowEntity();
+                decimal LimitMoney = 0;
+
+                foreach (Hashtable row in rows)
+                {
+                    entity.ID = Convert.ToInt64(row["ID"]);
+                    entity.ProductID = Convert.ToInt64(row["ProductID"]);
+                    entity.ContainerID = Convert.ToInt32(row["ContainerID"]);
+                    entity.ContainerCode = Convert.ToString(row["ContainerCode"]);
+                    entity.AreaID = Convert.ToInt32(row["AreaID"]);
+                    entity.TypeID = Convert.ToInt32(row["TypeID"]);
+                    entity.Piece = Convert.ToInt32(row["Piece"]);//新数量
+                    entity.InPiece = Convert.ToInt32(row["InPiece"]);//旧数量
+                    entity.HouseID = Convert.ToInt32(row["HouseID"]);
+                    entity.HouseName = Convert.ToString(row["HouseName"]);
+                    entity.OrderNo = Convert.ToString(row["OrderNo"]);
+                    entity.RuleType = Convert.ToString(row["RuleType"]).Trim();
+                    entity.RuleID = Convert.ToString(row["RuleID"]).Trim();
+                    entity.RuleTitle = Convert.ToString(row["RuleTitle"]).Trim();
+                    entity.SuitClientNum = Convert.ToString(row["SuitClientNum"]).Trim();
+                    entity.BatchYear = Convert.ToInt32(row["BatchYear"]);
+                    entity.TradePrice = Convert.ToDecimal(row["TradePrice"]);
+                    entity.Specs = Convert.ToString(row["Specs"]);
+                    entity.Model = Convert.ToString(row["Model"]);
+                    entity.GoodsCode = Convert.ToString(row["GoodsCode"]);
+                    entity.Figure = Convert.ToString(row["Figure"]);
+                    entity.OutCargoID = Convert.ToString(row["OutCargoID"]);
+                    entity.ActSalePrice = Convert.ToDecimal(row["ActSalePrice"]);
+
+                    CargoRuleBankEntity rule = new CargoRuleBankEntity();
+                    CargoClientEntity clientEnt = new CargoClientEntity();
+                    if (!string.IsNullOrEmpty(entity.RuleID))
+                    {
+                        CargoPriceBus price = new CargoPriceBus();
+                        rule = price.QueryRuleBank(Convert.ToInt64(entity.RuleID), "6");
+                        CargoClientBus client = new CargoClientBus();
+                        DateTime dt = DateTime.Now;
+                        clientEnt = client.QueryCargoClientTarget(new CargoClientEntity { ClientNum = Convert.ToInt32(UserInfor.LoginName), StartDate = dt.AddDays(1 - dt.Day), EndDate = dt.AddDays(1 - dt.Day).AddMonths(1).AddDays(-1) });
+                    }
+                    if (!rule.ID.Equals(0) && rule.Regular == 0 && string.IsNullOrEmpty(rule.SuitClientNum))
+                    {
+                        if (decimal.Truncate(clientEnt.LimitMoney) < entity.Piece)
+                        {
+                            msg.Result = false;
+                            msg.Message = "特价产品超过可下单额度";
+                            break;
+                        }
+                        LimitMoney = 0 - entity.Piece;
+                    }
+                    else
+                    {
+                        LimitMoney = Math.Round(Convert.ToDecimal(entity.Piece) * 10 / 85, 3);
+                    }
+                    CargoContainerShowEntity queryEntity = new CargoContainerShowEntity();
+                    queryEntity.Specs = entity.Specs;
+                    queryEntity.Figure = entity.Figure;
+                    queryEntity.SpeedLevel = entity.SpeedLevel;
+                    queryEntity.LoadIndex = entity.LoadIndex;
+                    //queryEntity.TradePrice = entity.TradePrice;
+                    queryEntity.BatchYear = entity.BatchYear;
+                    queryEntity.GoodsCode = entity.GoodsCode;
+                    queryEntity.HouseID = entity.HouseID;
+                    queryEntity.TypeID = entity.TypeID;
+                    //queryEntity.AreaID = 3352;
+                    queryEntity.FirstAreaID = 4225;//4225
+                    queryEntity.IsLockStock = "0";
+
+                    CargoHouseBus house = new CargoHouseBus();
+                    List<CargoContainerShowEntity> list = house.QueryALLHouseData(queryEntity);
+                    int sumPiece = list.Sum(x => x.Piece);
+                    int diffPiece = entity.Piece - entity.OldPiece;
+                    if (sumPiece < diffPiece)
+                    {
+                        msg.Result = false;
+                        msg.Message = entity.Specs + "在库库存不足";
+                        if (row["HouseID"].ToString() == "47")
+                        {
+                            msg.Message = row["ProductName"].ToString() + "在库库存不足";
+                        }
+                        break;
+                    }
+                    int piece = diffPiece;
+                    foreach (var item in list)
+                    {
+                        if (piece == 0) { break; }
+                        CargoContainerShowEntity ent = new CargoContainerShowEntity();
+                        ent.Specs = entity.Specs;
+                        ent.Figure = entity.Figure;
+                        ent.SpeedLevel = entity.SpeedLevel;
+                        ent.LoadIndex = entity.LoadIndex;
+                        ent.TradePrice = entity.TradePrice;
+                        ent.OldPiece = entity.OldPiece;
+                        ent.PayClientNum = Convert.ToInt32(UserInfor.LoginName.Trim());
+                        ent.OrderNo = entity.OrderNo;
+                        ent.OutCargoID = entity.OutCargoID;
+                        ent.HouseID = entity.HouseID;
+                        ent.ActSalePrice = entity.ActSalePrice;
+                        ent.RuleID = rule.ID.ToString();
+                        ent.RuleType = rule.RuleType;
+                        ent.RuleTitle = rule.Title;
+                        ent.SuitClientNum = rule.SuitClientNum + (rule.Regular == 1 ? "常规促销" : "");
+
+                        if (item.Piece < piece)
+                        {
+                            ent.ProductID = item.ProductID;
+                            ent.TypeID = item.TypeID;
+                            ent.Piece = item.Piece;
+                            ent.ContainerCode = item.ContainerCode;
+                            ent.ContainerID = item.ContainerID;
+                            ent.AreaID = item.AreaID;
+                            entityList.Add(ent);
+                            piece = piece - item.Piece;
+                            continue;
+                        }
+                        if (item.Piece == piece)
+                        {
+                            ent.ProductID = item.ProductID;
+                            ent.TypeID = item.TypeID;
+                            ent.Piece = item.Piece;
+                            ent.ContainerCode = item.ContainerCode;
+                            ent.ContainerID = item.ContainerID;
+                            ent.AreaID = item.AreaID;
+                            entityList.Add(ent);
+                            piece = piece - item.Piece;
+                            continue;
+                        }
+                        if (item.Piece > piece)
+                        {
+                            ent.ProductID = item.ProductID;
+                            ent.TypeID = item.TypeID;
+                            ent.Piece = piece;
+                            ent.ContainerCode = item.ContainerCode;
+                            ent.ContainerID = item.ContainerID;
+                            ent.AreaID = item.AreaID;
+                            entityList.Add(ent);
+                            piece = piece - piece;
+                            continue;
+                        }
+                    }
+                }
+                if (msg.Result)
+                {
+                    CargoOrderBus bus = new CargoOrderBus();
+                    bus.DrawUpOrder(entityList, log, LimitMoney);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        /// <summary>
+        /// 查询所有一级分类
+        /// </summary>
+        public void QueryALLOneProductType()
+        {
+            //查询条件
+            int PID = string.IsNullOrEmpty(Request["PID"]) ? 0 : Convert.ToInt32(Request["PID"]);
+            CargoProductBus bus = new CargoProductBus();
+            List<CargoProductTypeEntity> list = bus.QueryProductType(new CargoProductTypeEntity { ParentID = PID });
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 查询所有在库的产品数据
+        /// </summary>
+        public void QueryALLHouseData()
+        {
+            CargoContainerShowEntity queryEntity = new CargoContainerShowEntity();
+            CargoHouseBus bus = new CargoHouseBus();
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") || spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+
+            queryEntity.ProductName = Convert.ToString(Request["ProductName"]);
+            queryEntity.Model = Convert.ToString(Request["Model"]);
+            queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);
+            if (Request["Born"] != "-1")
+            {
+                queryEntity.Born = Convert.ToString(Request["Born"]);
+            }
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);//花纹
+            queryEntity.LoadIndex = Convert.ToString(Request["LoadIndex"]);
+            if (!string.IsNullOrEmpty(Request["HouseID"]))//一级分类
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HouseID"]);//所属仓库ID
+            }
+            queryEntity.FirstAreaID = 4225;//4225 华南配件仓留东仓，专门存放锦湖轮胎
+            queryEntity.IsLockStock = "0";
+            queryEntity.TypeID = 163;
+            queryEntity.CargoPermisID = UserInfor.HouseID.ToString();
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            List<CargoContainerShowEntity> list = bus.QueryALLHouseData(queryEntity);
+            List<CargoContainerShowEntity> list_ = new List<CargoContainerShowEntity>();
+            foreach (var item in list)
+            {
+                if (list_.Where(x => x.Specs == item.Specs && x.Figure == item.Figure && x.Model == item.Model && x.GoodsCode == item.GoodsCode && x.LoadIndex == item.LoadIndex && x.SpeedLevel == item.SpeedLevel && x.SpecsType == item.SpecsType && x.BelongDepart == item.BelongDepart && x.TradePrice == item.TradePrice && x.BatchYear == item.BatchYear).Count() > 0)
+                {
+                    list_.Where(c => c.TypeID == item.TypeID && c.Specs == item.Specs && c.Figure == item.Figure && c.Model == item.Model && c.GoodsCode == item.GoodsCode && c.LoadIndex == item.LoadIndex && c.SpeedLevel == item.SpeedLevel && c.SpecsType == item.SpecsType && c.BelongDepart == item.BelongDepart && c.TradePrice == item.TradePrice).ToList().ForEach(x => { x.Piece += item.Piece; x.InPiece += item.InPiece; });
+                }
+                else
+                {
+                    list_.Add(item);
+                }
+            }
+            list = list_;
+            CargoPriceBus busPrice = new CargoPriceBus();
+            DataTable dt = busPrice.QueryPriceRuleBankInfo(new CargoOrderEntity { HouseID = UserInfor.HouseID, RuleType = "6" });
+            CargoClientBus client = new CargoClientBus();
+            DateTime time = DateTime.Now;
+            CargoClientEntity clientEnt = client.QueryCargoClientTarget(new CargoClientEntity { ClientNum = Convert.ToInt32(UserInfor.LoginName), StartDate = time.AddDays(1 - time.Day), EndDate = time.AddDays(1 - time.Day).AddMonths(1).AddDays(-1) });
+            if (list.Count > 0)
+            {
+                if (dt.Rows.Count > 0)
+                {
+                    foreach (CargoContainerShowEntity m in list)
+                    {
+                        #region 获取优惠
+
+                        DataRow[] rows = dt.Select("RuleType=6 and Specs='" + m.Specs + "' and Figure='" + m.Figure + "' and LoadIndex='" + m.LoadIndex + "' and SpeedLevel='" + m.SpeedLevel + "'");
+                        for (int i = 0; i < rows.Count(); i++)
+                        {
+                            string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                            if (SuitClientNum.Contains(UserInfor.LoginName))
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "1";
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()) && Convert.ToInt32(rows[i]["SuitClientNum"].ToString()) == 1)
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "2";
+                                }
+                            }
+                            else
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "3";
+                                }
+                            }
+                            //dt.Rows.Remove(rows[i]);
+                        }
+                        rows = dt.Select("RuleType=6 and Specs='" + m.Specs + "' and Figure='" + m.Figure + "' and LoadIndex='" + m.LoadIndex + "' and SpeedLevel=''");
+                        for (int i = 0; i < rows.Count(); i++)
+                        {
+                            string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                            if (SuitClientNum.Contains(UserInfor.LoginName))
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "1";
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()) && Convert.ToInt32(rows[i]["SuitClientNum"].ToString()) == 1)
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "2";
+                                }
+                            }
+                            else
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "3";
+                                }
+                            }
+                            //dt.Rows.Remove(rows[i]);
+                        }
+                        rows = dt.Select("RuleType=6 and Specs='" + m.Specs + "' and Figure='" + m.Figure + "' and SpeedLevel='" + m.SpeedLevel + "' and LoadIndex=''");
+                        for (int i = 0; i < rows.Count(); i++)
+                        {
+                            string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                            if (SuitClientNum.Contains(UserInfor.LoginName))
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "1";
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()) && Convert.ToInt32(rows[i]["SuitClientNum"].ToString()) == 1)
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "2";
+                                }
+                            }
+                            else
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "3";
+                                }
+                            }
+                            //dt.Rows.Remove(rows[i]);
+                        }
+                        rows = dt.Select("RuleType=6 and Specs='" + m.Specs + "' and Figure='" + m.Figure + "' and LoadIndex='' and SpeedLevel=''");
+                        for (int i = 0; i < rows.Count(); i++)
+                        {
+                            string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                            if (SuitClientNum.Contains(UserInfor.LoginName))
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "1";
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(rows[i]["Regular"].ToString()) && Convert.ToInt32(rows[i]["Regular"].ToString()) == 1)
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "2";
+                                }
+                            }
+                            else
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "3";
+                                }
+                            }
+                            //dt.Rows.Remove(rows[i]);
+                        }
+                        rows = dt.Select("RuleType=6 and Specs='" + m.Specs + "' and Figure='' and LoadIndex='" + m.LoadIndex + "' and SpeedLevel=''");
+                        for (int i = 0; i < rows.Count(); i++)
+                        {
+                            string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                            if (SuitClientNum.Contains(UserInfor.LoginName))
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "1";
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()) && Convert.ToInt32(rows[i]["SuitClientNum"].ToString()) == 1)
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "2";
+                                }
+                            }
+                            else
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "3";
+                                }
+                            }
+                            //dt.Rows.Remove(rows[i]);
+                        }
+                        rows = dt.Select("RuleType=6 and Specs='" + m.Specs + "' and Figure='' and SpeedLevel='" + m.SpeedLevel + "' and LoadIndex=''");
+                        for (int i = 0; i < rows.Count(); i++)
+                        {
+                            string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                            if (SuitClientNum.Contains(UserInfor.LoginName))
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "1";
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()) && Convert.ToInt32(rows[i]["SuitClientNum"].ToString()) == 1)
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "2";
+                                }
+                            }
+                            else
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "3";
+                                }
+                            }
+                            //dt.Rows.Remove(rows[i]);
+                        }
+                        rows = dt.Select("RuleType=6 and Specs='" + m.Specs + "' and Figure='' and SpeedLevel='' and LoadIndex=''");
+                        for (int i = 0; i < rows.Count(); i++)
+                        {
+                            string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                            if (SuitClientNum.Contains(UserInfor.LoginName))
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "1";
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()) && Convert.ToInt32(rows[i]["SuitClientNum"].ToString()) == 1)
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "2";
+                                }
+                            }
+                            else
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "3";
+                                }
+                            }
+                            //dt.Rows.Remove(rows[i]);
+                        }
+                        rows = dt.Select("RuleType=6 and Figure='" + m.Figure + "' and Specs='' and SpeedLevel='' and LoadIndex=''");
+                        for (int i = 0; i < rows.Count(); i++)
+                        {
+                            string[] SuitClientNum = rows[i]["SuitClientNum"].ToString().Trim().Split(',');
+                            if (SuitClientNum.Contains(UserInfor.LoginName))
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "1";
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(rows[i]["SuitClientNum"].ToString()) && Convert.ToInt32(rows[i]["SuitClientNum"].ToString()) == 1)
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "2";
+                                }
+                            }
+                            else
+                            {
+                                if (rows[i]["MeetLimit"].ToString() == "1" && clientEnt.TargetNum <= clientEnt.SumPiece - clientEnt.UserRulePiece || rows[i]["MeetLimit"].ToString() != "1")
+                                {
+                                    m.RuleTitle = rows[i]["Title"].ToString();
+                                    m.RuleType = "3";
+                                }
+                            }
+                            //dt.Rows.Remove(rows[i]);
+                        }
+                    }
+                    #endregion
+                }
+            }
+            list.OrderBy(x => x.Specs);
+
+            List<CargoContainerShowEntity> footlist = new List<CargoContainerShowEntity>();
+            footlist.Add(new CargoContainerShowEntity
+            {
+                HouseName = "汇总：",
+                Piece = list.Sum(c => c.Piece),
+                InCargoStatus = ""
+            });
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = list;
+            resHT["total"] = list.Count();
+            resHT["footer"] = footlist;
+            //JSON
+            String json = JSON.Encode(resHT);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 查询城市 
+        /// </summary>
+        public void QueryCityData()
+        {
+            CargoHouseBus bus = new CargoHouseBus();
+            int PID = string.IsNullOrEmpty(Request["PID"]) ? 0 : Convert.ToInt32(Request["PID"]);
+            List<CargoCityEntity> list = bus.QueryCityData(new CargoCityEntity { ParentID = PID });
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 查询客户的所有收货地址
+        /// </summary>
+        public void QueryAcceptAddress()
+        {
+            CargoClientAcceptAddressEntity queryEntity = new CargoClientAcceptAddressEntity();
+            queryEntity.ClientNum = Convert.ToInt32(UserInfor.LoginName);
+
+            queryEntity.AcceptCompany = Convert.ToString(Request["AcceptCompany"]);
+            queryEntity.AcceptPeople = Convert.ToString(Request["AcceptPeople"]);
+            queryEntity.AcceptCellphone = Convert.ToString(Request["AcceptCellphone"]);
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoClientBus bus = new CargoClientBus();
+            Hashtable list = bus.QueryAcceptAddress(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+
+        /// <summary>
+        /// 修改订单中的产品数量
+        /// </summary>
+        public void UpdateOrderPiece()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.Status = "0";
+            log.NvgPage = "订单管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                CargoContainerShowEntity entity = new CargoContainerShowEntity();
+                CargoHouseBus house = new CargoHouseBus();
+                CargoOrderBus bus = new CargoOrderBus();
+                List<CargoContainerShowEntity> entityList = new List<CargoContainerShowEntity>();
+                decimal LimitMoney = 0;
+
+                foreach (Hashtable row in rows)
+                {
+                    CargoOrderEntity ord = bus.QueryOrderInfo(new CargoOrderEntity { OrderNo = Convert.ToString(row["OrderNo"]) });
+                    if (!ord.AwbStatus.Equals("0"))
+                    {
+                        msg.Message = "订单非已开单状态，不允许修改";
+                        msg.Result = false;
+                        break;
+                    }
+                    if (ord.CheckStatus.Equals("1"))
+                    {
+                        msg.Message = Convert.ToString(row["OrderNo"]) + "已结清，不允许修改";
+                        msg.Result = false;
+                        break;
+                    }
+                    if (ord.CheckStatus.Equals("2"))
+                    {
+                        msg.Message = Convert.ToString(row["OrderNo"]) + "结算中，不允许修改";
+                        msg.Result = false;
+                        break;
+                    }
+                    entity.Specs = Convert.ToString(row["Specs"]);
+                    entity.Figure = Convert.ToString(row["Figure"]);
+                    entity.SpeedLevel = Convert.ToString(row["SpeedLevel"]);
+                    entity.LoadIndex = Convert.ToString(row["LoadIndex"]);
+                    entity.TradePrice = Convert.ToDecimal(row["TradePrice"]);
+                    entity.GoodsCode = Convert.ToString(row["GoodsCode"]);
+                    entity.BatchYear = Convert.ToInt32(row["BatchYear"]);
+
+                    entity.Piece = Convert.ToInt32(row["Piece"]);//新数量
+                    entity.OldPiece = Convert.ToInt32(row["oldPiece"]);//旧数量
+
+                    entity.PayClientNum = ord.PayClientNum;
+                    entity.OrderNo = Convert.ToString(row["OrderNo"]);
+                    entity.OutCargoID = Convert.ToString(row["OutCargoID"]);
+                    entity.HouseID = Convert.ToInt32(row["HouseID"]);
+                    entity.TypeID = Convert.ToInt32(row["TypeID"]);
+                    entity.ActSalePrice = Convert.ToDecimal(row["ActSalePrice"]);
+
+                    if (entity.Piece.Equals(entity.OldPiece))
+                    {
+                        msg.Result = false;
+                        msg.Message = "未修改数量";
+                        break;
+                    }
+
+
+                    string RuleID = Convert.ToString(row["RuleID"]);
+                    CargoRuleBankEntity rule = new CargoRuleBankEntity();
+                    if (!string.IsNullOrEmpty(RuleID))
+                    {
+                        CargoPriceBus price = new CargoPriceBus();
+                        rule = price.QueryRuleBank(Convert.ToInt64(RuleID), "6");
+                    }
+                    CargoClientBus client = new CargoClientBus();
+                    DateTime dt = DateTime.Now;
+                    CargoClientEntity clientEnt = client.QueryCargoClientTarget(new CargoClientEntity { ClientNum = Convert.ToInt32(UserInfor.LoginName), StartDate = dt.AddDays(1 - dt.Day), EndDate = dt.AddDays(1 - dt.Day).AddMonths(1).AddDays(-1) });
+                    //拉上的
+                    if (entity.Piece > entity.OldPiece)
+                    {
+                        int diffPiece = entity.Piece - entity.OldPiece;
+
+                        if (!rule.ID.Equals(0) && rule.Regular == 0 && string.IsNullOrEmpty(rule.SuitClientNum))
+                        {
+
+                            if (decimal.Truncate(clientEnt.LimitMoney) < diffPiece)
+                            {
+                                msg.Result = false;
+                                msg.Message = "特价产品超过可下单额度";
+                                break;
+                            }
+                            LimitMoney = entity.OldPiece - entity.Piece;
+                        }
+                        else
+                        {
+                            LimitMoney = Math.Round(Convert.ToDecimal(diffPiece) * 10 / 85, 3);
+                        }
+
+
+
+                        CargoContainerShowEntity queryEntity = new CargoContainerShowEntity();
+                        queryEntity.Specs = entity.Specs;
+                        queryEntity.Figure = entity.Figure;
+                        queryEntity.SpeedLevel = entity.SpeedLevel;
+                        queryEntity.LoadIndex = entity.LoadIndex;
+                        queryEntity.TradePrice = entity.TradePrice;
+                        queryEntity.GoodsCode = entity.GoodsCode;
+                        queryEntity.HouseID = entity.HouseID;
+                        queryEntity.TypeID = entity.TypeID;
+                        queryEntity.IsLockStock = "0";
+                        queryEntity.FirstAreaID = 4225;//4225
+                        queryEntity.BatchYear = entity.BatchYear;
+
+                        List<CargoContainerShowEntity> list = house.QueryALLHouseData(queryEntity);
+                        int sumPiece = list.Sum(x => x.Piece);
+                        if (sumPiece < diffPiece)
+                        {
+                            msg.Result = false;
+                            msg.Message = entity.Specs + "在库库存不足";
+                            if (row["HouseID"].ToString() == "47")
+                            {
+                                msg.Message = row["ProductName"].ToString() + "在库库存不足";
+                            }
+                            break;
+                        }
+                        int piece = diffPiece;
+                        foreach (var item in list)
+                        {
+                            if (piece == 0) { break; }
+                            CargoContainerShowEntity ent = new CargoContainerShowEntity();
+                            ent.Specs = entity.Specs;
+                            ent.Figure = entity.Figure;
+                            ent.SpeedLevel = entity.SpeedLevel;
+                            ent.LoadIndex = entity.LoadIndex;
+                            ent.TradePrice = entity.TradePrice;
+                            ent.OldPiece = entity.OldPiece;
+                            ent.PayClientNum = entity.PayClientNum;
+                            ent.OrderNo = entity.OrderNo;
+                            ent.OutCargoID = entity.OutCargoID;
+                            ent.HouseID = entity.HouseID;
+                            ent.ActSalePrice = entity.ActSalePrice;
+                            ent.RuleID = rule.ID.ToString();
+                            ent.RuleType = rule.RuleType;
+                            ent.RuleTitle = rule.Title;
+                            ent.SuitClientNum = rule.SuitClientNum + (rule.Regular == 1 ? "常规促销" : "");
+
+                            if (item.Piece < piece)
+                            {
+                                ent.ProductID = item.ProductID;
+                                ent.TypeID = item.TypeID;
+                                ent.Piece = item.Piece;
+                                ent.ContainerCode = item.ContainerCode;
+                                ent.ContainerID = item.ContainerID;
+                                ent.AreaID = item.AreaID;
+                                entityList.Add(ent);
+                                piece = piece - item.Piece;
+                                continue;
+                            }
+                            if (item.Piece == piece)
+                            {
+                                ent.ProductID = item.ProductID;
+                                ent.TypeID = item.TypeID;
+                                ent.Piece = item.Piece;
+                                ent.ContainerCode = item.ContainerCode;
+                                ent.ContainerID = item.ContainerID;
+                                ent.AreaID = item.AreaID;
+                                entityList.Add(ent);
+                                piece = piece - item.Piece;
+                                continue;
+                            }
+                            if (item.Piece > piece)
+                            {
+                                ent.ProductID = item.ProductID;
+                                ent.TypeID = item.TypeID;
+                                ent.Piece = piece;
+                                ent.ContainerCode = item.ContainerCode;
+                                ent.ContainerID = item.ContainerID;
+                                ent.AreaID = item.AreaID;
+                                entityList.Add(ent);
+                                piece = piece - piece;
+                                continue;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (!clientEnt.LimitMoney.Equals(0))
+                        {
+                            if (rule.ID.Equals(0) || rule.Regular != 0 || !string.IsNullOrEmpty(rule.SuitClientNum))
+                            {
+                                LimitMoney = Math.Round(Convert.ToDecimal(entity.Piece - entity.OldPiece) * 10 / 85, 3);
+                            }
+                            else
+                            {
+                                LimitMoney = entity.OldPiece - entity.Piece;
+                            }
+                            if (clientEnt.LimitMoney + LimitMoney < 0)
+                            {
+                                msg.Result = false;
+                                msg.Message = "特价产品超过可下单额度";
+                                break;
+                            }
+                        }
+                        entity.Piece = entity.Piece - entity.OldPiece;
+                        entityList.Add(entity);
+
+                    }
+                }
+                if (msg.Result)
+                {
+                    bus.UpdateOrderPiece(entityList, LimitMoney, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        /// <summary>
+        /// 通过订单号查询订单数据
+        /// </summary>
+        public void QueryOrderByOrderNo()
+        {
+            CargoOrderEntity queryEntity = new CargoOrderEntity();
+            //查询条件
+            string key = Request["OrderNo"];
+            if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return; }
+            queryEntity.OrderNo = key.Trim();
+            CargoOrderBus bus = new CargoOrderBus();
+            List<CargoContainerShowEntity> list = bus.QueryOrderByOrderNo(queryEntity);
+            List<CargoContainerShowEntity> result = new List<CargoContainerShowEntity>();
+            while (list.Count > 0)
+            {
+                CargoContainerShowEntity m = list[0];
+                list.RemoveAt(0);
+
+                List<CargoContainerShowEntity> list2 = new List<CargoContainerShowEntity>();
+                foreach (CargoContainerShowEntity item in list)
+                {
+                    if (item.Specs.Equals(m.Specs) && item.Figure.Equals(m.Figure) && item.SpeedLevel.Equals(m.SpeedLevel) && item.LoadIndex.Equals(m.LoadIndex) && item.TradePrice.Equals(m.TradePrice) && item.GoodsCode.Equals(m.GoodsCode) && item.BatchYear.Equals(m.BatchYear))
+                    {
+                        m.Piece += item.Piece;
+                        m.InPiece += item.InPiece;
+                    }
+                    else
+                    {
+                        list2.Add(item);
+                    }
+                }
+                list = list2;
+                result.Add(m);
+            }
+            list = result;
+            if (list != null) { QueryOrderGoodsList = list; }
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+
+        }
+        public List<CargoContainerShowEntity> QueryOrderGoodsList
+        {
+            get
+            {
+                if (Session["QueryOrderGoodsList"] == null)
+                {
+                    Session["QueryOrderGoodsList"] = new List<CargoContainerShowEntity>();
+                }
+                return (List<CargoContainerShowEntity>)(Session["QueryOrderGoodsList"]);
+            }
+            set
+            {
+                Session["QueryOrderGoodsList"] = value;
+            }
+        }
+        /// <summary>
+        /// 查询客户所有收货地址
+        /// </summary>
+        public void AutoCompleteClientAcceptPeople()
+        {
+            CargoClientAcceptAddressEntity queryEntity = new CargoClientAcceptAddressEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["ClientNum"])))
+            {
+                queryEntity.ClientNum = Convert.ToInt32(Request["ClientNum"]);
+            }
+            else
+            {
+                return;
+            }
+            CargoClientBus bus = new CargoClientBus();
+            List<CargoClientAcceptAddressEntity> list = new List<CargoClientAcceptAddressEntity>();
+            list = bus.QueryAcceptAddress(queryEntity);
+
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 保存客户收货地址
+        /// </summary>
+        public void SaveAcceptAddress()
+        {
+            CargoClientAcceptAddressEntity ent = new CargoClientAcceptAddressEntity();
+            CargoClientBus bus = new CargoClientBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "客户管理";
+            log.NvgPage = "收货地址管理";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            String id = Request["ADID"] != null ? Request["ADID"].ToString() : "";
+            try
+            {
+                CargoClientEntity clientEntity = bus.QueryCargoClient(Convert.ToInt32(UserName));
+                ent.ClientID = clientEntity.ClientID;
+                ent.ClientNum = Convert.ToInt32(UserInfor.LoginName);
+                ent.AcceptCompany = Convert.ToString(Request["AcceptCompany"]).Trim();
+                ent.AcceptPeople = Convert.ToString(Request["AcceptPeople"]).Trim();
+                ent.AcceptProvince = Convert.ToString(Request["AProvince"]);
+                ent.AcceptCity = Convert.ToString(Request["ACity"]);
+                ent.AcceptCountry = Convert.ToString(Request["ACountry"]);
+                ent.AcceptAddress = Convert.ToString(Request["AcceptAddress"]).Trim();
+                ent.AcceptCellphone = Convert.ToString(Request["AcceptCellphone"]);
+                ent.AcceptTelephone = Convert.ToString(Request["AcceptTelephone"]).Trim();
+                ent.HouseID = UserInfor.HouseID;
+
+                ent.TargetNum = string.IsNullOrEmpty(Convert.ToString(Request["TargetNum"])) ? 0 : Convert.ToInt32(Request["TargetNum"]);
+                if (id == "")
+                {
+                    log.Operate = "A";
+                    bus.AddAcceptAddress(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+                else
+                {
+                    ent.ADID = Convert.ToInt64(id);
+                    log.Operate = "U";
+                    bus.UpdateAcceptAddress(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        /// <summary>
+        /// 删除客户收货地址
+        /// </summary>
+        public void DelAcceptAddress()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoClientAcceptAddressEntity> list = new List<CargoClientAcceptAddressEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoClientBus bus = new CargoClientBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "客户管理";
+            log.Status = "0";
+            log.NvgPage = "收货地址管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoClientAcceptAddressEntity
+                    {
+                        ADID = Convert.ToInt64(row["ADID"]),
+                        ClientID = Convert.ToInt64(row["ClientID"]),
+                        ClientNum = Convert.ToInt32(UserInfor.LoginName),
+                        AcceptPeople = Convert.ToString(row["AcceptPeople"]),
+                        AcceptAddress = Convert.ToString(row["AcceptAddress"]),
+                        AcceptCellphone = Convert.ToString(row["AcceptCellphone"])
+                    });
+                }
+                bus.DelAcceptAddress(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+
+        public void QueryShortageListByClientNum()
+        {
+            ShortageListEntity queryEntity = new ShortageListEntity();
+            queryEntity.ClientNum = UserInfor.LoginName;
+            CargoOrderBus bus = new CargoOrderBus();
+            List<ShortageListEntity> list = bus.QueryShortageListByClientNum(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+
+        }
+
+        public void QueryALLProductSpecPieceData()
+        {
+
+            CargoProductEntity queryEntity = new CargoProductEntity();
+            CargoHouseBus bus = new CargoHouseBus();
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") || spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);//花纹
+            queryEntity.Model = Convert.ToString(Request["Model"]);
+            queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);
+            if (Request["Born"] != "-1")
+            {
+                queryEntity.Born = Convert.ToString(Request["Born"]);
+            }
+            queryEntity.HouseID = UserInfor.HouseID;
+            queryEntity.TypeID = 163;
+            List<CargoProductEntity> list = bus.QueryALLProductSpecPieceData(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        public void InsertShortageList()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.Status = "0";
+            log.NvgPage = "缺货订单";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "A";
+            try
+            {
+                ShortageListEntity entity = new ShortageListEntity();
+                foreach (Hashtable row in rows)
+                {
+                    entity.HouseID = UserInfor.HouseID;
+                    entity.ClientNum = UserInfor.LoginName;
+                    entity.TypeID = Convert.ToInt32(row["TypeID"]);
+                    entity.TypeName = Convert.ToString(row["TypeName"]);
+                    entity.Specs = Convert.ToString(row["Specs"]);
+                    entity.Figure = Convert.ToString(row["Figure"]);
+                    entity.Model = Convert.ToString(row["Model"]);
+                    entity.GoodsCode = Convert.ToString(row["GoodsCode"]);
+                    entity.LoadIndex = Convert.ToString(row["LoadIndex"]);
+                    entity.SpeedLevel = Convert.ToString(row["SpeedLevel"]);
+                    entity.Piece = Convert.ToInt32(row["Piece"]);
+                    entity.OP_ID = UserInfor.LoginName;
+                }
+                if (msg.Result)
+                {
+                    CargoOrderBus bus = new CargoOrderBus();
+                    bus.InsertShortageList(entity, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        public void DeleteShortageList()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.Status = "0";
+            log.NvgPage = "缺货订单";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                ShortageListEntity entity = new ShortageListEntity();
+                foreach (Hashtable row in rows)
+                {
+                    entity.HouseID = UserInfor.HouseID;
+                    entity.ClientNum = UserInfor.LoginName;
+                    entity.TypeID = Convert.ToInt32(row["TypeID"]);
+                    entity.TypeName = Convert.ToString(row["TypeName"]);
+                    entity.Specs = Convert.ToString(row["Specs"]);
+                    entity.Figure = Convert.ToString(row["Figure"]);
+                    entity.Model = Convert.ToString(row["Model"]);
+                    entity.GoodsCode = Convert.ToString(row["GoodsCode"]);
+                    entity.LoadIndex = Convert.ToString(row["LoadIndex"]);
+                    entity.SpeedLevel = Convert.ToString(row["SpeedLevel"]);
+                    entity.Piece = Convert.ToInt32(row["Piece"]);
+                    entity.Born = Convert.ToString(row["Born"]);
+                    entity.OP_ID = UserInfor.LoginName;
+                }
+                if (msg.Result)
+                {
+                    CargoOrderBus bus = new CargoOrderBus();
+                    bus.DeleteShortageList(entity, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        public void QueryCargoNotice()
+        {
+            CargoNoticeEntity queryEntity = new CargoNoticeEntity();
+            queryEntity.Title = Request["Title"];
+            if (Request["DelFlag"] != "-1")
+            {
+                queryEntity.DelFlag = Convert.ToString(Request["DelFlag"]);
+            }
+            if (Request["NoticeType"] != "-1")
+            {
+                queryEntity.NoticeType = Convert.ToString(Request["NoticeType"]);
+            }
+            if (!string.IsNullOrEmpty(Request["HID"]))
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HID"]);
+            }
+            queryEntity.Title = Convert.ToString(Request["Title"]);
+            queryEntity.ClientNum = Convert.ToInt32(UserInfor.LoginName);
+
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoStaticBus bus = new CargoStaticBus();
+            Hashtable list = bus.QueryCargoNotice(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        public void QueryNoticeByID()
+        {
+            CargoNoticeEntity queryEntity = new CargoNoticeEntity();
+            //查询条件
+            string key = Request["ID"];
+            if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return; }
+            queryEntity.ID = Convert.ToInt32(key);
+            CargoStaticBus bus = new CargoStaticBus();
+            CargoNoticeEntity list = bus.QueryNoticeByID(queryEntity);
+            bus.UpdateNoticeReadStatus(new CargoNoticeEntity { ReadStatus = 1, ID = queryEntity.ID });
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+
+        public void QueryClientInvoiceHeader()
+        {
+            CargoClientInvoiceHeaderEntity queryEntity = new CargoClientInvoiceHeaderEntity();
+            queryEntity.ClientNum = Convert.ToInt32(Request["ClientNum"]);
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoClientBus bus = new CargoClientBus();
+            Hashtable list = bus.QueryClientInvoiceHeader(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 保存发票抬头
+        /// </summary>
+        public void SaveClientInvoiceHeader()
+        {
+            CargoClientInvoiceHeaderEntity ent = new CargoClientInvoiceHeaderEntity();
+            CargoClientBus bus = new CargoClientBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "销售管理";
+            log.NvgPage = "发票管理";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            String id = Request["ID"] != null ? Request["ID"].ToString() : "";
+            try
+            {
+                ent.ClientNum = Convert.ToInt32(UserInfor.LoginName);
+                ent.HeaderType = Convert.ToString(Request["HeaderType"]);
+                ent.HeaderInfo = Convert.ToString(Request["HeaderInfo"]).Trim();
+                ent.InvoiceType = Convert.ToString(Request["InvoiceType"]);
+                ent.SocialCode = Convert.ToString(Request["SocialCode"]).Trim();
+                ent.BankName = Convert.ToString(Request["BankName"]).Trim();
+                ent.BankNumber = Convert.ToString(Request["BankNumber"]).Trim();
+                ent.RegisAddress = Convert.ToString(Request["RegisAddress"]).Trim();
+                ent.RegisTelephone = Convert.ToString(Request["RegisTelephone"]).Trim();
+                ent.OP_ID = UserInfor.LoginName;
+
+                if (id == "")
+                {
+                    if (bus.IsExistClientInvoiceHeader(ent))
+                    {
+                        msg.Result = false;
+                        msg.Message = "已经存在相同的发票抬头";
+                    }
+                    else
+                    {
+                        log.Operate = "A";
+                        bus.AddClientInvoiceHeader(ent, log);
+                        msg.Result = true;
+                        msg.Message = "成功";
+                    }
+
+                }
+                else
+                {
+                    ent.ID = Convert.ToInt64(id);
+                    log.Operate = "U";
+                    bus.UpdateClientInvoiceHeader(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        /// <summary>
+        /// 删除发票抬头数据
+        /// </summary>
+        public void DelClientInvoiceHeader()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoClientInvoiceHeaderEntity> list = new List<CargoClientInvoiceHeaderEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoClientBus bus = new CargoClientBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "销售管理";
+            log.Status = "0";
+            log.NvgPage = "开票管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoClientInvoiceHeaderEntity
+                    {
+                        ID = Convert.ToInt64(row["ID"]),
+                        ClientNum = Convert.ToInt32(UserInfor.LoginName),
+                        HeaderInfo = Convert.ToString(row["HeaderInfo"]),
+                        InvoiceType = Convert.ToString(row["InvoiceType"]),
+                        BankNumber = Convert.ToString(row["BankNumber"]),
+                        SocialCode = Convert.ToString(row["SocialCode"])
+                    });
+                }
+                bus.DelClientInvoiceHeader(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+
+        }
+
+        public void QueryClientPostAddress()
+        {
+            CargoClientPostAddressEntity queryEntity = new CargoClientPostAddressEntity();
+            queryEntity.ClientNum = Convert.ToInt32(Request["ClientNum"]);
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoClientBus bus = new CargoClientBus();
+            Hashtable list = bus.QueryClientPostAddress(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        public void DelClientPostAddress()
+        {
+
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoClientPostAddressEntity> list = new List<CargoClientPostAddressEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoClientBus bus = new CargoClientBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "销售管理";
+            log.Status = "0";
+            log.NvgPage = "开票管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoClientPostAddressEntity
+                    {
+                        ID = Convert.ToInt64(row["ID"]),
+                        ClientNum = Convert.ToInt32(UserInfor.LoginName),
+                        AcceptPeople = Convert.ToString(row["AcceptPeople"]),
+                        AcceptAddress = Convert.ToString(row["AcceptAddress"]),
+                        AcceptCellphone = Convert.ToString(row["AcceptCellphone"]),
+                        ZipCode = Convert.ToString(row["ZipCode"])
+                    });
+                }
+                bus.DelClientPostAddress(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+        public void SaveClientPostAddress()
+        {
+            CargoClientPostAddressEntity ent = new CargoClientPostAddressEntity();
+            CargoClientBus bus = new CargoClientBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "销售管理";
+            log.NvgPage = "发票管理";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            String id = Request["ID"] != null ? Request["ID"].ToString() : "";
+            try
+            {
+                ent.ClientNum = Convert.ToInt32(UserInfor.LoginName);
+                ent.AcceptPeople = Convert.ToString(Request["AcceptPeople"]);
+                ent.AcceptCellphone = Convert.ToString(Request["AcceptCellphone"]).Trim();
+                ent.ZipCode = Convert.ToString(Request["ZipCode"]);
+                ent.AcceptProvince = Convert.ToString(Request["AProvince"]).Trim();
+                ent.AcceptCity = Convert.ToString(Request["ACity"]).Trim();
+                ent.AcceptCountry = Convert.ToString(Request["ACountry"]).Trim();
+                ent.AcceptAddress = Convert.ToString(Request["AcceptAddress"]).Trim();
+                ent.OP_ID = UserInfor.LoginName;
+
+                if (id == "")
+                {
+                    if (bus.IsExistClientPostAddress(ent))
+                    {
+                        msg.Result = false;
+                        msg.Message = "已经存在相同的邮寄地址";
+                    }
+                    else
+                    {
+                        log.Operate = "A";
+                        bus.AddClientPostAddress(ent, log);
+                        msg.Result = true;
+                        msg.Message = "成功";
+                    }
+
+                }
+                else
+                {
+                    ent.ID = Convert.ToInt64(id);
+                    log.Operate = "U";
+                    bus.UpdateClientPostAddress(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+        }
+    }
+}

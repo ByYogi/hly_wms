@@ -1,0 +1,88 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace House.Entity.Cargo.Order
+{
+    public class CargoOrderDayStatisticsEntity
+    {
+        //public string OrderNo { get; set; }
+        public int TypeID { get; set; }
+        public string TypeName { get; set; }
+        public int HouseID { get; set; }
+        public int SuppID { get; set; }
+        public string HouseName { get; set; }
+        public int Piece { get; set; }
+        public decimal TotalCharge { get; set; }
+        public int ThrowGood { get; set; }
+        public int OrderModel { get; set; }
+        public DateTime CreateDate { get; set; }
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public DateTime DayStatisticsTime { get; set; }
+        /// <summary>
+        /// 安全库存条数
+        /// </summary>
+        public int StockNum { get; set; }
+        /// <summary>
+        /// 在库SKU
+        /// </summary>
+        public int ProCount { get; set; }
+        /// <summary>
+        /// 在库库存
+        /// </summary>
+        public int ProPiece { get; set; }
+        /// <summary>
+        /// 下单数
+        /// </summary>
+        public int UniqueClientCount { get; set; }
+        /// <summary>
+        /// 下单销量
+        /// </summary>
+        public int UniqueClientNum { get; set; }
+        /// <summary>
+        /// 点击数（浏览数）
+        /// </summary>
+        public int clickCount { get; set; }
+        /// <summary>
+        /// 销售SKU
+        /// </summary>
+        public int DayStatisticsCount { get; set; }
+        /// <summary>
+        /// SKU满足率
+        /// </summary>
+        public double SatisfactionRate { get; set; }
+        /// <summary>
+        /// 动销率
+        /// </summary>
+        public double SalesRate { get; set; }
+        /// <summary>
+        /// 库存周转数
+        /// </summary>
+        public double InventoryTurnover { get; set; }
+        /// <summary>
+        /// 点击转化率
+        /// </summary>
+        public double ClickConversionRate { get; set; }
+        /// <summary>
+        /// 月份仓库目标目标
+        /// </summary>
+        public double MonthAimQuantity { get; set; }
+        /// <summary>
+        /// 0库存条数
+        /// </summary>
+        public double ZeroInventotyCount { get; set; }
+        public decimal CompletionRate { get; set; }
+        public string ProductCode { get; set; }
+        public string ProductName { get; set; }
+        public string Specs { get; set; }
+        /// <summary>
+        /// 前一天
+        /// </summary>
+        public int Day { get; set; }
+        public string OPID { get; set; }
+
+    }
+}

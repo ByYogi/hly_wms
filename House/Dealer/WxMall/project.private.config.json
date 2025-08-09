@@ -1,0 +1,8 @@
+{
+  "description": "",
+  "projectname": "wechat-app-mall",
+  "setting": {
+    "compileHotReLoad": true,
+    "urlCheck": false
+  }
+}

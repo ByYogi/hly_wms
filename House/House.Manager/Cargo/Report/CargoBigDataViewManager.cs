@@ -1,0 +1,283 @@
+﻿using House.DataAccess;
+using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.Common;
+using System.Linq;
+using System.Text;
+
+namespace House.Manager.Cargo
+{
+    /// <summary>
+    /// 大数据统计分析系统数据操作类
+    /// </summary>
+    public class CargoBigDataViewManager
+    {
+        private SqlHelper conn = new SqlHelper();
+        /// <summary>
+        /// 仓库总的实时统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoBigDataViewEntity> QueryALLBigDataStatis(CargoBigDataViewEntity entity)
+        {
+            List<CargoBigDataViewEntity> result = new List<CargoBigDataViewEntity>();
+            string strSQL = "select a.HouseName,COUNT(distinct a.OrderNo) as OrderNum,sum(b.Piece) as Piece,Sum(b.piece*b.ActSalePrice) as TotalCharge From Tbl_Owl_Order as a inner join Tbl_Owl_OrderGoods as b on a.OrderNo=b.OrderNo where (1=1) and b.TypeParentName='轮胎'  and b.TypeName not in ('樱花','速亚','蒲公英','衡钻','赛为','台翔','方向针','新轮') ";
+            if (!string.IsNullOrEmpty(entity.OrderModel)) { strSQL += " and a.OrderModel = '" + entity.OrderModel + "'"; }
+            if (!string.IsNullOrEmpty(entity.BelongHouse)) { strSQL += " and a.BelongHouse = '" + entity.BelongHouse + "'"; }
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            else
+            {
+                strSQL += " and a.CreateDate>='" + DateTime.Now.ToString("yyyy-MM-dd") + "'";
+            }
+            strSQL += " GROUP BY a.HouseName ORDER BY  CASE WHEN a.HouseName LIKE '%云仓%' THEN 0  ELSE 1  END, SUM(b.Piece) DESC";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idrCount in dt.Rows)
+                    {
+                        result.Add(new CargoBigDataViewEntity
+                        {
+                            HouseName = Convert.ToString(idrCount["HouseName"]),
+                            OrderNum = Convert.ToInt32(idrCount["OrderNum"]),
+                            SaleNum = Convert.ToInt32(idrCount["Piece"]),
+                            SaleMoney = Convert.ToDecimal(idrCount["TotalCharge"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 仓库总的实时统计
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoBigDataViewEntity> QueryALLBigOrderSum(CargoBigDataViewEntity entity)
+        {
+            List<CargoBigDataViewEntity> result = new List<CargoBigDataViewEntity>();
+            string strSQL = "select a.HouseName,COUNT(distinct a.OrderNo) as OrderNum,sum(b.Piece) as Piece,Sum(b.piece*b.ActSalePrice) as TotalCharge From Tbl_Owl_Order as a inner join Tbl_Owl_OrderGoods as b on a.OrderNo=b.OrderNo where (1=1) and b.TypeParentName='轮胎'  and b.TypeName not in ('樱花','速亚','蒲公英','衡钻','赛为','台翔','方向针','新轮') ";
+            if (!string.IsNullOrEmpty(entity.OrderModel)) { strSQL += " and a.OrderModel = '" + entity.OrderModel + "'"; }
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            else
+            {
+                strSQL += " and a.CreateDate>='" + DateTime.Now.ToString("yyyy-MM-dd") + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.BelongHouse)) { strSQL += " and a.BelongHouse = '" + entity.BelongHouse + "'"; }
+            strSQL += " group by a.HouseName order by SUM(b.Piece) desc";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idrCount in dt.Rows)
+                    {
+                        result.Add(new CargoBigDataViewEntity
+                        {
+                            HouseName = Convert.ToString(idrCount["HouseName"]),
+                            OrderNum = Convert.ToInt32(idrCount["OrderNum"]),
+                            SaleNum = Convert.ToInt32(idrCount["Piece"]),
+                            SaleMoney = Convert.ToDecimal(idrCount["TotalCharge"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 按品牌查询
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoBigDataViewEntity> QueryDataByTypeName(CargoBigDataViewEntity entity)
+        {
+            List<CargoBigDataViewEntity> result = new List<CargoBigDataViewEntity>();
+            string strSQL = "select top 50 a.*,ISNULL(b.DaySaleNum,0) as DaySaleNum From (select a.TypeName,SUM(a.Piece) as MonthSaleNum,SUM(a.Piece*a.ActSalePrice) as MonthSaleMoney From Tbl_Owl_OrderGoods as a inner join Tbl_Owl_Order as b on a.OrderNo=b.OrderNo where (1=1)";
+            if (!string.IsNullOrEmpty(entity.OrderModel)) { strSQL += " and b.OrderModel = '" + entity.OrderModel + "'"; }
+            if (!string.IsNullOrEmpty(entity.BelongHouse)) { strSQL += " and b.BelongHouse = '" + entity.BelongHouse + "'"; }
+            if (!string.IsNullOrEmpty(entity.TypeParentName)) { strSQL += " and a.TypeParentName = '" + entity.TypeParentName + "'"; }
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and b.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            strSQL += " group by a.TypeName) as a left join (select a.TypeName,SUM(a.Piece) as DaySaleNum From Tbl_Owl_OrderGoods as a inner join Tbl_Owl_Order as b on a.OrderNo=b.OrderNo where (1=1)";
+            if (!string.IsNullOrEmpty(entity.OrderModel)) { strSQL += " and b.OrderModel = '" + entity.OrderModel + "'"; }
+            if (!string.IsNullOrEmpty(entity.BelongHouse)) { strSQL += " and b.BelongHouse = '" + entity.BelongHouse + "'"; }
+            if (!string.IsNullOrEmpty(entity.TypeParentName)) { strSQL += " and a.TypeParentName = '" + entity.TypeParentName + "'"; }
+            strSQL += " and b.CreateDate>='" + DateTime.Now.ToString("yyyy-MM-dd") + "'";
+            //strSQL += " group by a.TypeName) as b on a.TypeName=b.TypeName ORDER BY case when a.TypeName = '康佩森' then 0  else 1 end asc, a.MonthSaleNum desc";
+            strSQL += " group by a.TypeName) as b on a.TypeName=b.TypeName order by a.MonthSaleNum desc";
+
+            int nu = 1;
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idrCount in dt.Rows)
+                    {
+                        if (Convert.ToString(idrCount["TypeName"]).Equals("樱花") || Convert.ToString(idrCount["TypeName"]).Equals("衡钻") || Convert.ToString(idrCount["TypeName"]).Equals("速亚") || Convert.ToString(idrCount["TypeName"]).Equals("蒲公英") || Convert.ToString(idrCount["TypeName"]).Equals("赛为") || Convert.ToString(idrCount["TypeName"]).Equals("台翔") || Convert.ToString(idrCount["TypeName"]).Equals("方向针") || Convert.ToString(idrCount["TypeName"]).Equals("新轮"))
+                        {
+                            continue;
+                        }
+                        if (nu < 15 || Convert.ToString(idrCount["TypeName"]).Equals("康佩森"))
+                        {
+                            nu++;
+                            result.Add(new CargoBigDataViewEntity
+                            {
+                                TypeName = Convert.ToString(idrCount["TypeName"]),
+                                DaySaleNum = Convert.ToInt32(idrCount["DaySaleNum"]),
+                                MonthSaleNum = Convert.ToInt32(idrCount["MonthSaleNum"]),
+                                MonthSaleMoney = Convert.ToInt32(idrCount["MonthSaleMoney"])
+                            });
+                        }
+
+
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 实时统计查询
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoBigDataViewEntity> QueryCurBigDataStatis(CargoBigDataViewEntity entity)
+        {
+            List<CargoBigDataViewEntity> result = new List<CargoBigDataViewEntity>();
+            string strSQL = "select * from (select COUNT(distinct a.OrderNo) as MonthOrderNum,sum(b.Piece) as MonthSaleNum,Sum(b.piece*b.ActSalePrice) as MonthSaleMoney From Tbl_Owl_Order as a inner join Tbl_Owl_OrderGoods as b on a.OrderNo=b.OrderNo where (1=1) and b.TypeParentName='轮胎' and b.TypeName not in ('樱花','速亚','蒲公英','衡钻','赛为','台翔','方向针','新轮') ";
+            if (!string.IsNullOrEmpty(entity.OrderModel)) { strSQL += " and a.OrderModel = '" + entity.OrderModel + "'"; }
+            if (!string.IsNullOrEmpty(entity.BelongHouse)) { strSQL += " and a.BelongHouse = '" + entity.BelongHouse + "'"; }
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            strSQL += " ) as c cross join (select COUNT(distinct a.OrderNo) as DayOrderNum,sum(b.Piece) as DaySaleNum,Sum(b.piece*b.ActSalePrice) as DaySaleMoney From Tbl_Owl_Order as a inner join Tbl_Owl_OrderGoods as b on a.OrderNo=b.OrderNo where (1=1) and b.TypeParentName='轮胎' and b.TypeName not in ('樱花','速亚','蒲公英','衡钻','赛为','台翔','方向针','新轮') ";
+            if (!string.IsNullOrEmpty(entity.OrderModel)) { strSQL += " and a.OrderModel = '" + entity.OrderModel + "'"; }
+            if (!string.IsNullOrEmpty(entity.BelongHouse)) { strSQL += " and a.BelongHouse = '" + entity.BelongHouse + "'"; }
+            strSQL += " and a.CreateDate>='" + DateTime.Now.ToString("yyyy-MM-dd") + "'";
+            strSQL += " ) as d";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idrCount in dt.Rows)
+                    {
+                        result.Add(new CargoBigDataViewEntity
+                        {
+                            DaySaleNum = string.IsNullOrEmpty(idrCount["DaySaleNum"].ToString()) ? 0 : Convert.ToInt32(idrCount["DaySaleNum"]),
+                            DayOrderNum = string.IsNullOrEmpty(idrCount["DayOrderNum"].ToString()) ? 0 : Convert.ToInt32(idrCount["DayOrderNum"]),
+                            DaySaleMoney = string.IsNullOrEmpty(idrCount["DaySaleMoney"].ToString()) ? 0 : Convert.ToInt32(idrCount["DaySaleMoney"]),
+                            MonthSaleNum = string.IsNullOrEmpty(idrCount["MonthSaleNum"].ToString()) ? 0 : Convert.ToInt32(idrCount["MonthSaleNum"]),
+                            MonthOrderNum = string.IsNullOrEmpty(idrCount["MonthOrderNum"].ToString()) ? 0 : Convert.ToInt32(idrCount["MonthOrderNum"]),
+                            MonthSaleMoney = string.IsNullOrEmpty(idrCount["MonthSaleMoney"].ToString()) ? 0 : Convert.ToInt32(idrCount["MonthSaleMoney"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询订单数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoBigDataViewEntity> QueryBigDataStatisList(CargoBigDataViewEntity entity)
+        {
+            List<CargoBigDataViewEntity> result = new List<CargoBigDataViewEntity>();
+            string strSQL = "select top 20 * From Tbl_Owl_Order where (1=1)";
+            //if (!entity.ID.Equals(0)) { strSQL += " and ID>" + entity.ID; }
+            if (!string.IsNullOrEmpty(entity.OrderModel)) { strSQL += " and OrderModel = '" + entity.OrderModel + "'"; }
+            if (!string.IsNullOrEmpty(entity.OrderNo)) { strSQL += " and OrderNo != '" + entity.OrderNo + "'"; }
+            if (!string.IsNullOrEmpty(entity.BelongHouse)) { strSQL += " and BelongHouse = '" + entity.BelongHouse + "'"; }
+            if ((entity.CreateDateTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.CreateDateTime.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and CreateDateTime>='" + entity.CreateDateTime.ToString("yyyy-MM-dd HH:mm:ss") + "'";
+            }
+            else
+            {
+                strSQL += " and CreateDateTime>='" + DateTime.Now.ToString("yyyy-MM-dd") + "'";
+            }
+            strSQL += " order by CreateDateTime desc";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idrCount in dt.Rows)
+                    {
+                        result.Add(new CargoBigDataViewEntity
+                        {
+                            ID = Convert.ToInt64(idrCount["ID"]),
+                            OrderNo = Convert.ToString(idrCount["OrderNo"]),
+                            Dep = Convert.ToString(idrCount["Dep"]),
+                            Dest = Convert.ToString(idrCount["Dest"]),
+                            AcceptPeople = Convert.ToString(idrCount["AcceptPeople"]),
+                            AcceptUnit = Convert.ToString(idrCount["AcceptUnit"]),
+                            HouseName = Convert.ToString(idrCount["HouseName"]),
+                            Piece = Convert.ToInt32(idrCount["Piece"]),
+                            CreateDate = Convert.ToDateTime(idrCount["CreateDate"]),
+                            CreateDateTime = Convert.ToDateTime(idrCount["CreateDateTime"]),
+                            TotalCharge = Convert.ToDecimal(idrCount["TotalCharge"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 按业务员销量排名
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoBigDataViewEntity> QueryDataBySaleManRank(CargoBigDataViewEntity entity)
+        {
+            List<CargoBigDataViewEntity> result = new List<CargoBigDataViewEntity>();
+            string strSQL = "select top 11 a.*,ISNULL(b.DaySaleNum,0) as DaySaleNum From (select b.SaleManName,SUM(a.Piece) as MonthSaleNum,SUM(a.Piece*a.ActSalePrice) as MonthSaleMoney From Tbl_Owl_OrderGoods as a inner join Tbl_Owl_Order as b on a.OrderNo=b.OrderNo where (1=1)  and a.TypeName not in ('樱花','速亚','蒲公英','衡钻','赛为','台翔','方向针','新轮') ";
+            if (!string.IsNullOrEmpty(entity.OrderModel)) { strSQL += " and b.OrderModel = '" + entity.OrderModel + "'"; }
+            if (!string.IsNullOrEmpty(entity.BelongHouse)) { strSQL += " and b.BelongHouse = '" + entity.BelongHouse + "'"; }
+            if (!string.IsNullOrEmpty(entity.ThrowGood)) { strSQL += " and b.ThrowGood = '" + entity.ThrowGood + "'"; } else { strSQL += " and b.ThrowGood!=12"; }
+            if (!string.IsNullOrEmpty(entity.TypeParentName)) { strSQL += " and a.TypeParentName = '" + entity.TypeParentName + "'"; }
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and b.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            strSQL += " group by b.SaleManName) as a left join (select b.SaleManName,SUM(a.Piece) as DaySaleNum From Tbl_Owl_OrderGoods as a inner join Tbl_Owl_Order as b on a.OrderNo=b.OrderNo where (1=1) and a.TypeName not in ('樱花','速亚','蒲公英','衡钻','赛为','台翔','方向针','新轮') ";
+            if (!string.IsNullOrEmpty(entity.OrderModel)) { strSQL += " and b.OrderModel = '" + entity.OrderModel + "'"; }
+            if (!string.IsNullOrEmpty(entity.BelongHouse)) { strSQL += " and b.BelongHouse = '" + entity.BelongHouse + "'"; }
+            if (!string.IsNullOrEmpty(entity.ThrowGood)) { strSQL += " and b.ThrowGood = '" + entity.ThrowGood + "'"; } else { strSQL += " and b.ThrowGood!=12"; }
+            if (!string.IsNullOrEmpty(entity.TypeParentName)) { strSQL += " and a.TypeParentName = '" + entity.TypeParentName + "'"; }
+            strSQL += " and b.CreateDate>='" + DateTime.Now.ToString("yyyy-MM-dd") + "'";
+            strSQL += " group by b.SaleManName) as b on a.SaleManName=b.SaleManName order by a.MonthSaleNum desc";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idrCount in dt.Rows)
+                    {
+                        if (string.IsNullOrEmpty(Convert.ToString(idrCount["SaleManName"])) || Convert.ToString(idrCount["SaleManName"]).Equals("林逸展"))
+                        {
+                            continue;
+                        }
+                        result.Add(new CargoBigDataViewEntity
+                        {
+                            SaleManName = Convert.ToString(idrCount["SaleManName"]),
+                            DaySaleNum = Convert.ToInt32(idrCount["DaySaleNum"]),
+                            MonthSaleNum = Convert.ToInt32(idrCount["MonthSaleNum"]),
+                            MonthSaleMoney = Convert.ToInt32(idrCount["MonthSaleMoney"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+    }
+}

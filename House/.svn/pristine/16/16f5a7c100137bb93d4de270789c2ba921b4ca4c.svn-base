@@ -1,0 +1,176 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+
+    /// <summary>
+    /// 返回前端小程序使用数据实体
+    /// </summary>
+    [Serializable]
+    public class ReturnMiniProOrderEntity
+    {
+        public int code { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public List<MiniProOrderEntity> data { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string msg { get; set; }
+
+    }
+
+    /// <summary>
+    /// 云配小程序商城订单数据实体
+    /// </summary>
+    [Serializable]
+    public class MiniProOrderEntity
+    {
+        #region 商城订单相关
+        /// <summary>
+        /// 商城订单ID
+        /// </summary>
+        public long OrderID { get; set; }
+        /// <summary>
+        /// 商城订单号
+        /// </summary>
+        public string OrderNo { get; set; }
+        /// <summary>
+        /// 开单时间
+        /// </summary>
+        public DateTime CreateDate { get; set; }
+        /// <summary>
+        /// 订单总数量
+        /// </summary>
+        public int TotalNum { get; set; }
+        /// <summary>
+        /// 订单总金额
+        /// </summary>
+        public decimal TotalCharge { get; set; }
+        public string PayStatus { get; set; }
+        public string OrderStatus { get; set; }
+        /// <summary>
+        /// 退款状态
+        /// </summary>
+        public string RefundCheckStatus { get; set; }
+        public string WXPayOrderNo { get; set; }
+        /// <summary>
+        /// 订单类型 22：即日达，23：次日达
+        /// </summary>
+        public string ThrowGood { get; set; }
+        /// <summary>
+        /// 送货方式
+        /// </summary>
+        public string DeliveryType { get; set; }
+        /// <summary>
+        /// 外部单号
+        /// </summary>
+        public string HAwbNo { get; set; }
+        /// <summary>
+        /// 出库仓库
+        /// </summary>
+        public string OutHouseName { get; set; }
+        /// <summary>
+        /// 物流单号
+        /// </summary>
+        public string LogisAwbNo { get; set; }
+        #endregion
+
+        #region 供应商相关
+        /// <summary>
+        /// 供应商名称
+        /// </summary>
+        public string SupperName { get; set; }
+        /// <summary>
+        /// 供应商地址
+        /// </summary>
+        public string SupplierAddress { get; set; }
+        /// <summary>
+        /// 供应商编码
+        /// </summary>
+        public int SuppClientNum { get; set; }
+        #endregion
+
+        #region 购买用户相关
+        /// <summary>
+        /// 收货人姓名
+        /// </summary>
+        public string Name { get; set; }
+        /// <summary>
+        /// 收货人电话
+        /// </summary>
+        public string Cellphone { get; set; }
+        /// <summary>
+        /// 公司名称
+        /// </summary>
+        public string CompanyName { get; set; }
+
+        #endregion
+
+        public List<MiniProOrderGoodsEntity> goods { get; set; }
+
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// 云配小程序商城订单明细数据实体
+    /// </summary>
+    [Serializable]
+    public class MiniProOrderGoodsEntity
+    {
+        /// <summary>
+        /// 商城订单ID
+        /// </summary>
+        public long OrderID { get; set; }
+
+        public int OrderNum { get; set; }
+        public decimal OrderPrice { get; set; }
+        public string TypeName { get; set; }
+        public string ProductCode { get; set; }
+        public int BatchYear { get; set; }
+        public string Batch { get; set; }
+        public string pic { get; set; }
+        public string name { get; set; }
+        public string GoodsCode { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

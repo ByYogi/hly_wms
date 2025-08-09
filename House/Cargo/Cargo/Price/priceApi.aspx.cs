@@ -1,0 +1,3215 @@
+﻿using House.Business;
+using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Data;
+using NPOI.HSSF.Record.Formula.Functions;
+using House.Manager.Cargo;
+using System.Runtime.InteropServices;
+using Newtonsoft.Json;
+
+
+namespace Cargo.Price
+{
+    public partial class priceApi : BasePage
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            string methodName = string.Empty;
+            try
+            {
+                methodName = Request["method"];
+                if (String.IsNullOrEmpty(methodName)) return;
+                Type type = this.GetType();
+                MethodInfo method = type.GetMethod(methodName);
+                method.Invoke(this, null);
+            }
+            catch (Exception ex)
+            {
+                LogBus bus = new LogBus();
+                LogEntity log = new LogEntity();
+                log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+                log.Operate = "";
+                log.Moudle = "";
+                log.Status = "1";
+                log.NvgPage = "";
+                log.UserID = UserInfor.LoginName.Trim();
+                log.Memo = methodName + " " + ex.Message + " " + ex.StackTrace;
+                bus.InsertLog(log);
+            }
+        }
+
+        #region 每月政策价格修改
+        /// <summary>
+        /// 查询在库产品库存进行价格修改
+        /// </summary>
+        public void QueryInHouseData()
+        {
+            CargoProductEntity queryEntity = new CargoProductEntity();
+            queryEntity.ContainerCode = Convert.ToString(Request["ContainerCode"]);
+            //queryEntity.Specs = Convert.ToString(Request["Specs"]);
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") || spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            if (!string.IsNullOrEmpty(Request["HID"]))
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HID"]);
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            }
+            if (!string.IsNullOrEmpty(Request["FirstID"]))//一级仓库
+            {
+                queryEntity.FirstAreaID = Convert.ToInt32(Request["FirstID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["PID"]))
+            {
+                queryEntity.AreaID = Convert.ToInt32(Request["PID"]);
+            }
+            if (Request["BatchYear"] != "-1")
+            {
+                queryEntity.BatchYear = Convert.ToInt32(Request["BatchYear"]);
+            }
+            queryEntity.ProductName = Convert.ToString(Request["ProductName"]);
+            queryEntity.Batch = Convert.ToString(Request["Batch"]);//批次
+            queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);
+            queryEntity.Model = Convert.ToString(Request["Model"]);
+            if (!string.IsNullOrEmpty(Request["APID"]))//一级分类
+            {
+                queryEntity.ParentID = Convert.ToInt32(Request["APID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ASID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["ASID"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["AnomalousPrice"])) && Convert.ToString(Request["AnomalousPrice"]).Equals("1"))
+            {
+                //使用IsAdd代替查询异常销售价
+                //queryEntity.IsAdd = true;
+                queryEntity.AnomalousPrice = true;
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["AnomalousUnitPrice"])) && Convert.ToString(Request["AnomalousUnitPrice"]).Equals("1"))
+            {
+                //使用IsCut代替查询异常单价
+                //queryEntity.IsCut = true;
+                queryEntity.AnomalousUnitPrice = true;
+            }
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);//花纹
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            if (Convert.ToString(Request["SpecsType"]) != "-1") { queryEntity.SpecsType = Convert.ToString(Request["SpecsType"]); }
+            queryEntity.BelongDepart = Convert.ToString(Request["BelongDepart"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoProductEntity> result = bus.QueryInCargoProductInfo(queryEntity);
+            var tnArray = result.GroupBy(c => c.TypeName).ToList();
+            string res = "[";
+            foreach (var it in tnArray)
+            {
+                res += "{\"id\": \"" + it.Key.ToString() + "\",\"text\":\"" + it.Key.Trim() + "\",\"children\":[";
+                List<CargoProductEntity> child = result.Where(c => c.TypeName == it.Key).ToList();
+                foreach (var chd in child)
+                {
+                    res += "{\"id\": \"" + chd.GoodsCode.ToString() + "\",\"text\":\"" + chd.GoodsCode.Trim() + "\"},";
+                }
+                res = res.Substring(0, res.Length - 1);
+                res += "]},";
+            }
+            res = res.Substring(0, res.Length - 1);
+            res += "]";
+            Response.Clear();
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 查询在库产品数据
+        /// </summary>
+        public void QueryInHouseProduct()
+        {
+            CargoProductEntity queryEntity = new CargoProductEntity();
+            queryEntity.ContainerCode = Convert.ToString(Request["ContainerCode"]);
+            queryEntity.BelongDepart = Convert.ToString(Request["BelongDepart"]);
+            if (Convert.ToString(Request["SpecsType"]) != "-1") { queryEntity.SpecsType = Convert.ToString(Request["SpecsType"]); }
+            //queryEntity.Specs = Convert.ToString(Request["Specs"]);
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") || spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            if (!string.IsNullOrEmpty(Request["HID"]) && !Convert.ToString(Request["HID"]).Equals("undefined"))
+            {
+                queryEntity.CargoPermisID = Convert.ToString(Request["HID"]);
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            }
+            if (!string.IsNullOrEmpty(Request["FirstID"]))//一级仓库
+            {
+                queryEntity.FirstAreaID = Convert.ToInt32(Request["FirstID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["PID"]))
+            {
+                queryEntity.AreaID = Convert.ToInt32(Request["PID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["CostPrice"]))
+            {
+                queryEntity.CostPrice = Convert.ToInt32(Request["CostPrice"]);
+            }
+            else
+            {
+                queryEntity.CostPrice = -1;
+            }
+            if (!string.IsNullOrEmpty(Request["FinalCostPrice"]))
+            {
+                queryEntity.FinalCostPrice = Convert.ToInt32(Request["FinalCostPrice"]);
+            }
+            else
+            {
+                queryEntity.FinalCostPrice = -1;
+            }
+            queryEntity.ProductName = Convert.ToString(Request["ProductName"]);
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["ProductID"])))
+            {
+                queryEntity.ProductID = Convert.ToInt32(Request["ProductID"]);
+            }
+            queryEntity.Batch = Convert.ToString(Request["Batch"]);//批次
+            queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);
+            queryEntity.Model = Convert.ToString(Request["Model"]);
+            if (!string.IsNullOrEmpty(Request["APID"]))//一级分类
+            {
+                queryEntity.ParentID = Convert.ToInt32(Request["APID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["ASID"]))//二级分类
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["ASID"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["AnomalousPrice"])) && Convert.ToString(Request["AnomalousPrice"]).Equals("1"))
+            {
+                //使用IsAdd代替查询异常销售价
+                queryEntity.AnomalousPrice = true;
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["AnomalousUnitPrice"])) && Convert.ToString(Request["AnomalousUnitPrice"]).Equals("1"))
+            {
+                //使用IsCut代替查询异单价
+                queryEntity.AnomalousUnitPrice = true;
+            }
+            if (Request["BatchYear"] != "-1")
+            {
+                queryEntity.BatchYear = Convert.ToInt32(Request["BatchYear"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);//花纹
+            queryEntity.InStock = false;
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["ThrwG"])) && Convert.ToString(Request["ThrwG"]).Equals("1"))
+            {
+                queryEntity.InStock = true;
+            }
+            queryEntity.Source = Convert.ToString(Request["Source"]);
+            queryEntity.Supplier = Convert.ToString(Request["Supplier"]);
+            queryEntity.PurchaseOrderID = Convert.ToString(Request["PurchaseOrderID"]);
+
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoProductEntity> list = bus.QueryInHouseProduct(queryEntity);
+            if (Convert.ToString(Request["Export"]) == "true")
+            {
+                if (list.Count > 0)
+                {
+                    QueryPriceCostDataList = list;
+                    Response.Clear();
+                    Response.Write("OK");
+                    return;
+                }
+                else
+                {
+                    Response.Clear();
+                    Response.Write("无数据导出");
+                    return;
+                }
+            }
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public List<CargoProductEntity> QueryPriceCostDataList
+        {
+            get
+            {
+                if (Session["QueryPriceCostDataList"] == null)
+                {
+                    Session["QueryPriceCostDataList"] = new List<CargoProductEntity>();
+                }
+                return (List<CargoProductEntity>)(Session["QueryPriceCostDataList"]);
+            }
+            set
+            {
+                Session["QueryPriceCostDataList"] = value;
+            }
+        }
+        /// <summary>
+        /// 批量修改产品批发销售价
+        /// </summary>
+        public void savePriceModify()
+        {
+            String json = Request["submitData"];
+            string MType = Convert.ToString(Request["MType"]);
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "价格政策调整";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                if (MType.Equals("0"))
+                {
+                    //批量修改门店价
+                    foreach (Hashtable row in rows)
+                    {
+                        list.Add(new CargoProductEntity
+                        {
+                            ProductID = Convert.ToInt64(row["ProductID"]),
+                            ProductName = Convert.ToString(row["ProductName"]),
+                            CostPrice = Convert.ToDecimal(row["TradePrice"]),//原门店价
+                            //UnitPrice = Convert.ToDecimal(Request["UnitPrice"]),//统一修改单价销售价和门店价
+                            //SalePrice = Convert.ToDecimal(Request["TradePrice"]),
+                            TradePrice = Convert.ToDecimal(Request["TradePrice"]),
+                            Model = Convert.ToString(row["Model"]),
+                            Specs = Convert.ToString(row["Specs"]),
+                            HouseID = Convert.ToInt32(row["HouseID"]),
+                            Figure = Convert.ToString(row["Figure"])
+                        });
+                    }
+                    //bus.savePriceModify(list, log);
+                    bus.UpdateProductTradePrice(list, log);
+                }
+                else if (MType.Equals("2"))
+                {
+                    //批量修改销售价
+                    foreach (Hashtable row in rows)
+                    {
+                        list.Add(new CargoProductEntity
+                        {
+                            ProductID = Convert.ToInt64(row["ProductID"]),
+                            ProductName = Convert.ToString(row["ProductName"]),
+                            CostPrice = Convert.ToDecimal(row["SalePrice"]),//原销售价
+                            //UnitPrice = Convert.ToDecimal(Request["UnitPrice"]),//统一修改单价销售价和门店价
+                            SalePrice = Convert.ToDecimal(Request["TradePrice"]),
+                            //TradePrice = Convert.ToDecimal(Request["TradePrice"]),
+                            Model = Convert.ToString(row["Model"]),
+                            Specs = Convert.ToString(row["Specs"]),
+                            HouseID = Convert.ToInt32(row["HouseID"]),
+                            Figure = Convert.ToString(row["Figure"])
+                        });
+                    }
+                    //bus.savePriceModify(list, log);
+                    bus.UpdateWebProductSalePrice(list, log);
+                }
+                else if (MType.Equals("3"))
+                {
+                    //批量修改次日达单价
+                    foreach (Hashtable row in rows)
+                    {
+                        list.Add(new CargoProductEntity
+                        {
+                            ProductID = Convert.ToInt64(row["ProductID"]),
+                            ProductName = Convert.ToString(row["ProductName"]),
+                            NextDayPrice = Convert.ToDecimal(Request["TradePrice"]),//修改后单价
+                            Model = Convert.ToString(row["Model"]),
+                            Specs = Convert.ToString(row["Specs"]),
+                            Figure = Convert.ToString(row["Figure"])
+                        });
+                    }
+                    bus.UpdateProductNextDayPrice(list, log);
+                }
+                else
+                {
+                    //批量修改单价
+                    foreach (Hashtable row in rows)
+                    {
+                        list.Add(new CargoProductEntity
+                        {
+                            ProductID = Convert.ToInt64(row["ProductID"]),
+                            ProductName = Convert.ToString(row["ProductName"]),
+                            UnitPrice = Convert.ToDecimal(Request["TradePrice"]),//修改后单价
+                            SalePrice = Convert.ToDecimal(row["UnitPrice"]),//修改前单价
+                            Model = Convert.ToString(row["Model"]),
+                            Specs = Convert.ToString(row["Specs"]),
+                            Figure = Convert.ToString(row["Figure"])
+                        });
+                    }
+                    bus.UpdateProductUnitPrice(list, log);
+                }
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 修改产品批发价
+        /// </summary>
+        public void UpdateProductTradePrice()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "价格政策调整";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        UnitPrice = Convert.ToDecimal(row["UnitPrice"]),//修改前批发销售价格
+                        TradePrice = Convert.ToDecimal(row["TradePrice"]),//修改后批发销售价格
+                        //SalePrice = Convert.ToDecimal(row["SalePrice"]),
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductTradePrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 修改产品销售价
+        /// </summary>
+        public void UpdateWebProductSalePrice()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "价格政策调整";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        UnitPrice = Convert.ToDecimal(row["UnitPrice"]),//修改前批发销售价格
+                        //TradePrice = Convert.ToDecimal(row["TradePrice"]),//修改后批发销售价格
+                        SalePrice = Convert.ToDecimal(row["SalePrice"]),
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateWebProductSalePrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 修改产品单价
+        /// </summary>
+        public void UpdateProductUnitPrice()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        UnitPrice = Convert.ToDecimal(row["UnitPrice"]),//修改后单价
+                        SalePrice = Convert.ToDecimal(row["SalePrice"]),//修改前单价
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductUnitPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 修改产品成本价
+        /// </summary>
+        public void UpdateProductCostPrice()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        CostPrice = Convert.ToDecimal(row["CostPrice"]),//修改后成本价格
+                        SalePrice = Convert.ToDecimal(row["SalePrice"]),//修改前成本价格
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductCostPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 修改产品最终成本价
+        /// </summary>
+        public void UpdateProductFinalCostPrice()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        //CostPrice = Convert.ToDecimal(row["CostPrice"]),//修改后成本价格
+                        FinalCostPrice = Convert.ToDecimal(row["FinalCostPrice"]),//修改后成本价格
+                        SalePrice = Convert.ToDecimal(row["SalePrice"]),//修改前成本价格
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductFinalCostPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 批量修改
+        /// </summary>
+        public void saveFinalCostPriceModify()
+        {
+            String json = Request["submitData"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        //CostPrice = Convert.ToDecimal(row["CostPrice"]),//修改后成本价格
+                        FinalCostPrice = Convert.ToDecimal(Request["FinalCostPrice"]),//修改后成本价格
+                        SalePrice = Convert.ToDecimal(row["FinalCostPrice"]),//修改前成本价格
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductFinalCostPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 批量修改成本 价
+        /// </summary>
+        public void saveCostPriceModify()
+        {
+            String json = Request["submitData"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        CostPrice = Convert.ToDecimal(Request["CostPrice"]),//修改后成本价格
+                        SalePrice = Convert.ToDecimal(row["CostPrice"]),//修改前成本价格
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductCostPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 批量修改含税成本 价
+        /// </summary>
+        public void saveTaxCostPriceModify()
+        {
+            String json = Request["submitData"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        //CostPrice = Convert.ToDecimal(row["CostPrice"]),//修改后成本价格
+                        TaxCostPrice = Convert.ToDecimal(Request["TaxCostPrice"]),//修改后成本价格
+                        SalePrice = Convert.ToDecimal(row["TaxCostPrice"]),//修改前成本价格
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductTaxCostPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        public void UpdateProductTaxCostPrice()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        TaxCostPrice = Convert.ToDecimal(row["TaxCostPrice"]),//修改后成本价格
+                        SalePrice = Convert.ToDecimal(row["SalePrice"]),//修改前成本价格
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductTaxCostPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 批量修改不含税成本 价
+        /// </summary>
+        public void saveNoTaxCostPriceModify()
+        {
+            String json = Request["submitData"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        //CostPrice = Convert.ToDecimal(row["CostPrice"]),//修改后成本价格
+                        NoTaxCostPrice = Convert.ToDecimal(Request["NoTaxCostPrice"]),//修改后成本价格
+                        SalePrice = Convert.ToDecimal(row["NoTaxCostPrice"]),//修改前成本价格
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductNoTaxCostPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        public void saveAllocateFreight()
+        {
+            String json = Request["submitData"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            decimal Freight = Convert.ToDecimal(Request["Freight"]);
+            try
+            {
+                int Numbers = 0;
+                foreach (Hashtable row in rows)
+                {
+                    Numbers = Numbers + Convert.ToInt32(row["Numbers"]);
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        SalePrice = Convert.ToDecimal(row["NoTaxCostPrice"]),//修改前成本价格
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                decimal AllocateFreight = Math.Round(Freight / Numbers, 2, MidpointRounding.AwayFromZero);
+                bus.AllocateFreightToNoTaxCostPrice(list, AllocateFreight, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        public void UpdateProductNoTaxCostPrice()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt64(row["ProductID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        NoTaxCostPrice = Convert.ToDecimal(row["NoTaxCostPrice"]),//修改后成本价格
+                        SalePrice = Convert.ToDecimal(row["SalePrice"]),//修改前成本价格
+                        Model = Convert.ToString(row["Model"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"])
+                    });
+                }
+                bus.UpdateProductNoTaxCostPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+
+
+        /// <summary>
+        /// 导入Excel文件
+        /// </summary>
+        public void UpCostFile()
+        {
+            System.Web.HttpFileCollection files = this.Request.Files;
+            if (files == null || files.Count == 0) return;
+            string attachmentId = Guid.NewGuid().ToString();
+            DataTable data = ToExcel.ImportExcelData(files);
+
+            CargoImportEntity import = new CargoImportEntity();
+            import.Result = true;
+            import.Data = "";
+            import.Message = "";
+            import.Type = 0;
+            import.ExistCount = 0;
+            string msg = "";
+
+            //验证上传excel文件列数是否有效
+            if (data.Columns.Count != 20)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "模板有误或缺少列，请重新下载模板";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+            //清空table中的空行
+            removeEmpty(data);
+
+            if (data.Rows.Count <= 0)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "Excel无有效数据，请检查导入数据";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+            string ProductIDs = string.Empty;
+            for (int i = 0; i < data.Rows.Count; i++)
+            {
+                ProductIDs += Convert.ToString(data.Rows[i][1]).Trim() + ",";
+            }
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoProductEntity> list = bus.QueryInHouseProduct(new CargoProductEntity { FinalCostPrice = -1, CostPrice = -1, BelongDepart = "-1", ProductIDs = ProductIDs.Substring(0, ProductIDs.Length - 1) });
+
+            List<CargoProductEntity> ent = new List<CargoProductEntity>();
+            for (int i = 0; i < data.Rows.Count; i++)
+            {
+                if (!Convert.ToDecimal(data.Rows[i][11]).Equals(list.Where(x => x.ProductID == Convert.ToInt32(data.Rows[i][1])).First().CostPrice) || !Convert.ToDecimal(data.Rows[i][12]).Equals(list.Where(x => x.ProductID == Convert.ToInt32(data.Rows[i][1])).First().FinalCostPrice))
+                {
+                    ent.Add(new CargoProductEntity
+                    {
+                        ProductID = Convert.ToInt32(data.Rows[i][1]),
+                        ProductName = Convert.ToString(data.Rows[i][2]),
+                        TypeName = Convert.ToString(data.Rows[i][3]),
+                        //ContainerCode = Convert.ToString(data.Rows[i][4]),
+                        GoodsCode = Convert.ToString(data.Rows[i][4]),
+                        //Model = Convert.ToString(data.Rows[i][6]),
+                        Specs = Convert.ToString(data.Rows[i][5]),
+                        Figure = Convert.ToString(data.Rows[i][6]),
+                        LoadIndex = Convert.ToString(data.Rows[i][7]),
+                        SpeedLevel = Convert.ToString(data.Rows[i][8]),
+                        Numbers = Convert.ToInt32(data.Rows[i][9]),
+                        PackageNum = Convert.ToInt32(data.Rows[i][10]),
+                        OldCostPrice = list.Where(x => x.ProductID == Convert.ToInt32(data.Rows[i][1])).First().CostPrice,
+                        CostPrice = Convert.ToDecimal(data.Rows[i][11]),
+                        OldFinalCostPrice = list.Where(x => x.ProductID == Convert.ToInt32(data.Rows[i][1])).First().FinalCostPrice,
+                        FinalCostPrice = Convert.ToDecimal(data.Rows[i][12]),
+                        UnitPrice = Convert.ToDecimal(data.Rows[i][13]),
+                        Batch = Convert.ToString(data.Rows[i][14]),
+                        Source = Convert.ToString(data.Rows[i][15]),
+                        BelongDepart = Convert.ToString(data.Rows[i][16]),
+                        SourceOrderNo = Convert.ToString(data.Rows[i][17]),
+                        BelongMonth = Convert.ToString(data.Rows[i][18]),
+                        InHouseTime = Convert.ToDateTime(data.Rows[i][19]),
+                    });
+                }
+            }
+            String json = JSON.Encode(ent);
+            import.Result = true;
+            import.Data = json;
+            json = JSON.Encode(import);
+
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        public void SaveImportCostData()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductEntity> list = new List<CargoProductEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "成本价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    if (!Convert.ToDecimal(row["CostPrice"]).Equals(Convert.ToDecimal(row["FinalCostPrice"])))
+                    {
+                        list.Add(new CargoProductEntity
+                        {
+                            ProductID = Convert.ToInt64(row["ProductID"]),
+                            ProductName = Convert.ToString(row["ProductName"]),
+                            OldCostPrice = Convert.ToDecimal(row["OldCostPrice"]),
+                            CostPrice = Convert.ToDecimal(row["CostPrice"]),//修改后成本价格
+                            OldFinalCostPrice = Convert.ToDecimal(row["OldFinalCostPrice"]),
+                            FinalCostPrice = Convert.ToDecimal(row["FinalCostPrice"]),//修改后最终成本价
+                            Model = Convert.ToString(row["Model"]),
+                            Specs = Convert.ToString(row["Specs"]),
+                            Figure = Convert.ToString(row["Figure"])
+                        });
+                    }
+                }
+                bus.ImportUpdateProductCostPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        #endregion
+
+        #region 促销规则管理
+        /// <summary>
+        /// 查询促销规则库数据
+        /// </summary>
+        public void QueryRuleBankData()
+        {
+            CargoRuleBankEntity queryEntity = new CargoRuleBankEntity();
+            queryEntity.Title = Convert.ToString(Request["Title"]);
+            if (!string.IsNullOrEmpty(Request["HID"]))
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HID"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            Hashtable list = bus.QueryRuleBankData(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 删除促销规则库
+        /// </summary>
+        public void DelRuleBank()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoRuleBankEntity> list = new List<CargoRuleBankEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "促销规则管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoRuleBankEntity
+                    {
+                        ID = Convert.ToInt64(row["ID"]),
+                        Title = Convert.ToString(row["Title"]),
+                        RuleType = Convert.ToString(row["RuleType"]),
+                        HouseID = Convert.ToInt32(row["HouseID"])
+                    });
+                }
+                if (msg.Result)
+                {
+                    bus.DelRuleBank(list, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 查询所有轮胎品牌规格
+        /// </summary>
+        public void QueryAllSpesc()
+        {
+            CargoRuleBankEntity queryEntity = new CargoRuleBankEntity();
+            //查询条件
+            int typeid = string.IsNullOrEmpty(Request["typeid"]) ? 0 : Convert.ToInt32(Request["typeid"]);
+            queryEntity.HouseID = Convert.ToInt32(Request["houseID"]);
+            queryEntity.TypeID = typeid;
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoRuleBankEntity> list = bus.QueryAllSpesc(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询所有花纹
+        /// </summary>
+        public void QueryAllFigure()
+        {
+            CargoRuleBankEntity queryEntity = new CargoRuleBankEntity();
+            //查询条件
+            int typeid = string.IsNullOrEmpty(Request["typeid"]) ? 0 : Convert.ToInt32(Request["typeid"]);
+            queryEntity.HouseID = Convert.ToInt32(Request["houseID"]);
+            queryEntity.TypeID = typeid;
+            queryEntity.Specs = Convert.ToString(Request["Specs"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoRuleBankEntity> list = bus.QueryAllFigure(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询品牌下所有花纹
+        /// </summary>
+        public void QueryAllFigureToTypeID()
+        {
+            CargoRuleBankEntity queryEntity = new CargoRuleBankEntity();
+            //查询条件
+            int typeid = string.IsNullOrEmpty(Request["typeid"]) ? 0 : Convert.ToInt32(Request["typeid"]);
+            queryEntity.HouseID = Convert.ToInt32(Request["houseID"]);
+            queryEntity.TypeID = typeid;
+            queryEntity.Specs = Convert.ToString(Request["Specs"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoRuleBankEntity> list = bus.QueryAllFigureToTypeID(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询品牌下所有货品代码
+        /// </summary>
+        public void QueryAllGoodsCode()
+        {
+            CargoRuleBankEntity queryEntity = new CargoRuleBankEntity();
+            //查询条件
+            int typeid = string.IsNullOrEmpty(Request["typeid"]) ? 0 : Convert.ToInt32(Request["typeid"]);
+            queryEntity.HouseID = Convert.ToInt32(Request["houseID"]);
+            queryEntity.TypeID = typeid;
+            queryEntity.Specs = Convert.ToString(Request["Specs"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoRuleBankEntity> list = bus.QueryAllGoodsCode(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询品牌下所有速度级别
+        /// </summary>
+        public void QueryAllSpeedLevel()
+        {
+            CargoRuleBankEntity queryEntity = new CargoRuleBankEntity();
+            //查询条件
+            int typeid = string.IsNullOrEmpty(Request["typeid"]) ? 0 : Convert.ToInt32(Request["typeid"]);
+            queryEntity.HouseID = Convert.ToInt32(Request["houseID"]);
+            queryEntity.TypeID = typeid;
+            queryEntity.Specs = Convert.ToString(Request["Specs"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoRuleBankEntity> list = bus.QueryAllSpeedLevel(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 查询品牌下所有载重指数
+        /// </summary>
+        public void QueryAllLoadIndex()
+        {
+            CargoRuleBankEntity queryEntity = new CargoRuleBankEntity();
+            //查询条件
+            int typeid = string.IsNullOrEmpty(Request["typeid"]) ? 0 : Convert.ToInt32(Request["typeid"]);
+            queryEntity.HouseID = Convert.ToInt32(Request["houseID"]);
+            queryEntity.TypeID = typeid;
+            queryEntity.Specs = Convert.ToString(Request["Specs"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            List<CargoRuleBankEntity> list = bus.QueryAllLoadIndex(queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 保存促销规则
+        /// </summary>
+        public void saveRuleBank()
+        {
+            List<CargoRuleBankEntity> entity = new List<CargoRuleBankEntity>();
+            CargoPriceBus bus = new CargoPriceBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.NvgPage = "促销规则管理";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            try
+            {
+                CargoRuleBankEntity ent = new CargoRuleBankEntity();
+                string Hrule = Convert.ToString(Request["Hrule"]);
+                string house = Convert.ToString(Request["HouseID"]);
+                if (Hrule.Equals("1"))
+                {
+                    string[] hStr = house.Split(',');
+                    if (hStr.Length > 0)
+                    {
+                        for (int i = 0; i < hStr.Length; i++)
+                        {
+                            if (string.IsNullOrEmpty(hStr[i])) { continue; }
+                            ent = new CargoRuleBankEntity();
+                            ent.ID = string.IsNullOrEmpty(Convert.ToString(Request["ID"])) ? 0 : Convert.ToInt32(Request["ID"]);
+                            ent.StartDate = Convert.ToDateTime(Request["StartDate"]);
+                            ent.EndDate = Convert.ToDateTime(Request["EndDate"]);
+                            ent.HouseID = Convert.ToInt32(hStr[i]);
+                            ent.Title = "APP商城首单送100元优惠券";
+                            ent.RuleType = "5";
+                            ent.DelFlag = "0";
+                            entity.Add(ent);
+                        }
+                    }
+                }
+                else
+                {
+                    string[] hStr = house.Split(',');//拆分适用仓库
+                    if (hStr.Length > 0)
+                    {
+                        for (int i = 0; i < hStr.Length; i++)
+                        {
+                            if (string.IsNullOrEmpty(hStr[i])) { continue; }
+                            ent = new CargoRuleBankEntity();
+                            ent.ID = string.IsNullOrEmpty(Convert.ToString(Request["ID"])) ? 0 : Convert.ToInt32(Request["ID"]);
+                            ent.StartDate = Convert.ToDateTime(Request["StartDate"]);
+                            ent.EndDate = Convert.ToDateTime(Request["EndDate"]);
+                            ent.HouseID = Convert.ToInt32(hStr[i]);
+                            string Rule1 = Convert.ToString(Request["Rule1"]);
+                            string Rule2 = Convert.ToString(Request["Rule2"]);
+                            string Rule3 = Convert.ToString(Request["Rule3"]);
+                            string Rule4 = Convert.ToString(Request["Rule4"]);
+
+
+
+                            if (Rule1.Equals("2"))
+                            {
+                                //折扣
+                                ent.RuleType = "2";
+                                ent.SaleEntry = string.IsNullOrEmpty(Convert.ToString(Request["FullEntry"])) ? 0 : Convert.ToDecimal(Request["FullEntry"]);
+                                ent.Title = "轮胎" + ent.SaleEntry.ToString() + "折";
+                            }
+                            if (Rule1.Equals("1"))
+                            {
+                                //限购
+                                ent.RuleType = "4";
+                                ent.LimitNum = string.IsNullOrEmpty(Convert.ToString(Request["FullEntry"])) ? 0 : Convert.ToInt32(Request["FullEntry"]);
+                                ent.Title = "限购" + ent.LimitNum.ToString() + "条";
+                            }
+                            if (Rule1.Equals("3"))
+                            {
+                                //直减多少元
+                                ent.RuleType = "6";
+                                ent.CutEntry = string.IsNullOrEmpty(Convert.ToString(Request["FullEntry"])) ? 0 : Convert.ToDecimal(Request["FullEntry"]);
+                                ent.Title = "直减" + ent.CutEntry.ToString() + "元";
+                            }
+                            if (Rule1.Equals("0") && Rule2.Equals("0") && Rule3.Equals("1") && Rule4.Equals("0"))
+                            {
+                                //满n元减n元
+                                ent.RuleType = "0";
+                                ent.FullEntry = string.IsNullOrEmpty(Convert.ToString(Request["FullEntry"])) ? 0 : Convert.ToInt32(Request["FullEntry"]);
+                                ent.CutEntry = string.IsNullOrEmpty(Convert.ToString(Request["CutEntry"])) ? 0 : Convert.ToDecimal(Request["CutEntry"]);
+                                ent.Title = "满" + ent.FullEntry.ToString() + "减" + ent.CutEntry.ToString() + "元";
+                            }
+                            if (Rule1.Equals("0") && Rule2.Equals("1") && Rule3.Equals("0") && Rule4.Equals("1"))
+                            {
+                                //满n条送n条
+                                ent.RuleType = "1";
+                                ent.FullEntry = string.IsNullOrEmpty(Convert.ToString(Request["FullEntry"])) ? 0 : Convert.ToInt32(Request["FullEntry"]);
+                                ent.CutEntry = string.IsNullOrEmpty(Convert.ToString(Request["CutEntry"])) ? 0 : Convert.ToDecimal(Request["CutEntry"]);
+                                ent.Title = "满" + ent.FullEntry.ToString() + "条送" + ent.CutEntry.ToString() + "条";
+                            }
+                            ent.RuleName = Convert.ToString(Request["RuleName"]);
+                            ent.TypeID = string.IsNullOrEmpty(Convert.ToString(Request["TypeID"])) ? 0 : Convert.ToInt32(Request["TypeID"]);
+                            ent.Specs = Convert.ToString(Request["Specs"]);
+                            ent.Figure = Convert.ToString(Request["Figure"]);
+                            ent.LoadIndex = Convert.ToString(Request["LoadIndex"]);
+                            ent.SpeedLevel = Convert.ToString(Request["SpeedLevel"]);
+                            if (!string.IsNullOrEmpty(Request["SBatchYear"]) && !string.IsNullOrEmpty(Request["SBatchWeek"]))
+                            {
+                                ent.StartBatch = Convert.ToInt32(Convert.ToString(Request["SBatchYear"]) + Convert.ToString(Request["SBatchWeek"]));
+                            }
+                            if (!string.IsNullOrEmpty(Request["EBatchYear"]) && !string.IsNullOrEmpty(Request["EBatchWeek"]))
+                            {
+                                ent.EndBatch = Convert.ToInt32(Convert.ToString(Request["EBatchYear"]) + Convert.ToString(Request["EBatchWeek"]));
+                            }
+                            ent.SuitClientNum = Convert.ToString(Request["SuitClientNum"]);
+                            ent.MeetLimit = string.IsNullOrEmpty(Convert.ToString(Request["MeetLimit"])) ? 0 : Convert.ToInt32(Request["MeetLimit"]);
+                            ent.Regular = string.IsNullOrEmpty(Convert.ToString(Request["Regular"])) ? 0 : Convert.ToInt32(Request["Regular"]);
+                            entity.Add(ent);
+                        }
+                    }
+
+                }
+                if (msg.Result)
+                {
+                    if (string.IsNullOrEmpty(Convert.ToString(Request["ID"])))
+                    {
+                        log.Operate = "A";
+                        bus.AddRuleBank(entity, log);
+                        msg.Result = true;
+                        msg.Message = "成功";
+                    }
+                    else
+                    {
+                        log.Operate = "U";
+                        bus.UpdateRuleBank(entity, log);
+                        msg.Result = true;
+                        msg.Message = "成功";
+                    }
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        #endregion
+
+        #region 基础价格导入
+        /// <summary>
+        /// 查询基础价格
+        /// </summary>
+        public void QueryPriceBasicData()
+        {
+            CargoProductBasicPriceEntity queryEntity = new CargoProductBasicPriceEntity();
+            queryEntity.Born = Convert.ToInt32(Request["Born"]);
+            if (!string.IsNullOrEmpty(Request["TypeID"]))
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["TypeID"]);
+            }
+            else
+            {
+                queryEntity.TypeID = -1;
+            }
+            if (!string.IsNullOrEmpty(Request["HouseID"]))
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);
+            }
+            else
+            {
+                queryEntity.HouseID = -1;
+            }
+            if (Request["Assort"] != "全部")
+            {
+                queryEntity.Assort = Request["Assort"].Trim();
+            }
+            queryEntity.ProQuarter = Convert.ToInt32(Request["ProQuarter"]);
+
+            queryEntity.Model = Request["Model"].Trim();
+            queryEntity.GoodsCode = Request["GoodsCode"].Trim();
+            queryEntity.ProductCode = Request["ProductCode"].Trim();
+            string spe = Convert.ToString(Request["Specs"]).ToUpper();
+            if (spe.Contains("/") || spe.Contains("R") || spe.Contains("."))
+            {
+                queryEntity.Specs = spe;
+            }
+            else
+            {
+                if (spe.Length <= 3)
+                {
+                    queryEntity.Specs = spe;
+                }
+                if (spe.Length > 3 && spe.Length <= 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
+                }
+                if (spe.Length > 5)
+                {
+                    queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
+                }
+            }
+            //queryEntity.Specs = Request["Specs"].Trim();
+            //queryEntity.HubDiameter = Request["HubDiameter"].Trim();
+            queryEntity.Figure = Request["Figure"].Trim();
+            queryEntity.LoadIndex = Request["LoadIndex"].Trim();
+            queryEntity.SpeedLevel = Request["SpeedLevel"].Trim();
+            queryEntity.ProYear = Request["ProYear"].Trim();
+            queryEntity.ProMonth = Request["ProMonth"].Trim();
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]).Equals(0) ? 1 : Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]).Equals(0) ? 1000 : Convert.ToInt32(Request["rows"]);
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+            Hashtable list = bus.QueryProductBasicPrice(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        /// <summary>
+        /// 获取所有品牌
+        /// </summary>
+        public void QueryALLBrandType()
+        {
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+
+            List<CargoProductTypeEntity> list = new List<CargoProductTypeEntity>();
+
+            list = bus.QueryAllBrand();
+
+            string type = Request.QueryString["type"];
+
+            if (type == null)
+            {
+                list.Insert(0, new CargoProductTypeEntity
+                {
+                    TypeID = -1,
+                    TypeName = "全部"
+                });
+            }
+
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 获取所有仓库
+        /// </summary>
+        public void QueryALLHouse()
+        {
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+
+            List<CargoProductBasicPriceEntity> list = new List<CargoProductBasicPriceEntity>();
+
+            //list = bus.QueryAllHouse();
+
+            foreach (var item in UserInfor.CargoList)
+            {
+                list.Add(new CargoProductBasicPriceEntity { HouseID = item.ID, HouseName = item.Name });
+            }
+
+            string type = Request.QueryString["type"];
+
+            if (type == null)
+            {
+                list.Insert(0, new CargoProductBasicPriceEntity
+                {
+                    HouseID = -1,
+                    HouseName = "全部"
+                });
+            }
+
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 导入Excel文件
+        /// </summary>
+        public void saveFile()
+        {
+            System.Web.HttpFileCollection files = this.Request.Files;
+            if (files == null || files.Count == 0) return;
+            string attachmentId = Guid.NewGuid().ToString();
+            DataTable data = ToExcel.ImportExcelData(files);
+
+            CargoImportEntity import = new CargoImportEntity();
+            import.Result = true;
+            import.Data = "";
+            import.Message = "";
+            import.Type = 0;
+            import.ExistCount = 0;
+
+            List<CargoProductBasicPriceEntity> ent = new List<CargoProductBasicPriceEntity>();
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+
+            //验证上传excel文件列数是否有效
+            if (data.Columns.Count != 21)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "模板有误或缺少列，请使用指定模板";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+            //清空table中的空行
+            removeEmpty(data);
+            if (data.Rows.Count <= 0)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "Excel无有效数据，请检查导入数据";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+
+            //获取所有可用品牌用于表格显示品牌
+            List<CargoProductTypeEntity> allSpesc = new List<CargoProductTypeEntity>();
+            allSpesc = bus.QueryAllBrand();
+            Dictionary<string, int> dic = new Dictionary<string, int>();
+            foreach (var item in allSpesc)
+            {
+                dic.Add(item.TypeName, item.TypeID);
+            }
+
+            //获取所有仓库用于表格显示品牌
+            List<CargoProductBasicPriceEntity> allHouse = new List<CargoProductBasicPriceEntity>();
+            Dictionary<string, int> dicHouse = new Dictionary<string, int>();
+            //allHouse = bus.QueryAllHouse();
+            //foreach (var item in allHouse)
+            //{
+            //    dicHouse.Add(item.HouseName, item.HouseID);
+            //}
+            foreach (var item in UserInfor.CargoList)
+            {
+                dicHouse.Add(item.Name, item.ID);
+            }
+
+            //int month = 0;
+            int abnormalCount = 0;
+            //int monthAbnormalCount = 0;
+
+            string msg = "";
+            //获取基础规格信息
+            DataTable ProductBasicDt = new DataTable();
+            ProductBasicDt = bus.QueryProductSpecDate(new CargoProductEntity { });
+
+            for (int i = 0; i < data.Rows.Count; i++)
+            {
+                //var ddt = data.Rows[i];
+                //验证Excel表格指定列是否缺少数据
+                bool isContinue = false;
+                for (int j = 0; j < data.Columns.Count - 1; j++)
+                {
+                    if (string.IsNullOrEmpty((data.Rows[i][j]).ToString()))
+                    {
+                        if (j != 3)
+                        {
+                            isContinue = true;
+                            break;
+                        }
+                    }
+                }
+                if (isContinue)
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行数据有空值\r\n";
+                    continue;
+                }
+
+                //验证导入仓库是否在数据库中有效，无效则跳过
+                int houseID = 0;
+                if (!string.IsNullOrEmpty(Convert.ToString(data.Rows[i][0]).Trim()))
+                {
+                    if (!dicHouse.ContainsKey(Convert.ToString(data.Rows[i][0]).Trim()))
+                    {
+                        abnormalCount++;
+                        msg += "第" + (i + 2) + "行所属仓库不存在\r\n";
+                        continue;
+                    }
+                    else
+                    {
+                        dicHouse.TryGetValue(Convert.ToString(data.Rows[i][0]).Trim(), out houseID);
+                    }
+                }
+                //验证仓库选项是否正确
+                //CargoHouseBus houseBus = new CargoHouseBus();
+                //CargoHouseEntity houseEntity = new CargoHouseEntity();
+                //CargoHouseEntity list = houseBus.QueryCargoHouse(new CargoHouseEntity { HouseID = houseID });
+                ////云仓
+                //if (list.BelongHouse == "6" && !string.IsNullOrEmpty(Convert.ToString(data.Rows[i][20]).Trim()))
+                //{
+                //    if (Convert.ToString(data.Rows[i][20]).Trim() != "云仓")
+                //    {
+                //        abnormalCount++;
+                //        msg += "第" + (i + 2) + "行云仓类型与仓库的云仓类型不匹配\r\n";
+                //        continue;
+                //    }
+                //}
+                //if (list.BelongHouse != "6" && !string.IsNullOrEmpty(Convert.ToString(data.Rows[i][20]).Trim()))
+                //{
+                //    if (Convert.ToString(data.Rows[i][20]).Trim() != "非云仓")
+                //    {
+                //        abnormalCount++;
+                //        msg += "第" + (i + 2) + "行云仓类型与仓库的云仓类型不匹配\r\n";
+                //        continue;
+                //    }
+                //}
+
+                //验证产地是否有效
+                if (!string.IsNullOrEmpty(Convert.ToString(data.Rows[i][1]).Trim()))
+                {
+                    if (Convert.ToString(data.Rows[i][1]).Trim() != "国产" && Convert.ToString(data.Rows[i][1]).Trim() != "进口")
+                    {
+                        abnormalCount++;
+                        msg += "第" + (i + 2) + "行数据产地有误\r\n";
+                        continue;
+                    }
+                }
+                //验证导入品牌是否在数据库中有效，无效则跳过
+                int typeID = 0;
+                if (!string.IsNullOrEmpty(Convert.ToString(data.Rows[i][2]).Trim()))
+                {
+                    if (!dic.ContainsKey(Convert.ToString(data.Rows[i][2]).Trim()))
+                    {
+                        abnormalCount++;
+                        msg += "第" + (i + 2) + "行数据品牌不存在\r\n";
+                        continue;
+                    }
+                    else
+                    {
+                        dic.TryGetValue(Convert.ToString(data.Rows[i][2]).Trim(), out typeID);
+                    }
+                }
+
+                //验证类型是否有效
+                if (!string.IsNullOrEmpty(Convert.ToString(data.Rows[i][3]).Trim()))
+                {
+                    if (Convert.ToString(data.Rows[i][3]).Trim() != "OER" && Convert.ToString(data.Rows[i][3]).Trim() != "REP")
+                    {
+                        abnormalCount++;
+                        msg += "第" + (i + 2) + "行数据类型有误\r\n";
+                        continue;
+                    }
+                }
+                //验证尺寸是否为数字
+                //if (!IsNumber(data.Rows[i][7].ToString()))
+                //{
+                //    abnormalCount++;
+                //    msg += "第" + (i + 2) + "行数据尺寸有误\r\n";
+                //    continue;
+                //}
+                //验证载重指数是否为数字
+                //if (!IsNumber(data.Rows[i][9].ToString()))
+                //{
+                //    abnormalCount++;
+                //    msg += "第" + (i + 2) + "行数据载重指数有误\r\n";
+                //    continue;
+                //}
+                //处理订单月数据
+                if (data.Rows[i][10].ToString().Contains("月"))
+                {
+                    data.Rows[i][10] = data.Rows[i][10].ToString().Replace("月", "");
+                }
+                //验证订单月是否为数字
+                if (!IsNumber(data.Rows[i][10].ToString()))
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行数据订单月有误\r\n";
+                    continue;
+                }
+
+                //验证单价
+                if (!string.IsNullOrEmpty(data.Rows[i][12].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][12].ToString()))
+                    {
+                        string str = data.Rows[i][12].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][12] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][12] = 0;
+                }
+                //验证进仓价
+                if (!string.IsNullOrEmpty(data.Rows[i][13].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][13].ToString()))
+                    {
+                        string str = data.Rows[i][13].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][13] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][13] = 0;
+                }
+                //验证门店价
+                if (!string.IsNullOrEmpty(data.Rows[i][14].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][14].ToString()))
+                    {
+                        string str = data.Rows[i][14].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][14] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][14] = 0;
+                }
+                //验证最终成本价
+                if (!string.IsNullOrEmpty(data.Rows[i][15].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][15].ToString()))
+                    {
+                        string str = data.Rows[i][15].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][15] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][15] = 0;
+                }
+                //验证含税成本价
+                if (!string.IsNullOrEmpty(data.Rows[i][16].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][16].ToString()))
+                    {
+                        string str = data.Rows[i][16].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][16] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][16] = 0;
+                }
+                //验证不含税成本价
+                if (!string.IsNullOrEmpty(data.Rows[i][17].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][17].ToString()))
+                    {
+                        string str = data.Rows[i][17].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][17] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][17] = 0;
+                }
+                //验证OE销售价
+                if (!string.IsNullOrEmpty(data.Rows[i][18].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][18].ToString()))
+                    {
+                        string str = data.Rows[i][18].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][18] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][18] = 0;
+                }
+                //验证次日达价格
+                if (!string.IsNullOrEmpty(data.Rows[i][19].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][19].ToString()))
+                    {
+                        string str = data.Rows[i][19].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][19] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][19] = 0;
+                }
+                //验证产品编码
+                if (!string.IsNullOrEmpty(data.Rows[i][20].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][20].ToString()))
+                    {
+                        string str = data.Rows[i][20].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][20] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][20] = 0;
+                }
+                //if (month == 0)
+                //{
+                //    month = Convert.ToInt32(data.Rows[0][10]);
+                //}
+                ////验证导入数据是否同一月份，不是则跳过
+                //if (Convert.ToInt32(data.Rows[i][10]) != month)
+                //{
+                //    monthAbnormalCount++;
+                //    continue;
+                //}
+
+                //判断导入的数据月份与季度是否吻合，不吻合则使用月份赋值正确的季度
+                int quarter = Convert.ToInt32((Convert.ToInt32(data.Rows[i][10]) + 2) / 3);
+                if (Convert.ToInt32(data.Rows[i][11]) != quarter)
+                {
+                    data.Rows[i][11] = quarter;
+                }
+                string ProductCode = Convert.ToString(data.Rows[i][20]);
+
+                //获取基础规格信息
+                DataRow[] prows = ProductBasicDt.Select("ProductCode='" + ProductCode + "'");
+                if (prows.Count() <= 0)
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行数据产品编码不存在\r\n";
+                    continue;
+                }
+                string dtSQL = "Specs='" + Convert.ToString(data.Rows[i][6]) + "' and Figure='" + Convert.ToString(data.Rows[i][7]).Trim() + "' and LoadIndex='" + Convert.ToString(data.Rows[i][8]).Trim() + "' and SpeedLevel='" + Convert.ToString(data.Rows[i][9]).Trim() + "' and GoodsCode='" + Convert.ToString(data.Rows[i][5]).Trim() + "' and TypeID=" + typeID;
+
+                //根据品牌，规格，花纹，载重，速度，货品代码查询产品编码进行验证
+                DataRow[] rowss = ProductBasicDt.Select(dtSQL);
+                bool isOK = false;
+                for (int j = 0; j < rowss.Length; j++)
+                {
+                    //Convert.ToString(rowss[j]["ProductCode"])
+                    if (Convert.ToString(rowss[j]["ProductCode"]).Equals(ProductCode))
+                    {
+                        isOK = true;
+                        break;
+                    }
+
+                }
+                if (!isOK)
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行数据产品编码有误\r\n";
+                    continue;
+                }
+
+                ent.Add(new CargoProductBasicPriceEntity
+                {
+                    HouseID = houseID,
+                    HouseName = Convert.ToString(data.Rows[i][0]),
+                    Born = Convert.ToString(data.Rows[i][1]) == "国产" ? 0 : 1,
+                    TypeID = typeID,
+                    TypeName = Convert.ToString(data.Rows[i][2]),
+                    Assort = Convert.ToString(data.Rows[i][3]).Length > 5 ? Convert.ToString(data.Rows[i][3]).Substring(0, 5) : Convert.ToString(data.Rows[i][3]),
+                    Model = Convert.ToString(data.Rows[i][4]),
+                    GoodsCode = Convert.ToString(data.Rows[i][5]),
+                    Specs = Convert.ToString(data.Rows[i][6]),
+                    //HubDiameter = Convert.ToString(data.Rows[i][7]),
+                    Figure = Convert.ToString(data.Rows[i][7]),
+                    LoadIndex = Convert.ToString(data.Rows[i][8]),
+                    SpeedLevel = Convert.ToString(data.Rows[i][9]).Length > 1 ? Convert.ToString(data.Rows[i][9]).Substring(0, 1) : Convert.ToString(data.Rows[i][9]),
+                    ProMonth = Convert.ToString(data.Rows[i][10]),
+                    ProQuarter = Convert.ToInt32(data.Rows[i][11]),
+                    UnitPrice = Math.Round(Convert.ToDouble(data.Rows[i][12]), 2),
+                    InHousePrice = Math.Round(Convert.ToDouble(data.Rows[i][13]), 2),
+                    TradePrice = Math.Round(Convert.ToDouble(data.Rows[i][14]), 2),
+                    FinalCostPrice = Math.Round(Convert.ToDouble(data.Rows[i][15]), 2),
+                    //PreCostPrice = Convert.ToDouble(data.Rows[i][15]),
+                    //CostPrice = Convert.ToDouble(data.Rows[i][15]),
+                    TaxCostPrice = Math.Round(Convert.ToDouble(data.Rows[i][16]), 2),
+                    NoTaxCostPrice = Math.Round(Convert.ToDouble(data.Rows[i][17]), 2),
+                    OESalePrice = Math.Round(Convert.ToDouble(data.Rows[i][18]), 2),
+                    NextDayPrice = Math.Round(Convert.ToDouble(data.Rows[i][19]), 2),
+                    ProductCode = Convert.ToString(data.Rows[i][20]),
+                    CloudHouseType = Convert.ToString(data.Rows[i][0]).Contains("云仓") ? "1" : "0",
+                });
+            }
+            ////验证当前导入数据是否为本年度
+            //int year = Convert.ToInt32(DateTime.Now.Year);
+            //if (Convert.ToInt32(data.Rows[0][10]) == 1)
+            //{
+            //    int quarter = Convert.ToInt32((DateTime.Now.Month + 2) / 3);
+            //    if (quarter == 4)
+            //    {
+            //        year = Convert.ToInt32(DateTime.Now.Year + 1);
+            //    }
+            //}
+            ////查询当前年月已存在的数据
+            //int existCount=bus.IsExistInputData(year.ToString(), month.ToString());
+            //if (existCount > 0) 
+            //{
+            //    import.ExistCount = existCount;
+            //}
+            UploadCargoProductBasicPriceList = ent;
+            String json = JSON.Encode(ent);
+
+            if (abnormalCount > 0)
+            {
+                import.Type = 1;
+                import.Message = msg;
+            }
+            //if (monthAbnormalCount > 0)
+            //{
+            //    import.Type = 1;
+            //    import.Message += "有" + monthAbnormalCount + "条数据订单月与首条不同，已跳过导入";
+            //}
+
+            import.Result = true;
+            import.Data = json;
+            json = JSON.Encode(import);
+
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+
+        }
+        public List<CargoProductBasicPriceEntity> UploadCargoProductBasicPriceList
+        {
+            get
+            {
+                if (Session["UploadCargoProductBasicPriceList"] == null) { Session["UploadCargoProductBasicPriceList"] = new List<CargoProductBasicPriceEntity>(); }
+                return (List<CargoProductBasicPriceEntity>)(Session["UploadCargoProductBasicPriceList"]);
+            }
+            set
+            {
+                Session["UploadCargoProductBasicPriceList"] = value;
+            }
+        }
+        /// <summary>
+        /// 判断字符串是否为整数或小数
+        /// </summary>
+        /// <param name="value">验证字符串</param>
+        /// <returns></returns>
+        public static bool isNumeric(String value)
+        {
+            System.Text.RegularExpressions.Regex rex =
+            new System.Text.RegularExpressions.Regex("^(\\-|\\+)?\\d+(\\.\\d+)?$");
+            if (rex.IsMatch(value))
+            {
+                return true;
+            }
+            else
+                return false;
+        }
+        /// <summary>
+        /// 判断字符串是否为数字
+        /// </summary>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        protected bool IsNumber(string message)
+        {
+            System.Text.RegularExpressions.Regex rex =
+            new System.Text.RegularExpressions.Regex(@"^\d+$");
+            if (rex.IsMatch(message))
+            {
+                return true;
+            }
+            else
+                return false;
+        }
+
+        /// <summary>
+        /// 删除导入的table中的空行
+        /// </summary>
+        /// <param name="dt"></param>
+        protected void removeEmpty(DataTable dt)
+        {
+            List<DataRow> removelist = new List<DataRow>();
+            for (int i = 0; i < dt.Rows.Count; i++)
+            {
+                bool rowdataisnull = true;
+                for (int j = 0; j < dt.Columns.Count; j++)
+                {
+                    if (!string.IsNullOrEmpty(dt.Rows[i][j].ToString().Trim()))
+                    {
+
+                        rowdataisnull = false;
+                    }
+                }
+                if (rowdataisnull)
+                {
+                    removelist.Add(dt.Rows[i]);
+                }
+
+            }
+            for (int i = 0; i < removelist.Count; i++)
+            {
+                dt.Rows.Remove(removelist[i]);
+            }
+        }
+
+        /// <summary>
+        /// 保存导入的数据
+        /// </summary>
+        public void SavePriceBasicData()
+        {
+            //String json = Request["data"];
+            //String json = JsonConvert.SerializeObject(UploadCargoProductBasicPriceList);
+            //if (String.IsNullOrEmpty(json)) return;
+            //List<CargoProductBasicPriceEntity> list = new List<CargoProductBasicPriceEntity>();
+            //ArrayList rows = (ArrayList)JSON.Decode(json);
+            if (UploadCargoProductBasicPriceList.Count == 0) return;
+            List<CargoProductBasicPriceEntity> list = UploadCargoProductBasicPriceList;
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "基础价格导入";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "A";
+            try
+            {
+                CargoClientBus clientBus = new CargoClientBus();
+                string BelongDepart = "0";
+                #region 废弃
+                //bool GetBelongDepart = false;
+                //foreach (Hashtable row in rows)
+                //{
+                //    //if (!GetBelongDepart)
+                //    //{
+                //    //    GetBelongDepart = true;
+                //    //    List<CargoUpClientEntity> UpClientlist = clientBus.QueryAllUpClientDep(new CargoUpClientEntity { HouseID = Convert.ToString(row["HouseID"]), DepName = "RE渠道销售部" }); 
+                //    //    if (UpClientlist.Count > 0)
+                //    //    {
+                //    //        BelongDepart = UpClientlist[0].ID.ToString();
+                //    //    }
+                //    //}
+                //    //验证当前导入数据是否为本年度
+                //    int year = Convert.ToInt32(DateTime.Now.Year);
+                //    if (Convert.ToInt32(row["ProQuarter"]) == 1)
+                //    {
+                //        if (Convert.ToInt32(DateTime.Now.Month) == 12)
+                //        {
+                //            year = Convert.ToInt32(DateTime.Now.Year + 1);
+                //        }
+                //        //int quarter = Convert.ToInt32((DateTime.Now.Month + 2) / 3);
+                //        //if (quarter == 4)
+                //        //{
+                //        //    year = Convert.ToInt32(DateTime.Now.Year + 1);
+                //        //}
+                //    }
+
+                //list.Add(new CargoProductBasicPriceEntity
+                //{
+                //    HouseID = Convert.ToInt32(row["HouseID"]),
+                //    Born = Convert.ToInt32(row["Born"]),
+                //    //Born = Convert.ToString(row["Born"]) == "国产" ? 0 : 1,
+                //    TypeID = Convert.ToInt32(row["TypeID"]),
+                //    Assort = Convert.ToString(row["Assort"]).Trim(),
+                //    Model = Convert.ToString(row["Model"]).Trim(),
+                //    GoodsCode = Convert.ToString(row["GoodsCode"]).Trim(),
+                //    Specs = Convert.ToString(row["Specs"]).Trim(),
+                //    HubDiameter = "0",
+                //    Figure = Convert.ToString(row["Figure"]).Trim(),
+                //    LoadIndex = Convert.ToString(row["LoadIndex"]).Trim(),
+                //    SpeedLevel = Convert.ToString(row["SpeedLevel"]).Trim(),
+                //    ProMonth = Convert.ToString(row["ProMonth"]).Trim(),
+                //    ProYear = year.ToString().Trim(),
+                //    ProQuarter = Convert.ToInt32(row["ProQuarter"]),
+                //    UnitPrice = Convert.ToDouble(row["UnitPrice"]),
+                //    TradePrice = Convert.ToDouble(row["TradePrice"]),
+                //    FinalCostPrice = Convert.ToDouble(row["FinalCostPrice"]),
+                //    //PreCostPrice = Convert.ToDouble(row["PreCostPrice"]),
+                //    CostPrice = Convert.ToDouble(row["TaxCostPrice"]),
+                //    TaxCostPrice = Convert.ToDouble(row["TaxCostPrice"]),
+                //    NoTaxCostPrice = Convert.ToDouble(row["NoTaxCostPrice"]),
+                //    ProductCode = Convert.ToString(row["ProductCode"]).Trim(),//产品编码
+                //    CloudHouseType = Convert.ToString(row["CloudHouseType"]).Trim(),//云仓类型
+                //    InHousePrice = Convert.ToDouble(row["InHousePrice"]),//云仓进仓价
+                //    OESalePrice = Convert.ToDouble(row["OESalePrice"]),//OE销售价
+                //    SalePrice = Convert.ToDouble(Math.Ceiling(Convert.ToDouble(row["InHousePrice"]) * 1.009)),
+                //    BelongDepart = BelongDepart
+                //});
+                //}
+                #endregion
+                foreach (var item in list)
+                {
+                    //验证当前导入数据是否为本年度
+                    int year = Convert.ToInt32(DateTime.Now.Year);
+                    if (Convert.ToInt32(item.ProQuarter) == 1)
+                    {
+                        if (Convert.ToInt32(DateTime.Now.Month) == 12)
+                        {
+                            year = Convert.ToInt32(DateTime.Now.Year + 1);
+                        }
+                        //int quarter = Convert.ToInt32((DateTime.Now.Month + 2) / 3);
+                        //if (quarter == 4)
+                        //{
+                        //    year = Convert.ToInt32(DateTime.Now.Year + 1);
+                        //}
+                    }
+                    item.ProYear = year.ToString().Trim();
+                    item.HubDiameter = "0";
+                    item.BelongDepart = "0";
+                    item.CostPrice = item.TaxCostPrice;
+                    item.SalePrice = Math.Ceiling(item.InHousePrice * 1.009);
+                }
+                if (msg.Result)
+                {
+                    bus.SaveProductBasicPriceData(list, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            UploadCargoProductBasicPriceList = new List<CargoProductBasicPriceEntity>();
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+
+        /// <summary>
+        /// 删除数据
+        /// </summary>
+        public void DelPriceBasic()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductBasicPriceEntity> list = new List<CargoProductBasicPriceEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "基础价格导入";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductBasicPriceEntity
+                    {
+                        PID = Convert.ToInt32(row["PID"]),
+                        TypeID = Convert.ToInt32(row["TypeID"]),
+                        Born = Convert.ToInt32(row["Born"]),
+                        Assort = Convert.ToString(row["Assort"]),
+                        Model = Convert.ToString(row["Model"]),
+                        GoodsCode = Convert.ToString(row["GoodsCode"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"]),
+                        LoadIndex = Convert.ToString(row["LoadIndex"]),
+                        SpeedLevel = Convert.ToString(row["SpeedLevel"]),
+                        ProYear = Convert.ToString(row["ProYear"]),
+                        ProMonth = Convert.ToString(row["ProMonth"])
+                    });
+                }
+                bus.DelPriceBasic(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+
+        /// <summary>
+        /// 保存修改的数据
+        /// </summary>
+        public void SavePriceBasic()
+        {
+            CargoProductBasicPriceEntity ent = new CargoProductBasicPriceEntity();
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.NvgPage = "基础价格保存";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            String id = Request["PID"].ToString();
+            try
+            {
+                ent.HouseID = Convert.ToInt32(Request["HouseID"]);
+                ent.TypeID = Convert.ToInt32(Request["TypeID"]);
+                ent.Born = Convert.ToInt32(Request["Born"]);
+                ent.Assort = Convert.ToString(Request["Assort"]).Length > 5 ? Convert.ToString(Request["Assort"]).Substring(0, 5) : Convert.ToString(Request["Assort"]);
+                ent.Model = Convert.ToString(Request["Model"]).Trim();
+                ent.GoodsCode = Convert.ToString(Request["GoodsCode"]).Trim();
+                ent.Specs = Convert.ToString(Request["Specs"]).Trim();
+                ent.Figure = Convert.ToString(Request["Figure"]).Trim();
+                ent.LoadIndex = Convert.ToString(Request["LoadIndex"]).Trim();
+                ent.SpeedLevel = Convert.ToString(Request["SpeedLevel"]).Length > 1 ? Convert.ToString(Request["SpeedLevel"]).Substring(0, 1) : Convert.ToString(Request["SpeedLevel"]);
+                ent.HubDiameter = Convert.ToString(Request["HubDiameter"]).Trim();
+
+                //string[] date = Convert.ToString(Request["Date"]).Split('-');
+                string date = Convert.ToString(Request["Date"]).Trim();
+                ent.ProYear = date.Substring(0, date.IndexOf("-"));
+                ent.ProMonth = date.Substring(date.IndexOf("-") + 1, date.Length - date.IndexOf("-") - 1);
+                //ent.ProMonth = Convert.ToString(Request["ProMonth"]);2020-02
+
+                ent.ProQuarter = Convert.ToInt32(Request["ProQuarter"]);
+                ent.UnitPrice = Convert.ToDouble(Request["UnitPrice"]);
+                ent.TradePrice = Convert.ToDouble(Request["TradePrice"]);
+                ent.FinalCostPrice = Convert.ToDouble(Request["FinalCostPrice"]);
+                //ent.PreCostPrice = Convert.ToDouble(Request["PreCostPrice"]);
+                ent.CostPrice = Convert.ToDouble(Request["TaxCostPrice"]);
+                ent.TaxCostPrice = Convert.ToDouble(Request["TaxCostPrice"]);
+                ent.NoTaxCostPrice = Convert.ToDouble(Request["NoTaxCostPrice"]);
+                ent.NextDayPrice = Convert.ToDouble(Request["NextDayPrice"]);
+                ent.InHousePrice = Convert.ToDouble(Request["InHousePrice"]);
+                ent.ProductCode = Convert.ToString(Request["ProductCode"]).Trim();
+                ent.CloudHouseType = Convert.ToString(Request["CloudHouseType"]);
+                //CargoClientBus clientBus = new CargoClientBus();
+                //List<CargoUpClientEntity> UpClientlist = clientBus.QueryAllUpClientDep(new CargoUpClientEntity { HouseID = ent.HouseID.ToString(), DepName = "RE渠道销售部" });
+                //if(UpClientlist.Count > 0)
+                //{
+                //    ent.BelongDepart = UpClientlist[0].ID.ToString();
+                //}
+                ent.BelongDepart = "0";
+                if (!string.IsNullOrEmpty(id))
+                {
+                    log.Operate = "U";
+                    ent.PID = Convert.ToInt32(id);
+                    bus.UpdatePriceBasic(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+                else
+                {
+                    log.Operate = "A";
+                    bus.InsertPriceBasic(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+
+        }
+        public void SaveCopyPriceBasicData()
+        {
+            CargoProductBasicPriceEntity ent = new CargoProductBasicPriceEntity();
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.NvgPage = "基础价格复制";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            try
+            {
+                ent.PID = Convert.ToInt32(Request["SingleCopyPID"]);
+                ent.NewHouse = Convert.ToString(Request["SingleNewHouse"]);
+                if (!string.IsNullOrEmpty(Request["SingleCopyNewDate"]))
+                {
+                    ent.NewTime = Convert.ToString(Request["SingleCopyNewDate"]);
+                    ent.ProQuarter = Convert.ToInt32(Request["SingleCopyNewProQuarter"]);
+                }
+                else
+                {
+                    string year = Convert.ToString(Request["SingleCopyProYear"]);
+                    string month = Convert.ToString(Request["SingleCopyProMonth"]);
+                    ent.NewTime = year + "-" + month;
+                    ent.ProQuarter = Convert.ToInt32(Request["SingleCopyProQuarter"]);
+                }
+
+                DataTable dt = bus.IsExistInputData(new CargoProductBasicPriceEntity { HouseID = Convert.ToInt32(ent.NewHouse), Specs = Convert.ToString(Request["SingleCopySpecs"]), Figure = Convert.ToString(Request["SingleCopyFigure"]), GoodsCode = Convert.ToString(Request["SingleCopyGoodsCode"]), ProYear = ent.NewTime.Substring(0, ent.NewTime.IndexOf("-")), ProMonth = ent.NewTime.Substring(ent.NewTime.IndexOf("-") + 1, ent.NewTime.Length - ent.NewTime.IndexOf("-") - 1), Born = -1, TypeID = -1 });
+                if (dt.Rows.Count > 0)
+                {
+                    msg.Result = false;
+                    msg.Message = "已存在当前复制基础数据";
+                }
+                else
+                {
+                    log.Operate = "A";
+                    bus.SaveCopyPriceBasicData(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+
+        }
+        public void SaveAllCopyPriceBasicData()
+        {
+            CargoProductBasicPriceEntity ent = new CargoProductBasicPriceEntity();
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.NvgPage = "基础价格复制";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            try
+            {
+                ent.OldHouse = Convert.ToString(Request["OldHouse"]);
+                ent.NewHouse = Convert.ToString(Request["NewHouse"]);
+                ent.OldTime = Convert.ToString(Request["CopyOldDate"]);
+                if (!string.IsNullOrEmpty(Request["CopyNewDate"]))
+                {
+                    ent.NewTime = Convert.ToString(Request["CopyNewDate"]);
+                    ent.ProQuarter = Convert.ToInt32(Request["copyNewProQuarter"]);
+                }
+                else
+                {
+                    ent.NewTime = Convert.ToString(Request["CopyOldDate"]);
+                    ent.ProQuarter = Convert.ToInt32(Request["copyOldProQuarter"]);
+                }
+
+                log.Operate = "A";
+                if (bus.IsExistInputData(ent.NewHouse, ent.NewTime.Substring(0, ent.NewTime.IndexOf("-")).ToString(), ent.NewTime.Substring(ent.NewTime.IndexOf("-") + 1, ent.NewTime.Length - ent.NewTime.IndexOf("-") - 1).ToString()) > 0)
+                {
+                    msg.Result = false;
+                    msg.Message = "当前仓库存在此月份数据，无法批量复制";
+                }
+                else
+                {
+                    bus.SaveAllCopyPriceBasicData(ent, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        public void SynchronizePriceBasic()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductBasicPriceEntity> list = new List<CargoProductBasicPriceEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "基础价格同步";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductBasicPriceEntity
+                    {
+                        PID = Convert.ToInt32(row["PID"]),
+                        HouseID = Convert.ToInt32(row["HouseID"]),
+                        TypeID = Convert.ToInt32(row["TypeID"]),
+                        Born = Convert.ToInt32(row["Born"]),
+                        Assort = Convert.ToString(row["Assort"]),
+                        GoodsCode = Convert.ToString(row["GoodsCode"]),
+                        Specs = Convert.ToString(row["Specs"]),
+                        Figure = Convert.ToString(row["Figure"]),
+                        LoadIndex = Convert.ToString(row["LoadIndex"]),
+                        SpeedLevel = Convert.ToString(row["SpeedLevel"]),
+                        ProYear = Convert.ToString(row["ProYear"]),
+                        ProMonth = Convert.ToString(row["ProMonth"]),
+                        FinalCostPrice = Convert.ToDouble(row["FinalCostPrice"]),
+                        CostPrice = Convert.ToDouble(row["TaxCostPrice"]),
+                        TaxCostPrice = Convert.ToDouble(row["TaxCostPrice"]),
+                        NoTaxCostPrice = Convert.ToDouble(row["NoTaxCostPrice"]),
+                        InHousePrice = Convert.ToDouble(row["InHousePrice"]),
+                        SalePrice = Convert.ToDouble(row["SalePrice"]),
+                        TradePrice = Convert.ToDouble(row["TradePrice"]),
+                        UnitPrice = Convert.ToDouble(row["UnitPrice"]),
+                        OESalePrice = Convert.ToDouble(row["OESalePrice"]),
+                        CloudHouseType = Convert.ToString(row["CloudHouseType"]),
+                        ProductCode = Convert.ToString(row["ProductCode"]),
+                        NextDayPrice = Convert.ToDouble(row["NextDayPrice"]),
+                    });
+                }
+                bus.SynchronizePriceBasic(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        #endregion
+
+        #region 富添盛产品价格维护
+        /// <summary>
+        /// 查询产品价格数据 
+        /// </summary>
+        public void QueryCargoProductPriceFTS()
+        {
+            CargoProductPriceEntity queryEntity = new CargoProductPriceEntity();
+            queryEntity.ProductCode = Convert.ToString(Request["ProductCode"]);
+            queryEntity.ProductName = Convert.ToString(Request["ProductName"]);
+
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            Hashtable list = bus.QueryCargoProductPriceFTS(pageIndex, pageSize, queryEntity);
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        /// <summary>
+        /// 删除产品价格
+        /// </summary>
+        public void DelProductPriceFTS()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductPriceEntity> list = new List<CargoProductPriceEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "产品价格管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoProductPriceEntity
+                    {
+                        ID = Convert.ToInt32(row["ID"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        ProductCode = Convert.ToString(row["ProductCode"])
+                    });
+                }
+                bus.DelProductPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 保存产品价格
+        /// </summary>
+        public void SaveProductPriceFTS()
+        {
+            CargoPriceBus bus = new CargoPriceBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.NvgPage = "产品价格管理";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            String id = Request["ID"] != null ? Request["ID"].ToString() : "";
+            try
+            {
+                List<CargoProductPriceEntity> result = new List<CargoProductPriceEntity>();
+                if (!string.IsNullOrEmpty(Convert.ToString(Request["SMStorePrice"])))
+                {
+                    CargoProductPriceEntity sm = new CargoProductPriceEntity();
+                    if (!string.IsNullOrEmpty(id))
+                    {
+                        sm.ID = Convert.ToInt32(id);
+                    }
+                    sm.ProductCode = Convert.ToString(Request["ProductCode"]);
+                    sm.ProductName = Convert.ToString(Request["ProductName"]);
+                    sm.PriceType = "6";
+                    sm.SMClientPrice = sm.SalePriceClient = Convert.ToDecimal(Request["SMClientPrice"]);
+                    sm.SMStorePrice = sm.CostPriceStore = Convert.ToDecimal(Request["SMStorePrice"]);
+                    sm.OutPackType = Convert.ToString(Request["OutPackType"]);
+                    result.Add(sm);
+                }
+                if (!string.IsNullOrEmpty(Convert.ToString(Request["CHStorePrice"])))
+                {
+                    CargoProductPriceEntity ch = new CargoProductPriceEntity();
+                    if (!string.IsNullOrEmpty(id))
+                    {
+                        ch.ID = Convert.ToInt32(id);
+                    }
+                    ch.ProductCode = Convert.ToString(Request["ProductCode"]);
+                    ch.ProductName = Convert.ToString(Request["ProductName"]);
+                    ch.PriceType = "5";
+                    ch.CHClientPrice = ch.SalePriceClient = Convert.ToDecimal(Request["CHClientPrice"]);
+                    ch.CHStorePrice = ch.CostPriceStore = Convert.ToDecimal(Request["CHStorePrice"]);
+                    ch.OutPackType = Convert.ToString(Request["OutPackType"]);
+                    result.Add(ch);
+                }
+                if (!string.IsNullOrEmpty(Convert.ToString(Request["QHStorePrice"])))
+                {
+                    CargoProductPriceEntity qh = new CargoProductPriceEntity();
+                    if (!string.IsNullOrEmpty(id))
+                    {
+                        qh.ID = Convert.ToInt32(id);
+                    }
+                    qh.ProductCode = Convert.ToString(Request["ProductCode"]);
+                    qh.ProductName = Convert.ToString(Request["ProductName"]);
+                    qh.PriceType = "10";
+                    qh.QHClientPrice = qh.SalePriceClient = Convert.ToDecimal(Request["QHClientPrice"]);
+                    qh.QHStorePrice = qh.CostPriceStore = Convert.ToDecimal(Request["QHStorePrice"]);
+                    qh.OutPackType = Convert.ToString(Request["OutPackType"]);
+                    result.Add(qh);
+                }
+                if (!string.IsNullOrEmpty(Convert.ToString(Request["DefaultStorePrice"])))
+                {
+                    CargoProductPriceEntity def = new CargoProductPriceEntity();
+                    if (!string.IsNullOrEmpty(id))
+                    {
+                        def.ID = Convert.ToInt32(id);
+                    }
+                    def.ProductCode = Convert.ToString(Request["ProductCode"]);
+                    def.ProductName = Convert.ToString(Request["ProductName"]);
+                    def.PriceType = "7";
+                    def.DefaultClientPrice = def.SalePriceClient = Convert.ToDecimal(Request["DefaultClientPrice"]);
+                    def.DefaultStorePrice = def.CostPriceStore = Convert.ToDecimal(Request["DefaultStorePrice"]);
+                    def.OutPackType = Convert.ToString(Request["OutPackType"]);
+                    result.Add(def);
+                }
+                if (id == "")
+                {
+                    foreach (var it in result)
+                    {
+                        if (bus.IsExistProductPrice(new CargoProductPriceEntity { ProductCode = it.ProductCode, PriceType = it.PriceType }))
+                        {
+                            msg.Result = false;
+                            msg.Message = "已经存在相同的产品编码";
+                        }
+                    }
+                    if (msg.Result)
+                    {
+                        log.Operate = "A";
+                        bus.AddProductPriceFTS(result, log);
+                        msg.Result = true;
+                        msg.Message = "成功";
+                    }
+                }
+                else
+                {
+                    log.Operate = "U";
+                    bus.UpdateProductPriceFTS(result, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+
+        /// <summary>
+        /// 导入Excel文件
+        /// </summary>
+        public void saveProductPriceFile()
+        {
+            System.Web.HttpFileCollection files = this.Request.Files;
+            if (files == null || files.Count == 0) return;
+            string attachmentId = Guid.NewGuid().ToString();
+            DataTable data = ToExcel.ImportExcelData(files);
+
+            CargoImportEntity import = new CargoImportEntity();
+            import.Result = true;
+            import.Data = "";
+            import.Message = "";
+            import.Type = 0;
+            import.ExistCount = 0;
+
+            List<CargoProductPriceEntity> ent = new List<CargoProductPriceEntity>();
+
+            //验证上传excel文件列数是否有效
+            if (data.Columns.Count != 10)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "模板有误或缺少列，请使用指定模板";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+            //清空table中的空行
+            removeEmpty(data);
+            if (data.Rows.Count <= 0)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "Excel无有效数据，请检查导入数据";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+
+
+            int abnormalCount = 0;
+
+            string msg = "";
+
+            for (int i = 0; i < data.Rows.Count; i++)
+            {
+
+                //验证Excel表格指定列是否缺少数据
+                bool isContinue = false;
+                for (int j = 0; j < data.Columns.Count - 4; j++)
+                {
+                    if (string.IsNullOrEmpty((data.Rows[i][j]).ToString()))
+                    {
+                        if (j == 0 || j == 1)
+                        {
+                            isContinue = true;
+                            break;
+                        }
+                    }
+                }
+                if (isContinue)
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行数据有空值\r\n";
+                    continue;
+                }
+
+                //验证价格
+                if (!string.IsNullOrEmpty(data.Rows[i][2].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][2].ToString()))
+                    {
+                        string str = data.Rows[i][2].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][2] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][2] = 0;
+                }
+                if (!string.IsNullOrEmpty(data.Rows[i][3].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][3].ToString()))
+                    {
+                        string str = data.Rows[i][3].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][3] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][3] = 0;
+                }
+                if (!string.IsNullOrEmpty(data.Rows[i][4].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][4].ToString()))
+                    {
+                        string str = data.Rows[i][4].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][4] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][4] = 0;
+                }
+                if (!string.IsNullOrEmpty(data.Rows[i][5].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][5].ToString()))
+                    {
+                        string str = data.Rows[i][5].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][5] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][5] = 0;
+                }
+                if (!string.IsNullOrEmpty(data.Rows[i][6].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][6].ToString()))
+                    {
+                        string str = data.Rows[i][6].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][6] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][6] = 0;
+                }
+                if (!string.IsNullOrEmpty(data.Rows[i][7].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][7].ToString()))
+                    {
+                        string str = data.Rows[i][7].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][7] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][7] = 0;
+                }
+                if (!string.IsNullOrEmpty(data.Rows[i][8].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][8].ToString()))
+                    {
+                        string str = data.Rows[i][8].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][8] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][8] = 0;
+                }
+                if (!string.IsNullOrEmpty(data.Rows[i][9].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][9].ToString()))
+                    {
+                        string str = data.Rows[i][9].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][9] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][9] = 0;
+                }
+                ent.Add(new CargoProductPriceEntity
+                {
+                    ProductCode = Convert.ToString(data.Rows[i][0]),
+                    ProductName = Convert.ToString(data.Rows[i][1]),
+                    SMClientPrice = Convert.ToDecimal(data.Rows[i][2]),
+                    SMStorePrice = Convert.ToDecimal(data.Rows[i][3]),
+                    CHClientPrice = Convert.ToDecimal(data.Rows[i][4]),
+                    CHStorePrice = Convert.ToDecimal(data.Rows[i][5]),
+                    QHClientPrice = Convert.ToDecimal(data.Rows[i][6]),
+                    QHStorePrice = Convert.ToDecimal(data.Rows[i][7]),
+                    DefaultClientPrice = Convert.ToDecimal(data.Rows[i][8]) <= 0 ? Convert.ToDecimal(Convert.ToDouble(data.Rows[i][9]) * 0.68) : Convert.ToDecimal(data.Rows[i][8]),
+                    OutPackType = "0",
+                    DefaultStorePrice = Convert.ToDecimal(data.Rows[i][9])
+                });
+            }
+            String json = JSON.Encode(ent);
+
+            if (abnormalCount > 0)
+            {
+                import.Type = 1;
+                import.Message = msg;
+            }
+            import.Result = true;
+            import.Data = json;
+            json = JSON.Encode(import);
+
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
+        }
+        /// <summary>
+        /// 保存导入的数据
+        /// </summary>
+        public void SaveProductPriceData()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoProductPriceEntity> list = new List<CargoProductPriceEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            CargoPriceBus bus = new CargoPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "产品价格导入";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "A";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+
+                    list.Add(new CargoProductPriceEntity
+                    {
+                        ProductCode = Convert.ToString(row["ProductCode"]),
+                        ProductName = Convert.ToString(row["ProductName"]),
+                        SMClientPrice = Convert.ToDecimal(row["SMClientPrice"]),
+                        SMStorePrice = Convert.ToDecimal(row["SMStorePrice"]),
+                        CHClientPrice = Convert.ToDecimal(row["CHClientPrice"]),
+                        CHStorePrice = Convert.ToDecimal(row["CHStorePrice"]),
+                        QHClientPrice = Convert.ToDecimal(row["QHClientPrice"]),
+                        QHStorePrice = Convert.ToDecimal(row["QHStorePrice"]),
+                        OutPackType = "0",
+                        DefaultClientPrice = Convert.ToDecimal(row["DefaultClientPrice"]),
+                        DefaultStorePrice = Convert.ToDecimal(row["DefaultStorePrice"])
+                    });
+                }
+                if (msg.Result)
+                {
+                    bus.SaveProductPriceData(list, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        #endregion
+
+        #region 云仓品牌加价
+        /// <summary>
+        /// 查询云仓品牌加价列表
+        /// </summary>
+        public void QueryHouseBrandPrice()
+        {
+            CargoHouseBrandPriceEntity queryEntity = new CargoHouseBrandPriceEntity();
+
+
+            if (!string.IsNullOrEmpty(Request["HouseID"]))
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["TypeID"]))
+            {
+                queryEntity.TypeID = Convert.ToInt32(Request["TypeID"]);
+            }
+            if (!string.IsNullOrEmpty(Request["CloudHouseType"]))
+            {
+                queryEntity.CloudHouseType = Convert.ToInt32(Request["CloudHouseType"]);
+            }
+
+
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoHouseBrandPriceBus bus = new CargoHouseBrandPriceBus();
+            Hashtable list = bus.QueryHouseBrandData(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        /// <summary>
+        /// 保存云仓品牌加价
+        /// </summary>
+        public void SaveHouseBrandPrice()
+        {
+            CargoHouseBrandPriceBus bus = new CargoHouseBrandPriceBus();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.NvgPage = "云仓品牌加价";
+            log.Status = "0";
+            log.UserID = UserInfor.LoginName.Trim();
+            String id = Request["BID"] != null ? Request["BID"].ToString() : "";
+            try
+            {
+
+
+                CargoHouseBrandPriceEntity result = new CargoHouseBrandPriceEntity();
+                result.HouseID = Convert.ToInt32(Request["HouseID"]);
+                result.TypeID = Convert.ToInt32(Request["TypeID"]);
+                //result.UpType = Convert.ToInt32(Request["UpType"]);
+                result.CloudHouseType = Convert.ToInt32(Request["CloudHouseType"]);
+                // result.CloudHouseType = Convert.ToString(Request["CloudHouseType"])=="云仓"?1:0;
+                result.UpRate = Convert.ToDecimal(Request["UpRate"]);
+
+                if (result.UpRate < (decimal)0.9)
+                {
+                    msg.Result = false;
+                    msg.Message = "加价比例不可小于0.9%";
+                }
+                result.UpMoney = Convert.ToDecimal(Request["UpMoney"]);
+                result.OPID = UserInfor.LoginName;
+                result.OPDATE = DateTime.Now;
+
+                if (string.IsNullOrEmpty(id) && msg.Result == true)
+                {
+                    if (!bus.IsExistHouseBrandPrice(new CargoHouseBrandPriceEntity { HouseID = result.HouseID, TypeID = result.TypeID }))
+                    {
+                        msg.Result = false;
+                        msg.Message = "已存在同仓库同品牌的信息,不可新增";
+                    }
+                    //新增
+                    if (msg.Result)
+                    {
+                        log.Operate = "A";
+                        bus.AddHouseBrandPrice(result, log);
+                        msg.Result = true;
+                        msg.Message = "成功";
+                    }
+                }
+                if (!string.IsNullOrEmpty(id) && msg.Result == true)
+                {
+                    result.BID = Convert.ToInt64(id);
+                    if (!bus.IsExistUpdateHouseBrandPrice(new CargoHouseBrandPriceEntity { BID = result.BID, HouseID = result.HouseID, TypeID = result.TypeID }))
+                    {
+                        msg.Result = false;
+                        msg.Message = "已存在同仓库同品牌的信息,不可修改";
+                    }
+                    if (msg.Result)
+                    {
+                        //修改
+                        log.Operate = "U";
+                        bus.UpdateHouseBrandPrice(result, log);
+                        msg.Result = true;
+                        msg.Message = "成功";
+                    }
+
+
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+        /// <summary>
+        /// 删除云仓品牌加价
+        /// </summary>
+        public void DelHouseBrandPrice()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoHouseBrandPriceEntity> list = new List<CargoHouseBrandPriceEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoHouseBrandPriceBus bus = new CargoHouseBrandPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "价格管理";
+            log.Status = "0";
+            log.NvgPage = "云仓品牌加价";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "D";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoHouseBrandPriceEntity
+                    {
+                        BID = Convert.ToInt32(row["BID"]),
+                    });
+                }
+                bus.DelHouseBrandPrice(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+        }
+
+        #endregion
+
+        #region 价格修改操作方法集合
+        /// <summary>
+        /// 查询价格修改数据
+        /// </summary>
+        public void QueryPriceModifyData()
+        {
+            CargoPriceModifyEntity queryEntity = new CargoPriceModifyEntity();
+            queryEntity.UserName = Convert.ToString(Request["UserName"]);
+            queryEntity.Specs = Convert.ToString(Request["Specs"]);
+
+            if (!string.IsNullOrEmpty(Request["HID"]))
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HID"]);
+            }
+            if (Convert.ToString(Request["PriceType"]) != "-1")
+            {
+                queryEntity.PriceType = Convert.ToString(Request["PriceType"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //分页
+            int pageIndex = Convert.ToInt32(Request["page"]);
+            int pageSize = Convert.ToInt32(Request["rows"]);
+            CargoPriceBus bus = new CargoPriceBus();
+            Hashtable list = bus.QueryPriceModifyData(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public void QueryPriceModifyDataImport()
+        {
+            string err = "OK";
+            CargoPriceModifyEntity queryEntity = new CargoPriceModifyEntity();
+            queryEntity.UserName = Convert.ToString(Request["UserName"]);
+            queryEntity.Specs = Convert.ToString(Request["Specs"]);
+
+            if (!string.IsNullOrEmpty(Request["HID"]))
+            {
+                queryEntity.HouseID = Convert.ToInt32(Request["HID"]);
+            }
+            if (Convert.ToString(Request["PriceType"]) != "-1")
+            {
+                queryEntity.PriceType = Convert.ToString(Request["PriceType"]);
+            }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            //分页
+            int pageIndex = 1;
+            int pageSize = 100000;
+            CargoPriceBus bus = new CargoPriceBus();
+            Hashtable list = bus.QueryPriceModifyData(pageIndex, pageSize, queryEntity);
+
+            List<CargoPriceModifyEntity> awbList = list["rows"] as List<CargoPriceModifyEntity>;
+            if (awbList.Count > 0) { CargoPriceModifyExportEntity = awbList; } else { err = "没有数据可以进行导出，请重新查询！"; }
+            //JSON
+            String json = JSON.Encode(err);
+            Response.Clear();
+            Response.Write(json);
+        }
+        public List<CargoPriceModifyEntity> CargoPriceModifyExportEntity
+        {
+            get
+            {
+                if (Session["CargoPriceModifyExportEntity"] == null) { Session["CargoPriceModifyExportEntity"] = new List<CargoPriceModifyEntity>(); }
+                return (List<CargoPriceModifyEntity>)(Session["CargoPriceModifyExportEntity"]);
+            }
+            set
+            {
+                Session["CargoPriceModifyExportEntity"] = value;
+            }
+        }
+        #endregion
+    }
+}
