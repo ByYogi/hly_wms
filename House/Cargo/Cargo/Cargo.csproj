@@ -136,6 +136,9 @@
     <Reference Include="System.IO.Pipelines, Version=5.0.0.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.IO.Pipelines.5.0.1\lib\net461\System.IO.Pipelines.dll</HintPath>
     </Reference>
+    <Reference Include="System.Linq.Dynamic.Core">
+      <HintPath>..\..\DLL\System.Linq.Dynamic.Core.dll</HintPath>
+    </Reference>
     <Reference Include="System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\..\packages\System.Memory.4.5.4\lib\net461\System.Memory.dll</HintPath>
     </Reference>
@@ -608,6 +611,7 @@
     <Content Include="JS\Autocomplete\Client.js" />
     <Content Include="JS\easy\js\ajaxfileupload.js" />
     <Content Include="JS\easy\js\datagrid-cellediting.js" />
+    <Content Include="JS\easy\js\datagrid-scrollview.js" />
     <Content Include="JS\EChart\chart.umd.js" />
     <Content Include="JS\EChart\chartjs-plugin-datalabels.min.js" />
     <Content Include="JS\FloatNavi\base.css" />
@@ -712,6 +716,7 @@
     <Content Include="Report\PunctuationMap.aspx" />
     <Content Include="Report\reportAgeingDetail.aspx" />
     <Content Include="Report\reportApi.aspx" />
+    <Content Include="Report\reportApi_v2.aspx" />
     <Content Include="Report\reportDaily.aspx" />
     <Content Include="Report\reportDayStockStatis.aspx" />
     <Content Include="Report\reportDLTDataStatis.aspx" />
@@ -3456,6 +3461,13 @@
     </Compile>
     <Compile Include="Report\reportApi.aspx.designer.cs">
       <DependentUpon>reportApi.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\reportApi_v2.aspx.cs">
+      <DependentUpon>reportApi_v2.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\reportApi_v2.aspx.designer.cs">
+      <DependentUpon>reportApi_v2.aspx</DependentUpon>
     </Compile>
     <Compile Include="Report\reportDaily.aspx.cs">
       <DependentUpon>reportDaily.aspx</DependentUpon>

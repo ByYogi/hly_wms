@@ -15,6 +15,7 @@ using System.Reflection;
 using System.Runtime.Remoting;
 using System.Security.Cryptography;
 using System.ServiceModel;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Script.Serialization;
@@ -49,6 +50,13 @@ namespace Cargo.Product
                 log.UserID = UserInfor.LoginName.Trim();
                 log.Memo = methodName + " " + ex.Message + " " + ex.StackTrace;
                 bus.InsertLog(log);
+
+                //响应错误给前端
+                Response.Clear();
+                Response.StatusCode = 500;
+                Response.ContentType = "application/json";
+                Response.Write("{\"error\":\"" + ex.ToString());
+                Response.End();
             }
         }
         #region 产品操作方法集合
@@ -162,6 +170,7 @@ namespace Cargo.Product
             String json = JSON.Encode(list);
             Response.Clear();
             Response.Write(json);
+            Response.End();
         }
         /// <summary>
         /// 删除产品
@@ -1475,16 +1484,32 @@ namespace Cargo.Product
         /// </summary>
         public void QueryTagByProductID()
         {
+            //CargoProductTagEntity queryEntity = new CargoProductTagEntity();
+            ////查询条件
+            //string key = Request["ProductID"];
+            //if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return; }
+            //if (!string.IsNullOrEmpty(Convert.ToString(Request["ContainerID"])))
+            //{
+            //    queryEntity.ContainerID = Convert.ToInt32(Request["ContainerID"]);
+            //}
+            //queryEntity.ProductID = Convert.ToInt64(key.Trim());
+            //CargoProductBus bus = new CargoProductBus();
+            //List<CargoProductTagEntity> list = bus.QueryTagByProductID(queryEntity);
+            ////JSON
+            //String json = JSON.Encode(list);
+            //Response.Clear();
+            //Response.Write(json);
+            //Response.End();
+
             CargoProductTagEntity queryEntity = new CargoProductTagEntity();
             //查询条件
             string key = Request["ProductID"];
-            Hashtable respsHT = new Hashtable();
-            respsHT["rows"] = Array.Empty<CargoProductTagEntity>();
-            if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(respsHT)); return; }
+            if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(Array.Empty<CargoProductTagEntity>())); return; }
             else
             {
                 queryEntity.ProductID = Convert.ToInt64(key.Trim());
             }
+
             if (!string.IsNullOrEmpty(Convert.ToString(Request["ContainerID"])))
             {
                 queryEntity.ContainerID = Convert.ToInt32(Request["ContainerID"]);
@@ -1500,9 +1525,8 @@ namespace Cargo.Product
 
             CargoProductBus bus = new CargoProductBus();
             List<CargoProductTagEntity> list = bus.QueryTagByProductID(queryEntity);
-            respsHT["rows"] = list;
             //JSON
-            String json = JSON.Encode(respsHT);
+            String json = JSON.Encode(list);
             Response.Clear();
             Response.Write(json);
         }
@@ -2504,7 +2528,7 @@ namespace Cargo.Product
 
             //分页
             int pageIndex = 1;// Convert.ToInt32(Request["page"]);
-            int pageSize = 100;// Convert.ToInt32(Request["rows"]);
+            int pageSize = 1000;// Convert.ToInt32(Request["rows"]);
             CargoProductBus bus = new CargoProductBus();
             Hashtable list = bus.QueryProductTag(pageIndex, pageSize, queryEntity);
 
