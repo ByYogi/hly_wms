@@ -367,21 +367,10 @@
     `;
 
                     // 打印预览
-                    // var win = window.open('', '_blank');
-                    // // var win = window.open('', '_blank', 'width=1000,height=800,scrollbars=yes,resizable=yes');
-                    // win.document.write(html);
-                    // win.document.close();
-                    // win.print();
-
-                    var iframe = document.createElement('iframe');
-                    iframe.style.display = 'none';
-                    document.body.appendChild(iframe);
-                    iframe.contentDocument.write(html);
-                    iframe.contentDocument.close();
-                    iframe.contentWindow.focus();
-                    iframe.contentWindow.print();
-                    // 打印完成后可移除 iframe
-                    setTimeout(() => document.body.removeChild(iframe), 1000);
+                    var win = window.open('', '_blank');
+                    win.document.write(html);
+                    win.document.close();
+                    win.print();
                 }
 
             }
