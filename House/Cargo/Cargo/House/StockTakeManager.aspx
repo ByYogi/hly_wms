@@ -450,7 +450,7 @@
             <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false"
                 onclick="AwbExport()">&nbsp;导&nbsp;出&nbsp;</a>
             &nbsp;&nbsp;
-            <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="">&nbsp;生成今日动态盘点单&nbsp;</a>
+            <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addAutoItem">&nbsp;生成今日动态盘点单&nbsp;</a>
             <a href="#" class="easyui-linkbutton" iconcls="icon-out_cargo" plain="false"
                 onclick="openUpldSTDocModal()">&nbsp;上传盘点单据&nbsp;</a>
             <a href="#" class="easyui-linkbutton" iconcls="icon-print" plain="false"
