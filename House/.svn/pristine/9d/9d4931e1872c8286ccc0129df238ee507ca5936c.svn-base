@@ -1,0 +1,832 @@
+﻿<%@ Page Title="盘点管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true"
+    CodeBehind="StockTakeManager.aspx.cs" Inherits="Cargo.House.StockTakeManager" %>
+
+
+    <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+        <script type="text/javascript">
+            //页面加载显示遮罩层
+            var pc;
+            $.parser.onComplete = function () {
+                if (pc) {
+                    clearTimeout(pc);
+                }
+                pc = setTimeout(closemask, 10);
+            }
+            //关闭加载中遮罩层
+            function closemask() {
+                $("#Loading").fadeOut("normal", function () {
+                    $(this).remove();
+                });
+            }
+            //页面加载时执行
+            window.onload = function () {
+                //$("#eBelongHouse").combobox({
+                //    //相当于html >> select >> onChange事件  
+                //    onChange: function () {
+                //        var HouseID = $('#eBelongHouse').combobox('getValue');
+                //        if (HouseID == 0) {
+                //            $("#eCargoDepart").textbox('options').required = true;
+                //            $("#eCargoDepart").textbox('textbox').validatebox('options').required = true;
+                //            $("#eCargoDepart").textbox('validate');
+                //        } else {
+                //            $("#eCargoDepart").textbox('options').required = false;
+                //            $("#eCargoDepart").textbox('textbox').validatebox('options').required = false;
+                //            $("#eCargoDepart").textbox('validate');
+                //        }
+                //    }
+                //});
+                adjustment();
+            }
+            $(window).resize(function () {
+                adjustment();
+            });
+            function adjustment() {
+                var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+                $('#dg').datagrid('resize', { height: height });
+            }
+            $(document).ready(function () {
+                $('#dg').datagrid({
+                    width: '100%',
+                    title: '', //标题内容
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: false, //行高是否自动
+                    collapsible: true, //是否可折叠
+                    pagination: true, //分页是否显示
+                    pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                    pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                    fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: false, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'StockID',
+                    url: null,
+                    toolbar: '#toolbar',
+                    columns: [[
+                        { title: '', field: '', checkbox: true, width: '5%' },
+                        {
+                            title: '盘点单号', field: 'StockID', width: '5%'
+                        },
+                        {
+                            title: '区域大仓', field: 'HouseName', width: '7%', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        {
+                            title: '盘点仓库', field: 'HeadHouseName', width: '7%', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        {
+                            title: '盘点区域', field: 'AreaName', width: '8%', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        {
+                            title: '盘点品牌', field: 'TypeName', width: '8%', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        {
+                            title: '创建人', field: 'CreateName', width: '10%', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        { title: '创建时间', field: 'CreateDate', width: '15%', formatter: DateTimeFormatter },
+                        {
+                            title: '库存总数', field: 'StockNum', width: '8%', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+
+                        {
+                            title: '盘点状态', field: 'TakeStatus', width: '5%',
+                            formatter: function (val, row, index) {
+                                if (val == "0") { return "已开单"; }
+                                else if (val == "1") { return "盘点中"; }
+                                else if (val == "2") { return "已完成"; }
+                                else { return ""; }
+                            }
+                        }
+                    ]],
+                    onLoadSuccess: function (data) { },
+                    onDblClickRow: function (index, row) { editItemByID(index); }
+                });
+                //所在仓库
+                $('#HID').combobox({
+                    url: 'houseApi.aspx?method=CargoPermisionHouse',
+                    valueField: 'HouseID', textField: 'Name',
+                    onSelect: function (rec) {
+                        $('#PID').combobox('clear');
+                        var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                        $('#PID').combobox('reload', url);
+                    }
+                });
+                $('#HID').combobox('setValue', '<%=UserInfor.HouseID%>');
+                var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=<%=UserInfor.HouseID%>';
+                $('#PID').combobox('reload', url);
+                $('#PID').combobox('textbox').bind('focus', function () { $('#PID').combobox('showPanel'); });
+                $('#HID').combobox('textbox').bind('focus', function () { $('#HID').combobox('showPanel'); });
+                $('#ATakeStatus').combobox('textbox').bind('focus', function () { $('#ATakeStatus').combobox('showPanel'); });
+                $('#TypeID').combobox({
+                    valueField: 'TypeID', textField: 'TypeName', PinyinField: 'PinyinName',
+                    url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=1',
+                    filter: function (q, row) {
+                        var opts = $(this).combobox('options');
+                        return row[opts.textField].indexOf(q) >= 0 || row[opts.PinyinField].indexOf(q.toLowerCase()) >= 0;
+                    }
+                });
+                $('#TypeID').combobox('textbox').bind('focus', function () { $('#TypeID').combobox('showPanel'); });
+
+                var datenow = new Date();
+                //$('#StartDate').datebox('setValue', getNowFormatDate(datenow));
+                $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
+                $('#StartDate').datebox('textbox').bind('focus', function () { $('#StartDate').datebox('showPanel'); });
+                $('#EndDate').datebox('textbox').bind('focus', function () { $('#EndDate').datebox('showPanel'); });
+
+
+
+                $('#dgStockTakeFiles').datagrid({
+                    fitColumns: true,
+                    singleSelect: false,
+                    pagination: false,
+                    url: '', // 初始化先为空，后面动态加载
+                    columns: [[
+                        { field: 'Raw_FileName', title: '文件名', width: 200 },
+                        {
+                            field: 'FileSize', title: '大小(KB)', width: 80, align: 'right',
+                            formatter: function (value, row, index) {
+                                if (!value || isNaN(value)) return "0 KB";
+                                // 假设 FileSize 是字节
+                                var mb = value / 1024;
+                                return mb.toFixed(2) + " KB";
+                            }
+                        },
+                        { field: 'UploadUserName', title: '上传人', width: 60 },
+                        {
+                            field: 'OP_DATE', title: '上传日期', width: 100, formatter: (val) => {
+                                return val.replace('T', ' '); //把T去了，如：2025-08-14T11:20:06
+                            }
+                        },
+                        { field: 'action', title: '操作', width: 80, formatter: formatFileActions }
+                    ]]
+                });
+
+            });
+            //查询
+            function dosearch() {
+                $('#dg').datagrid('clearSelections');
+                var gridOpts = $('#dg').datagrid('options');
+                gridOpts.url = 'houseApi.aspx?method=QueryStockTakeData';
+                $('#dg').datagrid('load', {
+                    StartDate: $('#StartDate').datebox('getValue'),
+                    EndDate: $('#EndDate').datebox('getValue'),
+                    CreateName: $('#ACreateName').val(),
+                    PID: $("#PID").combobox('getValue'),
+                    HID: $("#HID").combobox('getValue'),
+                    TakeStatus: $("#ATakeStatus").combobox('getValue')
+                });
+            }
+
+
+            function openUploadStockTakeFile() {
+                var row = $('#dg').datagrid('getSelected');
+                if (!row) {
+                    $.messager.alert('提示', '请选择要操作的盘点单！', 'warning');
+                    return;
+                }
+
+                $('#StockIDHidden').val(row.StockID);
+                $('#fileUploadBox').filebox('clear');
+
+                $('#dlgUploadFile').dialog('open').dialog('setTitle', '上传附件 - 盘点单（' + row.StockID + '）');
+
+                // 加载已有附件
+                $('#dgStockTakeFiles').datagrid({
+                    url: 'houseApi.aspx?method=QueryStockTakePics&StockID=' + row.StockID
+                });
+            }
+            // 上传文件
+            function saveUploadFiles() {
+                // var fileVal = $('#fileUploadBox').filebox('getValue');
+                // if (!fileVal) {
+                //     $.messager.alert('提示', '请选择要上传的文件！', 'warning');
+                //     return;
+                // }
+
+                // $('#fmUploadFile').form('submit', {
+                //     url: 'houseApi.aspx?method=SaveStockTakePics',
+                //     onSubmit: function (param) {
+                //         return $(this).form('validate');
+                //     },
+                //     success: function (result) {
+                //         var res = JSON.parse(result);
+                //         if (res.success) {
+                //             $.messager.show({ title: '成功', msg: '文件上传成功' });
+                //             $('#dgStockTakeFiles').datagrid('reload');
+                //             $('#fileUploadBox').filebox('clear');
+                //         } else {
+                //             $.messager.alert('错误', res.message, 'error');
+                //         }
+                //     }
+                // });
+
+
+                var files = $('#multiFileInput')[0].files;
+                if (!files.length) {
+                    $.messager.alert('提示', '请选择要上传的文件！', 'warning');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('StockID', $('#StockIDHidden').val());
+
+                for (var i = 0; i < files.length; i++) {
+                    formData.append('files', files[i]); // 多个文件
+                }
+
+                $.ajax({
+                    url: 'houseApi.aspx?method=SaveStockTakePics', // 后端要支持多文件
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (res) {
+                        res = JSON.parse(res)
+                        if (res.Result) {
+                            $.messager.show({ title: '成功', msg: '文件上传成功' });
+                            $('#dgStockTakeFiles').datagrid('reload');
+                            $('#multiFileInput').val('');
+                        } else {
+                            $.messager.alert('错误', res.message, 'error');
+                        }
+                    }
+                });
+            }
+
+            // 删除文件
+            function deleteStockTakeFile(id) {
+                $.messager.confirm('确认', '确定要删除该附件吗？', function (r) {
+                    if (r) {
+                        $.post('api/StockTakeFile/DeleteFile', { IDs: [id] }, function (res) {
+                            res = JSON.parse(res)
+                            if (res.Result) {
+                                $.messager.show({ title: '成功', msg: '附件删除成功' });
+                                $('#dgStockTakeFiles').datagrid('reload');
+                            } else {
+                                $.messager.alert('错误', res.message, 'error');
+                            }
+                        }, 'json');
+                    }
+                });
+            }
+            function deleteSelectedFiles() {
+                var rows = $('#dgStockTakeFiles').datagrid('getSelections');
+                if (!rows.length) {
+                    $.messager.alert('提示', '请先选择要删除的文件！', 'warning');
+                    return;
+                }
+
+                $.messager.confirm('确认', '确定要删除选中的 ' + rows.length + ' 个附件吗？', function (r) {
+                    if (r) {
+                        var ids = rows.map(function (item) { return item.ID; });
+
+                        $.ajax({
+                            url: 'api/StockTakeFile/DeleteFiles', // 后端批量删除接口
+                            type: 'POST',
+                            data: JSON.stringify({ IDs: ids }),
+                            contentType: 'application/json',
+                            success: function (res) {
+                                if (res.success) {
+                                    $.messager.show({ title: '成功', msg: '已删除选中文件' });
+                                    $('#dgStockTakeFiles').datagrid('reload');
+                                } else {
+                                    $.messager.alert('错误', res.message, 'error');
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+
+            // DataGrid 操作列格式化
+            function formatFileActions(value, row, index) {
+                return '<a href="' + row.FilePath + '" target="_blank">下载</a> | ' +
+                    '<a href="javascript:void(0)" onclick="deleteStockTakeFile(' + row.ID + ')">删除</a>';
+            }
+
+
+
+            function change_photo() {
+                PreviewImage($("input[name='InsurePic']")[0], 'InsureImg', 'InsureImgdiv');
+            }
+            function PreviewImage(fileObj, imgPreviewId, divPreviewId) {
+                if (fileObj.files.length <= 0) {
+                    return;
+                }
+                var allowExtention = ".jpg,.bmp,.gif,.png";//允许上传文件的后缀名document.getElementById("hfAllowPicSuffix").value;  
+                var extention = fileObj.value.substring(fileObj.value.lastIndexOf(".") + 1).toLowerCase();
+                var browserVersion = window.navigator.userAgent.toUpperCase();
+                if (allowExtention.indexOf(extention) > -1) {
+                    if (fileObj.files) {//HTML5实现预览，兼容chrome、火狐7+等  
+                        if (window.FileReader) {
+                            var reader = new FileReader();
+                            reader.onload = function (e) {
+                                document.getElementById(imgPreviewId).setAttribute("src", e.target.result);
+                            }
+                            reader.readAsDataURL(fileObj.files[0]);
+                        }
+                    } else {
+                        document.getElementById(imgPreviewId).setAttribute("src", fileObj.value);
+                    }
+                    document.getElementById(divPreviewId).style.display = "block";
+                } else {
+                    alert("仅支持" + allowExtention + "为后缀名的文件!");
+                    fileObj.value = "";//清空选中文件  
+                    if (browserVersion.indexOf("MSIE") > -1) {
+                        fileObj.select();
+                        document.selection.clear();
+                    }
+                    fileObj.outerHTML = fileObj.outerHTML;
+                    document.getElementById(divPreviewId).style.display = "none";
+                }
+            }
+        </script>
+    </asp:Content>
+
+    <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+        <div id='Loading'
+            style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+            <div style="display: table-cell; vertical-align: middle">
+                <h1>
+                    <font size="9">页面加载中……</font>
+                </h1>
+            </div>
+        </div>
+        <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'"
+            style="width: 100%">
+            <table>
+                <tr>
+
+                    <td style="text-align: right;">区域大仓:
+                    </td>
+                    <td style="width: 10%">
+                        <input id="HID" class="easyui-combobox" style="width: 100%;" />
+                    </td>
+                    <td style="text-align: right;">盘点仓库:
+                    </td>
+                    <td style="width: 10%">
+                        <input id="PID" class="easyui-combobox" style="width: 100%;"
+                            data-options="valueField:'AreaID',textField:'Name'" panelheight="auto" />
+                    </td>
+                    <td style="text-align: right;">创建人:
+                    </td>
+                    <td style="width: 10%">
+                        <input id="ACreateName" class="easyui-textbox" data-options="prompt:'请输入创建人'"
+                            style="width: 100%">
+                    </td>
+                    <td style="text-align: right;">创建时间:
+                    </td>
+                    <td>
+                        <input id="StartDate" class="easyui-datebox" style="width: 100px">~
+                        <input id="EndDate" class="easyui-datebox" style="width: 100px">
+                    </td>
+                    <td style="text-align: right;">盘点状态:
+                    </td>
+                    <td style="width: 10%">
+                        <select class="easyui-combobox" id="ATakeStatus" style="width: 100%;" panelheight="auto">
+                            <option value="">全部</option>
+                            <option value="0">已开单</option>
+                            <option value="1">盘点中</option>
+                            <option value="2">已完成</option>
+                        </select>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <table id="dg" class="easyui-datagrid">
+        </table>
+        <div id="toolbar">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false"
+                onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addItem()">
+                &nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false"
+                onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false"
+                onclick="AwbExport()">&nbsp;导&nbsp;出&nbsp;</a>
+            &nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false"
+                onclick="addPartTakeDoc()">&nbsp;生成今日动态盘点单&nbsp;</a>
+            <a href="#" class="easyui-linkbutton" iconcls="icon-out_cargo" plain="false"
+                onclick="openUploadStockTakeFile()">&nbsp;上传盘点单据&nbsp;</a>
+            <form runat="server" id="fm1">
+                <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出"
+                    OnClick="btnDerived_Click" />
+            </form>
+        </div>
+        <div id="dlg" class="easyui-dialog" style="width: 500px; height: 300px; padding: 0px" closed="true"
+            buttons="#dlg-buttons">
+            <form id="fm" class="easyui-form" method="post">
+                <table>
+                    <tr>
+                        <td style="text-align: right;">区域大仓:
+                        </td>
+                        <td>
+                            <input id="HouseID" name="HouseID" class="easyui-combobox" style="width: 200px;"
+                                data-options="required:true" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">盘点仓库:
+                        </td>
+                        <td>
+                            <input id="HeadHouseID" name="HeadHouseID" class="easyui-combobox" style="width: 200px;"
+                                data-options="valueField:'AreaID',textField:'Name'" panelheight="auto" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">盘点区域:
+                        </td>
+                        <td>
+                            <input id="AreaID" name="AreaID" class="easyui-combobox" style="width: 200px;"
+                                data-options="valueField:'AreaID',textField:'Name'" panelheight="auto" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">盘点品牌:
+                        </td>
+                        <td>
+                            <input id="TypeID" name="TypeID" class="easyui-combobox" style="width: 200px;" />
+                        </td>
+                    </tr>
+
+                    <tr style="display: none;">
+                        <td style="text-align: right;">生成方式:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="GenType" name="GenType" style="width:200px;">
+                                <option value="full" selected>生成全量盘点单</option>
+                                <!-- 生成当天库存数量发生变化的物料盘点单，方便快速核对和跟踪库存动态。 -->
+                                <!-- <option value="part">生成差异盘点单</option> -->
+                                <option value="part">生成今日动态盘点单</option>
+                            </select>
+                        </td>
+                    </tr>
+
+                </table>
+            </form>
+        </div>
+        <div id="dlg-buttons">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-ok"
+                onclick="saveItem()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+                onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+        </div>
+        <!--Begin 查询盘点单下的货位盘点情况列表-->
+        <div id="productTag" class="easyui-dialog" style="width: 800px; height: 540px; padding: 0px" closed="true"
+            buttons="#productTag-buttons">
+            <table id="dgTag" class="easyui-datagrid">
+            </table>
+            <div id="productTag-buttons">
+                <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+                    onclick="javascript:$('#productTag').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+            </div>
+        </div>
+        <!--End 查询盘点单下的货位盘点情况列表-->
+        <!--Begin 查询盘点单下的货位标签盘点扫描情况列表-->
+        <div id="divStockTag" class="easyui-dialog" style="width: 950px; height: 540px; padding: 0px" closed="true"
+            buttons="#divStockTag-buttons">
+            <table id="dgStockTag" class="easyui-datagrid">
+            </table>
+            <div id="divStockTag-buttons">
+                <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+                    onclick="javascript:$('#divStockTag').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+            </div>
+        </div>
+        <!--End 查询盘点单下的货位标签盘点扫描情况列表-->
+
+        <!-- 上传附件弹窗 -->
+        <!-- <div id="dlgUploadFile" class="easyui-dialog" style="width:600px;height:400px;padding:10px" closed="true"
+            modal="true" buttons="#dlgUploadFile-buttons">
+            <form id="fmUploadFile" method="post" enctype="multipart/form-data">
+                <input type="hidden" id="StockIDHidden" name="StockID">
+                <div style="margin-bottom:10px">
+                    <input id="fileUploadBox" name="fileUpload" class="easyui-filebox" style="width:100%"
+                        data-options="prompt:'选择文件...', buttonText:'选择文件'">
+                </div>
+            </form>
+            <table id="dgStockTakeFiles" class="easyui-datagrid" style="width:100%;height:250px" singleSelect="true"
+                pagination="false" fitColumns="true">
+            </table>
+        </div> -->
+        <div id="dlgUploadFile" class="easyui-dialog" style="width:650px;height:420px;padding:10px" closed="true"
+            modal="true" buttons="#dlgUploadFile-buttons">
+            <input type="hidden" id="StockIDHidden">
+
+            <div style="margin-bottom:10px">
+                <input id="multiFileInput" type="file" multiple style="width:100%">
+            </div>
+
+            <table id="dgStockTakeFiles" style="width:100%;height:260px"></table>
+        </div>
+
+        <!-- 弹窗按钮 -->
+        <div id="dlgUploadFile-buttons">
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-save"
+                onclick="saveUploadFiles()">上传</a>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-remove"
+                onclick="deleteSelectedFiles()">批量删除</a>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel"
+                onclick="$('#dlgUploadFile').dialog('close')">关闭</a>
+        </div>
+
+        <script type="text/javascript">
+            //导出数据
+            function AwbExport() {
+                var rows = $('#dg').datagrid('getSelections');
+                if (rows == null || rows == "") {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '没有数据可以进行导出！', 'warning');
+                    return;
+                }
+                var json = JSON.stringify(rows)
+                $.messager.progress({ msg: '请稍后,正在导出中...' });
+                $.ajax({
+                    url: 'houseApi.aspx?method=QueryStockTakeDataForExport',
+                    type: 'post', dataType: 'text', data: { data: json },
+                    success: function (text) {
+                        $.messager.progress("close");
+                        if (text == "OK") { var obj = document.getElementById("<%=btnDerived.ClientID %>"); obj.click(); }
+                        else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
+
+                    }
+                })
+
+            }
+            //新增盘点记录
+            function addItem() {
+                $('#dlg').dialog('open').dialog('setTitle', '新增盘点记录');
+                $('#fm').form('clear');
+                //所在仓库
+                $('#HouseID').combobox({
+                    url: 'houseApi.aspx?method=CargoPermisionHouse',
+                    valueField: 'HouseID', textField: 'Name',
+                    onSelect: function (rec) {
+                        $('#HeadHouseID').combobox('clear');
+                        var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                        $('#HeadHouseID').combobox('reload', url);
+
+                        // 清空选中值
+                        $('#AreaID').combobox('clear');
+                        $('#AreaID').combobox('loadData', []);
+                        $('#AreaID').combobox('options').url = '';
+                    }
+                });
+                $('#HeadHouseID').combobox({
+                    onSelect: function (fai) {
+                        var HouseID = $('#HouseID').combobox('getValue') || 0;
+                        $('#AreaID').combobox('clear');
+                        var url = 'houseApi.aspx?method=QueryALLArea&hid=' + HouseID + '&pid=' + fai.AreaID;
+                        $('#AreaID').combobox('reload', url);
+                        $('#AreaID').combobox('textbox').bind('focus', function () { $('#SID').combobox('showPanel'); });
+                    }
+                });
+
+
+                $('#HouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+                $('#HeadHouseID').combobox('textbox').bind('focus', function () { $('#HeadHouseID').combobox('showPanel'); });
+                $('#AreaID').combobox('textbox').bind('focus', function () { $('#AreaID').combobox('showPanel'); });
+                $('#GenType').combobox('setValue', 'full')
+
+            }
+            function addPartTakeDoc() {
+                $('#dlg').dialog('open').dialog('setTitle', '生成今日动态盘点单');
+                // $('#fm').form('clear');
+                //所在仓库
+                $('#HouseID').combobox({
+                    url: 'houseApi.aspx?method=CargoPermisionHouse',
+                    valueField: 'HouseID', textField: 'Name',
+                    onSelect: function (rec) {
+                        $('#HeadHouseID').combobox('clear');
+                        var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                        $('#HeadHouseID').combobox('reload', url);
+
+                        // 清空选中值
+                        $('#AreaID').combobox('clear');
+                        $('#AreaID').combobox('loadData', []);
+                        $('#AreaID').combobox('options').url = '';
+                    }
+                });
+                $('#HeadHouseID').combobox({
+                    onSelect: function (fai) {
+                        var HouseID = $('#HouseID').combobox('getValue') || 0;
+                        $('#AreaID').combobox('clear');
+                        var url = 'houseApi.aspx?method=QueryALLArea&hid=' + HouseID + '&pid=' + fai.AreaID;
+                        $('#AreaID').combobox('reload', url);
+                        $('#AreaID').combobox('textbox').bind('focus', function () { $('#SID').combobox('showPanel'); });
+                    }
+                });
+
+
+                $('#HouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+                $('#HeadHouseID').combobox('textbox').bind('focus', function () { $('#HeadHouseID').combobox('showPanel'); });
+                $('#AreaID').combobox('textbox').bind('focus', function () { $('#AreaID').combobox('showPanel'); });
+                $('#GenType').combobox('setValue', 'part')
+
+
+                //使用上传提交缓存。便于使用
+                const cachedFormDataStr = localStorage.getItem("House_StockTakeManager_AddForm_Data");
+                const cachedFormData = JSON.parse(cachedFormDataStr ?? "{}");
+                console.log({ cachedFormDataStr });
+
+                if (cachedFormData != {}) {
+                    $('#TypeID').combobox('setValue', cachedFormData.TypeID);
+                    // $('#GenType').combobox('setValue', cachedFormData.GenType);
+                    if (cachedFormData.HouseID) {
+                        $('#HouseID').combobox('setValue', cachedFormData.HouseID);
+                        $('#HeadHouseID').combobox('clear');
+                        var url = 'houseApi.aspx?method=QueryALLArea&pid=0&hid=' + cachedFormData.HouseID;
+                        $('#HeadHouseID').combobox('reload', url);
+
+                        if (cachedFormData.HeadHouseID) {
+                            $('#HeadHouseID').combobox('setValue', cachedFormData.HeadHouseID);
+                            $('#AreaID').combobox('clear');
+                            var url = 'houseApi.aspx?method=QueryALLArea&hid=' + cachedFormData.HouseID + '&pid=' + cachedFormData.HeadHouseID;
+                            $('#AreaID').combobox('reload', url);
+                            if (cachedFormData.AreaID) {
+                                $('#AreaID').combobox('setValue', cachedFormData.AreaID);
+                            }
+                        }
+                    }
+                }
+            }
+
+            //查询显示货位上标签的扫描情况
+            function showTagList(Did) {
+                var row = $('#dgTag').datagrid('getData').rows[Did];
+                if (row) {
+                    $('#divStockTag').dialog('open').dialog('setTitle', '查询货位：' + row.ContainerCode + '下标签盘点情况');
+                    showStockTagGrid();
+                    $('#dgStockTag').datagrid('clearSelections');
+                    var gridOpts = $('#dgStockTag').datagrid('options');
+                    gridOpts.url = 'houseApi.aspx?method=QueryCargoStockTagList&StockID=' + row.StockID + '&ContainerCode=' + row.ContainerCode;
+                }
+            }
+            function showStockTagGrid() {
+                var columns = [];
+                //columns.push({ title: '盘点单号', field: 'StockID', width: '70px' });
+                columns.push({ title: '货位代码', field: 'ContainerCode', width: '90px' });
+                columns.push({ title: '标签号', field: 'TagCode', width: '70px' });
+                columns.push({
+                    title: '扫描状态', field: 'ScanStatus', width: '60px',
+                    formatter: function (val, row, index) { if (val == "0") { return "未扫描"; } else if (val == "1") { return "已扫描"; } else { return "未扫描"; } }
+                });
+                columns.push({
+                    title: '盘点状态', field: 'StockStatus', width: '70px',
+                    formatter: function (val, row, index) {
+                        if (val == "0") { return "未扫描"; } else if (val == "1") { return "正常"; }
+                        else if (val == "2") { return "已出库"; } else if (val == "3") { return "未入库"; }
+                        else if (val == "4") { return "货位错误"; } else if (val == "5") { return "非盘点单标签"; }
+                        else { return "未扫描"; }
+                    }
+                });
+                columns.push({ title: '扫描人', field: 'ScanUserName', width: '70px' });
+                columns.push({ title: '扫描时间', field: 'ScanDate', width: '130px', formatter: DateTimeFormatter });
+                columns.push({ title: '产品ID', field: 'ProductID', width: '50px' });
+                //columns.push({ title: '产品名称', field: 'ProductName', width: '250px' });
+                columns.push({ title: '周期', field: 'Batch', width: '50px' });
+                columns.push({ title: '备注', field: 'Remark', width: '150px' });
+
+                $('#dgStockTag').datagrid({
+                    width: '100%',
+                    height: '440px',
+                    title: '', //标题内容
+                    rownumbers: true,
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: false, //行高是否自动
+                    collapsible: false, //是否可折叠
+                    pagination: false, //分页是否显示
+                    fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: false, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'StockID',
+                    url: null,
+                    columns: [columns],
+                    onClickRow: function (index, row) {
+                        $('#dgStockTag').datagrid('clearSelections');
+                        $('#dgStockTag').datagrid('selectRow', index);
+                    },
+                    rowStyler: function (index, row) {
+                        if (row.ScanStatus == "1" && row.StockStatus == "1") { return "background-color:#24d3fb82"; }
+                    }
+                });
+            }
+
+            //查询货位盘点情况
+            function editItemByID(Did) {
+                var row = $("#dg").datagrid('getData').rows[Did];
+                if (row) {
+                    $('#productTag').dialog('open').dialog('setTitle', '查询盘点单：' + row.StockID + '货位盘点情况');
+                    showTagGrid();
+                    $('#dgTag').datagrid('clearSelections');
+                    var gridOpts = $('#dgTag').datagrid('options');
+                    gridOpts.url = 'houseApi.aspx?method=QueryCargoStockTakeContainerList&StockID=' + row.StockID;
+                }
+            }
+            //标签数据列表
+            function showTagGrid() {
+                var columns = [];
+                columns.push({ title: '盘点单号', field: 'StockID', width: '70px' });
+                columns.push({ title: '货位代码', field: 'ContainerCode', width: '100px' });
+                columns.push({ title: '库存数量', field: 'StockNum', width: '70px' });
+                columns.push({
+                    title: '提交状态', field: 'StockStatus', width: '60px',
+                    formatter: function (val, row, index) { if (val == "0") { return "未提交"; } else if (val == "1") { return "已提交"; } else { return "未提交"; } }
+                });
+                columns.push({ title: '提交时间', field: 'StockDate', width: '120px', formatter: DateTimeFormatter });
+                $('#dgTag').datagrid({
+                    width: '100%',
+                    height: '440px',
+                    title: '', //标题内容
+                    rownumbers: true,
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: false, //行高是否自动
+                    collapsible: false, //是否可折叠
+                    pagination: false, //分页是否显示
+                    fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: false, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'StockID',
+                    url: null,
+                    columns: [columns],
+                    onClickRow: function (index, row) {
+                        $('#dgTag').datagrid('clearSelections');
+                        $('#dgTag').datagrid('selectRow', index);
+                    },
+                    onDblClickRow: function (index, row) { showTagList(index); }
+                });
+            }
+            //删除盘点记录
+            function DelItem() {
+                var rows = $('#dg').datagrid('getSelections');
+                if (rows == null || rows == "") {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                    return;
+                }
+                $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                    if (r) {
+                        var json = JSON.stringify(rows)
+                        $.ajax({
+                            url: 'houseApi.aspx?method=DelStockTake',
+                            type: 'post', dataType: 'json', data: { data: json },
+                            success: function (text) {
+                                //var result = eval('(' + msg + ')');
+                                if (text.Result == true) {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                    $('#dg').datagrid('reload');
+                                }
+                                else {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+            //保存盘点数据
+            function saveItem() {
+                $.messager.progress({ msg: '请稍后,正在生成盘点记录中...' });
+                $('#fm').form('submit', {
+                    url: 'houseApi.aspx?method=SaveStockTake',
+                    onSubmit: function () {
+                        var validate = $(this).form('enableValidation').form('validate');
+                        if (!validate) {
+                            $.messager.progress("close");
+                            return false;
+                        }
+
+                        //持久缓存表单数据
+                        var formData = new FormData();
+                        $.each($(this).serializeArray(), function (_, kv) {
+                            formData[kv.name] = kv.value;
+                        });
+                        localStorage.setItem("House_StockTakeManager_AddForm_Data", JSON.stringify(formData));
+
+                        return true;
+                    },
+                    success: function (msg) {
+                        $.messager.progress("close");
+                        var result = eval('(' + msg + ')');
+                        if (result.Result) {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '生成成功!', 'info');
+                            $('#dlg').dialog('close'); 	// close the dialog
+                            dosearch();
+                        } else {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '生成失败：' + result.Message, 'warning');
+                        }
+                    }
+                })
+            }
+        </script>
+
+    </asp:Content>
