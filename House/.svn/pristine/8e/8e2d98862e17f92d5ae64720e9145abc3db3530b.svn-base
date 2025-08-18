@@ -1345,18 +1345,18 @@ namespace Cargo.Product
 
 
                 //批量新增
-                if (list.Where(w => w.ID == 0&& w.OnSaleNum !=0).ToList().Count() > 0)
+                if (list.Where(w => w.ID == 0).ToList().Count() > 0)
                 {
                     log.Operate = "A";
-                    bus.CargoAddBatchProductShelves(list.Where(w => w.ID == 0 && w.OnSaleNum != 0).ToList(), log);
+                    bus.CargoAddBatchProductShelves(list.Where(w => w.ID == 0).ToList(), log);
                     msg.Result = true;
                     msg.Message = "成功";
                 }
                 //批量修改
-                if (list.Where(w => w.ID != 0 && w.OnSaleNum != 0).ToList().Count() > 0)
+                if (list.Where(w => w.ID != 0).ToList().Count() > 0)
                 {
                     log.Operate = "U";
-                    bus.CargoUpdateBatchProductShelves(list.Where(w => w.ID != 0 && w.OnSaleNum != 0).ToList(), log);
+                    bus.CargoUpdateBatchProductShelves(list.Where(w => w.ID != 0).ToList(), log);
                     msg.Result = true;
                     msg.Message = "成功";
                 }

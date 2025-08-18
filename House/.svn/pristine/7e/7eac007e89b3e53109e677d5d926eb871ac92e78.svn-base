@@ -51,27 +51,9 @@ namespace Cargo.House
             table.Columns.Add("规格", typeof(string));
             table.Columns.Add("花纹", typeof(string));
             table.Columns.Add("载速", typeof(string));
-
-            //table.Columns.Add("区域大仓", typeof(string));
-            //table.Columns.Add("盘点仓库", typeof(string));
-            //table.Columns.Add("盘点区域", typeof(string));
-            //table.Columns.Add("盘点品牌", typeof(string));
-            //table.Columns.Add("盘点单创建人", typeof(string));
-            //table.Columns.Add("盘点单创建时间", typeof(string));
-            //table.Columns.Add("盘点单库存总数", typeof(string));
-            //table.Columns.Add("盘点单状态", typeof(string));
-
             table.Columns.Add("货品代码", typeof(string));
             table.Columns.Add("货位代码", typeof(string));
-
-            //table.Columns.Add("货位库存数", typeof(string));
-            //table.Columns.Add("产品名称", typeof(string));
-            //table.Columns.Add("产品类别", typeof(string));
-            //table.Columns.Add("产品型号", typeof(string));
-            //table.Columns.Add("周期", typeof(string));
-
             table.Columns.Add("标签号码", typeof(string));
-            table.Columns.Add("货位代码", typeof(string));
             table.Columns.Add("扫描状态", typeof(string));
             table.Columns.Add("盘点状态", typeof(string));
             table.Columns.Add("盘点结果", typeof(string));

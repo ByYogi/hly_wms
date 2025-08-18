@@ -338,7 +338,6 @@ namespace HouseServices
                 List<saleOpenInfoResp> conti = new List<saleOpenInfoResp>();
                 if (contiOrder.code.Equals(10000))
                 {
-                    //销售订单主表数据 配置区域,客户等字段
                     if (contiOrder.data.saleOpenInfoResp.Count > 0)
                     {
                         foreach (var saleorder in contiOrder.data.saleOpenInfoResp)
@@ -358,7 +357,6 @@ namespace HouseServices
                                 LogHelper.WriteLog(saleorder.orderCode + " " + saleorder.warehouseName + "无出库仓库");
                                 continue;
                             }
-                            //获取马牌仓库区域
                             CargoAreaEntity areaEntity = houseBus.QueryHouseByDeliveryArea(new CargoAreaEntity { ContiHouseCode = saleorder.warehouseCode });
                             if (areaEntity.AreaID.Equals(0))
                             {
@@ -366,7 +364,6 @@ namespace HouseServices
                                 LogHelper.WriteLog(saleorder.orderCode + " " + saleorder.warehouseName + "无配置出库仓库");
                                 continue;
                             }
-                            //获取客户信息
                             List<CargoClientEntity> clientEntities = clientBus.QueryCargoClientList(new CargoClientEntity { TryeClientCode = saleorder.customerCode, DelFlag = "0", HouseIDStr = "" });
                             if (clientEntities.Count > 0)
                             {
@@ -378,18 +375,15 @@ namespace HouseServices
                             saleorder.InCreateStatus = "0";
                             saleorder.OrderPiece = saleorder.saleSkuOpenInfoResp.Sum(c => c.skuNum);
                             saleorder.freightAmount = string.IsNullOrEmpty(saleorder.freightAmount) ? "0" : saleorder.freightAmount;
-                            //优惠券金额明细
                             if (saleorder.saleOpenPromotionAmountList.Count > 0)
                             {
-                                //couponAmount:优惠券总金额
                                 saleorder.couponAmount = saleorder.saleOpenPromotionAmountList[0].couponAmount;
                             }
                             conti.Add(saleorder);
                         }
                     }
-                    //Tbl_Cargo_ContiOrder 创建马牌订单数据
                     nwBus.AddContiSaleOrderInfo(conti, log);
-                    //Tbl_Cargo_ContiOrderPush 更新 马牌出库单数据同步表
+
                     nwBus.AddContiOrderPushInfo(new saleOrderStatusOpenQueryResp { currentUpdateTime = contiOrder.data.saleOrderStatusOpenQueryResp.currentUpdateTime, companyId = contiOrder.data.saleOrderStatusOpenQueryResp.companyId, tenantId = contiOrder.data.saleOrderStatusOpenQueryResp.tenantId, nextUpdateTime = contiOrder.data.saleOrderStatusOpenQueryResp.nextUpdateTime, ResJson = contistr }, log);
                 }
             }

@@ -6521,7 +6521,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                             ScanUserName = Convert.ToString(idr["ScanUserName"]),
                             ScanLoginName = Convert.ToString(idr["ScanLoginName"]),
                             StockStatus = Convert.ToString(idr["StockStatus"]),
-                            ScanDate = string.IsNullOrEmpty(Convert.ToString(idr["ScanDate"])) ? default() : Convert.ToDateTime(idr["ScanDate"]),
+                            ScanDate = string.IsNullOrEmpty(Convert.ToString(idr["ScanDate"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["ScanDate"]),
                             ProductName = Convert.ToString(idr["ProductName"]),
                             Batch = Convert.ToString(idr["Batch"]),
                             Remark = Convert.ToString(idr["Remark"]),
