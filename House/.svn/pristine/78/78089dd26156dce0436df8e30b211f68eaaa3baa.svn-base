@@ -17,7 +17,7 @@
             .time-box {
                 padding-inline: 15px;
                 display: inline-block;
-                vertical-align: top;
+                vertical-align: bottom;
             }
 
             .duty-list-box {
@@ -214,7 +214,7 @@
         <script type="text/javascript">
             $(document).ready(function () {
                 $('#dgWarnStock').datagrid({
-                    width: '800px',
+                    width: '700px',
                     height: '500px',
                     title: '<span style=color:red;font-size:15px;>库存报警</span>',
                     loadMsg: '数据加载中请稍候...',
@@ -603,7 +603,6 @@
                         <table id="dgDailyReports" class="easyui-datagrid"></table>
                     </div>
 
-                    
                     <!-- #region 值班面板 -->
                     <div class="easyui-accordion" style="width: 630px; margin-left: auto;" id="duty-box">
                         <div title="IT部门本周值班人员" style="overflow:auto; padding:10px;" id="duty-panel">
