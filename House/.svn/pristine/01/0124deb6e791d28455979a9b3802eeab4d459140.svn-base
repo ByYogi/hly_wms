@@ -1,0 +1,854 @@
+﻿using Cargo.Product;
+using House.Business.Cargo;
+using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.Report
+{
+    public partial class saleManReport : BasePage
+    {
+        /// <summary>
+        /// 导出实体
+        /// </summary>
+        public List<SaleManReportEntity> CarProfit
+        {
+            get
+            {
+                if (Session["SaleManReport"] == null) { Session["SaleManReport"] = new List<SaleManReportEntity>(); }
+                return (List<SaleManReportEntity>)(Session["SaleManReport"]);
+            }
+            set
+            {
+                Session["SaleManReport"] = value;
+            }
+        }
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+        private List<CargoProductSourceEntity> productSourceList = new List<CargoProductSourceEntity>();
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (CarProfit.Count <= 0) { return; }
+
+            if (UserInfor.HouseID.Equals(82))
+            {
+                DataTable table = new DataTable();
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("业务员", typeof(string));
+                table.Columns.Add("开单时间", typeof(string));
+                table.Columns.Add("订单号", typeof(string));
+                table.Columns.Add("到达站", typeof(string));
+                table.Columns.Add("品牌", typeof(string));
+                table.Columns.Add("货品代码", typeof(string));
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("花纹", typeof(string));
+                table.Columns.Add("载速", typeof(string));
+                table.Columns.Add("数量", typeof(int));
+                if (UserInfor.RoleCName.IndexOf("管理员") > -1)
+                {
+                    table.Columns.Add("单价", typeof(decimal));
+                }
+                table.Columns.Add("销售价", typeof(decimal));
+                table.Columns.Add("金额", typeof(decimal));
+                table.Columns.Add("客户编码", typeof(string));
+                table.Columns.Add("客户名称", typeof(string));
+                table.Columns.Add("收货人", typeof(string));
+                table.Columns.Add("手机号码", typeof(string));
+                table.Columns.Add("收货地址", typeof(string));
+
+                int i = 0;
+                string saleMan = string.Empty;
+                bool isSame = true;
+                int P = 0;
+                decimal T = 0.00M;
+                foreach (var it in CarProfit)
+                {
+                    if (i == 0)
+                    {
+                        saleMan = it.SaleManName;
+                    }
+                    i++;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["业务员"] = it.SaleManName.Trim();
+                    newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd") == "0001-01-01" || it.CreateDate.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                    newRows["订单号"] = it.OrderNo.Trim();
+                    newRows["到达站"] = it.Dest.Trim();
+                    newRows["客户编码"] = it.ClientNum.ToString();
+                    newRows["客户名称"] = it.PayClientName;
+                    newRows["收货人"] = it.AcceptPeople;
+                    newRows["手机号码"] = it.AcceptCellphone;
+                    newRows["收货地址"] = it.AcceptAddress;
+                    newRows["品牌"] = it.TypeName;
+                    newRows["货品代码"] = it.GoodsCode.Trim();
+                    newRows["规格"] = it.Specs.Trim();
+                    newRows["花纹"] = it.Figure.Trim();
+                    newRows["载速"] = it.LoadIndex + it.SpeedLevel;
+                    newRows["数量"] = it.OrderModel.Trim().Equals("1") ? -it.Piece : it.Piece;
+                    if (UserInfor.RoleCName.IndexOf("管理员") > -1)
+                    {
+                        newRows["单价"] = it.UnitPrice;
+                    }
+                    newRows["销售价"] = it.ActSalePrice;
+                    newRows["金额"] = it.OrderModel.Trim().Equals("1") ? -it.TransportFee : it.TransportFee;
+
+                    if (it.OrderModel.Trim().Equals("1"))
+                    {
+                        //退货单
+                        P = P - it.Piece;
+                        T -= it.TransportFee;
+                    }
+                    else
+                    {
+                        P = P + it.Piece;
+                        T += it.TransportFee;
+                    }
+                    table.Rows.Add(newRows);
+                    if (!saleMan.Equals(it.SaleManName))
+                    {
+                        isSame = false;
+                    }
+                    saleMan = it.SaleManName.Trim();
+                }
+                DataRow footRows = table.NewRow();
+                footRows["业务员"] = "汇总：";
+                footRows["数量"] = P;
+                footRows["金额"] = T;
+                table.Rows.Add(footRows);
+                string dt = string.Empty;
+                if (CarProfit[0].StartDate.Equals(CarProfit[0].EndDate))
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd");
+                }
+                else
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd") + "--" + CarProfit[0].EndDate.ToString("yyyy-MM-dd");
+                }
+                if (!isSame)
+                {
+                    ToExcel.DataTableToExcel(table, "", "业务员：" + dt + "销售报表统计");
+                }
+                else
+                {
+                    ToExcel.DataTableToExcel(table, "", "业务员：" + saleMan + dt + "销售报表统计");
+                }
+            }
+            else if (UserInfor.HouseID.Equals(10))
+            {
+
+                DataTable table = new DataTable();
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("开单时间", typeof(string));
+                table.Columns.Add("订单号", typeof(string));
+                table.Columns.Add("到达站", typeof(string));
+                table.Columns.Add("品牌", typeof(string));
+                table.Columns.Add("货品代码", typeof(string));
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("花纹", typeof(string));
+                table.Columns.Add("载速", typeof(string));
+                table.Columns.Add("数量", typeof(int));
+                table.Columns.Add("配送费用", typeof(decimal));
+                table.Columns.Add("客户名称", typeof(string));
+                table.Columns.Add("收货人", typeof(string));
+                table.Columns.Add("手机号码", typeof(string));
+                table.Columns.Add("收货地址", typeof(string));
+                table.Columns.Add("订单类型", typeof(string));
+                int i = 0;
+                int P = 0;
+                decimal T = 0.00M;
+                foreach (var it in CarProfit)
+                {
+                    i++;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                    newRows["订单号"] = it.OrderNo.Trim();
+                    newRows["到达站"] = it.Dest.Trim();
+                    newRows["品牌"] = it.TypeName;
+                    newRows["货品代码"] = it.GoodsCode.Trim();
+                    newRows["规格"] = it.Specs.Trim();
+                    newRows["花纹"] = it.Figure.Trim();
+                    newRows["载速"] = it.LoadIndex + it.SpeedLevel;
+                    newRows["数量"] = it.OrderModel.Trim().Equals("1") ? -it.Piece : it.Piece;
+                    newRows["配送费用"] = it.OrderModel.Trim().Equals("1") ? -it.TotalCharge : it.TotalCharge;
+                    newRows["客户名称"] = it.PayClientName;
+                    newRows["收货人"] = it.AcceptPeople;
+                    newRows["手机号码"] = it.AcceptCellphone;
+                    newRows["收货地址"] = it.AcceptAddress;
+                    newRows["订单类型"] = GetText(it.ThrowGood.Trim(), "ThrowGood");
+                    if (it.OrderModel.Trim().Equals("1"))
+                    {
+                        //退货单
+                        P = P - it.Piece;
+                        T -= it.TotalCharge;
+                    }
+                    else
+                    {
+                        P = P + it.Piece;
+                        T += it.TotalCharge;
+                    }
+                    table.Rows.Add(newRows);
+                }
+                DataRow footRows = table.NewRow();
+                footRows["订单号"] = "汇总：";
+                footRows["数量"] = P;
+                footRows["配送费用"] = T;
+                table.Rows.Add(footRows);
+                string dt = string.Empty;
+                if (CarProfit[0].StartDate.Equals(CarProfit[0].EndDate))
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd");
+                }
+                else
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd") + "--" + CarProfit[0].EndDate.ToString("yyyy-MM-dd");
+                }
+                ToExcel.DataTableToExcel(table, "", dt + "销售报表明细统计");
+            }
+            else
+            {
+                CargoProductBus bus = new CargoProductBus();
+                productSourceList = bus.QueryAllProductSource();
+                string tname = string.Empty;
+                DataTable table = new DataTable();
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("出库仓库", typeof(string));
+                if (UserInfor.HouseID.Equals(64))
+                {
+                    table.Columns.Add("市场专员", typeof(string));
+                    table.Columns.Add("开单专员", typeof(string));
+
+                }
+                else
+                {
+                    if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                    {
+                        table.Columns.Add("业务员", typeof(string));
+                    }
+                }
+                table.Columns.Add("开单员", typeof(string));
+                table.Columns.Add("开单日期", typeof(string));
+                table.Columns.Add("开单时间", typeof(string));
+                
+                table.Columns.Add("订单号", typeof(string));
+                table.Columns.Add("订单类型", typeof(string));
+                if (!UserInfor.RoleCName.Contains("马牌"))
+                {
+                    table.Columns.Add("产品名称", typeof(string));
+                }
+                table.Columns.Add("产品类型", typeof(string));
+                if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                {
+                    if (UserInfor.RoleCName.IndexOf("马牌") == -1)
+                    {
+                        table.Columns.Add("销售价", typeof(decimal));
+                    }
+                    if (UserInfor.IsCostPrice.Equals("1"))
+                    {
+                        table.Columns.Add("成本价", typeof(decimal));
+                    }
+                    if (UserInfor.IsFinalCostPrice.Equals("1"))
+                    {
+                        table.Columns.Add("最终成本价", typeof(decimal));
+                        table.Columns.Add("含税成本价", typeof(decimal));
+                        table.Columns.Add("不含税成本价", typeof(decimal));
+                    }
+                    if (UserInfor.HouseID == 64)
+                    {
+                        if (UserInfor.LoginName == "2421" || UserInfor.LoginName == "2422" || UserInfor.LoginName == "1079" || UserInfor.LoginName == "3065" || UserInfor.LoginName == "2944")
+                        {
+                            table.Columns.Add("单价", typeof(decimal));
+
+                        }
+                    }
+                    else
+                    {
+                        if (UserInfor.IsAdmin.Equals("1"))
+                        {
+                            if (UserInfor.RoleCName.IndexOf("马牌") == -1)
+                            {
+                                table.Columns.Add("单价", typeof(decimal));
+                            }
+                        }
+                    }
+                }
+                table.Columns.Add("数量", typeof(int));
+                if (UserInfor.HouseID == 64 && (UserInfor.LoginName == "2421" || UserInfor.LoginName == "2422"))
+                {
+                    table.Columns.Add("利润", typeof(decimal));
+                }
+                if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                {
+                    if (UserInfor.RoleCName.IndexOf("马牌") == -1)
+                    {
+                        table.Columns.Add("金额", typeof(decimal));
+                        table.Columns.Add("优惠金额", typeof(decimal));
+                        table.Columns.Add("返利抵扣", typeof(decimal));
+                        table.Columns.Add("合计金额", typeof(decimal));
+                    }
+                }
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("花纹", typeof(string));
+                table.Columns.Add("型号", typeof(string));
+                table.Columns.Add("批次", typeof(string));
+                table.Columns.Add("载重指数", typeof(string));
+                table.Columns.Add("速度级别", typeof(string));
+                table.Columns.Add("产品ID", typeof(string));
+                table.Columns.Add("产品编码", typeof(string));
+                table.Columns.Add("目的站", typeof(string));
+                table.Columns.Add("开单编码", typeof(string));
+                table.Columns.Add("货品代码", typeof(string));
+                table.Columns.Add("省", typeof(string));
+                table.Columns.Add("市", typeof(string));
+                table.Columns.Add("客户名称", typeof(string));
+                if (!UserInfor.DepCName.Contains("销售部"))
+                {
+                    if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                    {
+                        table.Columns.Add("客户编码", typeof(string));
+                        table.Columns.Add("店代码", typeof(string));
+                    }
+                    if (!UserInfor.RoleCName.Contains("马牌"))
+                    {
+                        table.Columns.Add("客户单位", typeof(string));
+                        table.Columns.Add("收货人", typeof(string));
+                        table.Columns.Add("手机号码", typeof(string));
+                        table.Columns.Add("客户地址", typeof(string));
+                        if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                        {
+                            table.Columns.Add("马牌店代", typeof(string));
+                            table.Columns.Add("门店类型", typeof(string));
+                        }
+                        table.Columns.Add("所在货位", typeof(string));
+                        table.Columns.Add("所在区域", typeof(string));
+                        table.Columns.Add("所在仓库", typeof(string));
+                        table.Columns.Add("入库时间", typeof(string));
+                        if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                        {
+                            table.Columns.Add("产品来源", typeof(string));
+                            table.Columns.Add("订单归属月", typeof(string));
+                            table.Columns.Add("供应商", typeof(string));
+                        }
+                    }
+                }
+                if (!UserInfor.RoleCName.Contains("马牌"))
+                {
+                    table.Columns.Add("订单备注", typeof(string));
+                    table.Columns.Add("物流公司", typeof(string));
+                    table.Columns.Add("物流结算", typeof(string));
+                    table.Columns.Add("物流单号", typeof(string));
+                    table.Columns.Add("副单号", typeof(string));
+                }
+
+                if (!UserInfor.DepCName.Contains("销售部"))
+                {
+                    if (!UserInfor.RoleCName.Contains("马牌"))
+                    {
+                        table.Columns.Add("物流费用", typeof(decimal));
+                    }
+                    table.Columns.Add("下单方式", typeof(string));
+                    table.Columns.Add("调货(代发)仓库", typeof(string));
+                    table.Columns.Add("审批状态", typeof(string));
+                }
+                table.Columns.Add("马牌订单号", typeof(string));
+                int i = 0;
+                string saleMan = string.Empty;
+                bool isSame = true;
+                int P = 0;
+                decimal T = 0.00M;
+                foreach (var it in CarProfit)
+                {
+                    if (i == 0)
+                    {
+                        saleMan = it.SaleManName;
+                    }
+                    i++;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["出库仓库"] = it.HouseName;
+                    if (UserInfor.HouseID.Equals(64))
+                    {
+                        newRows["市场专员"] = it.BusUserName.Trim();
+                        newRows["开单专员"] = it.SaleManName.Trim();
+                    }
+                    else
+                    {
+                        if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                        {
+                            newRows["业务员"] = it.SaleManName.Trim();
+                        }
+                    }
+                    newRows["开单员"] = it.CreateAwb;
+                    newRows["开单日期"] = it.CreateDate.ToString("yyyy-MM-dd") == "0001-01-01" || it.CreateDate.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.CreateDate.ToString("yyyy-MM-dd");
+                    newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd") == "0001-01-01" || it.CreateDate.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                   
+                    newRows["订单号"] = it.OrderNo.Trim();
+                    newRows["订单类型"] = GetText(it.ThrowGood.Trim(), "ThrowGood");
+
+                    if (!UserInfor.RoleCName.Contains("马牌"))
+                    {
+                        newRows["产品名称"] = it.ProductName;
+                    }
+                    newRows["产品类型"] = it.TypeName;
+                    if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                    {
+                        if (UserInfor.RoleCName.IndexOf("马牌") == -1)
+                        {
+                            newRows["销售价"] = it.ActSalePrice;
+                        }
+                        if (UserInfor.IsCostPrice.Equals("1"))
+                        {
+                            newRows["成本价"] = it.CostPrice;
+                        }
+                        if (UserInfor.IsFinalCostPrice.Equals("1"))
+                        {
+                            newRows["最终成本价"] = it.FinalCostPrice;
+                            newRows["含税成本价"] = it.TaxCostPrice;
+                            newRows["不含税成本价"] = it.NoTaxCostPrice;
+                        }
+                        if (UserInfor.HouseID == 64)
+                        {
+                            if (UserInfor.LoginName == "2421" || UserInfor.LoginName == "2422" || UserInfor.LoginName == "1079" || UserInfor.LoginName == "3065" || UserInfor.LoginName == "2944")
+                            {
+                                newRows["单价"] = it.UnitPrice;
+                            }
+                        }
+                        else
+                        {
+                            if (UserInfor.IsAdmin.Equals("1"))
+                            {
+                                if (UserInfor.RoleCName.IndexOf("马牌") == -1)
+                                {
+                                    newRows["单价"] = it.UnitPrice;
+                                }
+                            }
+                        }
+                    }
+                    newRows["数量"] = it.OrderModel.Trim().Equals("1") ? -it.Piece : it.Piece;
+                    if (UserInfor.HouseID == 64 && (UserInfor.LoginName == "2421" || UserInfor.LoginName == "2422"))
+                    {
+                        newRows["利润"] = (it.ActSalePrice - it.CostPrice) * (it.OrderModel.Trim().Equals("1") ? -it.Piece : it.Piece);
+                    }
+                    if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                    {
+                        if (UserInfor.RoleCName.IndexOf("马牌") == -1)
+                        {
+                            newRows["金额"] = it.OrderModel.Trim().Equals("1") ? -it.TransportFee : it.TransportFee;
+                            newRows["优惠金额"] = it.InsuranceFee;
+                            newRows["返利抵扣"] = it.OrderModel.Trim().Equals("1") ? -it.BateAmount : it.BateAmount;
+                            newRows["合计金额"] = it.OrderModel.Trim().Equals("1") ? -it.TotalCharge : it.TotalCharge;
+                        }
+                    }
+                    if (it.OrderModel.Trim().Equals("1"))
+                    {
+                        //退货单
+                        P = P - it.Piece;
+                        T -= it.TransportFee;
+                    }
+                    else
+                    {
+                        P = P + it.Piece;
+                        T += it.TransportFee;
+                    }
+                    newRows["规格"] = it.Specs.Trim();
+                    newRows["花纹"] = it.Figure.Trim();
+                    newRows["型号"] = it.Model.Trim();
+                    newRows["批次"] = it.Batch;
+                    newRows["载重指数"] = it.LoadIndex;
+                    newRows["速度级别"] = it.SpeedLevel;
+                    newRows["产品ID"] = it.ProductID;
+                    newRows["产品编码"] = it.ProductCode;
+                    newRows["目的站"] = it.Dest.Trim();
+                    newRows["开单编码"] = it.ShowGoodsCode;
+                    newRows["货品代码"] = it.GoodsCode.Trim();
+                    newRows["省"] = it.Province;
+                    newRows["市"] = it.City;
+                    newRows["客户名称"] = it.PayClientName;
+                    if (!UserInfor.DepCName.Contains("销售部"))
+                    {
+                        if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                        {
+                            newRows["客户编码"] = it.ClientNum.ToString();
+                            newRows["店代码"] = it.ShopCode.ToString();
+                        }
+                        if (!UserInfor.RoleCName.Contains("马牌"))
+                        {
+                            newRows["客户单位"] = it.AcceptUnit;
+                            newRows["收货人"] = it.AcceptPeople;
+                            newRows["手机号码"] = it.AcceptCellphone;
+                            newRows["客户地址"] = it.AcceptAddress;
+                            if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                            {
+                                newRows["马牌店代"] = it.TryeClientCode;
+                                newRows["门店类型"] = it.TryeClientType;
+                            }
+                            newRows["所在货位"] = it.ContainerCode;
+                            newRows["所在区域"] = it.AreaName;
+                            newRows["所在仓库"] = it.FirstAreaName;
+                            newRows["入库时间"] = it.InHouseTime.ToString("yyyy-MM-dd") == "0001-01-01" || it.InHouseTime.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.InHouseTime.ToString("yyyy-MM-dd HH:mm:ss");
+                            if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                            {
+                                newRows["产品来源"] = GetText(it.Source, "Source");
+                                newRows["订单归属月"] = it.BelongMonth;
+                                newRows["供应商"] = it.Supplier;
+                            }
+                        }
+
+                    }
+                    if (!UserInfor.RoleCName.Contains("马牌"))
+                    {
+                        newRows["订单备注"] = it.Remark;
+                        newRows["物流公司"] = it.LogisticName;
+                        newRows["物流结算"] = GetText(it.DeliverySettlement, "DeliverySettlement");
+                        newRows["物流单号"] = it.LogisAwbNo;
+                        newRows["副单号"] = it.HAwbNo;
+                    }
+                    if (!UserInfor.DepCName.Contains("销售部"))
+                    {
+                        if (!UserInfor.RoleCName.Contains("马牌"))
+                        {
+                            newRows["物流费用"] = it.DeliveryFee;
+                        }
+                        newRows["下单方式"] = GetText(it.OrderType, "OrderType");
+                        newRows["调货(代发)仓库"] = it.TranHouse;
+                        newRows["审批状态"] = it.ModifyPriceStatus == 1 ? "审批中" : "";
+                    }
+                    newRows["马牌订单号"] = it.OpenOrderNo;
+
+                    table.Rows.Add(newRows);
+                    if (!saleMan.Equals(it.SaleManName))
+                    {
+                        isSame = false;
+                    }
+                    saleMan = it.SaleManName.Trim();
+                }
+                DataRow footRows = table.NewRow();
+                footRows["出库仓库"] = "汇总：";
+                footRows["数量"] = P;
+                if (UserInfor.RoleCName.IndexOf("仓管角色") == -1)
+                {
+                    if (UserInfor.RoleCName.IndexOf("马牌") == -1)
+                    {
+                        footRows["金额"] = T;
+                    }
+                }
+                table.Rows.Add(footRows);
+                string dt = string.Empty;
+                if (CarProfit[0].StartDate.Equals(CarProfit[0].EndDate))
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd");
+                }
+                else
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd") + "--" + CarProfit[0].EndDate.ToString("yyyy-MM-dd");
+                }
+                if (!isSame)
+                {
+                    ToExcel.DataTableToExcel(table, "", "业务员：" + dt + "销售报表统计");
+                }
+                else
+                {
+                    ToExcel.DataTableToExcel(table, "", "业务员：" + saleMan + dt + "销售报表统计");
+                }
+            }
+        }
+        /// <summary>
+        /// 导出对账单
+        /// </summary>
+        protected void btnAwbReconExport_Click(object sender, EventArgs e)
+        {
+            if (CarProfit.Count <= 0) { return; }
+            if (UserInfor.HouseID.Equals(10))
+            {
+                DataTable table = new DataTable();
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("客户名称", typeof(string));
+                table.Columns.Add("开单时间", typeof(string));
+                table.Columns.Add("订单号", typeof(string));
+                table.Columns.Add("品牌", typeof(string));
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("花纹", typeof(string));
+                table.Columns.Add("载重指数", typeof(string));
+                table.Columns.Add("速度级别", typeof(string));
+                table.Columns.Add("数量", typeof(int));
+                table.Columns.Add("配送费用", typeof(decimal));
+                int i = 0;
+                int P = 0;
+                decimal T = 0.00M;
+                foreach (var it in CarProfit)
+                {
+                    i++;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["客户名称"] = it.PayClientName;
+                    newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                    newRows["订单号"] = it.OrderNo.Trim();
+                    newRows["品牌"] = it.TypeName;
+                    newRows["规格"] = it.Specs.Trim();
+                    newRows["花纹"] = it.Figure.Trim();
+                    newRows["载重指数"] = it.LoadIndex;
+                    newRows["速度级别"] = it.SpeedLevel;
+                    newRows["数量"] = it.OrderModel.Trim().Equals("1") ? -it.Piece : it.Piece;
+                    newRows["配送费用"] = it.OrderModel.Trim().Equals("1") ? -it.TotalCharge : it.TotalCharge;
+
+                    if (it.OrderModel.Trim().Equals("1"))
+                    {
+                        //退货单
+                        P = P - it.Piece;
+                        T -= it.TotalCharge;
+                    }
+                    else
+                    {
+                        P = P + it.Piece;
+                        T += it.TotalCharge;
+                    }
+                    table.Rows.Add(newRows);
+                }
+                DataRow footRows = table.NewRow();
+                footRows["客户名称"] = "汇总：";
+                footRows["数量"] = P;
+                footRows["配送费用"] = T;
+                table.Rows.Add(footRows);
+                string dt = string.Empty;
+                if (CarProfit[0].StartDate.Equals(CarProfit[0].EndDate))
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd");
+                }
+                else
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd") + "--" + CarProfit[0].EndDate.ToString("yyyy-MM-dd");
+                }
+                ToExcel.DataTableToExcel(table, "", "客户：" + dt + "对账清单");
+            }
+            else
+            {
+                DataTable table = new DataTable();
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("店代码", typeof(string));
+                table.Columns.Add("客户名称", typeof(string));
+                table.Columns.Add("收货人", typeof(string));
+                table.Columns.Add("收货地址", typeof(string));
+                table.Columns.Add("开单日期", typeof(string));
+                table.Columns.Add("订单号", typeof(string));
+                table.Columns.Add("品牌", typeof(string));
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("花纹", typeof(string));
+                table.Columns.Add("货品代码", typeof(string));
+                table.Columns.Add("载重指数", typeof(string));
+                table.Columns.Add("速度级别", typeof(string));
+                table.Columns.Add("数量", typeof(int));
+                if (!UserInfor.RoleID.Equals(42))
+                {
+                    table.Columns.Add("销售价", typeof(decimal));
+                    table.Columns.Add("金额", typeof(decimal));
+                }
+
+                table.Columns.Add("发票号", typeof(string));
+                table.Columns.Add("备注", typeof(string));
+                int i = 0;
+                string saleMan = string.Empty;
+                bool isSame = true;
+                int P = 0;
+                decimal T = 0.00M;
+                foreach (var it in CarProfit)
+                {
+                    if (i == 0) { saleMan = it.PayClientName; }
+                    i++;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["店代码"] = it.ShopCode;
+                    newRows["客户名称"] = it.PayClientName;
+                    newRows["收货人"] = it.AcceptPeople;
+                    newRows["收货地址"] = it.AcceptAddress;
+                    newRows["开单日期"] = it.CreateDate.ToString("yyyy-MM-dd") == "0001-01-01" || it.CreateDate.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.CreateDate.ToString("yyyy-MM-dd");
+                    newRows["订单号"] = it.OrderNo.Trim();
+                    newRows["品牌"] = !string.IsNullOrEmpty(it.ShowGoodsCode) ? it.ShowTypeName : it.TypeName;
+                    newRows["规格"] = it.Specs.Trim();
+                    newRows["花纹"] = it.Figure.Trim();
+                    newRows["货品代码"] = !string.IsNullOrEmpty(it.ShowGoodsCode) ? it.ShowGoodsCode : it.GoodsCode;
+                    newRows["载重指数"] = it.LoadIndex;
+                    newRows["速度级别"] = it.SpeedLevel;
+                    newRows["数量"] = it.OrderModel.Trim().Equals("1") ? -it.Piece : it.Piece;
+                    if (!UserInfor.RoleID.Equals(42))
+                    {
+                        newRows["销售价"] = it.ActSalePrice;
+                        newRows["金额"] = it.OrderModel.Trim().Equals("1") ? -it.TransportFee : it.TransportFee;
+                    }
+
+                    newRows["发票号"] = it.HAwbNo.Trim();
+                    newRows["备注"] = it.Remark.Trim();
+
+                    if (it.OrderModel.Trim().Equals("1"))
+                    {
+                        //退货单
+                        P = P - it.Piece;
+                        T -= it.TransportFee;
+                    }
+                    else
+                    {
+                        P = P + it.Piece;
+                        T += it.TransportFee;
+                    }
+                    table.Rows.Add(newRows);
+                    if (!saleMan.Equals(it.PayClientName))
+                    {
+                        isSame = false;
+                    }
+                    saleMan = it.PayClientName;
+                }
+                DataRow footRows = table.NewRow();
+                footRows["客户名称"] = "汇总：";
+                footRows["数量"] = P;
+                if (!UserInfor.RoleID.Equals(42))
+                {
+                    footRows["金额"] = T;
+                }
+                table.Rows.Add(footRows);
+                string dt = string.Empty;
+                if (CarProfit[0].StartDate.Equals(CarProfit[0].EndDate))
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd");
+                }
+                else
+                {
+                    dt = CarProfit[0].StartDate.ToString("yyyy-MM-dd") + "--" + CarProfit[0].EndDate.ToString("yyyy-MM-dd");
+                }
+                if (!isSame)
+                {
+                    ToExcel.DataTableToExcel(table, "", "客户：" + dt + "对账清单");
+                }
+                else
+                {
+                    ToExcel.DataTableToExcel(table, "", "客户：" + saleMan + dt + "对账清单");
+                }
+            }
+        }
+        /// <summary>
+        /// 格式化
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        private string GetText(string value, string id)
+        {
+            string retStr = string.Empty;
+            if (id.Contains("OrderModel"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "发货单";
+                else if (value.Trim() == "1")
+                    retStr = "退货单";
+            }
+            else if (id.Contains("ThrowGood"))
+            {
+                if (value.Trim() == "0")
+                    if (UserInfor.HouseID.Equals(10)) { retStr = "普送单"; } else { retStr = "客户单"; }
+                else if (value.Trim() == "1")
+                    retStr = "抛货单";
+                else if (value.Trim() == "2")
+                    retStr = "调货单";
+                else if (value.Trim() == "3")
+                    retStr = "代发单";
+                else if (value.Trim() == "4")
+                    retStr = "周期胎";
+                else if (value.Trim() == "5")
+                    retStr = "退货单";
+                else if (value.Trim() == "6")
+                    retStr = "商贸订单";
+                else if (value.Trim() == "7")
+                    retStr = "其它订单";
+                else if (value.Trim() == "8")
+                    retStr = "理赔单";
+                else if (value.Trim() == "9")
+                    retStr = "移库单";
+                else if (value.Trim() == "10")
+                    retStr = "祺航订单";
+                else if (value.Trim() == "11")
+                    retStr = "展示单";
+                else if (value.Trim() == "12")
+                    retStr = "OES客户单";
+                else if (value.Trim() == "13")
+                    retStr = "二批单";
+                else if (value.Trim() == "14")
+                    retStr = "报量单";
+                else if (value.Trim() == "15")
+                    retStr = "速配单";
+                else if (value.Trim() == "16")
+                    retStr = "促销单";
+                else if (value.Trim() == "17")
+                    retStr = "急送单";
+                else if (value.Trim() == "18")
+                    retStr = "异地单";
+                else if (value.Trim() == "20")
+                    retStr = "电商单";
+                else if (value.Trim() == "21")
+                    retStr = "订货单";
+                else if (value.Trim() == "22")
+                    retStr = "极速达";
+                else if (value.Trim() == "23")
+                    retStr = "次日达";
+                else if (value.Trim() == "24")
+                    retStr = "渠道订单";
+                else if (value.Trim() == "25")
+                    retStr = "退仓单";
+
+            }
+            else if (id.Contains("CheckOutType"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "现付";
+                else if (value.Trim() == "1")
+                    retStr = "回单";
+                else if (value.Trim() == "2")
+                    retStr = "月结";
+                else if (value.Trim() == "3")
+                    retStr = "到付";
+                else if (value.Trim() == "4")
+                    retStr = "代收款";
+            }
+            else if (id.Contains("OrderType"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "电脑下单";
+                else if (value.Trim() == "1")
+                    retStr = "企业号下单";
+                else if (value.Trim() == "2")
+                    retStr = "商城下单";
+                else if (value.Trim() == "3")
+                    retStr = "APP下单";
+                else if (value.Trim() == "4")
+                    retStr = "小程序下单";
+            }
+            else if (id.Contains("Source"))
+            {
+                foreach (var item in productSourceList)
+                {
+                    if (value.Trim() == item.Source.ToString())
+                    {
+                        return item.SourceName;
+                    }
+                }
+            }
+            else if (id.Contains("DeliverySettlement"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "现付";
+                else if (value.Trim() == "1")
+                    retStr = "到付";
+            }
+            return retStr;
+        }
+    }
+}

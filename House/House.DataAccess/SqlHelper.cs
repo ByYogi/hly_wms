@@ -69,7 +69,7 @@ namespace House.DataAccess
             DbCommand dbCommand = connection.CreateCommand();
             dbCommand.CommandText = sqlQuery;
             dbCommand.CommandType = CommandType.Text;
-            dbCommand.CommandTimeout = 10;
+            dbCommand.CommandTimeout = 15;
             return dbCommand;
         }
 
