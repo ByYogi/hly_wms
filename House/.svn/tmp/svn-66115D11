@@ -269,7 +269,7 @@ namespace House.Manager.Cargo
         /// <param name="pNum">每页多少条数据</param>
         /// <param name="strWhere">查询条件</param>
         /// <param name="strCountWhere">查询总数的查询条件</param>
-        /// <returns></returns> 
+        /// <returns></returns>
         public Hashtable QueryCargoHouse(int pIndex, int pNum, CargoHouseEntity entity)
         {
             List<CargoHouseEntity> result = new List<CargoHouseEntity>();

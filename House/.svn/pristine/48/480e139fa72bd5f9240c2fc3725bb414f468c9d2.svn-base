@@ -101,7 +101,7 @@ namespace House.Manager.Cargo
         public void AddCargoHouse(CargoHouseEntity entity)
         {
             entity.EnSafe();
-            string strSQL = @"INSERT INTO Tbl_Cargo_House(Name,HouseCode,Person,Cellphone,Remark,DelFlag,PickTitle,SendTitle,DeliveryArea,BelongHouse,DepCity,CargoDepart,OESCargoDepart,Address,OperaBrand,LogisFee,TwoLogisFee,ThreeLogisFee,StartBusHours,EndBusHours,HCYCOrderPushTagID,NextDayLogisFee,OverDueUnitPrice,OverDayNum,IsCanRush,IsCanPickUp,IsCanNextDay,StockShareHouseID,ParentID,ParentName) VALUES (@Name,@HouseCode,@Person,@Cellphone,@Remark,@DelFlag,@PickTitle,@SendTitle,@DeliveryArea,@BelongHouse,@DepCity,@CargoDepart,@OESCargoDepart,@Address,@OperaBrand,@LogisFee,@TwoLogisFee,@ThreeLogisFee,@StartBusHours,@EndBusHours,@HCYCOrderPushTagID,@NextDayLogisFee,@OverDueUnitPrice,@OverDayNum,@IsCanRush,@IsCanPickUp,@IsCanNextDay,@StockShareHouseID,@ParentID,@ParentName)";
+            string strSQL = @"INSERT INTO Tbl_Cargo_House(Name,HouseCode,Person,Cellphone,Remark,DelFlag,PickTitle,SendTitle,DeliveryArea,BelongHouse,DepCity,CargoDepart,OESCargoDepart,Address,OperaBrand,LogisFee,TwoLogisFee,ThreeLogisFee,StartBusHours,EndBusHours,HCYCOrderPushTagID,NextDayLogisFee,OverDueUnitPrice,OverDayNum,IsCanRush,IsCanPickUp,IsCanNextDay,StockShareHouseID) VALUES (@Name,@HouseCode,@Person,@Cellphone,@Remark,@DelFlag,@PickTitle,@SendTitle,@DeliveryArea,@BelongHouse,@DepCity,@CargoDepart,@OESCargoDepart,@Address,@OperaBrand,@LogisFee,@TwoLogisFee,@ThreeLogisFee,@StartBusHours,@EndBusHours,@HCYCOrderPushTagID,@NextDayLogisFee,@OverDueUnitPrice,@OverDayNum,@IsCanRush,@IsCanPickUp,@IsCanNextDay,@StockShareHouseID)";
             try
             {
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
@@ -134,8 +134,6 @@ namespace House.Manager.Cargo
                     conn.AddInParameter(cmd, "@IsCanPickUp", DbType.String, entity.IsCanPickUp);
                     conn.AddInParameter(cmd, "@IsCanNextDay", DbType.String, entity.IsCanNextDay);
                     conn.AddInParameter(cmd, "@StockShareHouseID", DbType.Int32, entity.StockShareHouseID);
-                    conn.AddInParameter(cmd, "@ParentID", DbType.Int32, entity.ParentID);
-                    conn.AddInParameter(cmd, "@ParentName", DbType.String, entity.ParentName);
 
                     conn.ExecuteNonQuery(cmd);
                 }
@@ -149,7 +147,7 @@ namespace House.Manager.Cargo
         public void UpdateCargoHouse(CargoHouseEntity entity)
         {
             entity.EnSafe();
-            string strSQL = @"UPDATE Tbl_Cargo_House SET Name=@Name,HouseCode=@HouseCode,Person=@Person,Cellphone=@Cellphone,Remark=@Remark,DelFlag=@DelFlag,SendTitle=@SendTitle,PickTitle=@PickTitle,DeliveryArea=@DeliveryArea,BelongHouse=@BelongHouse,DepCity=@DepCity,CargoDepart=@CargoDepart,OESCargoDepart=@OESCargoDepart,Address=@Address,OperaBrand=@OperaBrand,LogisFee=@LogisFee,TwoLogisFee=@TwoLogisFee,ThreeLogisFee=@ThreeLogisFee,StartBusHours=@StartBusHours,EndBusHours=@EndBusHours,HCYCOrderPushTagID=@HCYCOrderPushTagID,NextDayLogisFee=@NextDayLogisFee,OverDayNum=@OverDayNum,OverDueUnitPrice=@OverDueUnitPrice,IsCanRush=@IsCanRush,IsCanPickUp=@IsCanPickUp,IsCanNextDay=@IsCanNextDay,StockShareHouseID=@StockShareHouseID,ParentID=@ParentID,ParentName=@ParentName WHERE HouseID=@HouseID";
+            string strSQL = @"UPDATE Tbl_Cargo_House SET Name=@Name,HouseCode=@HouseCode,Person=@Person,Cellphone=@Cellphone,Remark=@Remark,DelFlag=@DelFlag,SendTitle=@SendTitle,PickTitle=@PickTitle,DeliveryArea=@DeliveryArea,BelongHouse=@BelongHouse,DepCity=@DepCity,CargoDepart=@CargoDepart,OESCargoDepart=@OESCargoDepart,Address=@Address,OperaBrand=@OperaBrand,LogisFee=@LogisFee,TwoLogisFee=@TwoLogisFee,ThreeLogisFee=@ThreeLogisFee,StartBusHours=@StartBusHours,EndBusHours=@EndBusHours,HCYCOrderPushTagID=@HCYCOrderPushTagID,NextDayLogisFee=@NextDayLogisFee,OverDayNum=@OverDayNum,OverDueUnitPrice=@OverDueUnitPrice,IsCanRush=@IsCanRush,IsCanPickUp=@IsCanPickUp,IsCanNextDay=@IsCanNextDay,StockShareHouseID=@StockShareHouseID WHERE HouseID=@HouseID";
             try
             {
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
@@ -183,8 +181,6 @@ namespace House.Manager.Cargo
                     conn.AddInParameter(cmd, "@IsCanPickUp", DbType.String, entity.IsCanPickUp);
                     conn.AddInParameter(cmd, "@IsCanNextDay", DbType.String, entity.IsCanNextDay);
                     conn.AddInParameter(cmd, "@StockShareHouseID", DbType.String, entity.StockShareHouseID);
-                    conn.AddInParameter(cmd, "@ParentID", DbType.Int32, entity.ParentID);
-                    conn.AddInParameter(cmd, "@ParentName", DbType.String, entity.ParentName);
 
                     conn.ExecuteNonQuery(cmd);
                 }
@@ -323,8 +319,6 @@ namespace House.Manager.Cargo
                                 IsCanPickUp = Convert.ToString(idr["IsCanPickUp"]),
                                 IsCanNextDay = Convert.ToString(idr["IsCanNextDay"]),
                                 StockShareHouseID = string.IsNullOrEmpty(Convert.ToString(idr["StockShareHouseID"])) ? 0 : Convert.ToInt32(idr["StockShareHouseID"]),
-                                ParentID = idr.Field<int?>("ParentID"),
-                                ParentName = idr.Field<string>("ParentName")
                             });
                         }
                     }
@@ -4449,8 +4443,6 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                 {
                     string strSQL = @"INSERT INTO Tbl_Cargo_OutContainerGoods(ContainerID,TypeID,ProductID,Piece,Weight,OutHouseTime,IsPrintOutCargo,OutCargoID) VALUES (@ContainerID,@TypeID,@ProductID,@Piece,@Weight,@OutHouseTime,@IsPrintOutCargo,@OutCargoID)";
 
-
-
                     using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                     {
                         conn.AddInParameter(cmd, "@ContainerID", DbType.Int32, it.ContainerID);
@@ -8049,17 +8041,6 @@ LEFT JOIN (
                 }
             }
             return cargo;
-        }
-
-        public string QueryHouseNameByID(int HouseID)
-        {
-            string strSQL = $"select Name from Tbl_Cargo_House where HouseID = @HouseID";
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                conn.AddInParameter(command, "@HOuseID", DbType.Int32, HouseID);
-                string HouseName = conn.ExecuteScalar(command)?.ToString();
-                return HouseName;
-            }
         }
     }
 

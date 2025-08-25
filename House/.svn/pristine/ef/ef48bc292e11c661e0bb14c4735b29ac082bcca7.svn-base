@@ -2665,8 +2665,7 @@ namespace Cargo.Interface
                 mrule = price.QueryRuleBank(Convert.ToInt64(RuleID));
             }
             //第二道防线  再次查询
-            //20250825  特价不查询优化信息
-            if (mrule.ID == 0&& PromotionType !=1)
+            if (mrule.ID == 0)
             {
                 CargoRuleBankEntity entity = new CargoRuleBankEntity();
                 entity.TypeID = Convert.ToInt32(context.Request["TypeID"]);

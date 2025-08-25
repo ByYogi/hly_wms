@@ -1457,8 +1457,8 @@
             }
 
             function UserExport() {
-                var StartDate = $('#UserStartDate').datebox('getValue')
-                var EndDate = $('#UserEndDate').datebox('getValue')
+                var StartDate = $('#HouseStartDate').datebox('getValue')
+                var EndDate = $('#HouseEndDate').datebox('getValue')
                 var key = {
                     StartDate: StartDate,
                     EndDate: EndDate,
