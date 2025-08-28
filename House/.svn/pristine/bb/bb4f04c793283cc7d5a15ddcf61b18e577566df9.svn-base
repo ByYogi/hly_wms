@@ -7231,40 +7231,33 @@ a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.H
                 string strSQL = @" SELECT TOP " + pNum + " *  FROM ";
                 strSQL += @"(
   SELECT
-  DISTINCT ROW_NUMBER() OVER (
-    ORDER BY
-      a.OP_DATE DESC
-  ) AS RowNumber,
-  a.*,
-  b.UserName,
-  c.TypeNames
-FROM
-  Tbl_Cargo_MoveOrder AS a
-  LEFT JOIN Tbl_SysUser AS b ON a.OPID = b.LoginName
-  LEFT JOIN (
-    SELECT
-      t.MoveNo,
-      STUFF(
+    DISTINCT ROW_NUMBER() OVER (
+      ORDER BY
+        a.OP_DATE DESC
+    ) AS RowNumber,
+    a.*,
+    b.UserName,
+    c.TypeNames
+  FROM
+    Tbl_Cargo_MoveOrder AS a
+    LEFT JOIN Tbl_SysUser AS b ON a.OPID = b.LoginName
+    LEFT JOIN (
+      SELECT
+        t.MoveNo,
+        STRING_AGG(t.TypeName, ',') AS TypeNames
+      FROM
         (
           SELECT
-            DISTINCT ',' + pt.TypeName
+            DISTINCT mog.MoveNo,
+            pt.TypeName
           FROM
             Tbl_Cargo_MoveOrderGood mog
             INNER JOIN Tbl_Cargo_Product p ON mog.ProductID = p.ProductID
             INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-          WHERE
-            mog.MoveNo = t.MoveNo FOR XML PATH(''),
-            TYPE
-        ).value('.', 'NVARCHAR(MAX)'),
-        1,
-        1,
-        ''
-      ) AS TypeNames
-    FROM
-      Tbl_Cargo_MoveOrderGood t
-    GROUP BY
-      t.MoveNo
-  ) c ON a.MoveNo = c.MoveNo
+        ) t
+      GROUP BY
+        t.MoveNo
+    ) c ON a.MoveNo = c.MoveNo
   WHERE
     (1 = 1) ";
                 //下单方式

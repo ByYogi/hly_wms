@@ -343,6 +343,7 @@ namespace House.Manager.Cargo
                 key => $"{key.HouseID}|{key.Born}|{key.TypeID}|{key.Model}|{key.GoodsCode}|{key.Specs}|{key.Figure}|{key.LoadIndex?.TrimEnd()}|{key.SpeedLevel?.TrimEnd()}",
                 value => value
             );
+            Common.Common.WriteTextLog("基础价格导入 3：");
 
             var InsertList = new List<CargoProductBasicPriceEntity>();
             var UpdateList = new List<CargoProductBasicPriceEntity>();
@@ -368,8 +369,11 @@ namespace House.Manager.Cargo
                     //InsertPriceBasic(it);
                 }
             }
+            Common.Common.WriteTextLog("基础价格导入 4：");
             UpdatePriceBasicBatch(UpdateList);
+            Common.Common.WriteTextLog("基础价格导入 5：");
             InsertPriceBasicBatch(InsertList);
+            Common.Common.WriteTextLog("基础价格导入 6：");
         }
 
         /// <summary>

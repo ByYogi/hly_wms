@@ -3556,8 +3556,6 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                                 OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
                                 UpClientID = Convert.ToInt32(idr["UpClientID"]),
                                 IsLockStock = Convert.ToString(idr["IsLockStock"]),
-                                OwnerShip = Convert.ToString(idr["OwnerShip"]),
-                                GoodsClass = Convert.ToString(idr["GoodsClass"]),
                             });
                         }
                     }
@@ -5002,12 +5000,12 @@ LEFT JOIN (
 SELECT
   p.ProductCode,
   p.TypeID,
-  mo2.NewHouseID HouseID,
-  SUM(mo.Piece - mo.NewPiece) Piece
+  p.HouseID,
+  SUM(mo.Piece) Piece
 FROM
   Tbl_Cargo_MoveOrderGood mo
   INNER JOIN Tbl_Cargo_MoveOrder mo2 ON mo2.MoveNo = mo.MoveNo
-  LEFT JOIN Tbl_Cargo_Product p ON mo.ProductID = p.ProductID
+  LEFT JOIN Tbl_Cargo_Product p ON mo.ProductID = p.ProductID AND p.HouseID = mo2.NewHouseID
   INNER JOIN Tbl_Cargo_ProductType AS pt ON p.TypeID = pt.TypeID
   INNER JOIN Tbl_Cargo_Container AS c ON mo.ContainerID = c.ContainerID
   INNER JOIN Tbl_Cargo_Area AS a ON c.AreaID = a.AreaID
@@ -5015,11 +5013,10 @@ FROM
   INNER JOIN Tbl_Cargo_Area AS a3 ON a2.ParentID = a3.AreaID AND a3.HouseID = p.HouseID
 WHERE
   1 = 1
-  AND mo2.MoveStatus <> 2
   AND p.ProductCode IS NOT NULL
   AND p.ProductCode <> ''
   AND a3.IsShowStock = 0";
-            if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and mo2.NewHouseID  in (" + entity.HouseID + ")"; }
+            if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and p.HouseID  in (" + entity.HouseID + ")"; }
             if (entity.AreaID != 0) { strSQL += " and a3.AreaID = " + entity.AreaID; }
             //if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and b.Specs like '%" + entity.Specs + "%'"; }
             if (!string.IsNullOrWhiteSpace(entity.Specs))
@@ -5043,7 +5040,7 @@ WHERE
             if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and p.ProductCode like '%" + entity.ProductCode + "%'"; }
             if (entity.TypeID != 0) { strSQL += " and pt.TypeID = " + entity.TypeID; }
             if (entity.ParentID != 0) { strSQL += " and pt.ParentID = " + entity.ParentID; }
-            strSQL += " GROUP BY p.ProductCode, p.TypeID, mo2.NewHouseID) as d on a.HouseID = d.HouseID and a.TypeID = d.TypeID and a.ProductCode = d.ProductCode";
+            strSQL += " GROUP BY p.ProductCode, p.TypeID, p.HouseID) as d on a.HouseID = d.HouseID and a.TypeID = d.TypeID and a.ProductCode = d.ProductCode";
             #endregion
 
 
@@ -6282,7 +6279,7 @@ WHERE
             if (!entity.HeadHouseID.Equals(0)) { strSQL += "and f.AreaID=" + entity.HeadHouseID; }
 
             strSQL += " where (1=1) and p.SpecsType <> 5 and a.Piece>0 ";
-            if (!isFull) { strSQL += " and (a.Take_DATE IS NULL OR a.Take_DATE < COALESCE(a.Piece_DATE, a.OP_DATE))"; }
+            if (!isFull) { strSQL += " and a.Take_DATE IS NULL OR a.Take_DATE < COALESCE(a.Piece_DATE, a.OP_DATE)"; }
             strSQL += " group by a.ContainerID,b.ContainerCode";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
@@ -6301,7 +6298,7 @@ WHERE
             strTag += " inner join Tbl_Cargo_ProductTag as g on a.ProductID = g.ProductID and g.OutCargoStatus = 0 and a.ContainerID = g.ContainerID";
 
             strTag += " where (1=1) and p.SpecsType <> 5  and a.Piece > 0 ";
-            if (!isFull) { strTag += " and (a.Take_DATE IS NULL OR a.Take_DATE < COALESCE(a.Piece_DATE, a.OP_DATE))"; }
+            if (!isFull) { strTag += " and a.Take_DATE IS NULL OR a.Take_DATE < COALESCE(a.Piece_DATE, a.OP_DATE)"; }
 
             //判断是否有需要盘点的标签数据
             using (DbCommand cmdTag = conn.GetSqlStringCommond(strTag))
@@ -6404,22 +6401,6 @@ WHERE
             return result;
         }
 
-        public List<int> QueryStockTakePicIDsByStockID(int StockID)
-        {
-            string strSQL = @"SELECT ID from Tbl_Cargo_StockTakeFile Where StockID = " + StockID;
-            List<int> stPicIDs = new List<int>();
-            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-            {
-                using (DataTable dt = conn.ExecuteDataTable(cmd))
-                {
-                    foreach (DataRow idr in dt.Rows)
-                    {
-                        stPicIDs.Add((int)idr.Field<long>("ID"));
-                    }
-                }
-            }
-            return stPicIDs;
-        }
         public List<CargoStockTakeFileEntity> QueryStockTakePicsByIDs(int[] IDs)
         {
             if (IDs == null || IDs.Length == 0)
@@ -6648,25 +6629,10 @@ WHERE
         /// <param name="entity"></param>
         private void UpdateStockTakeStatus(CargoStockTakeEntity entity)
         {
-            //第一次扫描盘点，更新在库库存盘点时间
-            int stockID = entity.StockID;
-            string nTakeStatus = entity.TakeStatus;
-            if (nTakeStatus != "0")
-            {
-                string oTakeStatus = "";
-                CargoStockTakeEntity stock = QueryStockTake(new CargoStockTakeEntity { StockID = stockID });
-                oTakeStatus = stock.TakeStatus;
-                if (oTakeStatus == "0" && new string[] { "1", "2" }.Contains(nTakeStatus))
-                {
-                    CargoProductManager prdctMan = new CargoProductManager();
-                    prdctMan.UpdateContainerGoodsTakeDate(stockID);
-                }
-            }
-
             string strSQL = "update Tbl_Cargo_StockTake set TakeStatus=@TakeStatus where StockID=@StockID";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
-                conn.AddInParameter(cmd, "@StockID", DbType.Int32, stockID);
+                conn.AddInParameter(cmd, "@StockID", DbType.Int32, entity.StockID);
                 conn.AddInParameter(cmd, "@TakeStatus", DbType.String, entity.TakeStatus);
                 conn.ExecuteNonQuery(cmd);
             }
@@ -6854,7 +6820,6 @@ WHERE
                 conn.AddInParameter(cmd, "@StockStatus", DbType.String, entity.StockStatus);
                 conn.ExecuteNonQuery(cmd);
             }
-
             if (!IsExistNoSubmitStockTakeContainerCode(new CargoStockTakeContainerEntity { StockID = entity.StockID, StockStatus = "0" }))
             {
                 //全部提交了，修改盘点单状态为已盘点完成
@@ -6985,11 +6950,10 @@ WHERE
         public void UpdateStockTakeTagStatus(CargoStockTakeTagEntity entity)
         {
             entity.EnSafe();
-            string strSQL = "update Tbl_Cargo_StockTakeTag set ScanStatus=@ScanStatus,StockStatus=@StockStatus,ScanLoginName=@ScanLoginName,ScanUserName=@ScanUserName,ScanDate = @ScanDate,Remark=@Remark where StockID = @StockID and TagCode = @TagCode";
+            string strSQL = "update Tbl_Cargo_StockTakeTag set ScanStatus=@ScanStatus,StockStatus=@StockStatus,ScanLoginName=@ScanLoginName,ScanUserName=@ScanUserName,ScanDate = @ScanDate,Remark=@Remark where TagCode = @TagCode";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
                 conn.AddInParameter(cmd, "@TagCode", DbType.String, entity.TagCode);
-                conn.AddInParameter(cmd, "@StockID", DbType.Int32, entity.StockID);
                 conn.AddInParameter(cmd, "@ScanStatus", DbType.String, entity.ScanStatus);
                 conn.AddInParameter(cmd, "@StockStatus", DbType.String, entity.StockStatus);
                 conn.AddInParameter(cmd, "@ScanLoginName", DbType.String, entity.ScanLoginName);

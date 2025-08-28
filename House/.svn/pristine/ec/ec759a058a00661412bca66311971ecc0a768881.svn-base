@@ -5062,13 +5062,10 @@ WHERE (1=1) ";
         public void UpdateContainerGoodsTakeDate(int StockID)
         {
             string strSQL = @"
-UPDATE cg
-SET cg.Take_DATE = stg.OP_DATE
-FROM Tbl_Cargo_ContainerGoods AS cg
-INNER JOIN Tbl_Cargo_StockTakeTag AS stg
-ON cg.ContainerID = stg.ContainerID
-AND cg.ProductID = stg.ProductID
-WHERE stg.StockID = @StockID";
+UPDATE Tbl_Cargo_ContainerGoods Set Take_Date = getdate() 
+where (Take_DATE IS NULL OR Take_DATE < COALESCE(Piece_DATE, OP_DATE)) 
+and Piece > 0 
+and ContainerID IN (Select ContainerID from Tbl_Cargo_StockTakeContainer where StockID = @StockID)";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
                 conn.AddInParameter(cmd, "@StockID", DbType.Int32, StockID);

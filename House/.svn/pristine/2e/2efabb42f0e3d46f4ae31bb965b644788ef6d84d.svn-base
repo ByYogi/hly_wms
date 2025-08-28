@@ -6404,22 +6404,6 @@ WHERE
             return result;
         }
 
-        public List<int> QueryStockTakePicIDsByStockID(int StockID)
-        {
-            string strSQL = @"SELECT ID from Tbl_Cargo_StockTakeFile Where StockID = " + StockID;
-            List<int> stPicIDs = new List<int>();
-            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-            {
-                using (DataTable dt = conn.ExecuteDataTable(cmd))
-                {
-                    foreach (DataRow idr in dt.Rows)
-                    {
-                        stPicIDs.Add((int)idr.Field<long>("ID"));
-                    }
-                }
-            }
-            return stPicIDs;
-        }
         public List<CargoStockTakeFileEntity> QueryStockTakePicsByIDs(int[] IDs)
         {
             if (IDs == null || IDs.Length == 0)
@@ -6680,6 +6664,13 @@ WHERE
         {
             foreach (var it in entity)
             {
+                string stFile_strSQL = @"Delete from Tbl_Cargo_StockTakeFile where StockID=@StockID";
+                using (DbCommand cmd = conn.GetSqlStringCommond(stFile_strSQL))
+                {
+                    conn.AddInParameter(cmd, "@StockID", DbType.Int32, it.StockID);
+                    conn.ExecuteNonQuery(cmd);
+                }
+
                 string strSQL = @"Delete from Tbl_Cargo_StockTake where StockID=@StockID";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
@@ -6985,11 +6976,10 @@ WHERE
         public void UpdateStockTakeTagStatus(CargoStockTakeTagEntity entity)
         {
             entity.EnSafe();
-            string strSQL = "update Tbl_Cargo_StockTakeTag set ScanStatus=@ScanStatus,StockStatus=@StockStatus,ScanLoginName=@ScanLoginName,ScanUserName=@ScanUserName,ScanDate = @ScanDate,Remark=@Remark where StockID = @StockID and TagCode = @TagCode";
+            string strSQL = "update Tbl_Cargo_StockTakeTag set ScanStatus=@ScanStatus,StockStatus=@StockStatus,ScanLoginName=@ScanLoginName,ScanUserName=@ScanUserName,ScanDate = @ScanDate,Remark=@Remark where TagCode = @TagCode";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
                 conn.AddInParameter(cmd, "@TagCode", DbType.String, entity.TagCode);
-                conn.AddInParameter(cmd, "@StockID", DbType.Int32, entity.StockID);
                 conn.AddInParameter(cmd, "@ScanStatus", DbType.String, entity.ScanStatus);
                 conn.AddInParameter(cmd, "@StockStatus", DbType.String, entity.StockStatus);
                 conn.AddInParameter(cmd, "@ScanLoginName", DbType.String, entity.ScanLoginName);

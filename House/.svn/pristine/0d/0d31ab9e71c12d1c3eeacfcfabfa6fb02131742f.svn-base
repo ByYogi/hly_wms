@@ -1404,16 +1404,6 @@ namespace House.Business.Cargo
                 throw;
             }
         }
-
-
-        public void DelStockTakePicsByStockID(int stockID)
-        {
-            List<int> stockPicIDs = man.QueryStockTakePicIDsByStockID(stockID);
-            if (stockPicIDs.Any())
-            {
-                DelStockTakePics(stockPicIDs.ToArray());
-            }
-        }
         public void DelStockTakePics(int[] IDs)
         {
             LogEntity log = new LogEntity();
@@ -1503,10 +1493,6 @@ namespace House.Business.Cargo
             {
                 try
                 {
-                    foreach (var item in entity)
-                    {
-                        DelStockTakePicsByStockID(item.StockID);
-                    }
                     man.DelStockTake(entity);
                     foreach (var it in entity)
                     {

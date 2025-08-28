@@ -728,7 +728,7 @@ namespace HouseServices
                 //send.toUser = qup.ApplyID;<div>订单金额：" + ord.TotalCharge.ToString("F2") + "</div>
                 send.toTag = houseEnt.HCYCOrderPushTagID.ToString();
                 //send.toTag = "19";
-                send.content = "<div></div><div>出库仓库：" + houseEnt.Name + "-出库"+"</div><div>商城订单号：" + ent.WXOrderNo + "</div><div>出库订单号：" + ent.OrderNo + "</div><div>订单数量：" + ent.Piece.ToString() + "</div><div>订单金额：" + ent.TotalCharge.ToString("F2") + "</div><div>货物信息：" + outHouseList.FirstOrDefault().GoodsName + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>门店名称：" + ent.AcceptUnit + "</div><div>收货信息：" + ent.AcceptPeople + " " + ent.AcceptCellphone + "</div><div>收货地址：" + ent.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
+                send.content = "<div></div><div>出库仓库：" + houseEnt.Name + "-出库"+"</div><div>商城订单号：" + ent.WXOrderNo + "</div><div>出库订单号：" + ent.OrderNo + "</div><div>订单数量：" + ent.OrderNum.ToString() + "</div><div>订单金额：" + ent.TotalCharge.ToString("F2") + "</div><div>货物信息：" + outHouseList.FirstOrDefault().GoodsName + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>门店名称：" + ent.AcceptUnit + "</div><div>收货信息：" + ent.AcceptPeople + " " + ent.AcceptCellphone + "</div><div>收货地址：" + ent.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
                 send.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + ent.OrderNo;
                 LogHelper.WriteLog("次日达订单通知：" + send.content);
                 WXQYSendHelper.DLTQYPushInfo(send);
