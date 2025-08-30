@@ -84,12 +84,6 @@
                     {
                         title: '速度', field: 'SpeedLevel', width: '70px'
                     },
-                    
-                    {
-                        title: '补货数量', field: 'LessNum', align: 'right', width: '100px', sortable: true, sorter: function (a, b) {
-                            return (parseInt(a) > parseInt(b) ? 1 : -1);
-                        }
-                    },
                     {
                         title: '最小库存', field: 'MinStock', align: 'right', width: '100px', sortable: true, sorter: function (a, b) {
                             return (parseInt(a) > parseInt(b) ? 1 : -1);
@@ -136,7 +130,7 @@
                         }
                     },
                     {
-                        title: '月均销量', field: 'AvgSaleNum', align: 'right', width: '100px', sortable: true, sorter: function (a, b) {
+                        title: '补货数量', field: 'LessNum', align: 'right', width: '100px', sortable: true, sorter: function (a, b) {
                             return (parseInt(a) > parseInt(b) ? 1 : -1);
                         }
                     },
@@ -224,6 +218,8 @@
             //编辑回车响应保存
             //$("#editTab").keydown(function (e) { if (e.keyCode == 13) { saveItem(); } });
 
+
+
             //所在仓库
             $('#HouseID').combobox({
                 url: '../House/houseApi.aspx?method=CargoPermisionHouse',
@@ -273,7 +269,6 @@
             $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
             $('#StartDate').datebox('textbox').bind('focus', function () { $('#StartDate').datebox('showPanel'); });
             $('#EndDate').datebox('textbox').bind('focus', function () { $('#EndDate').datebox('showPanel'); });
-
         });
 
         function Getvalue() {
@@ -310,7 +305,6 @@
                 EndDate: $('#EndDate').datebox('getValue'),
             });
         }
-    
     </script>
 </asp:Content>
 <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -483,41 +477,33 @@
                         <td style="text-align: right;">最小库存天数:
                         </td>
                         <td>
-                            <input name="MinStockDay" id="MinStockDay_ipt" class="easyui-numberbox" data-options="min:0,precision:0,onChange:minStockDayChange" style="width: 250px;" />
+                            <input name="MinStockDay" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" />
                         </td>
 
                         <td style="text-align: right;">最大库存天数:
                         </td>
                         <td>
-                            <input name="MaxStockDay" id="MaxStockDay_ipt" class="easyui-numberbox" data-options="min:0,precision:0,onChange:maxStockDayChange" style="width: 250px;" />
+                            <input name="MaxStockDay" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;"  />
                         </td>
                     </tr>
 
                     
                     
                     <tr>
-                        <td style="text-align: right;">最小库存数:
+
+                        
+                        <td style="text-align: right;">最小库存:
                         </td>
                         <td>
-                            <input name="MinStock" disabled class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
+                            <input name="MinStock" class="easyui-numberbox" data-options="min:0,precision:0,required:true" style="width: 250px;" validtype="length[0,5]" />
                         </td>
-                        <td style="text-align: right;">最大库存数:
+                        <td style="text-align: right;">最大库存:
                         </td>
                         <td>
-                            <input name="MaxStock" disabled class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
+                            <input name="MaxStock" class="easyui-numberbox" data-options="min:0,precision:0,required:true" style="width: 250px;" validtype="length[0,5]" />
                         </td>
                     </tr>
-                    <tr>
-                        <td style="text-align: right;">月均销量:
-                        </td>
-                        <td>
-                            <input id="AvgSaleNum_ipt" name="AvgSaleNum" disabled class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
-                        </td>
-                        <td style="text-align: right;">
-                        </td>
-                        <td>
-                        </td>
-                    </tr>
+
                   
                 </table>
             </div>
@@ -807,21 +793,18 @@
                 $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择一条要修改的数据！', 'warning');
                 return;
             }
-            var row = rows[0];
-            if (row) {
-                console.log({row});
-                
+            if (rows[0]) {
                 $('#dlgedit').dialog('open').dialog('setTitle', '修改仓库安全库存');
 
                 $('#eAreaID').combobox('clear');
-                var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + row.HouseID;
+                var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rows[0].HouseID;
                 $('#eAreaID').combobox('reload', url);
 
-                $('#fm').form('load', row);
+                $('#fm').form('load', rows[0]);
             }
         }
 
-        //导入数据
+        //保存数据
         function btnSaveDataImprot() {
             var rows = $("#dgImport").datagrid('getData').rows;
             if (rows == null || rows == "") {
@@ -880,6 +863,7 @@
                 }
             })
         }
+
         //删除数据
         function DelItem() {
             var rows = $('#dg').datagrid('getSelections');
@@ -907,44 +891,5 @@
                 }
             });
         }
-    
-        function maxStockDayChange(){
-            console.log('max stock day change');
-            // 获取月均销量
-            var $avgSaleNum = $('#AvgSaleNum_ipt');
-            var $maxStockDay = $('#MaxStockDay_ipt');
-            console.log({$avgSaleNum, $maxStockDay});
-            var avgSaleNum = parseFloat($avgSaleNum.numberbox('getValue')) || 0;
-            var maxDay = parseFloat($maxStockDay.numberbox('getValue')) || 0;
-
-            // 计算最小库存和最大库存
-            var maxStock = Math.round(avgSaleNum / 30 * maxDay);
-
-            console.log({avgSaleNum, maxDay, maxStock});
-            // 更新到表单
-            $('fm').form('load', {MaxStock: maxStock});
-        }
-        function minStockDayChange(){
-            console.log('min stock day change');
-            // 获取月均销量
-            var avgSaleNum = parseFloat($('input[name="AvgSaleNum"]').numberbox('getValue')) || 0;
-            var minDay = parseFloat($('input[name="MinStockDay"]').numberbox('getValue')) || 0;
-
-            // 计算最小库存和最大库存
-            var minStock = Math.round(avgSaleNum / 30 * minDay);
-
-            // 更新到表单
-            $('input[name="MinStock"]').numberbox('setValue', minStock);
-        }
-
-        // $(function() {
-        //     // EasyUI 初始化完成后
-        //     $('input[name="MinStockDay"]').numberbox({
-        //         onChange: minStockDayChange
-        //     });
-        //     $('input[name="MaxStockDay"]').numberbox({
-        //         onChange: maxStockDayChange
-        //     });
-        // });
     </script>
 </asp:Content>

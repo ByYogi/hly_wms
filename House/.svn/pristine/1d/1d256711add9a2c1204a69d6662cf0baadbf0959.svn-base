@@ -5134,7 +5134,7 @@ GROUP BY ProductCode, TypeID, GoodsCode, HouseID)");
     ISNULL(tw.Piece, 0) AS TotalNum,
     ISNULL(tos.Piece, 0) AS TotalSaleNum,
     ISNULL(ms.Piece, 0) AS MoveNum,
-    CAST(ISNULL(avs.AvgMonthSale, 0) AS INT) AS AvgSaleNum,
+    ISNULL(avs.AvgMonthSale, 0) AS AvgSaleNum,
     CASE
         WHEN s.StockNum - ISNULL(cs.Piece, 0) <= 0 THEN 0
         ELSE s.StockNum - ISNULL(cs.Piece, 0)
@@ -5261,7 +5261,6 @@ LEFT JOIN AvgSale as avs ON s.HouseID = avs.HouseID AND s.TypeID = avs.TypeID AN
                             OP_DATE = idr.Field<DateTime>("OP_DATE"),
                             TotalNum = idr.Field<int>("TotalNum"),       //全国实际库存数
                             TotalSaleNum = idr.Field<int>("TotalSaleNum"), //全国销售数量
-                            AvgSaleNum = idr.Field<int>("AvgSaleNum"), //月均销量
 
                             MinStockDay = idr.Field<int?>("MinStockDay"),   //最小库存天数
                             MaxStockDay = idr.Field<int?>("MaxStockDay"),   //最大库存天数

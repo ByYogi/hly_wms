@@ -689,7 +689,7 @@ namespace HouseServices
                             });
                             cargo.Piece = it.StockNum;
                             cargo.InPiece = it.StockNum;
-                            cargo.GoodsName = it.GoodsName;
+                               cargo.GoodsName = it.GoodsName;
                             originalPrice += it.StockNum * it.InHousePrice;//计算成本价
                             outHouseList.Add(cargo);
                             piece = piece - it.StockNum;
@@ -708,40 +708,6 @@ namespace HouseServices
                 //保存生成仓库出库订单
                 orderBus.AddOrderInfo(ent, outHouseList, log);
 
-                #region 推送好来运系统
-
-                if (ent.HouseID.Equals(93))
-                {
-                    //内部订单 || ent.HouseID.Equals(98)
-                    orderBus.SaveHlyOrderData(outHouseList, ent);
-                }
-                else
-                {
-                    orderBus.InsertCargoOrderPush(new CargoOrderPushEntity
-                    {
-                        OrderNo = ent.OrderNo,
-                        Dep = ent.Dep,
-                        Dest = ent.Dest,
-                        Piece = ent.Piece,
-                        TransportFee = ent.TransportFee,
-                        ClientNum = ent.ClientNum.ToString(),
-                        AcceptAddress = ent.AcceptAddress,
-                        AcceptCellphone = ent.AcceptCellphone,
-                        AcceptTelephone = ent.AcceptTelephone,
-                        AcceptPeople = ent.AcceptPeople,
-                        AcceptUnit = ent.AcceptUnit,
-                        HouseID = ent.HouseID.ToString(),
-                        HouseName = ent.OutHouseName,
-                        OP_ID = RobotID,
-                        PushType = "0",
-                        PushStatus = "0",
-                        LogisID = houseEnt.HouseID.Equals(97) || houseEnt.HouseID.Equals(95) || houseEnt.HouseID.Equals(101) ? 62 : houseEnt.HouseID.Equals(136) ? 383 : 34
-                    }, log);
-
-                }
-
-                #endregion
-
                 //更新原仓库订单的关联订单
                 bus.UpdateOrderOpenNo(new CargoOrderEntity { HouseID = oriHouseID, OrderNo = oriOrderNo, OpenOrderNo = ent.OrderNo });
 
@@ -749,7 +715,7 @@ namespace HouseServices
                 RedisHelper.HashDelete("NextDayOrderShareSync", key);
                 LogHelper.WriteLog("订单：" + oriOrderNo + "保存成功");
 
-
+                
                 #region 次日达订单推送
                 //CargoHouseEntity houseEnt = house.QueryCargoHouseByID(ord.HouseID);
                 string fkfs = ent.CheckOutType.Equals("3") ? "货到付款" : "现付";
@@ -764,7 +730,7 @@ namespace HouseServices
                 //send.toUser = qup.ApplyID;<div>订单金额：" + ord.TotalCharge.ToString("F2") + "</div>
                 send.toTag = houseEnt.HCYCOrderPushTagID.ToString();
                 //send.toTag = "19";
-                send.content = "<div></div><div>出库仓库：" + houseEnt.Name + "-出库" + "</div><div>商城订单号：" + ent.WXOrderNo + "</div><div>出库订单号：" + ent.OrderNo + "</div><div>订单数量：" + ent.Piece.ToString() + "</div><div>订单金额：" + ent.TotalCharge.ToString("F2") + "</div><div>货物信息：" + outHouseList.FirstOrDefault().GoodsName + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>门店名称：" + ent.AcceptUnit + "</div><div>收货信息：" + ent.AcceptPeople + " " + ent.AcceptCellphone + "</div><div>收货地址：" + ent.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
+                send.content = "<div></div><div>出库仓库：" + houseEnt.Name + "-出库"+"</div><div>商城订单号：" + ent.WXOrderNo + "</div><div>出库订单号：" + ent.OrderNo + "</div><div>订单数量：" + ent.Piece.ToString() + "</div><div>订单金额：" + ent.TotalCharge.ToString("F2") + "</div><div>货物信息：" + outHouseList.FirstOrDefault().GoodsName + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>门店名称：" + ent.AcceptUnit + "</div><div>收货信息：" + ent.AcceptPeople + " " + ent.AcceptCellphone + "</div><div>收货地址：" + ent.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
                 send.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + ent.OrderNo;
                 LogHelper.WriteLog("次日达订单通知：" + send.content);
                 WXQYSendHelper.DLTQYPushInfo(send);
@@ -6003,7 +5969,6 @@ namespace HouseServices
         }
         void time_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
         {
-
             #region 获取新陆程物流跟踪状态
             try
             {
@@ -6146,23 +6111,6 @@ namespace HouseServices
                 LogHelper.WriteLog("供应商销售补货数据通知:" + ex.Message);
             }
 
-            #endregion
-
-            #region 更新自有和进驻数据
-            try
-            {
-                if (DateTime.Now.Hour > 0 && DateTime.Now.Hour < 5)
-                {
-                    CargoInterfaceBus bus = new CargoInterfaceBus();
-
-                    bus.HandleGoodsClassData();
-                    LogHelper.WriteLog("处理自有进驻数据出库完成");
-                }
-            }
-            catch (ApplicationException ex)
-            {
-                LogHelper.WriteLog("处理自有进驻数据出库:" + ex.Message);
-            }
             #endregion
 
         }

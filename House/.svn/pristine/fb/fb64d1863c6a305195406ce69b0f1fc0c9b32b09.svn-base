@@ -4696,535 +4696,346 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
         {
             List<CargoSafeStockEntity> result = new List<CargoSafeStockEntity>();
             string strSQL = "";
-            var conditions = new List<string>();
-            StringBuilder strBld = new StringBuilder();
-            #region #tempALLWhsPiece 全仓库存数据临时表 
-            //将 产品全仓库存数据 存放到临时表中（能优化查询性能）
-            strBld.AppendLine(@"
--- 临时表 1: （全仓库存合计）
+            //将库存总数量存放到临时表中
+            strSQL += @"
 SELECT
-    b.TypeID,
-    b.ProductCode,
-    b.GoodsCode,
-    SUM(a.Piece) AS Piece
-INTO #tempALLWhsPiece
-FROM Tbl_Cargo_ContainerGoods AS a
-INNER JOIN Tbl_Cargo_Product AS b
-    ON a.ProductID = b.ProductID
-WHERE a.Piece > 0
-  AND b.SpecsType <> '5'
-GROUP BY b.TypeID, b.ProductCode, b.GoodsCode;
--- 临时表索引
-CREATE CLUSTERED INDEX IX_tempALLWhsPiece ON #tempALLWhsPiece (TypeID, ProductCode, GoodsCode);
-");
-            #endregion
-
-            //开始拼接CTE
-            strBld.AppendLine("WITH Placeholder AS (Select 1 AS Symbol) -- 占位符，方便拼接");
-
-            #region 1 Tbl_Cargo_ContainerGoods 当前仓库在库数量
-            strBld.Append(@"
-  ,CurStock AS (
+  * INTO #tempALLWhs
+FROM
+  (
     SELECT
-        b.TypeID,
-        b.HouseID,
-        b.ProductCode,
-        b.GoodsCode,
-        SUM(a.Piece) AS Piece
-    FROM Tbl_Cargo_ContainerGoods AS a
-    INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
-    INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
-    INNER JOIN Tbl_Cargo_Area AS e ON d.AreaID = e.AreaID
-    INNER JOIN Tbl_Cargo_Area AS f ON e.ParentID = f.AreaID
-    INNER JOIN Tbl_Cargo_Area AS g ON f.ParentID = g.AreaID AND g.IsShowStock = 0 AND g.HouseID = b.HouseID
-    WHERE a.Piece > 0
-      AND b.SpecsType != 5");
+      b.TypeID,
+      b.ProductCode,
+      b.GoodsCode,
+      SUM(a.Piece) AS Piece
+    FROM
+      Tbl_Cargo_ContainerGoods AS a
+      INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
+    WHERE
+      (1 = 1)
+      AND a.Piece > 0
+      AND b.SpecsType <> '5'
+    GROUP BY
+      b.TypeID,
+      b.ProductCode,
+      b.GoodsCode
+  ) a;
+";
 
-            conditions = new List<string>();
-            if (!string.IsNullOrEmpty(entity.HouseID))
-                conditions.Add($"b.HouseID IN ({entity.HouseID})");
+            //提取字段
+            strSQL += @"SELECT
+  a.*,
+  ISNULL(b.Piece, 0) AS CurNum,
+  ISNULL(c.SaleNum, 0) AS SaleNum,
+  ISNULL(c2.SaleNum, 0) AS WXSaleNum,
+  ISNULL(b2.Piece, 0) AS TotalNum,
+  ISNULL(c3.SaleNum, 0) AS TotalSaleNum,
+  ISNULL(d.Piece, 0) AS MoveNum,
+  --0 AS TotalSaleNum,
+  CASE
+    WHEN a.StockNum - ISNULL(b.Piece, 0) <= 0 THEN 0
+    ELSE a.StockNum - ISNULL(b.Piece, 0)
+  END AS LessNum
+FROM";
+            #region a 表 Tbl_Cargo_SafeStock 安全库存主数据
+            strSQL += @"
+  (
+    SELECT
+      s.*,
+      
+      h.Name AS HouseName,
+      a.Name AS AreaName,
+      pt.ParentID,
+      pt.TypeParentName AS ParentName,
+      pt.TypeName
+    FROM
+      Tbl_Cargo_SafeStock s
+      INNER JOIN Tbl_Cargo_House h ON s.HouseID = h.HouseID
+      INNER JOIN Tbl_Cargo_Area a ON s.AreaID = a.AreaID
+      INNER JOIN Tbl_Cargo_ProductType pt ON s.TypeID = pt.TypeID
+    WHERE
+      (1 = 1)";
 
-            if (entity.AreaID != 0)
-                conditions.Add($"g.AreaID = {entity.AreaID}");
-
+            if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and s.HouseID  in (" + entity.HouseID + ")"; }
+            if (!string.IsNullOrEmpty(entity.ParamAreaID)) { strSQL += " and a.AreaID in( " + entity.ParamAreaID + ")"; }
+            else if (entity.AreaID != 0) { strSQL += " and a.AreaID = " + entity.AreaID; }
+            //if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and s.Specs like '%" + entity.Specs + "%'"; }
             if (!string.IsNullOrWhiteSpace(entity.Specs))
             {
                 string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "");
-                if (res.Length <= 3 && !string.IsNullOrEmpty(res))
+                if (res.Length <= 3)
                 {
-                    conditions.Add($"b.Specs LIKE '%{res}%'");
+                    if (!string.IsNullOrEmpty(res)) { strSQL += " and s.Specs like '%" + res + "%'"; }
                 }
-                else if (res.Length > 3 && res.Length <= 5)
+                if (res.Length > 3 && res.Length <= 5)
                 {
-                    conditions.Add($"(b.Specs LIKE '%{res.Substring(0, 3)}/{res.Substring(3)}%' OR b.Specs LIKE '%{res.Substring(0, 3)}R{res.Substring(3)}%')");
+                    strSQL += " and (s.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or s.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
                 }
-                else if (res.Length > 5)
+                if (res.Length > 5)
                 {
-                    var part1 = res.Substring(0, 3);
-                    var part2 = res.Substring(3, 2);
-                    var part3 = res.Substring(5);
-                    conditions.Add($@"
-                        (b.Specs LIKE '%{part1}/{part2}R{part3}%'
-                        OR b.Specs LIKE '%{part1}/{part2}RF{part3}%'
-                        OR b.Specs LIKE '%{part1}/{part2}ZR{part3}%'
-                        OR b.Specs LIKE '%{part1}/{part2}ZRF{part3}%'
-                        OR b.Specs LIKE '%{part1}R{res.Substring(3)}%'
-                        OR b.Specs LIKE '{entity.Specs}')");
+                    strSQL += " and (s.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or s.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or s.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or s.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or s.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%' or s.Specs like '" + entity.Specs + "')";
                 }
             }
-            if (!string.IsNullOrEmpty(entity.Figure))
-                conditions.Add($"b.Figure LIKE '%{entity.Figure}%'");
+            if (!string.IsNullOrEmpty(entity.Figure)) { strSQL += " and s.Figure like '%" + entity.Figure + "%'"; }
+            if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and s.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+            if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and s.ProductCode like '%" + entity.ProductCode + "%'"; }
+            if (entity.TypeID != 0) { strSQL += " and s.TypeID = " + entity.TypeID; }
+            if (entity.ParentID != 0) { strSQL += " and pt.ParentID = " + entity.ParentID; }
 
-            if (!string.IsNullOrEmpty(entity.GoodsCode))
-                conditions.Add($"b.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
-            if (entity.TypeID != 0)
-                conditions.Add($"a.TypeID = {entity.TypeID}");
-
-            if (entity.ParentID != 0)
-                conditions.Add($"c.ParentID = {entity.ParentID}");
-
-            if (conditions.Count > 0)
-            {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
-            }
-
-            strBld.Append(" GROUP BY b.TypeID, b.HouseID, b.ProductCode, b.GoodsCode)");
+            strSQL += ") AS a";
             #endregion
 
-            #region 2 Tbl_Cargo_Order 当前仓库产品销量
-            strBld.Append(@",OrderStats AS (
-    SELECT
-        c.TypeID,
-        c.HouseID,
-        c.ProductCode,
-        c.GoodsCode,
-        SUM(b.Piece) AS SaleNum,
-        SUM(CASE WHEN a.OrderType = 4 THEN b.Piece ELSE 0 END) AS WXSaleNum
-    FROM Tbl_Cargo_Order AS a
+            #region b表 Tbl_Cargo_ContainerGoods 当前仓库在库数量
+            strSQL += @"
+            LEFT JOIN (
+  SELECT
+    b.TypeID,
+    b.HouseID,
+    b.ProductCode,
+    SUM(a.Piece) AS Piece
+  FROM
+    Tbl_Cargo_ContainerGoods AS a
+    INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
+    AND a.Piece > 0
+    AND b.SpecsType != 5
+    INNER JOIN Tbl_Cargo_ProductType AS c ON b.TypeID = c.TypeID
+    INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
+    INNER JOIN Tbl_Cargo_Area AS e ON d.AreaID = e.AreaID
+    INNER JOIN Tbl_Cargo_Area AS f ON e.ParentID = f.AreaID
+    INNER JOIN Tbl_Cargo_Area AS g ON f.ParentID = g.AreaID
+    AND g.IsShowStock = 0
+    AND g.HouseID = b.HouseID
+  WHERE
+    (1 = 1)";
+            if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and b.HouseID  in (" + entity.HouseID + ")"; }
+            if (entity.AreaID != 0) { strSQL += " and g.AreaID = " + entity.AreaID; }
+            //if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and b.Specs like '%" + entity.Specs + "%'"; }
+            if (!string.IsNullOrWhiteSpace(entity.Specs))
+            {
+                string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "");
+                if (res.Length <= 3)
+                {
+                    if (!string.IsNullOrEmpty(res)) { strSQL += " and b.Specs like '%" + res + "%'"; }
+                }
+                if (res.Length > 3 && res.Length <= 5)
+                {
+                    strSQL += " and (b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or b.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
+                }
+                if (res.Length > 5)
+                {
+                    strSQL += " and (b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%' or b.Specs like '" + entity.Specs + "')";
+                }
+            }
+            if (!string.IsNullOrEmpty(entity.Figure)) { strSQL += " and b.Figure like '%" + entity.Figure + "%'"; }
+            if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and b.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+            //if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and b.ProductCode like '%" + entity.ProductCode + "%'"; }
+            if (entity.TypeID != 0) { strSQL += " and a.TypeID = " + entity.TypeID; }
+            if (entity.ParentID != 0) { strSQL += " and c.ParentID = " + entity.ParentID; }
+            strSQL += " group by b.TypeID,b.HouseID,b.ProductCode ) as b on a.HouseID=b.HouseID and a.TypeID=b.TypeID and a.ProductCode=b.ProductCode";
+            #endregion
+
+            #region b2表 全国在库数量
+            strSQL += @"
+LEFT JOIN #tempALLWhs AS b2 ON a.ProductCode = b2.ProductCode
+AND a.TypeID = b2.TypeID
+AND a.GoodsCode = b2.GoodsCode
+";
+            #endregion
+
+            #region c表 Tbl_Cargo_Order 当前仓库产品销量
+            strSQL += @" LEFT JOIN (
+  SELECT
+    SUM(b.Piece) AS SaleNum,
+    c.TypeID,
+    c.HouseID,
+    c.ProductCode
+  FROM
+    Tbl_Cargo_Order AS a
     INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
-    INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
-    WHERE a.ThrowGood != 25
-      AND a.OrderModel = 0 
+    AND a.OrderModel = 0
+    AND a.ThrowGood != 25 ";
+            if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and a.HouseID  in (" + entity.HouseID + ")"; }
+            //制单日期范围
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+            }
+            strSQL += @" INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
+AND b.HouseID = c.HouseID
+INNER JOIN Tbl_Cargo_ProductType AS d ON c.TypeID = d.TypeID
+AND c.SpecsType != 5 ";
+            //if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and c.Specs like '%" + entity.Specs + "%'"; }
+            if (!string.IsNullOrWhiteSpace(entity.Specs))
+            {
+                string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "");
+                if (res.Length <= 3)
+                {
+                    if (!string.IsNullOrEmpty(res)) { strSQL += " and c.Specs like '%" + res + "%'"; }
+                }
+                if (res.Length > 3 && res.Length <= 5)
+                {
+                    strSQL += " and (c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or c.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
+                }
+                if (res.Length > 5)
+                {
+                    strSQL += " and (c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%' or c.Specs like '" + entity.Specs + "')";
+                }
+            }
+            if (!string.IsNullOrEmpty(entity.Figure)) { strSQL += " and c.Figure like '%" + entity.Figure + "%'"; }
+            if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and c.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+            if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and c.ProductCode like '%" + entity.ProductCode + "%'"; }
+            if (entity.TypeID != 0) { strSQL += " and c.TypeID = " + entity.TypeID; }
+            if (entity.ParentID != 0) { strSQL += " and d.ParentID = " + entity.ParentID; }
+            strSQL += " group by c.TypeID,c.HouseID,c.ProductCode) as c on a.HouseID=c.HouseID and a.TypeID=c.TypeID and a.ProductCode=c.ProductCode";
+            #endregion
+
+            #region c2表 Tbl_Cargo_Order 当前仓库小程序产品销量
+            strSQL += @" LEFT JOIN (
+  SELECT
+    SUM(b.Piece) AS SaleNum,
+    c.TypeID,
+    c.HouseID,
+    c.ProductCode
+  FROM
+    Tbl_Cargo_Order AS a
+    INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
+    AND a.OrderType = 4
+    AND a.OrderModel = 0
+    AND a.ThrowGood != 25 ";
+            if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and a.HouseID  in (" + entity.HouseID + ")"; }
+            //制单日期范围
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+            }
+            strSQL += @" INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
+AND b.HouseID = c.HouseID
+INNER JOIN Tbl_Cargo_ProductType AS d ON c.TypeID = d.TypeID
+AND c.SpecsType != 5 ";
+            //if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and c.Specs like '%" + entity.Specs + "%'"; }
+            if (!string.IsNullOrWhiteSpace(entity.Specs))
+            {
+                string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "");
+                if (res.Length <= 3)
+                {
+                    if (!string.IsNullOrEmpty(res)) { strSQL += " and c.Specs like '%" + res + "%'"; }
+                }
+                if (res.Length > 3 && res.Length <= 5)
+                {
+                    strSQL += " and (c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or c.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
+                }
+                if (res.Length > 5)
+                {
+                    strSQL += " and (c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or c.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%' or c.Specs like '" + entity.Specs + "')";
+                }
+            }
+            if (!string.IsNullOrEmpty(entity.Figure)) { strSQL += " and c.Figure like '%" + entity.Figure + "%'"; }
+            if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and c.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+            if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and c.ProductCode like '%" + entity.ProductCode + "%'"; }
+            if (entity.TypeID != 0) { strSQL += " and c.TypeID = " + entity.TypeID; }
+            if (entity.ParentID != 0) { strSQL += " and d.ParentID = " + entity.ParentID; }
+            strSQL += " group by c.TypeID,c.HouseID,c.ProductCode) as c2 on a.HouseID=c2.HouseID and a.TypeID=c2.TypeID and a.ProductCode=c2.ProductCode";
+            #endregion
+
+            #region c3 Tbl_Cargo_Order 产品全国销量
+            strSQL += @"
+LEFT JOIN (
+    SELECT
+      SUM(b.Piece) AS SaleNum,
+      c.TypeID,
+      c.ProductCode,
+      c.GoodsCode
+    FROM
+      Tbl_Cargo_Order AS a
+      INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
+      AND a.OrderModel = 0
+      AND a.ThrowGood != 25
+      ";
+            //制单日期范围
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+            }
+
+            strSQL += @"
+      INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
+      AND b.HouseID = c.HouseID
+      INNER JOIN Tbl_Cargo_ProductType AS d ON c.TypeID = d.TypeID
       AND c.SpecsType != 5
-");
+    GROUP BY
+      c.TypeID,
+      c.ProductCode,
+      c.GoodsCode
+  ) AS c3 ON a.TypeID = c3.TypeID
+  AND a.ProductCode = c3.ProductCode
+  AND a.GoodsCode = c3.GoodsCode
+";
+            #endregion
 
-            conditions = new List<string>();
 
-            // 仓库 ID
-            if (!string.IsNullOrEmpty(entity.HouseID))
-                conditions.Add($"a.HouseID IN ({entity.HouseID})");
-
-            // 制单日期范围
-            if (entity.StartDate > DateTime.MinValue && entity.StartDate.Year > 1900)
-                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
-
-            if (entity.EndDate > DateTime.MinValue && entity.EndDate.Year > 1900)
-                conditions.Add($"a.CreateDate <= '{entity.EndDate:yyyy-MM-dd}'");
-
-            // 规格条件
+            #region d表 Tbl_Cargo_MoveOrderGood 当前仓库在途数量
+            strSQL += @"
+            LEFT JOIN (
+SELECT
+  p.ProductCode,
+  p.TypeID,
+  mo2.NewHouseID HouseID,
+  SUM(mo.Piece - mo.NewPiece) Piece
+FROM
+  Tbl_Cargo_MoveOrderGood mo
+  INNER JOIN Tbl_Cargo_MoveOrder mo2 ON mo2.MoveNo = mo.MoveNo
+  LEFT JOIN Tbl_Cargo_Product p ON mo.ProductID = p.ProductID
+  INNER JOIN Tbl_Cargo_ProductType AS pt ON p.TypeID = pt.TypeID
+  INNER JOIN Tbl_Cargo_Container AS c ON mo.ContainerID = c.ContainerID
+  INNER JOIN Tbl_Cargo_Area AS a ON c.AreaID = a.AreaID
+  INNER JOIN Tbl_Cargo_Area AS a2 ON a.ParentID = a2.AreaID
+  INNER JOIN Tbl_Cargo_Area AS a3 ON a2.ParentID = a3.AreaID AND a3.HouseID = p.HouseID
+WHERE
+  1 = 1
+  AND mo2.MoveStatus <> 2
+  AND p.ProductCode IS NOT NULL
+  AND p.ProductCode <> ''
+  AND a3.IsShowStock = 0";
+            if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and mo2.NewHouseID  in (" + entity.HouseID + ")"; }
+            if (entity.AreaID != 0) { strSQL += " and a3.AreaID = " + entity.AreaID; }
+            //if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and b.Specs like '%" + entity.Specs + "%'"; }
             if (!string.IsNullOrWhiteSpace(entity.Specs))
             {
-                string res = entity.Specs.ToUpper()
-                    .Replace("/", "")
-                    .Replace("R", "")
-                    .Replace("C", "")
-                    .Replace("F", "")
-                    .Replace("Z", "");
-
-                if (res.Length <= 3 && !string.IsNullOrEmpty(res))
+                string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "");
+                if (res.Length <= 3)
                 {
-                    conditions.Add($"c.Specs LIKE '%{res}%'");
+                    if (!string.IsNullOrEmpty(res)) { strSQL += " and p.Specs like '%" + res + "%'"; }
                 }
-                else if (res.Length > 3 && res.Length <= 5)
+                if (res.Length > 3 && res.Length <= 5)
                 {
-                    conditions.Add($"(c.Specs LIKE '%{res.Substring(0, 3)}/{res.Substring(3)}%' OR c.Specs LIKE '%{res.Substring(0, 3)}R{res.Substring(3)}%')");
+                    strSQL += " and (p.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or p.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
                 }
-                else if (res.Length > 5)
+                if (res.Length > 5)
                 {
-                    var part1 = res.Substring(0, 3);
-                    var part2 = res.Substring(3, 2);
-                    var part3 = res.Substring(5);
-
-                    conditions.Add($@"
-                        (c.Specs LIKE '%{part1}/{part2}R{part3}%'
-                        OR c.Specs LIKE '%{part1}/{part2}RF{part3}%'
-                        OR c.Specs LIKE '%{part1}/{part2}ZR{part3}%'
-                        OR c.Specs LIKE '%{part1}/{part2}ZRF{part3}%'
-                        OR c.Specs LIKE '%{part1}R{res.Substring(3)}%'
-                        OR c.Specs LIKE '{entity.Specs}')");
+                    strSQL += " and (p.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or p.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or p.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or p.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or p.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%' or p.Specs like '" + entity.Specs + "')";
                 }
             }
-
-            // 其他字段条件
-            if (!string.IsNullOrEmpty(entity.Figure))
-                conditions.Add($"c.Figure LIKE '%{entity.Figure}%'");
-
-            if (!string.IsNullOrEmpty(entity.GoodsCode))
-                conditions.Add($"c.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
-            if (!string.IsNullOrEmpty(entity.ProductCode))
-                conditions.Add($"c.ProductCode LIKE '%{entity.ProductCode}%'");
-
-            if (entity.TypeID != 0)
-                conditions.Add($"c.TypeID = {entity.TypeID}");
-
-            if (entity.ParentID != 0)
-                conditions.Add($"d.ParentID = {entity.ParentID}");
-
-            // 统一拼接 WHERE 条件
-            if (conditions.Count > 0)
-            {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
-            }
-
-            // 最终 GROUP BY
-            strBld.AppendLine(" GROUP BY c.TypeID, c.HouseID, c.ProductCode, c.GoodsCode)");
-            #endregion
-
-            #region 3 Tbl_Cargo_Order 产品全国销量
-            strBld.Append(@",TotalSalePiece AS (
-    SELECT
-        c.TypeID,
-        c.ProductCode,
-        c.GoodsCode,
-        SUM(b.Piece) AS Piece
-    FROM Tbl_Cargo_Order AS a
-    INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
-    INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
-    WHERE a.ThrowGood != 25
-        AND a.OrderModel = 0
-        AND c.SpecsType != 5
-        AND c.ProductCode IS NOT NULL
-        AND c.ProductCode <> ''");
-            conditions = new List<string>();
-            // 制单日期范围
-            if (entity.StartDate != default)
-                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
-
-            if (entity.StartDate != default)
-                conditions.Add($"a.CreateDate <= '{entity.EndDate:yyyy-MM-dd}'");
-
-            // 拼接 WHERE 条件
-            if (conditions.Count > 0)
-            {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
-            }
-
-            strBld.AppendLine(" GROUP BY c.TypeID, c.ProductCode, c.GoodsCode)");
-            #endregion
-
-            #region 4 Tbl_Cargo_MoveOrderGood 当前仓库在途数量
-            strBld.Append(@",MoveStats AS (
-    SELECT
-        p.ProductCode,
-        p.TypeID,
-        p.GoodsCode,
-        mo2.NewHouseID AS HouseID,
-        SUM(mo.Piece - mo.NewPiece) AS Piece
-    FROM Tbl_Cargo_MoveOrderGood AS mo
-    INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
-    INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
-    INNER JOIN Tbl_Cargo_Container AS c ON mo.ContainerID = c.ContainerID
-    INNER JOIN Tbl_Cargo_Area AS a ON c.AreaID = a.AreaID
-    INNER JOIN Tbl_Cargo_Area AS a2 ON a.ParentID = a2.AreaID
-    INNER JOIN Tbl_Cargo_Area AS a3 ON a2.ParentID = a3.AreaID AND a3.HouseID = p.HouseID
-    WHERE mo2.MoveStatus <> 2
-      AND p.ProductCode IS NOT NULL
-      AND p.ProductCode <> ''
-      AND a3.IsShowStock = 0
-");
-            conditions = new List<string>();
-
-            // 仓库 ID
-            if (!string.IsNullOrEmpty(entity.HouseID))
-                conditions.Add($"mo2.NewHouseID IN ({entity.HouseID})");
-
-            // 区域 ID
-            if (entity.AreaID != 0)
-                conditions.Add($"a3.AreaID = {entity.AreaID}");
-
-            // 规格条件
-            if (!string.IsNullOrWhiteSpace(entity.Specs))
-            {
-                string res = entity.Specs.ToUpper()
-                    .Replace("/", "")
-                    .Replace("R", "")
-                    .Replace("C", "")
-                    .Replace("F", "")
-                    .Replace("Z", "");
-
-                if (res.Length <= 3 && !string.IsNullOrEmpty(res))
-                {
-                    conditions.Add($"p.Specs LIKE '%{res}%'");
-                }
-                else if (res.Length > 3 && res.Length <= 5)
-                {
-                    conditions.Add($"(p.Specs LIKE '%{res.Substring(0, 3)}/{res.Substring(3)}%' OR p.Specs LIKE '%{res.Substring(0, 3)}R{res.Substring(3)}%')");
-                }
-                else if (res.Length > 5)
-                {
-                    var part1 = res.Substring(0, 3);
-                    var part2 = res.Substring(3, 2);
-                    var part3 = res.Substring(5);
-
-                    conditions.Add($@"
-                        (p.Specs LIKE '%{part1}/{part2}R{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}RF{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}ZR{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}ZRF{part3}%'
-                        OR p.Specs LIKE '%{part1}R{res.Substring(3)}%'
-                        OR p.Specs LIKE '{entity.Specs}')");
-                }
-            }
-
-            // 其他字段条件
-            if (!string.IsNullOrEmpty(entity.Figure))
-                conditions.Add($"p.Figure LIKE '%{entity.Figure}%'");
-
-            if (!string.IsNullOrEmpty(entity.GoodsCode))
-                conditions.Add($"p.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
-            if (!string.IsNullOrEmpty(entity.ProductCode))
-                conditions.Add($"p.ProductCode LIKE '%{entity.ProductCode}%'");
-
-            if (entity.TypeID != 0)
-                conditions.Add($"pt.TypeID = {entity.TypeID}");
-
-            if (entity.ParentID != 0)
-                conditions.Add($"pt.ParentID = {entity.ParentID}");
-
-            // 拼接动态 WHERE 条件
-            if (conditions.Count > 0)
-            {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
-            }
-
-            strBld.AppendLine(" GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, mo2.NewHouseID)");
-            #endregion
-
-            #region 5 Tbl_Cargo_OrderGoods 月均销量
-            strBld.AppendLine(@",MonthlySales AS (
-    SELECT 
-        p.ProductCode,
-        p.TypeID,
-        p.GoodsCode,
-        ogSalePiece.HouseID,
-        DATEADD(MONTH, DATEDIFF(MONTH, 0, ogSalePiece.OP_DATE), 0) AS YearMonth,
-        SUM(ogSalePiece.Piece) AS Piece
-    FROM Tbl_Cargo_OrderGoods ogSalePiece
-    INNER JOIN Tbl_Cargo_Product p ON ogSalePiece.ProductID = p.ProductID
-    WHERE ogSalePiece.OP_DATE 
-        BETWEEN DATEADD(MONTH, -3, CAST(GETDATE() AS DATE)) 
-            AND DATEADD(MONTH, -1, CAST(GETDATE() AS DATE))
-      AND p.ProductCode IS NOT NULL
-      AND p.ProductCode <> ''
-");
-
-            conditions = new List<string>();
-
-            // 仓库 ID
-            if (!string.IsNullOrEmpty(entity.HouseID))
-                conditions.Add($"ogSalePiece.HouseID IN ({entity.HouseID})");
-
-            // 区域 ID
-            if (entity.AreaID != 0)
-                conditions.Add($"ogSalePiece.AreaID = {entity.AreaID}");
-
-            // 规格条件
-            if (!string.IsNullOrWhiteSpace(entity.Specs))
-            {
-                string res = entity.Specs.ToUpper()
-                    .Replace("/", "")
-                    .Replace("R", "")
-                    .Replace("C", "")
-                    .Replace("F", "")
-                    .Replace("Z", "");
-
-                if (res.Length <= 3 && !string.IsNullOrEmpty(res))
-                {
-                    conditions.Add($"p.Specs LIKE '%{res}%'");
-                }
-                else if (res.Length > 3 && res.Length <= 5)
-                {
-                    conditions.Add($"(p.Specs LIKE '%{res.Substring(0, 3)}/{res.Substring(3)}%' OR p.Specs LIKE '%{res.Substring(0, 3)}R{res.Substring(3)}%')");
-                }
-                else if (res.Length > 5)
-                {
-                    var part1 = res.Substring(0, 3);
-                    var part2 = res.Substring(3, 2);
-                    var part3 = res.Substring(5);
-
-                    conditions.Add($@"
-                        (p.Specs LIKE '%{part1}/{part2}R{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}RF{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}ZR{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}ZRF{part3}%'
-                        OR p.Specs LIKE '%{part1}R{res.Substring(3)}%'
-                        OR p.Specs LIKE '{entity.Specs}')");
-                }
-            }
-
-            // 其他字段条件
-            if (!string.IsNullOrEmpty(entity.Figure))
-                conditions.Add($"p.Figure LIKE '%{entity.Figure}%'");
-
-            if (!string.IsNullOrEmpty(entity.GoodsCode))
-                conditions.Add($"p.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
-            if (!string.IsNullOrEmpty(entity.ProductCode))
-                conditions.Add($"p.ProductCode LIKE '%{entity.ProductCode}%'");
-
-            // 拼接动态 WHERE 条件
-            if (conditions.Count > 0)
-            {
-                strBld.Append(" AND ");
-                strBld.AppendLine(string.Join(" AND ", conditions));
-            }
-
-            strBld.AppendLine(@"
-      AND ogSalePiece.HouseID IN (93)
-    GROUP BY 
-        p.ProductCode, p.TypeID, p.GoodsCode, ogSalePiece.HouseID,
-        DATEADD(MONTH, DATEDIFF(MONTH, 0, ogSalePiece.OP_DATE), 0)
-),
-Weighted AS (
-    SELECT 
-        ProductCode,
-        TypeID,
-        GoodsCode,
-        HouseID,
-        YearMonth,
-        Piece,
-        CASE DATEDIFF(MONTH, YearMonth, DATEADD(MONTH, -1, CAST(GETDATE() AS DATE)))
-            WHEN 2 THEN Piece * 0.2  -- n-3
-            WHEN 1 THEN Piece * 0.3  -- n-2
-            WHEN 0 THEN Piece * 0.5  -- n-1
-            ELSE 0
-        END AS WeightedPiece
-    FROM MonthlySales
-),
-AvgSale AS (
-    SELECT 
-    ProductCode,
-    TypeID,
-    GoodsCode,
-    HouseID,
-    SUM(Piece) AS TotalPiece,       -- 最近3个月总销量
-    SUM(WeightedPiece) AS AvgMonthSale  -- 加权月均销量
-FROM Weighted
-GROUP BY ProductCode, TypeID, GoodsCode, HouseID)");
-            #endregion
-
-            #region 主要语句联合查询
-            strBld.Append(@"SELECT
-    s.*,
-    h.Name AS HouseName,
-    a.Name AS AreaName,
-    pt.ParentID,
-    pt.TypeParentName AS ParentName,
-    pt.TypeName,
-    ISNULL(cs.Piece, 0) AS CurNum,
-    ISNULL(os.SaleNum, 0) AS SaleNum,
-    ISNULL(os.WXSaleNum, 0) AS WXSaleNum,
-    ISNULL(tw.Piece, 0) AS TotalNum,
-    ISNULL(tos.Piece, 0) AS TotalSaleNum,
-    ISNULL(ms.Piece, 0) AS MoveNum,
-    CAST(ISNULL(avs.AvgMonthSale, 0) AS INT) AS AvgSaleNum,
-    CASE
-        WHEN s.StockNum - ISNULL(cs.Piece, 0) <= 0 THEN 0
-        ELSE s.StockNum - ISNULL(cs.Piece, 0)
-    END AS LessNum
-FROM Tbl_Cargo_SafeStock AS s
-INNER JOIN Tbl_Cargo_House AS h ON s.HouseID = h.HouseID
-INNER JOIN Tbl_Cargo_Area AS a ON s.AreaID = a.AreaID
-INNER JOIN Tbl_Cargo_ProductType AS pt ON s.TypeID = pt.TypeID
-LEFT JOIN CurStock AS cs ON s.HouseID = cs.HouseID AND s.TypeID = cs.TypeID AND s.ProductCode = cs.ProductCode AND s.GoodsCode = cs.GoodsCode
-LEFT JOIN #tempALLWhsPiece AS tw ON s.TypeID = tw.TypeID AND s.ProductCode = tw.ProductCode AND s.GoodsCode = tw.GoodsCode
-LEFT JOIN OrderStats AS os ON s.HouseID = os.HouseID AND s.TypeID = os.TypeID AND s.ProductCode = os.ProductCode AND s.GoodsCode = os.GoodsCode
-LEFT JOIN TotalSalePiece AS tos ON s.TypeID = tos.TypeID AND s.ProductCode = tos.ProductCode AND s.GoodsCode = tos.GoodsCode
-LEFT JOIN MoveStats AS ms ON s.HouseID = ms.HouseID AND s.TypeID = ms.TypeID AND s.ProductCode = ms.ProductCode AND s.GoodsCode = ms.GoodsCode
-LEFT JOIN AvgSale as avs ON s.HouseID = avs.HouseID AND s.TypeID = avs.TypeID AND s.ProductCode = avs.ProductCode AND s.GoodsCode = avs.GoodsCode
-    WHERE (1 = 1)");
-
-            conditions = new List<string>();
-
-            // 仓库 ID
-            if (!string.IsNullOrEmpty(entity.HouseID))
-                conditions.Add($"s.HouseID IN ({entity.HouseID})");
-
-            // 区域 ID
-            if (!string.IsNullOrEmpty(entity.ParamAreaID))
-                conditions.Add($"a.AreaID IN ({entity.ParamAreaID})");
-            else if (entity.AreaID != 0)
-                conditions.Add($"a.AreaID = {entity.AreaID}");
-
-            // 规格条件
-            if (!string.IsNullOrWhiteSpace(entity.Specs))
-            {
-                string res = entity.Specs.ToUpper()
-                    .Replace("/", "")
-                    .Replace("R", "")
-                    .Replace("C", "")
-                    .Replace("F", "")
-                    .Replace("Z", "");
-
-                if (res.Length <= 3 && !string.IsNullOrEmpty(res))
-                {
-                    conditions.Add($"s.Specs LIKE '%{res}%'");
-                }
-                else if (res.Length > 3 && res.Length <= 5)
-                {
-                    conditions.Add($"(s.Specs LIKE '%{res.Substring(0, 3)}/{res.Substring(3)}%' OR s.Specs LIKE '%{res.Substring(0, 3)}R{res.Substring(3)}%')");
-                }
-                else if (res.Length > 5)
-                {
-                    var part1 = res.Substring(0, 3);
-                    var part2 = res.Substring(3, 2);
-                    var part3 = res.Substring(5);
-
-                    conditions.Add($@"
-            (s.Specs LIKE '%{part1}/{part2}R{part3}%'
-            OR s.Specs LIKE '%{part1}/{part2}RF{part3}%'
-            OR s.Specs LIKE '%{part1}/{part2}ZR{part3}%'
-            OR s.Specs LIKE '%{part1}/{part2}ZRF{part3}%'
-            OR s.Specs LIKE '%{part1}R{res.Substring(3)}%'
-            OR s.Specs LIKE '{entity.Specs}')");
-                }
-            }
-
-            // 其他字段条件
-            if (!string.IsNullOrEmpty(entity.Figure))
-                conditions.Add($"s.Figure LIKE '%{entity.Figure}%'");
-
-            if (!string.IsNullOrEmpty(entity.GoodsCode))
-                conditions.Add($"s.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
-            if (!string.IsNullOrEmpty(entity.ProductCode))
-                conditions.Add($"s.ProductCode LIKE '%{entity.ProductCode}%'");
-
-            if (entity.TypeID != 0)
-                conditions.Add($"s.TypeID = {entity.TypeID}");
-
-            if (entity.ParentID != 0)
-                conditions.Add($"pt.ParentID = {entity.ParentID}");
-
-            // 拼接 WHERE 条件
-            if (conditions.Count > 0)
-            {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
-            }
-
-            strBld.AppendLine(" ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
+            if (!string.IsNullOrEmpty(entity.Figure)) { strSQL += " and p.Figure like '%" + entity.Figure + "%'"; }
+            if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and p.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+            if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and p.ProductCode like '%" + entity.ProductCode + "%'"; }
+            if (entity.TypeID != 0) { strSQL += " and pt.TypeID = " + entity.TypeID; }
+            if (entity.ParentID != 0) { strSQL += " and pt.ParentID = " + entity.ParentID; }
+            strSQL += " GROUP BY p.ProductCode, p.TypeID, mo2.NewHouseID) as d on a.HouseID = d.HouseID and a.TypeID = d.TypeID and a.ProductCode = d.ProductCode";
             #endregion
 
 
-            strSQL = strBld.ToString();
+            strSQL += " order by a.HouseID, a.StockNum-ISNULL(b.Piece,0) desc";
             using ( DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 #region 获取数据
@@ -5261,7 +5072,6 @@ LEFT JOIN AvgSale as avs ON s.HouseID = avs.HouseID AND s.TypeID = avs.TypeID AN
                             OP_DATE = idr.Field<DateTime>("OP_DATE"),
                             TotalNum = idr.Field<int>("TotalNum"),       //全国实际库存数
                             TotalSaleNum = idr.Field<int>("TotalSaleNum"), //全国销售数量
-                            AvgSaleNum = idr.Field<int>("AvgSaleNum"), //月均销量
 
                             MinStockDay = idr.Field<int?>("MinStockDay"),   //最小库存天数
                             MaxStockDay = idr.Field<int?>("MaxStockDay"),   //最大库存天数

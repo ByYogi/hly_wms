@@ -2,7 +2,6 @@
 using House.Entity;
 using House.Entity.Cargo;
 using House.Entity.Cargo.Interface;
-using House.Entity.Cargo.Order;
 using House.Entity.Cargo.Product;
 using House.Entity.Dto;
 using System;
@@ -14,7 +13,6 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using House.Manager.Common;
 
 namespace House.Manager.Cargo
 {
@@ -178,7 +176,7 @@ namespace House.Manager.Cargo
                                 OrderDep = Convert.ToString(idrCount["OrderDep"]),
                                 ShareHouseID = Convert.ToInt32(idrCount["ShareHouseID"]),
                                 ShareHouseName = Convert.ToString(idrCount["ShareHouseName"]),
-                                GoodsName = Convert.ToString(idrCount["GoodsName"])
+                                GoodsName= Convert.ToString(idrCount["GoodsName"])
                             });
                         }
                     }
@@ -1814,9 +1812,9 @@ namespace House.Manager.Cargo
         {
             List<saleOpenInfoResp> result = new List<saleOpenInfoResp>();
             //string strSQL = "select a.OrderID,a.orderCode,a.orderSource,a.orderType,a.orderLabel,a.deliveryType,a.CargoOrderNo,a.InCreateStatus,a.CreateAwbID,a.CreateAwb,a.CreateDate,a.doNo,a.shippingCode,a.IsPushOutTag,b.LogisAwbNo,b.LogisID,b.SaleManName,b.SaleCellphone,b.OpenExpressName,b.OpenExpressNum,b.PayClientName From Tbl_Cargo_ContiOrder as a inner join Tbl_Cargo_Order as b on a.CargoOrderNo=b.OrderNo and a.doNo!='' and b.AwbStatus>=2 ";
-            string strSQL = $@"   with cte as (
-select OrderPiece,a.OrderID,a.orderCode,b.OrderNo as CargoOrderNo
-     ,a.doNo,b.SaleManName,b.SaleCellphone
+            string strSQL = $@"  with cte as (
+select OrderPiece,a.OrderID,a.orderCode,a.orderSource,a.orderType,a.orderLabel,a.deliveryType,a.CargoOrderNo,a.InCreateStatus,a.CreateAwbID,a.CreateAwb,a.CreateDate
+     ,a.doNo,a.shippingCode,a.IsPushOutTag,b.LogisAwbNo,b.LogisID,b.SaleManName,b.SaleCellphone,b.OpenExpressName,b.OpenExpressNum,b.PayClientName
      ,ROW_NUMBER() OVER (PARTITION BY a.OrderID ORDER BY a.CreateDate DESC) AS rn
              From Tbl_Cargo_ContiOrder as a
                       inner join Tbl_Cargo_Order as b
@@ -1833,10 +1831,33 @@ select OrderPiece,a.OrderID,a.orderCode,b.OrderNo as CargoOrderNo
             if (!string.IsNullOrEmpty(entity.IsPushOutTag)) { strSQL += " and a.IsPushOutTag='" + entity.IsPushOutTag + "'"; }
             strSQL += $@" 
              )
-select a.OrderID,a.orderCode,a.doNo,OrderPiece,a.CargoOrderNo
-     ,SaleManName,SaleCellphone
-                From cte as a 
-                group by a.OrderID,a.orderCode,a.doNo,OrderPiece,a.doNo,a.CargoOrderNo,SaleManName,SaleCellphone
+select a.OrderID,a.orderCode,a.orderSource,a.orderType,a.orderLabel,a.deliveryType,a.InCreateStatus
+     ,a.shippingCode,a.IsPushOutTag,a.doNo,OrderPiece
+     ,max(CASE WHEN rn = 1 THEN SaleManName END) as SaleManName
+     ,max(CASE WHEN rn = 1 THEN CreateAwbID END) as CreateAwbID
+     ,max(CASE WHEN rn = 1 THEN CreateAwb END) as CreateAwb
+     ,max(CASE WHEN rn = 1 THEN CreateDate END) as CreateDate
+     ,max(CASE WHEN rn = 1 THEN SaleCellphone END) as SaleCellphone
+     ,max(CASE WHEN rn = 1 THEN OpenExpressName END) as OpenExpressName
+     ,max(CASE WHEN rn = 1 THEN OpenExpressNum END) as OpenExpressNum
+     ,max(CASE WHEN rn = 1 THEN PayClientName END) as PayClientName
+     ,max(CASE WHEN rn = 1 THEN LogisID END) as LogisID
+     ,  STUFF((
+               SELECT ',' + '''' + t2.OrderNo + ''''
+               FROM Tbl_Cargo_Order t2
+               WHERE t2.OpenOrderNo = a.orderCode
+               FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)')
+                       ,1,1,'') as CargoOrderNo
+     ,      STUFF((
+        SELECT ',' + '''' + t2.LogisAwbNo + ''''
+        FROM Tbl_Cargo_Order t2
+        WHERE t2.OpenOrderNo = a.orderCode
+          AND t2.LogisAwbNo IS NOT NULL
+          AND t2.LogisAwbNo <> ''
+        FOR XML PATH(''), TYPE
+    ).value('.', 'NVARCHAR(MAX)'), 1, 1, '') AS LogisAwbNo
+                From cte as a
+                group by a.OrderID,a.orderCode,a.doNo,OrderPiece,a.orderSource,a.orderType,a.orderLabel,a.deliveryType,a.InCreateStatus,a.doNo,a.shippingCode,a.IsPushOutTag
 ";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
@@ -1848,21 +1869,21 @@ select a.OrderID,a.orderCode,a.doNo,OrderPiece,a.CargoOrderNo
                         {
                             OrderID = Convert.ToInt64(idrCount["OrderID"]),
                             orderCode = Convert.ToString(idrCount["orderCode"]),
-                            doNo = Convert.ToString(idrCount["doNo"]),
-                            OrderPiece = Convert.ToInt32(idrCount["OrderPiece"]),
-                            CargoOrderNo = Convert.ToString(idrCount["CargoOrderNo"]),
-                            SaleManName = Convert.ToString(idrCount["SaleManName"]),
-                            SaleCellphone = Convert.ToString(idrCount["SaleCellphone"]),
                             //orderSource = Convert.ToString(idrCount["orderSource"]),
                             //orderType = Convert.ToString(idrCount["orderType"]),
                             //deliveryType = Convert.ToString(idrCount["deliveryType"]),
+                            CargoOrderNo = Convert.ToString(idrCount["CargoOrderNo"]),
                             //InCreateStatus = Convert.ToString(idrCount["InCreateStatus"]),
                             //CreateAwbID = Convert.ToString(idrCount["CreateAwbID"]),
                             //CreateAwb = Convert.ToString(idrCount["CreateAwb"]),
                             //CreateDate = Convert.ToDateTime(idrCount["CreateDate"]),
+                            doNo = Convert.ToString(idrCount["doNo"]),
                             //shippingCode = Convert.ToString(idrCount["shippingCode"]),
                             //IsPushOutTag = Convert.ToString(idrCount["IsPushOutTag"]),
                             //LogisAwbNo = Convert.ToString(idrCount["LogisAwbNo"]),
+                            SaleManName = Convert.ToString(idrCount["SaleManName"]),
+                            SaleCellphone = Convert.ToString(idrCount["SaleCellphone"]),
+                            OrderPiece = Convert.ToInt32(idrCount["OrderPiece"]),
                             //OpenExpressName = Convert.ToString(idrCount["OpenExpressName"]),
                             //OpenExpressNum = Convert.ToString(idrCount["OpenExpressNum"]),
                             //PayClientName = Convert.ToString(idrCount["PayClientName"]),
@@ -1870,20 +1891,7 @@ select a.OrderID,a.orderCode,a.doNo,OrderPiece,a.CargoOrderNo
                     }
                 }
             }
-            var result2 = result
-    .GroupBy(o => new { o.OrderID, o.orderCode, o.doNo, o.OrderPiece })
-    .Select(g => new saleOpenInfoResp
-    {
-        OrderID = g.Key.OrderID,
-        orderCode = g.Key.orderCode,
-        doNo = g.Key.doNo,
-        OrderPiece = g.Key.OrderPiece,
-        CargoOrderNo = $@"'{string.Join("','", g.Select(x => x.CargoOrderNo).Distinct())}'",
-        SaleManName = g.FirstOrDefault().SaleManName,
-        SaleCellphone = g.FirstOrDefault().SaleCellphone,
-    })
-    .ToList();
-            return result2;
+            return result;
         }
 
         /// <summary>
@@ -2704,374 +2712,6 @@ select a.OrderID,a.orderCode,a.doNo,OrderPiece,a.CargoOrderNo
             }
         }
 
-        #endregion
-
-        #region 开思
-
-        public void AddCassMallData(CargoCassMallEntity entity)
-        {
-            try
-            {
-                string strSQL = "insert into Tbl_Cargo_CassMallOrderLog(sourcetype,SourceAction, opdate, resjson) values (@sourcetype,@SourceAction, @opdate, @resjson)";
-                long cdid = 0;
-                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                {
-                    conn.AddInParameter(cmd, "@sourcetype", DbType.Int32, entity.SourceType);
-                    conn.AddInParameter(cmd, "@SourceAction", DbType.String, entity.SourceAction);
-                    conn.AddInParameter(cmd, "@opdate", DbType.DateTime, DateTime.Now);
-                    conn.AddInParameter(cmd, "@resjson", DbType.String, entity.ResJson);
-                    cdid = Convert.ToInt64(conn.ExecuteScalar(cmd));
-                }
-            }
-            catch (Exception EX)
-            {
-
-                throw new ApplicationException(EX.Message);
-            }
-
-        }
-
-        public void AddCassMallOrder(OrderHeader entity)
-        {
-            try
-            {
-                Common.Common.WriteTextLog("CassMall Synchronization 1.1.订单数据保存 Tbl_Cargo_CassMallOrder 保存开始");
-                string strSQL = $@"insert into Tbl_Cargo_CassMallOrder
-                (orderId, orderTypeId, orderTypeIdDesc, orderName, salesChannelEnumId, orderDate, sourceId, createBy, createName, originalSource, originalSourceDesc, statusId, evaluateStatus, statusIdDesc, paymentStatus, paymentStatusDesc, invoiceStatus, orderStoreType, inquiryId, quotationId, amount, actualAmount, discountAmount, salesmanId, salesmanName, remark, carBrandId, carBrandName, companyId, companyName, companyType, companyDisplayName, companyCode, companyStoreId, outerCompanyId, vendorId, storeId, storeName, roleType, storeType)
-            values(@orderId, @orderTypeId, @orderTypeIdDesc, @orderName, @salesChannelEnumId, @orderDate, @sourceId, @createBy, @createName, @originalSource, @originalSourceDesc, @statusId, @evaluateStatus, @statusIdDesc, @paymentStatus, @paymentStatusDesc, @invoiceStatus, @orderStoreType, @inquiryId, @quotationId, @amount, @actualAmount, @discountAmount, @salesmanId, @salesmanName, @remark, @carBrandId, @carBrandName, @companyId, @companyName, @companyType, @companyDisplayName, @companyCode, @companyStoreId, @outerCompanyId, @vendorId, @storeId, @storeName, @roleType, @storeType)
-            ";
-                long cdid = 0;
-                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                {
-                    conn.AddInParameter(cmd, "@orderId", DbType.Int32, entity.OrderId);
-                    conn.AddInParameter(cmd, "@orderTypeId", DbType.String, entity.OrderTypeId);
-                    conn.AddInParameter(cmd, "@orderTypeIdDesc", DbType.String, entity.OrderTypeIdDesc);
-                    conn.AddInParameter(cmd, "@orderName", DbType.String, entity.OrderName);
-                    conn.AddInParameter(cmd, "@salesChannelEnumId", DbType.String, entity.SalesChannelEnumId);
-                    conn.AddInParameter(cmd, "@orderDate", DbType.Int64, entity.OrderDate);
-                    conn.AddInParameter(cmd, "@sourceId", DbType.String, entity.SourceId);
-                    conn.AddInParameter(cmd, "@createBy", DbType.String, entity.CreateBy);
-                    conn.AddInParameter(cmd, "@createName", DbType.String, entity.CreateName);
-                    conn.AddInParameter(cmd, "@originalSource", DbType.String, entity.OriginalSource);
-                    conn.AddInParameter(cmd, "@originalSourceDesc", DbType.String, entity.OriginalSourceDesc);
-                    conn.AddInParameter(cmd, "@statusId", DbType.String, entity.StatusId);
-                    conn.AddInParameter(cmd, "@evaluateStatus", DbType.String, entity.EvaluateStatus);
-                    conn.AddInParameter(cmd, "@statusIdDesc", DbType.String, entity.StatusIdDesc);
-                    conn.AddInParameter(cmd, "@paymentStatus", DbType.String, entity.PaymentStatus);
-                    conn.AddInParameter(cmd, "@paymentStatusDesc", DbType.String, entity.PaymentStatusDesc);
-                    conn.AddInParameter(cmd, "@invoiceStatus", DbType.String, entity.InvoiceStatus);
-                    conn.AddInParameter(cmd, "@orderStoreType", DbType.String, entity.OrderStoreType);
-                    conn.AddInParameter(cmd, "@inquiryId", DbType.String, entity.InquiryId);
-                    conn.AddInParameter(cmd, "@quotationId", DbType.String, entity.QuotationId);
-                    conn.AddInParameter(cmd, "@amount", DbType.String, entity.Amount);
-                    conn.AddInParameter(cmd, "@actualAmount", DbType.String, entity.ActualAmount);
-                    conn.AddInParameter(cmd, "@discountAmount", DbType.String, entity.DiscountAmount);
-                    conn.AddInParameter(cmd, "@salesmanId", DbType.String, entity.SalesmanId);
-                    conn.AddInParameter(cmd, "@salesmanName", DbType.String, entity.SalesmanName);
-                    conn.AddInParameter(cmd, "@remark", DbType.String, entity.Remark);
-                    conn.AddInParameter(cmd, "@carBrandId", DbType.String, entity.CarBrandId);
-                    conn.AddInParameter(cmd, "@carBrandName", DbType.String, entity.CarBrandName);
-                    cdid = Convert.ToInt64(conn.ExecuteScalar(cmd));
-                }
-
-                if (entity.Buyer != null)
-                {
-                    Common.Common.WriteTextLog("CassMall Synchronization 1.1.1.订单买家信息保存 Tbl_Cargo_CassMallOrderBuyer 保存开始");
-                    strSQL = $@"insert into Tbl_Cargo_CassMallOrderBuyer(companyId, companyName, companyType, companyDisplayName, companyCode, companyStoreId, outerCompanyId, CID) 
-                    values(@companyId,@companyName,@companyType,@companyDisplayName,@companyCode,@companyStoreId,@outerCompanyId,@CID)
-                    ";
-                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                    {
-                        conn.AddInParameter(cmd, "@companyId", DbType.String, entity.Buyer.CompanyId);
-                        conn.AddInParameter(cmd, "@companyName", DbType.String, entity.Buyer.CompanyName);
-                        conn.AddInParameter(cmd, "@companyType", DbType.String, entity.Buyer.CompanyType);
-                        conn.AddInParameter(cmd, "@companyDisplayName", DbType.String, entity.Buyer.CompanyDisplayName);
-                        conn.AddInParameter(cmd, "@companyCode", DbType.String, entity.Buyer.CompanyCode);
-                        conn.AddInParameter(cmd, "@companyStoreId", DbType.String, entity.Buyer.CompanyStoreId);
-                        conn.AddInParameter(cmd, "@outerCompanyId", DbType.String, entity.Buyer.OuterCompanyId);
-                        conn.AddInParameter(cmd, "@CID", DbType.Int64, cdid);
-                        Convert.ToInt64(conn.ExecuteScalar(cmd));
-                    }
-                }
-
-                if (entity.Seller != null)
-                {
-                    Common.Common.WriteTextLog("CassMall Synchronization 1.1.2.订单卖家信息保存 Tbl_Cargo_CassMallOrderSeller 保存开始");
-                    strSQL = $@"insert into Tbl_Cargo_CassMallOrderSeller(companyId, companyName, companyType, companyDisplayName, companyCode, companyStoreId, vendorId, CID) 
-                    values(@companyId,@companyName,@companyType,@companyDisplayName,@companyCode,@companyStoreId,@vendorId,@CID)
-                    ";
-                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                    {
-                        conn.AddInParameter(cmd, "@companyId", DbType.String, entity.Seller.CompanyId);
-                        conn.AddInParameter(cmd, "@companyName", DbType.String, entity.Seller.CompanyName);
-                        conn.AddInParameter(cmd, "@companyType", DbType.String, entity.Seller.CompanyType);
-                        conn.AddInParameter(cmd, "@companyDisplayName", DbType.String, entity.Seller.CompanyDisplayName);
-                        conn.AddInParameter(cmd, "@companyCode", DbType.String, entity.Seller.CompanyCode);
-                        conn.AddInParameter(cmd, "@companyStoreId", DbType.String, entity.Seller.CompanyStoreId);
-                        conn.AddInParameter(cmd, "@vendorId", DbType.String, entity.Seller.VendorId);
-                        conn.AddInParameter(cmd, "@CID", DbType.Int64, cdid);
-                        Convert.ToInt64(conn.ExecuteScalar(cmd));
-                    }
-                }
-
-                if (entity.FulfillStore != null)
-                {
-                    Common.Common.WriteTextLog("CassMall Synchronization 1.1.3.订单履约店铺信息保存 Tbl_Cargo_CassMallOrderFulfillStore 保存开始");
-                    strSQL = $@"insert into Tbl_Cargo_CassMallOrderFulfillStore(vendorId, storeId, storeName, roleType, storeType, CID) 
-                    values(@vendorId, @storeId, @storeName, @roleType, @storeType, @CID)
-                    ";
-                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                    {
-                        conn.AddInParameter(cmd, "@vendorId", DbType.String, entity.FulfillStore.VendorId);
-                        conn.AddInParameter(cmd, "@storeId", DbType.String, entity.FulfillStore.StoreId);
-                        conn.AddInParameter(cmd, "@storeName", DbType.String, entity.FulfillStore.StoreName);
-                        conn.AddInParameter(cmd, "@roleType", DbType.String, entity.FulfillStore.RoleType);
-                        conn.AddInParameter(cmd, "@storeType", DbType.String, entity.FulfillStore.StoreType);
-                        conn.AddInParameter(cmd, "@CID", DbType.Int64, cdid);
-                        Convert.ToInt64(conn.ExecuteScalar(cmd));
-                    }
-                }
-            }
-            catch (Exception EX)
-            {
-
-                throw new ApplicationException(EX.Message);
-            }
-
-        }
-
-        public void AddCassMallOrderGoods(OrderItem entity)
-        {
-            try
-            {
-                Common.Common.WriteTextLog("CassMall Synchronization 1.2.订单明细数据保存 Tbl_Cargo_CassMallOrderGoods 保存开始");
-                string strSQL = $@"insert into Tbl_Cargo_CassMallOrderGoods(orderId, orderItemSeqId, quoteId, quantity, actualPrice, originalSellerPrice, itemDescription, cancelQuantity, orderItemTypeId, checkInventory, postageStatus, customerProductId, productId, productName, brandId, brandName, quality, qualityName, internalNum, partsName, partsNum, originalPartsNum, replacePartsNum, afterSalePolicy, dispatch, dispatchTime, thirdOnlyCodes, thirdSecrets, facilityId, facilityName, waybillOnlineFlag, thirdPartySystem)
-values (@orderId,@orderItemSeqId,@quoteId,@quantity,@actualPrice,@originalSellerPrice,@itemDescription,@cancelQuantity,@orderItemTypeId,@checkInventory,@postageStatus,@customerProductId,@productId,@productName,@brandId,@brandName,@quality,@qualityName,@internalNum,@partsName,@partsNum,@originalPartsNum,@replacePartsNum,@afterSalePolicy,@dispatch,@dispatchTime,@thirdOnlyCodes,@thirdSecrets,@facilityId,@facilityName,@waybillOnlineFlag, @thirdPartySystem) 
-";
-                long cdid = 0;
-                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                {
-                    conn.AddInParameter(cmd, "@orderId", DbType.String, entity.OrderId);
-                    conn.AddInParameter(cmd, "@orderItemSeqId", DbType.String, entity.OrderItemSeqId);
-                    conn.AddInParameter(cmd, "@quoteId", DbType.String, entity.QuoteId);
-                    conn.AddInParameter(cmd, "@quantity", DbType.Decimal, entity.Quantity);
-                    conn.AddInParameter(cmd, "@actualPrice", DbType.Decimal, entity.ActualPrice);
-                    conn.AddInParameter(cmd, "@originalSellerPrice", DbType.Decimal, entity.OriginalSellerPrice);
-                    conn.AddInParameter(cmd, "@itemDescription", DbType.String, entity.ItemDescription);
-                    conn.AddInParameter(cmd, "@cancelQuantity", DbType.Decimal, entity.CancelQuantity);
-                    conn.AddInParameter(cmd, "@orderItemTypeId", DbType.String, entity.OrderItemTypeId);
-                    conn.AddInParameter(cmd, "@checkInventory", DbType.String, entity.CheckInventory);
-                    conn.AddInParameter(cmd, "@postageStatus", DbType.String, entity.PostageStatus);
-                    conn.AddInParameter(cmd, "@customerProductId", DbType.String, entity.CustomerProductId);
-                    conn.AddInParameter(cmd, "@productId", DbType.String, entity.ProductId);
-                    conn.AddInParameter(cmd, "@productName", DbType.String, entity.ProductName);
-                    conn.AddInParameter(cmd, "@brandId", DbType.String, entity.BrandId);
-                    conn.AddInParameter(cmd, "@brandName", DbType.String, entity.BrandName);
-                    conn.AddInParameter(cmd, "@quality", DbType.String, entity.Quality);
-                    conn.AddInParameter(cmd, "@qualityName", DbType.String, entity.QualityName);
-                    conn.AddInParameter(cmd, "@internalNum", DbType.String, entity.InternalNum);
-                    conn.AddInParameter(cmd, "@partsName", DbType.String, entity.PartsName);
-                    conn.AddInParameter(cmd, "@partsNum", DbType.String, entity.PartsNum);
-                    conn.AddInParameter(cmd, "@originalPartsNum", DbType.String, entity.OriginalPartsNum);
-                    conn.AddInParameter(cmd, "@replacePartsNum", DbType.String, entity.ReplacePartsNum);
-                    conn.AddInParameter(cmd, "@afterSalePolicy", DbType.String, entity.AfterSalePolicy);
-                    conn.AddInParameter(cmd, "@dispatch", DbType.Boolean, entity.Dispatch);
-                    conn.AddInParameter(cmd, "@dispatchTime", DbType.String, entity.DispatchTime);
-                    conn.AddInParameter(cmd, "@thirdPartySystem", DbType.String, entity.ThirdPartySystemStr);
-
-                    cdid = Convert.ToInt64(conn.ExecuteScalar(cmd));
-                }
-
-                if (entity.ItemInventories != null && entity.ItemInventories.Count > 0)
-                {
-                    Common.Common.WriteTextLog("CassMall Synchronization 1.2.1.订单头条目发货信息保存 Tbl_Cargo_CassMallOrderItemInventories 保存开始");
-                    foreach (var item2 in entity.ItemInventories)
-                    {
-                        strSQL = $@"insert into Tbl_Cargo_CassMallOrderItemInventories(orderId, orderItemSeqId, facilityId, facilityName, quantity, waybillOnlineFlag,SID) 
-                        values(@orderId, @orderItemSeqId, @facilityId, @facilityName, @quantity, @waybillOnlineFlag)
-                        ";
-                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                        {
-                            conn.AddInParameter(cmd, "@orderId", DbType.String, item2.OrderId);
-                            conn.AddInParameter(cmd, "@orderItemSeqId", DbType.String, item2.OrderItemSeqId);
-                            conn.AddInParameter(cmd, "@facilityId", DbType.String, item2.FacilityId);
-                            conn.AddInParameter(cmd, "@facilityName", DbType.String, item2.FacilityName);
-                            conn.AddInParameter(cmd, "@quantity", DbType.Decimal, item2.Quantity);
-                            conn.AddInParameter(cmd, "@waybillOnlineFlag", DbType.Boolean, item2.WaybillOnlineFlag);
-                            conn.AddInParameter(cmd, "@SID", DbType.Int64, cdid);
-                            Convert.ToInt64(conn.ExecuteScalar(cmd));
-                        }
-                    }
-
-                }
-            }
-            catch (Exception EX)
-            {
-
-                throw new ApplicationException(EX.Message);
-            }
-
-        }
-
-        public void AddCassMallGiftItems(OrderGiftItem entity)
-        {
-            try
-            {
-                Common.Common.WriteTextLog("CassMall Synchronization 2.1.订单赠品条目列表保存 Tbl_Cargo_CassMallOrderGiftItems 保存开始");
-                string strSQL = $@"insert into Tbl_Cargo_CassMallOrderGiftItems(giftCode, giftName, originalPrice, quantity, isSellProduct, orderId) 
-                                    values (@giftCode, @giftName, @originalPrice, @quantity, @isSellProduct, @orderId) ";
-                long cdid = 0;
-                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                {
-                    conn.AddInParameter(cmd, "@giftCode", DbType.String, entity.GiftCode);
-                    conn.AddInParameter(cmd, "@giftName", DbType.String, entity.GiftName);
-                    conn.AddInParameter(cmd, "@originalPrice", DbType.Decimal, entity.OriginalPrice);
-                    conn.AddInParameter(cmd, "@quantity", DbType.Int32, entity.Quantity);
-                    conn.AddInParameter(cmd, "@isSellProduct", DbType.Boolean, entity.IsSellProduct);
-                    conn.AddInParameter(cmd, "@orderId", DbType.String, entity.orderId);
-
-                    cdid = Convert.ToInt64(conn.ExecuteScalar(cmd));
-                }
-            }
-            catch (Exception EX)
-            {
-
-                throw new ApplicationException(EX.Message);
-            }
-
-        }
-
-        public void AddCassMallPostalAddress(OrderPostalAddress entity)
-        {
-            try
-            {
-                Common.Common.WriteTextLog("CassMall Synchronization 3.1.订单配送信息保存 Tbl_Cargo_CassMallOrderPostalAddress 保存开始");
-                string strSQL = $@"insert into Tbl_Cargo_CassMallOrderPostalAddress(orderId, id, houseNumber, receiverName, provinceGeoId, provinceGeoName, cityGeoId, cityGeoName, countyGeoId, countyGeoName, villageGeoId, villageGeoName, address, contactTel, contactNumber, longitude, latitude, accurate)
-values(@orderId,@id,@houseNumber,@receiverName,@provinceGeoId,@provinceGeoName,@cityGeoId,@cityGeoName,@countyGeoId,@countyGeoName,@villageGeoId,@villageGeoName,@address,@contactTel,@contactNumber,@longitude,@latitude,@accurate) 
- ";
-                long cdid = 0;
-                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                {
-                    conn.AddInParameter(cmd, "@orderId", DbType.String, entity.OrderId);
-                    conn.AddInParameter(cmd, "@id", DbType.String, entity.Id);
-                    conn.AddInParameter(cmd, "@houseNumber", DbType.Decimal, entity.HouseNumber);
-                    conn.AddInParameter(cmd, "@receiverName", DbType.Int32, entity.ReceiverName);
-                    conn.AddInParameter(cmd, "@provinceGeoId", DbType.Boolean, entity.ProvinceGeoId);
-                    conn.AddInParameter(cmd, "@provinceGeoName", DbType.String, entity.ProvinceGeoName);
-                    conn.AddInParameter(cmd, "@cityGeoId", DbType.String, entity.CityGeoId);
-                    conn.AddInParameter(cmd, "@cityGeoName", DbType.String, entity.CityGeoName);
-                    conn.AddInParameter(cmd, "@countyGeoId", DbType.Decimal, entity.CountyGeoId);
-                    conn.AddInParameter(cmd, "@countyGeoName", DbType.Int32, entity.CountyGeoName);
-                    conn.AddInParameter(cmd, "@villageGeoId", DbType.Boolean, entity.VillageGeoId);
-                    conn.AddInParameter(cmd, "@villageGeoName", DbType.String, entity.VillageGeoName);
-                    conn.AddInParameter(cmd, "@address", DbType.String, entity.Address);
-                    conn.AddInParameter(cmd, "@contactTel", DbType.String, entity.ContactTel);
-                    conn.AddInParameter(cmd, "@contactNumber", DbType.Decimal, entity.ContactNumber);
-                    conn.AddInParameter(cmd, "@longitude", DbType.Double, entity.Longitude);
-                    conn.AddInParameter(cmd, "@latitude", DbType.Double, entity.Latitude);
-                    conn.AddInParameter(cmd, "@accurate", DbType.Boolean, entity.Accurate);
-
-                    cdid = Convert.ToInt64(conn.ExecuteScalar(cmd));
-                }
-                if (entity.OrderWayDetails != null && entity.OrderWayDetails.Count > 0)
-                {
-                    Common.Common.WriteTextLog("CassMall Synchronization 3.1.1.订单配送物流信息保存 Tbl_Cargo_CassMallOrderWayDetails 保存开始");
-                    foreach (var item2 in entity.OrderWayDetails)
-                    {
-                        strSQL = $@"insert into Tbl_Cargo_CassMallOrderWayDetails(orderId, id, facilityId, facilityName, companyId, companyName, locationId, locationName, transportationCode, transportationName, deliverType, landingLogisticsLocationCode, landingLogisticsLocationName, displayLocation, wholion, wholionServiceType, wholionCarModel, wholionServiceCar, wholionLineShiftCode, distance, timeEfficiency, arrivalTime, wholionLocationId, wholionLocationName, feeAmount,PID)
-values(@orderId,@id,@facilityId,@facilityName,@companyId,@companyName,@locationId,@locationName,@transportationCode,@transportationName,@deliverType,@landingLogisticsLocationCode,@landingLogisticsLocationName,@displayLocation,@wholion,@wholionServiceType,@wholionCarModel,@wholionServiceCar,@wholionLineShiftCode,@distance,@timeEfficiency,@arrivalTime,@wholionLocationId,@wholionLocationName,@feeAmount,@PID)
-                        ";
-                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                        {
-                            conn.AddInParameter(cmd, "@orderId", DbType.String, item2.OrderId);
-                            conn.AddInParameter(cmd, "@id", DbType.String, item2.Id);
-                            conn.AddInParameter(cmd, "@facilityId", DbType.String, item2.FacilityId);
-                            conn.AddInParameter(cmd, "@facilityName", DbType.String, item2.FacilityName);
-                            conn.AddInParameter(cmd, "@companyId", DbType.String, item2.CompanyId);
-                            conn.AddInParameter(cmd, "@companyName", DbType.String, item2.CompanyName);
-                            conn.AddInParameter(cmd, "@locationId", DbType.String, item2.LocationId);
-                            conn.AddInParameter(cmd, "@locationName", DbType.String, item2.LocationName);
-                            conn.AddInParameter(cmd, "@transportationCode", DbType.String, item2.TransportationCode);
-                            conn.AddInParameter(cmd, "@transportationName", DbType.String, item2.TransportationName);
-                            conn.AddInParameter(cmd, "@deliverType", DbType.String, item2.DeliverType);
-                            conn.AddInParameter(cmd, "@landingLogisticsLocationCode", DbType.String, item2.LandingLogisticsLocationCode);
-                            conn.AddInParameter(cmd, "@landingLogisticsLocationName", DbType.String, item2.LandingLogisticsLocationName);
-                            conn.AddInParameter(cmd, "@displayLocation", DbType.String, item2.DisplayLocation);
-                            conn.AddInParameter(cmd, "@wholion", DbType.Boolean, item2.Wholion);
-                            conn.AddInParameter(cmd, "@wholionServiceType", DbType.String, item2.WholionServiceType);
-                            conn.AddInParameter(cmd, "@wholionCarModel", DbType.String, item2.WholionCarModel);
-                            conn.AddInParameter(cmd, "@wholionServiceCar", DbType.String, item2.WholionServiceCar);
-                            conn.AddInParameter(cmd, "@wholionLineShiftCode", DbType.String, item2.WholionLineShiftCode);
-                            conn.AddInParameter(cmd, "@distance", DbType.String, item2.Distance);
-                            conn.AddInParameter(cmd, "@timeEfficiency", DbType.String, item2.TimeEfficiency);
-                            conn.AddInParameter(cmd, "@arrivalTime", DbType.String, item2.ArrivalTime);
-                            conn.AddInParameter(cmd, "@wholionLocationId", DbType.String, item2.WholionLocationId);
-                            conn.AddInParameter(cmd, "@wholionLocationName", DbType.String, item2.WholionLocationName);
-                            conn.AddInParameter(cmd, "@feeAmount", DbType.Decimal, item2.FeeAmount);
-                            conn.AddInParameter(cmd, "@PID", DbType.Int64, cdid);
-                            Convert.ToInt64(conn.ExecuteScalar(cmd));
-                        }
-                    }
-
-                }
-            }
-            catch (Exception EX)
-            {
-
-                throw new ApplicationException(EX.Message);
-            }
-
-        }
-
-        public void AddCassMallItemAdjustments(OrderItemAdjustment entity)
-        {
-            try
-            {
-                Common.Common.WriteTextLog("CassMall Synchronization 4.1.订单条目优惠列表保存 Tbl_Cargo_CassMallOrderItemAdjustments 保存开始");
-                string strSQL = $@"insert into Tbl_Cargo_CassMallOrderItemAdjustments(orderId,orderItemSeqId,adjustmentType,adjustmentDesc,adjustmentAmount)
-VALUES(@orderId,@orderItemSeqId,@adjustmentType,@adjustmentDesc,@adjustmentAmount)";
-                long cdid = 0;
-                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                {
-                    conn.AddInParameter(cmd, "@orderId", DbType.String, entity.OrderId);
-                    conn.AddInParameter(cmd, "@orderItemSeqId", DbType.String, entity.OrderItemSeqId);
-                    conn.AddInParameter(cmd, "@adjustmentType", DbType.Decimal, entity.AdjustmentType);
-                    conn.AddInParameter(cmd, "@adjustmentDesc", DbType.Int32, entity.AdjustmentDesc);
-                    conn.AddInParameter(cmd, "@adjustmentAmount", DbType.Boolean, entity.AdjustmentAmount);
-
-                    cdid = Convert.ToInt64(conn.ExecuteScalar(cmd));
-                }
-            }
-            catch (Exception EX)
-            {
-
-                throw new ApplicationException(EX.Message);
-            }
-
-        }
-
-
-        #endregion
-
-        #region 系统数据处理
-        /// <summary>
-        /// 处理系统自有和进驻的数据
-        /// </summary>
-        public void HandleGoodsClassData()
-        {
-            string strSQL = "update Tbl_Cargo_Product set GoodsClass=0 where GoodsClass!=0 and SuppClientNum in (select ClientNum from Tbl_Cargo_Client where UpClientID=1 and ClientType=4)";
-            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-            {
-                conn.ExecuteNonQuery(cmd);
-            }
-
-
-            string strSQLOut = "update Tbl_Cargo_Product set GoodsClass=1 where GoodsClass!=1 and SuppClientNum in (100143,980873,982170,394992,270319,484582,349629,989827,832291,958950,630009,172833,251253,643493,307811)";
-            using (DbCommand cmd = conn.GetSqlStringCommond(strSQLOut))
-            {
-                conn.ExecuteNonQuery(cmd);
-            }
-        }
         #endregion
     }
 }
