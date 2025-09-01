@@ -577,59 +577,59 @@
                 if (RoleCName.indexOf("汕头科矿") < 0) {
 
 
-                    //columns.push({
-                    //    title: '物权方', field: 'OwnerShip', width: '70px', formatter: function (val, row, index) {
-                    //        if (val == "1") { return "<span title='昆明云仓'>昆明云仓</span>"; }
-                    //        else if (val == "2") { return "<span title='龙华云仓'>龙华云仓</span>"; }
-                    //        else if (val == "3") { return "<span title='东平云仓'>东平云仓</span>"; }
-                    //        else if (val == "4") { return "<span title='沙井云仓'>沙井云仓</span>"; }
-                    //        else if (val == "5") { return "<span title='星沙云仓'>星沙云仓</span>"; }
-                    //        else if (val == "6") { return "<span title='增城云仓'>增城云仓</span>"; }
-                    //        else if (val == "7") { return "<span title='西安云仓'>西安云仓</span>"; }
-                    //        else if (val == "8") { return "<span title='汉口云仓'>汉口云仓</span>"; }
-                    //        else if (val == "9") { return "<span title='顺捷云仓'>顺捷云仓</span>"; }
-                    //        else if (val == "10") { return "<span title='汕头云仓'>汕头云仓</span>"; }
-                    //        else if (val == "11") { return "<span title='渭南云仓'>渭南云仓</span>"; }
-                    //        else if (val == "12") { return "<span title='北辰云仓'>北辰云仓</span>"; }
-                    //        else if (val == "13") { return "<span title='南沙云仓'>南沙云仓</span>"; }
-                    //        else if (val == "14") { return "<span title='从化云仓'>从化云仓</span>"; }
-                    //        else if (val == "15") { return "<span title='南海云仓'>南海云仓</span>"; }
-                    //        else if (val == "16") { return "<span title='大兴云仓'>大兴云仓</span>"; }
-                    //        else if (val == "17") { return "<span title='经开云仓'>经开云仓</span>"; }
-                    //        else if (val == "18") { return "<span title='香坊云仓'>香坊云仓</span>"; }
-                    //        else if (val == "19") { return "<span title='栾城云仓'>栾城云仓</span>"; }
-                    //        else if (val == "20") { return "<span title='铁西云仓'>铁西云仓</span>"; }
-                    //        else if (val == "21") { return "<span title='济南云仓'>济南云仓</span>"; }
-                    //        else if (val == "22") { return "<span title='太原云仓'>太原云仓</span>"; }
-                    //        else if (val == "23") { return "<span title='衡阳云仓'>衡阳云仓</span>"; }
-                    //        else if (val == "24") { return "<span title='嘉定云仓'>嘉定云仓</span>"; }
-                    //        else if (val == "25") { return "<span title='常熟云仓'>常熟云仓</span>"; }
-                    //        else if (val == "26") { return "<span title='杭州云仓'>杭州云仓</span>"; }
-                    //        else if (val == "27") { return "<span title='南山云仓'>南山云仓</span>"; }
-                    //        else if (val == "28") { return "<span title='双流云仓'>双流云仓</span>"; }
-                    //        else if (val == "29") { return "<span title='江宁云仓'>江宁云仓</span>"; }
-                    //        else if (val == "30") { return "<span title='连江云仓'>连江云仓</span>"; }
-                    //        else if (val == "31") { return "<span title='兰州云仓'>兰州云仓</span>"; }
-                    //        else if (val == "32") { return "<span title='银川云仓'>银川云仓</span>"; }
-                    //        else if (val == "33") { return "<span title='新疆云仓'>新疆云仓</span>"; }
-                    //        else if (val == "34") { return "<span title='南开云仓'>南开云仓</span>"; }
-                    //        else if (val == "35") { return "<span title='兴宁云仓'>兴宁云仓</span>"; }
-                    //        else if (val == "36") { return "<span title='花都云仓'>花都云仓</span>"; }
-                    //        else if (val == "37") { return "<span title='蔡甸云仓'>蔡甸云仓</span>"; }
-                    //        else if (val == "38") { return "<span title='光明云仓'>光明云仓</span>"; }
-                    //        else if (val == "39") { return "<span title='秀英云仓'>秀英云仓</span>"; }
-                    //        else if (val == "40") { return "<span title='贵阳云仓'>贵阳云仓</span>"; }
-                    //        else if (val == "41") { return "<span title='揭阳云仓'>揭阳云仓</span>"; }
-                    //        else if (val == "42") { return "<span title='南宁云仓'>南宁云仓</span>"; }
-                    //        else if (val == "43") { return "<span title='韶关云仓'>韶关云仓</span>"; }
-                    //        else if (val == "44") { return "<span title='肇庆云仓'>肇庆云仓</span>"; }
-                    //        else if (val == "45") { return "<span title='广州狄乐OE'>广州狄乐OE</span>"; }
-                    //        else if (val == "46") { return "<span title='广州狄乐RE'>广州狄乐RE</span>"; }
-                    //        else if (val == "47") { return "<span title='湖北狄乐RE'>湖北狄乐RE</span>"; }
-                    //        else if (val == "48") { return "<span title='湖南狄乐RE'>湖南狄乐RE</span>"; }
-                    //        else { return ""; }
-                    //    }
-                    //});
+                    columns.push({
+                        title: '物权方', field: 'OwnerShip', width: '70px', formatter: function (val, row, index) {
+                            if (val == "1") { return "<span title='昆明云仓'>昆明云仓</span>"; }
+                            else if (val == "2") { return "<span title='龙华云仓'>龙华云仓</span>"; }
+                            else if (val == "3") { return "<span title='东平云仓'>东平云仓</span>"; }
+                            else if (val == "4") { return "<span title='沙井云仓'>沙井云仓</span>"; }
+                            else if (val == "5") { return "<span title='星沙云仓'>星沙云仓</span>"; }
+                            else if (val == "6") { return "<span title='增城云仓'>增城云仓</span>"; }
+                            else if (val == "7") { return "<span title='西安云仓'>西安云仓</span>"; }
+                            else if (val == "8") { return "<span title='汉口云仓'>汉口云仓</span>"; }
+                            else if (val == "9") { return "<span title='顺捷云仓'>顺捷云仓</span>"; }
+                            else if (val == "10") { return "<span title='汕头云仓'>汕头云仓</span>"; }
+                            else if (val == "11") { return "<span title='渭南云仓'>渭南云仓</span>"; }
+                            else if (val == "12") { return "<span title='北辰云仓'>北辰云仓</span>"; }
+                            else if (val == "13") { return "<span title='南沙云仓'>南沙云仓</span>"; }
+                            else if (val == "14") { return "<span title='从化云仓'>从化云仓</span>"; }
+                            else if (val == "15") { return "<span title='南海云仓'>南海云仓</span>"; }
+                            else if (val == "16") { return "<span title='大兴云仓'>大兴云仓</span>"; }
+                            else if (val == "17") { return "<span title='经开云仓'>经开云仓</span>"; }
+                            else if (val == "18") { return "<span title='香坊云仓'>香坊云仓</span>"; }
+                            else if (val == "19") { return "<span title='栾城云仓'>栾城云仓</span>"; }
+                            else if (val == "20") { return "<span title='铁西云仓'>铁西云仓</span>"; }
+                            else if (val == "21") { return "<span title='济南云仓'>济南云仓</span>"; }
+                            else if (val == "22") { return "<span title='太原云仓'>太原云仓</span>"; }
+                            else if (val == "23") { return "<span title='衡阳云仓'>衡阳云仓</span>"; }
+                            else if (val == "24") { return "<span title='嘉定云仓'>嘉定云仓</span>"; }
+                            else if (val == "25") { return "<span title='常熟云仓'>常熟云仓</span>"; }
+                            else if (val == "26") { return "<span title='杭州云仓'>杭州云仓</span>"; }
+                            else if (val == "27") { return "<span title='南山云仓'>南山云仓</span>"; }
+                            else if (val == "28") { return "<span title='双流云仓'>双流云仓</span>"; }
+                            else if (val == "29") { return "<span title='江宁云仓'>江宁云仓</span>"; }
+                            else if (val == "30") { return "<span title='连江云仓'>连江云仓</span>"; }
+                            else if (val == "31") { return "<span title='兰州云仓'>兰州云仓</span>"; }
+                            else if (val == "32") { return "<span title='银川云仓'>银川云仓</span>"; }
+                            else if (val == "33") { return "<span title='新疆云仓'>新疆云仓</span>"; }
+                            else if (val == "34") { return "<span title='南开云仓'>南开云仓</span>"; }
+                            else if (val == "35") { return "<span title='兴宁云仓'>兴宁云仓</span>"; }
+                            else if (val == "36") { return "<span title='花都云仓'>花都云仓</span>"; }
+                            else if (val == "37") { return "<span title='蔡甸云仓'>蔡甸云仓</span>"; }
+                            else if (val == "38") { return "<span title='光明云仓'>光明云仓</span>"; }
+                            else if (val == "39") { return "<span title='秀英云仓'>秀英云仓</span>"; }
+                            else if (val == "40") { return "<span title='贵阳云仓'>贵阳云仓</span>"; }
+                            else if (val == "41") { return "<span title='揭阳云仓'>揭阳云仓</span>"; }
+                            else if (val == "42") { return "<span title='南宁云仓'>南宁云仓</span>"; }
+                            else if (val == "43") { return "<span title='韶关云仓'>韶关云仓</span>"; }
+                            else if (val == "44") { return "<span title='肇庆云仓'>肇庆云仓</span>"; }
+                            else if (val == "45") { return "<span title='广州狄乐OE'>广州狄乐OE</span>"; }
+                            else if (val == "46") { return "<span title='广州狄乐RE'>广州狄乐RE</span>"; }
+                            else if (val == "47") { return "<span title='湖北狄乐RE'>湖北狄乐RE</span>"; }
+                            else if (val == "48") { return "<span title='湖南狄乐RE'>湖南狄乐RE</span>"; }
+                            else { return ""; }
+                        }
+                    });
                     columns.push({
                         title: '业务类型(物权)', field: 'GoodsClass', width: '80px', formatter: function (val, row, index) {
                             if (val == "0") { return "<span title='自有'>自有</span>"; }
@@ -1114,59 +1114,59 @@
                         }
                     });
                 }
-                //columns.push({
-                //    title: '物权方', field: 'OwnerShip', width: '70px', formatter: function (val, row, index) {
-                //        if (val == "1") { return "<span title='昆明云仓'>昆明云仓</span>"; }
-                //        else if (val == "2") { return "<span title='龙华云仓'>龙华云仓</span>"; }
-                //        else if (val == "3") { return "<span title='东平云仓'>东平云仓</span>"; }
-                //        else if (val == "4") { return "<span title='沙井云仓'>沙井云仓</span>"; }
-                //        else if (val == "5") { return "<span title='星沙云仓'>星沙云仓</span>"; }
-                //        else if (val == "6") { return "<span title='增城云仓'>增城云仓</span>"; }
-                //        else if (val == "7") { return "<span title='西安云仓'>西安云仓</span>"; }
-                //        else if (val == "8") { return "<span title='汉口云仓'>汉口云仓</span>"; }
-                //        else if (val == "9") { return "<span title='顺捷云仓'>顺捷云仓</span>"; }
-                //        else if (val == "10") { return "<span title='汕头云仓'>汕头云仓</span>"; }
-                //        else if (val == "11") { return "<span title='渭南云仓'>渭南云仓</span>"; }
-                //        else if (val == "12") { return "<span title='北辰云仓'>北辰云仓</span>"; }
-                //        else if (val == "13") { return "<span title='南沙云仓'>南沙云仓</span>"; }
-                //        else if (val == "14") { return "<span title='从化云仓'>从化云仓</span>"; }
-                //        else if (val == "15") { return "<span title='南海云仓'>南海云仓</span>"; }
-                //        else if (val == "16") { return "<span title='大兴云仓'>大兴云仓</span>"; }
-                //        else if (val == "17") { return "<span title='经开云仓'>经开云仓</span>"; }
-                //        else if (val == "18") { return "<span title='香坊云仓'>香坊云仓</span>"; }
-                //        else if (val == "19") { return "<span title='栾城云仓'>栾城云仓</span>"; }
-                //        else if (val == "20") { return "<span title='铁西云仓'>铁西云仓</span>"; }
-                //        else if (val == "21") { return "<span title='济南云仓'>济南云仓</span>"; }
-                //        else if (val == "22") { return "<span title='太原云仓'>太原云仓</span>"; }
-                //        else if (val == "23") { return "<span title='衡阳云仓'>衡阳云仓</span>"; }
-                //        else if (val == "24") { return "<span title='嘉定云仓'>嘉定云仓</span>"; }
-                //        else if (val == "25") { return "<span title='常熟云仓'>常熟云仓</span>"; }
-                //        else if (val == "26") { return "<span title='杭州云仓'>杭州云仓</span>"; }
-                //        else if (val == "27") { return "<span title='南山云仓'>南山云仓</span>"; }
-                //        else if (val == "28") { return "<span title='双流云仓'>双流云仓</span>"; }
-                //        else if (val == "29") { return "<span title='江宁云仓'>江宁云仓</span>"; }
-                //        else if (val == "30") { return "<span title='连江云仓'>连江云仓</span>"; }
-                //        else if (val == "31") { return "<span title='兰州云仓'>兰州云仓</span>"; }
-                //        else if (val == "32") { return "<span title='银川云仓'>银川云仓</span>"; }
-                //        else if (val == "33") { return "<span title='新疆云仓'>新疆云仓</span>"; }
-                //        else if (val == "34") { return "<span title='南开云仓'>南开云仓</span>"; }
-                //        else if (val == "35") { return "<span title='兴宁云仓'>兴宁云仓</span>"; }
-                //        else if (val == "36") { return "<span title='花都云仓'>花都云仓</span>"; }
-                //        else if (val == "37") { return "<span title='蔡甸云仓'>蔡甸云仓</span>"; }
-                //        else if (val == "38") { return "<span title='光明云仓'>光明云仓</span>"; }
-                //        else if (val == "39") { return "<span title='秀英云仓'>秀英云仓</span>"; }
-                //        else if (val == "40") { return "<span title='贵阳云仓'>贵阳云仓</span>"; }
-                //        else if (val == "41") { return "<span title='揭阳云仓'>揭阳云仓</span>"; }
-                //        else if (val == "42") { return "<span title='南宁云仓'>南宁云仓</span>"; }
-                //        else if (val == "43") { return "<span title='韶关云仓'>韶关云仓</span>"; }
-                //        else if (val == "44") { return "<span title='肇庆云仓'>肇庆云仓</span>"; }
-                //        else if (val == "45") { return "<span title='广州狄乐OE'>广州狄乐OE</span>"; }
-                //        else if (val == "46") { return "<span title='广州狄乐RE'>广州狄乐RE</span>"; }
-                //        else if (val == "47") { return "<span title='湖北狄乐RE'>湖北狄乐RE</span>"; }
-                //        else if (val == "48") { return "<span title='湖南狄乐RE'>湖南狄乐RE</span>"; }
-                //        else { return ""; }
-                //    }
-                //});
+                columns.push({
+                    title: '物权方', field: 'OwnerShip', width: '70px', formatter: function (val, row, index) {
+                        if (val == "1") { return "<span title='昆明云仓'>昆明云仓</span>"; }
+                        else if (val == "2") { return "<span title='龙华云仓'>龙华云仓</span>"; }
+                        else if (val == "3") { return "<span title='东平云仓'>东平云仓</span>"; }
+                        else if (val == "4") { return "<span title='沙井云仓'>沙井云仓</span>"; }
+                        else if (val == "5") { return "<span title='星沙云仓'>星沙云仓</span>"; }
+                        else if (val == "6") { return "<span title='增城云仓'>增城云仓</span>"; }
+                        else if (val == "7") { return "<span title='西安云仓'>西安云仓</span>"; }
+                        else if (val == "8") { return "<span title='汉口云仓'>汉口云仓</span>"; }
+                        else if (val == "9") { return "<span title='顺捷云仓'>顺捷云仓</span>"; }
+                        else if (val == "10") { return "<span title='汕头云仓'>汕头云仓</span>"; }
+                        else if (val == "11") { return "<span title='渭南云仓'>渭南云仓</span>"; }
+                        else if (val == "12") { return "<span title='北辰云仓'>北辰云仓</span>"; }
+                        else if (val == "13") { return "<span title='南沙云仓'>南沙云仓</span>"; }
+                        else if (val == "14") { return "<span title='从化云仓'>从化云仓</span>"; }
+                        else if (val == "15") { return "<span title='南海云仓'>南海云仓</span>"; }
+                        else if (val == "16") { return "<span title='大兴云仓'>大兴云仓</span>"; }
+                        else if (val == "17") { return "<span title='经开云仓'>经开云仓</span>"; }
+                        else if (val == "18") { return "<span title='香坊云仓'>香坊云仓</span>"; }
+                        else if (val == "19") { return "<span title='栾城云仓'>栾城云仓</span>"; }
+                        else if (val == "20") { return "<span title='铁西云仓'>铁西云仓</span>"; }
+                        else if (val == "21") { return "<span title='济南云仓'>济南云仓</span>"; }
+                        else if (val == "22") { return "<span title='太原云仓'>太原云仓</span>"; }
+                        else if (val == "23") { return "<span title='衡阳云仓'>衡阳云仓</span>"; }
+                        else if (val == "24") { return "<span title='嘉定云仓'>嘉定云仓</span>"; }
+                        else if (val == "25") { return "<span title='常熟云仓'>常熟云仓</span>"; }
+                        else if (val == "26") { return "<span title='杭州云仓'>杭州云仓</span>"; }
+                        else if (val == "27") { return "<span title='南山云仓'>南山云仓</span>"; }
+                        else if (val == "28") { return "<span title='双流云仓'>双流云仓</span>"; }
+                        else if (val == "29") { return "<span title='江宁云仓'>江宁云仓</span>"; }
+                        else if (val == "30") { return "<span title='连江云仓'>连江云仓</span>"; }
+                        else if (val == "31") { return "<span title='兰州云仓'>兰州云仓</span>"; }
+                        else if (val == "32") { return "<span title='银川云仓'>银川云仓</span>"; }
+                        else if (val == "33") { return "<span title='新疆云仓'>新疆云仓</span>"; }
+                        else if (val == "34") { return "<span title='南开云仓'>南开云仓</span>"; }
+                        else if (val == "35") { return "<span title='兴宁云仓'>兴宁云仓</span>"; }
+                        else if (val == "36") { return "<span title='花都云仓'>花都云仓</span>"; }
+                        else if (val == "37") { return "<span title='蔡甸云仓'>蔡甸云仓</span>"; }
+                        else if (val == "38") { return "<span title='光明云仓'>光明云仓</span>"; }
+                        else if (val == "39") { return "<span title='秀英云仓'>秀英云仓</span>"; }
+                        else if (val == "40") { return "<span title='贵阳云仓'>贵阳云仓</span>"; }
+                        else if (val == "41") { return "<span title='揭阳云仓'>揭阳云仓</span>"; }
+                        else if (val == "42") { return "<span title='南宁云仓'>南宁云仓</span>"; }
+                        else if (val == "43") { return "<span title='韶关云仓'>韶关云仓</span>"; }
+                        else if (val == "44") { return "<span title='肇庆云仓'>肇庆云仓</span>"; }
+                        else if (val == "45") { return "<span title='广州狄乐OE'>广州狄乐OE</span>"; }
+                        else if (val == "46") { return "<span title='广州狄乐RE'>广州狄乐RE</span>"; }
+                        else if (val == "47") { return "<span title='湖北狄乐RE'>湖北狄乐RE</span>"; }
+                        else if (val == "48") { return "<span title='湖南狄乐RE'>湖南狄乐RE</span>"; }
+                        else { return ""; }
+                    }
+                });
                 columns.push({
                     title: '业务类型(物权)', field: 'GoodsClass', width: '80px', formatter: function (val, row, index) {
                         if (val == "0") { return "<span title='自有'>自有</span>"; }
