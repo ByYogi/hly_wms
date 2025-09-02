@@ -12,7 +12,6 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
-using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -2025,42 +2024,6 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
             return result;
         }
-        
-        public CargoContainerEntity QueryContainerEntityByID(int containerID)
-        {
-            CargoContainerEntity result = new CargoContainerEntity();
-            try
-            {
-                string strSQL = @"select (a.MaxPiece-a.InPiece) as allowPiece, a.*,b.HouseID from Tbl_Cargo_Container as a left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where ContainerID=@ContainerID";
-                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-                {
-                    conn.AddInParameter(command, "@ContainerID", DbType.Int32, containerID);
-                    using (DataTable dd = conn.ExecuteDataTable(command))
-                    {
-                        foreach (DataRow idr in dd.Rows)
-                        {
-                            result.ContainerID = Convert.ToInt32(idr["ContainerID"]);
-                            result.ContainerCode = Convert.ToString(idr["ContainerCode"]);
-                            result.AreaID = Convert.ToInt32(idr["AreaID"]);
-                            result.ContainerNum = Convert.ToInt32(idr["ContainerNum"]);
-                            result.ContainerType = Convert.ToString(idr["ContainerType"]);
-                            result.Remark = Convert.ToString(idr["Remark"]);
-                            result.MaxPiece = Convert.ToInt32(idr["MaxPiece"]);
-                            result.WarnPiece = Convert.ToInt32(idr["WarnPiece"]);
-                            result.MaxVolume = Convert.ToDecimal(idr["MaxVolume"]);
-                            result.MaxWeight = Convert.ToDecimal(idr["MaxWeight"]);
-                            result.InPiece = Convert.ToInt32(idr["InPiece"]);
-                            result.allowPiece = Convert.ToInt32(idr["allowPiece"]);
-                            result.OP_DATE = Convert.ToDateTime(idr["OP_DATE"]);
-                            result.HouseID = Convert.ToInt32(idr["HouseID"]);
-
-                        }
-                    }
-                }
-            }
-            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
-            return result;
-        }
         /// <summary>
         /// 根据区域ID查询该 区域 下的所有货位数据
         /// </summary>
@@ -2853,8 +2816,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                 string strSQL = @"UPDATE Tbl_Cargo_ContainerGoods SET ";
                 if (entity.IsAdd) { strSQL += " Piece=Piece+@Piece"; }
                 else { strSQL += " Piece=Piece-@Piece"; }
-                if (!entity.IsBinTransfer) { strSQL += " ,Piece_Date=GETDATE()"; }
-                strSQL += " Where ID=@ID";
+                strSQL += " ,Piece_Date=GETDATE() Where ID=@ID";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
                     conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
@@ -2877,8 +2839,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                 string strSQL = @"UPDATE Tbl_Cargo_ContainerGoods SET ";
                 if (entity.IsAdd) { strSQL += " Piece=Piece+@Piece"; }
                 else { strSQL += " Piece=Piece-@Piece"; }
-                if (!entity.IsBinTransfer) { strSQL += " ,Piece_Date=GETDATE()"; }
-                strSQL += " Where ContainerID=@ContainerID AND ProductID=@ProductID";
+                strSQL += " ,Piece_Date=GETDATE() Where ContainerID=@ContainerID AND ProductID=@ProductID";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
                     conn.AddInParameter(cmd, "@ContainerID", DbType.Int32, entity.ContainerID);
@@ -2926,6 +2887,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                         result.InCargoID = Convert.ToString(idr["InCargoID"]);
                         result.Piece = Convert.ToInt32(idr["Piece"]);
                         result.OP_DATE = Convert.ToDateTime(idr["OP_DATE"]);
+
                     }
                 }
             }
@@ -7156,62 +7118,7 @@ WHERE
                             LoadIndex = Convert.ToString(idr["LoadIndex"]),
                             SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
                             GoodsCode = Convert.ToString(idr["GoodsCode"]),
-                            ProductID = Convert.ToInt64(idr["ProductID"]),
-
-                        });
-                    }
-                }
-            }
-            return result;
-        }
-
-        /// <summary>
-        /// 查询盘点的可移库位产品标签列表
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        public List<CargoStockTakeTagEntity> QueryCargoStockContainerIDTagList(CargoStockTakeTagEntity entity)
-        {
-            List<CargoStockTakeTagEntity> result = new List<CargoStockTakeTagEntity>();
-            string strSQL = "SELECT a.StockID, a.ContainerID, cc.ContainerCode, a.ScanContainerID, scc.ContainerCode AS ScanContainerCode, b.ContainerID AS OldContainerID, occ.ContainerCode AS OldContainerCode, a.ProductID, a.TagCode, a.ScanStatus, a.ScanUserName, a.ScanLoginName, a.StockStatus, a.ScanDate, a.Remark, d.TypeName, c.ProductName, c.Batch, c.Specs, c.Figure, c.LoadIndex, c.SpeedLevel, c.GoodsCode FROM Tbl_Cargo_StockTakeTag AS a INNER JOIN Tbl_Cargo_ProductTag AS b ON a.TagCode = b.TagCode LEFT JOIN Tbl_Cargo_Product AS c ON a.ProductID = c.ProductID LEFT JOIN tbl_Cargo_ProductType AS d ON c.TypeID = d.TypeID LEFT JOIN Tbl_Cargo_Container AS cc ON a.ContainerID = cc.ContainerID LEFT JOIN Tbl_Cargo_Container AS scc ON a.ScanContainerID = scc.ContainerID LEFT JOIN Tbl_Cargo_Container AS occ ON b.ContainerID = occ.ContainerID WHERE ( 1 = 1 )";
-            if (!entity.StockID.Equals(0)) { strSQL += " and a.StockID=" + entity.StockID; }
-            if (!string.IsNullOrEmpty(entity.QueryStockID)) { strSQL += " and a.StockID in (" + entity.QueryStockID + ")"; }
-            if (!string.IsNullOrEmpty(entity.ContainerCode)) { strSQL += " and a.ContainerCode ='" + entity.ContainerCode + "'"; }
-            if (!string.IsNullOrEmpty(entity.StockStatus)) { strSQL += " and a.StockStatus ='" + entity.StockStatus + "'"; }
-           // strSQL += " order by b.ScanStatus asc,b.StockStatus desc";
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                using (DataTable dd = conn.ExecuteDataTable(command))
-                {
-                    foreach (DataRow idr in dd.Rows)
-                    {
-                        result.Add(new CargoStockTakeTagEntity
-                        {
-                            StockID = Convert.ToInt32(idr["StockID"]),
-                            ContainerID = Convert.ToInt32(idr["ContainerID"]),
-                            ContainerCode = Convert.ToString(idr["ContainerCode"]),
-                            //TakeSubmitStatus = Convert.ToString(idr["TakeSubmitStatus"]),
-                            //AreaID = Convert.ToInt32(idr["AreaID"]),
-                            TagCode = Convert.ToString(idr["TagCode"]),
-                            ScanStatus = Convert.ToString(idr["ScanStatus"]),
-                            ScanUserName = Convert.ToString(idr["ScanUserName"]),
-                            ScanLoginName = Convert.ToString(idr["ScanLoginName"]),
-                            StockStatus = Convert.ToString(idr["StockStatus"]),
-                            ScanDate = string.IsNullOrEmpty(Convert.ToString(idr["ScanDate"])) ? default(DateTime) : Convert.ToDateTime(idr["ScanDate"]),
-                            ProductName = Convert.ToString(idr["ProductName"]),
-                            Batch = Convert.ToString(idr["Batch"]),
-                            Remark = Convert.ToString(idr["Remark"]),
-                            TypeName = Convert.ToString(idr["TypeName"]),
-                            Specs = Convert.ToString(idr["Specs"]),
-                            Figure = Convert.ToString(idr["Figure"]),
-                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
-                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
-                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
-                            ProductID = Convert.ToInt64(idr["ProductID"]),
-                            ScanContainerID = Convert.ToInt32(idr["ScanContainerID"]).Equals(0) ? Convert.ToInt32(idr["ContainerID"])  : Convert.ToInt32(idr["ScanContainerID"]),
-                            ScanContainerCode = Convert.ToInt32(idr["ScanContainerID"]).Equals(0) ? Convert.ToString(idr["ContainerCode"]) : Convert.ToString(idr["ScanContainerCode"]),
-                            OldContainerID = Convert.ToInt32(idr["OldContainerID"]),
-                            OldContainerCode = Convert.ToString(idr["OldContainerCode"]),
+                            ProductID = Convert.ToInt64(idr["ProductID"])
                         });
                     }
                 }
@@ -7331,7 +7238,7 @@ WHERE
         {
             if (!IsExistStockTakeTag(new CargoStockTakeTagEntity { TagCode = entity.TagCode, StockID = entity.StockID }))
             {
-                string strSQL = "insert into Tbl_Cargo_StockTakeTag(StockID,ProductID,TagCode,ContainerID,ScanStatus,StockStatus,ScanLoginName,ScanUserName,ScanDate,Remark,ScanContainerID) values (@StockID,@ProductID,@TagCode,@ContainerID,@ScanStatus,@StockStatus,@ScanLoginName,@ScanUserName,@ScanDate,@Remark,@ScanContainerID)";
+                string strSQL = "insert into Tbl_Cargo_StockTakeTag(StockID,ProductID,TagCode,ContainerID,ScanStatus,StockStatus,ScanLoginName,ScanUserName,ScanDate,Remark) values (@StockID,@ProductID,@TagCode,@ContainerID,@ScanStatus,@StockStatus,@ScanLoginName,@ScanUserName,@ScanDate,@Remark)";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
                     conn.AddInParameter(cmd, "@StockID", DbType.Int32, entity.StockID);
@@ -7344,8 +7251,6 @@ WHERE
                     conn.AddInParameter(cmd, "@ScanUserName", DbType.String, entity.ScanUserName);
                     conn.AddInParameter(cmd, "@Remark", DbType.String, entity.Remark);
                     conn.AddInParameter(cmd, "@ScanDate", DbType.DateTime, DateTime.Now);
-                    conn.AddInParameter(cmd, "@ScanContainerID", DbType.Int32, entity.ScanContainerID);
-                    
                     conn.ExecuteNonQuery(cmd);
                 }
             }
@@ -7366,7 +7271,7 @@ WHERE
         public void UpdateStockTakeTagStatus(CargoStockTakeTagEntity entity)
         {
             entity.EnSafe();
-            string strSQL = "update Tbl_Cargo_StockTakeTag set ScanStatus=@ScanStatus,StockStatus=@StockStatus,ScanLoginName=@ScanLoginName,ScanUserName=@ScanUserName,ScanDate = @ScanDate,Remark=@Remark, ScanContainerID=@ScanContainerID where StockID = @StockID and TagCode = @TagCode";
+            string strSQL = "update Tbl_Cargo_StockTakeTag set ScanStatus=@ScanStatus,StockStatus=@StockStatus,ScanLoginName=@ScanLoginName,ScanUserName=@ScanUserName,ScanDate = @ScanDate,Remark=@Remark where StockID = @StockID and TagCode = @TagCode";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
                 conn.AddInParameter(cmd, "@TagCode", DbType.String, entity.TagCode);
@@ -7376,7 +7281,6 @@ WHERE
                 conn.AddInParameter(cmd, "@ScanLoginName", DbType.String, entity.ScanLoginName);
                 conn.AddInParameter(cmd, "@ScanUserName", DbType.String, entity.ScanUserName);
                 conn.AddInParameter(cmd, "@Remark", DbType.String, entity.Remark);
-                conn.AddInParameter(cmd, "@ScanContainerID", DbType.Int32, entity.ScanContainerID);
                 conn.AddInParameter(cmd, "@ScanDate", DbType.DateTime, DateTime.Now);
                 conn.ExecuteNonQuery(cmd);
             }

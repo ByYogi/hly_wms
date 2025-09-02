@@ -2166,7 +2166,7 @@ select a.OrderID,a.orderCode,a.doNo,OrderPiece,a.CargoOrderNo
             string strSQL = string.Empty;
             if (ExistsContainerGoods(Convert.ToString(entity.ContainerID), ProductID))
             {
-                strSQL = "Update Tbl_Cargo_ContainerGoods set Piece=@Piece, Piece_DATE = CASE WHEN Piece <> @Piece THEN GETDATE() ELSE Piece_DATE where ContainerID=@ContainerID and ProductID=@ProductID";
+                strSQL = "Update Tbl_Cargo_ContainerGoods set Piece=@Piece, Piece_Date=getdate() where ContainerID=@ContainerID and ProductID=@ProductID";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
                     conn.AddInParameter(cmd, "@Piece", DbType.String, entity.StockNum);
@@ -2522,7 +2522,7 @@ select a.OrderID,a.orderCode,a.doNo,OrderPiece,a.CargoOrderNo
         /// <exception cref="ApplicationException"></exception>
         public void UpdateProductStockNum(CargoContainerGoodsEntity entity)
         {
-            string strSQL = @"UPDATE Tbl_Cargo_ContainerGoods SET Piece=@Piece, Piece_Date=GETDATE() Where ProductID=@ProductID AND Piece<>@Piece";
+            string strSQL = @"UPDATE Tbl_Cargo_ContainerGoods SET Piece=@Piece, Piece_Date=getdate() Where ProductID=@ProductID ";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
                 conn.AddInParameter(cmd, "@ProductID", DbType.Int64, entity.ProductID);
@@ -2559,7 +2559,7 @@ select a.OrderID,a.orderCode,a.doNo,OrderPiece,a.CargoOrderNo
                 foreach (var entity in batch)
                 {
                     sqlBuilder.AppendLine(
-                        $"UPDATE Tbl_Cargo_ContainerGoods SET Piece={entity.Piece}, Piece_Date=GETDATE() WHERE ProductID={entity.ProductID} AND Piece<>{entity.Piece};");
+                        $"UPDATE Tbl_Cargo_ContainerGoods SET Piece={entity.Piece}, Piece_Date=getdate() WHERE ProductID={entity.ProductID};");
 
                     sqlBuilder.AppendLine(
                         $"UPDATE Tbl_Cargo_Product SET " +

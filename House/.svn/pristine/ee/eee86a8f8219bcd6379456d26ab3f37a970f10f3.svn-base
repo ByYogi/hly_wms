@@ -5,23 +5,19 @@ using House.Entity.Cargo;
 using House.Entity.Cargo.House;
 using House.Entity.Cargo.Product;
 using House.Entity.House;
-using Memcached.ClientLibrary;
 using Newtonsoft.Json;
 using NPOI.HSSF.Record.Formula.Functions;
 using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Ocsp;
 using Senparc.Weixin.MP.AdvancedAPIs.MerChant;
 using Senparc.Weixin.MP.TenPayLibV3;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Remoting.Contexts;
 using System.Runtime.Remoting.Metadata.W3cXsd2001;
 using System.Security.Cryptography;
 using System.ServiceModel;
@@ -3855,7 +3851,6 @@ namespace Cargo.House
             if (string.IsNullOrEmpty(key)) { Response.Clear(); Response.Write(JSON.Encode(queryEntity)); return; }
 
             queryEntity.StockID = Convert.ToInt32(key);
-
             CargoHouseBus bus = new CargoHouseBus();
             List<CargoStockTakeContainerEntity> list = bus.QueryCargoStockTakeContainerList(queryEntity);
             //JSON
@@ -3868,10 +3863,6 @@ namespace Cargo.House
             CargoStockTakeTagEntity queryEntity = new CargoStockTakeTagEntity();
             queryEntity.StockID = Convert.ToInt32(Request["StockID"]);
             queryEntity.ContainerCode = Convert.ToString(Request["ContainerCode"]);
-            //if (!string.IsNullOrEmpty(Request["StockStatus"].ToString()))
-            //{
-            //    queryEntity.StockStatus = Convert.ToString(Request["StockStatus"]);
-            //}
             CargoHouseBus bus = new CargoHouseBus();
             List<CargoStockTakeTagEntity> list = bus.QueryCargoStockTagList(queryEntity);
             //JSON
@@ -3879,7 +3870,6 @@ namespace Cargo.House
             Response.Clear();
             Response.Write(json);
         }
-
         public void QueryStockTakeDataByStockIDs()
         {
             string stockIDsStr = Request["StockIDs"];
@@ -3901,300 +3891,6 @@ namespace Cargo.House
             Response.Clear();
             Response.Write(result);
         }
-
-        /// <summary>
-        /// 查询货位可移动列表
-        /// </summary>
-        public void QueryCargoStockContainerIDTagList()
-        {
-            CargoStockTakeTagEntity queryEntity = new CargoStockTakeTagEntity();
-            String jsonQ = Request["StockIDs"];
-            if (String.IsNullOrEmpty(jsonQ)) return;
-            ArrayList rows = (ArrayList)JSON.Decode(jsonQ);
-
-            foreach (Hashtable row in rows)
-            {
-                queryEntity.QueryStockID += Convert.ToString(row["StockID"]) + ",";
-            }
-            queryEntity.QueryStockID = queryEntity.QueryStockID.TrimEnd(',');
-            //queryEntity.StockID = Convert.ToInt32(Request["StockID"]);
-           
-            //queryEntity.ContainerCode = Convert.ToString(Request["ContainerCode"]);
-            if (!string.IsNullOrEmpty(Request["StockStatus"].ToString()))
-            {
-                queryEntity.StockStatus = Convert.ToString(Request["StockStatus"]);
-            }
-            CargoHouseBus bus = new CargoHouseBus();
-            List<CargoStockTakeTagEntity> list = bus.QueryCargoStockContainerIDTagList(queryEntity);
-            //JSON
-            String json = JSON.Encode(list);
-            Response.Clear();
-            Response.Write(json);
-        }
-        /// <summary>
-        /// 查询货位可移动列表
-        /// </summary>
-        public void UpdateContainerID()
-        {
-            String json = Request["data"];
-            if (String.IsNullOrEmpty(json)) return;
-            ArrayList rows = (ArrayList)JSON.Decode(json);
-            ErrMessage msg = new ErrMessage(); msg.Message = "";
-            msg.Result = false;
-            List<CargoStockTakeTagEntity> list = new List<CargoStockTakeTagEntity>();
-            CargoHouseBus bus = new CargoHouseBus();
-            LogEntity log = new LogEntity();
-            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
-            log.Moudle = "盘点管理";
-            log.Status = "0";
-            log.NvgPage = "盘点管理";
-            log.UserID = UserInfor.LoginName;
-            log.Operate = "U";
-            try
-            {
-                foreach (Hashtable row in rows)
-                {
-                    list.Add(new CargoStockTakeTagEntity
-                    {
-                        StockID = Convert.ToInt32(row["StockID"]),
-                        TagCode = Convert.ToString(row["TagCode"]),
-                        //ContainerID = Convert.ToInt32(row["ContainerID"]),
-                        //ContainerCode = Convert.ToString(row["ContainerCode"]),
-                        ScanContainerID = Convert.ToInt32(row["ScanContainerID"]),
-                        ScanContainerCode = Convert.ToString(row["ScanContainerCode"]),
-                        OldContainerID = Convert.ToInt32(row["OldContainerID"]),
-                        OldContainerCode = Convert.ToString(row["OldContainerCode"]),
-   
-                    });
-                }
-                foreach (CargoStockTakeTagEntity data in list)
-                {
-                    string ContainerCode = data.ScanContainerCode;
-                    string TagCode = data.TagCode;
-                    if (string.IsNullOrEmpty(ContainerCode))
-                    {
-                        msg.Result = false;
-                        msg.Message += TagCode + "目标货位不能为空<br />";
-                        continue;
-                    }
-                    if (string.IsNullOrEmpty(TagCode))
-                    {
-                        msg.Result = false;
-                        msg.Message += TagCode + "产品标签不能为空<br />";
-                        continue;
-                    }
-
-
-                    List<CargoProductTagEntity> taglist = new List<CargoProductTagEntity>();
-                    //CargoHouseBus house = new CargoHouseBus();
-                    CargoInterfaceBus inter = new CargoInterfaceBus();
-                    CargoContainerEntity tagartCon = bus.QueryContainerEntityByID(data.ScanContainerID);
-                    CargoContainerShowEntity newContainer = new CargoContainerShowEntity();//目标货位实体
-                    newContainer.ContainerID = tagartCon.ContainerID;//新货位ID
-                    newContainer.ContainerCode = tagartCon.ContainerCode;//新货位代码
-                    newContainer.HouseID = tagartCon.HouseID;//目标仓库ID
-                    newContainer.AreaID = tagartCon.AreaID;//目标仓库区域ID
-                    newContainer.InCargoID = DateTime.Now.ToString("MMdd") + Common.GetRandomSixNum().ToString();//入库单号
-
-                    //旧的货位数据
-                    List<CargoContainerShowEntity> oldGoods = inter.QueryOldContainerList(data.TagCode);
-                    if (oldGoods.Count > 0)
-                    {
-                        CargoContainerShowEntity it = oldGoods[0];
-                        it.Piece = 1;
-                        if (it.InPiece < 1)
-                        {
-                            msg.Result = false;
-                            msg.Message += TagCode + "在库数量少于移库数量<br />";
-                            continue;
-                        }
-                        if (!string.IsNullOrEmpty(it.MoveOrderNo) && it.MoveStatus.Equals("0"))
-                        {
-                            msg.Result = false;
-                            msg.Message += TagCode + "该标签是移库标签请用移库入库扫描<br />";
-                            continue;
-                        }
-                        if (it.ContainerID.Equals(newContainer.ContainerID))
-                        {
-                            msg.Result = false;
-                            msg.Message += TagCode + "移库信息相同货位不能移库位<br />";
-                            continue;
-                        }
-                        newContainer.TagCode = data.TagCode;
-
-                        ////仓库同步缓存(缓存的旧的仓库信息)
-                        //CargoProductEntity syncProduct = house.SyncTypeProduct(it.ProductID.ToString());
-                        ////34 马牌  1 同步马牌  2 同步全部品牌
-                        //if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
-                        //{
-                        //    RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
-                        //}
-                        //修改货位信息
-                        bus.SaveMoveContainer(it, newContainer, log);
-                        //修改盘点状态
-                        CargoStockTakeTagEntity tagEntity = new CargoStockTakeTagEntity();
-                        tagEntity.TagCode = TagCode;
-                        tagEntity.ContainerID = newContainer.ContainerID;
-                        tagEntity.ContainerCode = ContainerCode;
-                        tagEntity.StockID = Convert.ToInt32(data.StockID);
-                        tagEntity.ProductID = 0;
-                        tagEntity.ContainerID = data.ContainerID;//获取到的ContainerID
-                        tagEntity.ScanLoginName = UserInfor.LoginName;
-                        tagEntity.ScanUserName = UserInfor.UserName;
-                        tagEntity.ScanDate = DateTime.Now;
-                        tagEntity.StockStatus = "1"; // 标签扫描状态  已扫描
-                        tagEntity.ScanStatus = "1";//盘点状态  正常
-                        tagEntity.ScanContainerID = newContainer.ContainerID;
-                        bus.AddStockTakeTag(tagEntity, log);
-                    }
-                }
-                msg.Result = true;
-                msg.Message += "成功";
-            }
-            catch (ApplicationException ex)
-            {
-                msg.Message = ex.Message;
-                msg.Result = false;
-            }
-            //返回处理结果
-            string res = JSON.Encode(msg);
-            Response.Write(res);
-
-
-
-
-        //    CargoAPIMessage result = new CargoAPIMessage();
-        //    string ContainerCode = context.Request["ContainerCode"];//目标货位
-        //    int HouseID = Convert.ToInt32(context.Request["HouseID"]);//仓库代码ID
-        //    string TagCode = context.Request["TagCode"];//产品唯一编码标签码
-        //    Common.WriteTextLog("货位移动：" + TagCode);
-        //    string[] tArr = TagCode.Split('=');
-        //    if (tArr.Length > 1)
-        //    {
-        //        TagCode = tArr[1];
-        //    }
-        //    else
-        //    {
-        //        string[] gtc = TagCode.Split('|');
-        //        if (gtc.Length > 1)
-        //        {
-        //            TagCode = gtc[5];
-        //            //TagCode = tc.Substring(8, tc.Length - 8);
-        //        }
-        //    }
-        //    string UserID = context.Request["UserID"];//操作人账号
-        //    result.Result = true;
-        //    result.Message = "移库成功";
-        //    LogEntity log = new LogEntity();
-        //    log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
-        //    log.Moudle = "仓库管理";
-        //    log.NvgPage = "扫描移库";
-        //    log.UserID = UserID;//限定某一账号
-        //    log.Operate = "U";
-        //    log.Status = "0";
-        //    #region 验证
-
-        //    if (HouseID.Equals(0))
-        //    {
-        //        result.Result = false;
-        //        result.Message = "仓库ID不能为空";
-        //        goto ERR;
-        //    }
-        //    if (string.IsNullOrEmpty(ContainerCode))
-        //    {
-        //        result.Result = false;
-        //        result.Message = "目标货位不能为空";
-        //        goto ERR;
-        //    }
-        //    if (string.IsNullOrEmpty(TagCode))
-        //    {
-        //        result.Result = false;
-        //        result.Message = "产品编码列表不能为空";
-        //        goto ERR;
-        //    }
-        //    #endregion
-        //    List<CargoProductTagEntity> taglist = new List<CargoProductTagEntity>();
-        //    CargoHouseBus house = new CargoHouseBus();
-        //    CargoInterfaceBus inter = new CargoInterfaceBus();
-        //    CargoContainerEntity tagartCon = house.QueryContainerEntityByCode(ContainerCode, HouseID);
-        //    CargoContainerShowEntity newContainer = new CargoContainerShowEntity();//目标货位实体
-        //    newContainer.ContainerID = tagartCon.ContainerID;//新货位ID
-        //    newContainer.ContainerCode = tagartCon.ContainerCode;//新货位代码
-        //    newContainer.HouseID = tagartCon.HouseID;//目标仓库ID
-        //    newContainer.AreaID = tagartCon.AreaID;//目标仓库区域ID
-        //    newContainer.InCargoID = DateTime.Now.ToString("MMdd") + Common.GetRandomSixNum().ToString();//入库单号
-
-        //    //string tagList = string.Empty;
-        //    string[] tag = TagCode.Split('/');
-        //    for (int i = 0; i < tag.Length; i++)
-        //    {
-        //        if (!string.IsNullOrEmpty(tag[i].Trim()) && !taglist.Exists(c => c.TagCode.Equals(tag[i].Trim())))
-        //        {
-        //            //tagList += tag[i] + "','";
-        //            taglist.Add(new CargoProductTagEntity
-        //            {
-        //                TagCode = tag[i],
-        //                ContainerID = tagartCon.ContainerID
-        //            });
-        //        }
-        //    }
-        //    //if (!string.IsNullOrEmpty(tagList))
-        //    //{
-        //    //    tagList = tagList.Substring(0, tagList.Length - 3);
-        //    //}
-        //    foreach (var tg in taglist)
-        //    {
-        //        List<CargoContainerShowEntity> oldGoods = inter.QueryOldContainerList(tg.TagCode);
-        //        if (oldGoods.Count > 0)
-        //        {
-        //            CargoContainerShowEntity it = oldGoods[0];
-        //            it.Piece = 1;
-        //            if (it.InPiece < 1)
-        //            {
-        //                result.Result = false;
-        //                result.Message = "在库数量少于移库数量";
-        //                goto ERR;
-        //            }
-        //            if (!it.HouseID.Equals(HouseID))
-        //            {
-        //                result.Result = false;
-        //                result.Message = "非本仓库产品";
-        //                goto ERR;
-        //            }
-        //            if (!string.IsNullOrEmpty(it.MoveOrderNo) && it.MoveStatus.Equals("0"))
-        //            {
-        //                result.Result = false;
-        //                result.Message = "该标签是移库标签请用移库入库扫描";
-        //                goto ERR;
-        //            }
-        //            if (it.ContainerID.Equals(newContainer.ContainerID))
-        //            {
-        //                //result.Result = false;
-        //                //result.Message = "仓库ID相同货位不能移库";
-        //                //goto ERR;
-        //                continue;
-        //            }
-        //            newContainer.TagCode = tg.TagCode;
-
-        //            //仓库同步缓存(缓存的旧的仓库信息)
-        //            //CargoProductEntity syncProduct = house.SyncTypeProduct(it.ProductID.ToString());
-        //            //34 马牌  1 同步马牌  2 同步全部品牌
-        //            //if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
-        //            //{
-        //            //    RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
-        //            //}
-        //            house.SaveMoveContainer(it, newContainer, log);
-        //        }
-        //    }
-
-        //ERR:
-        //    //JSON
-        //    String json = JSON.Encode(result);
-        //    Response.Write(result);
-        }
-
-
-
         /// <summary>
         /// 查询盘点结果数据导出
         /// </summary>

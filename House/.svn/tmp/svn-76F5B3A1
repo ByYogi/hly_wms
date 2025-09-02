@@ -637,10 +637,6 @@ namespace House.Business.Cargo
         {
             return man.QueryContainerEntityByCode(containerCode, HouseID);
         }
-        public CargoContainerEntity QueryContainerEntityByID(int containerID)
-        {
-            return man.QueryContainerEntityByID(containerID);
-        }
         /// <summary>
         /// 根据类型ID、规格、花纹、载重指数、速度指数、订单年、订单月
         /// </summary>
@@ -1539,10 +1535,6 @@ namespace House.Business.Cargo
         public List<CargoStockTakeTagEntity> QueryCargoStockTagList(CargoStockTakeTagEntity entity)
         {
             return man.QueryCargoStockTagList(entity);
-        }
-        public List<CargoStockTakeTagEntity> QueryCargoStockContainerIDTagList(CargoStockTakeTagEntity entity)
-        {
-            return man.QueryCargoStockContainerIDTagList(entity);
         }
         /// <summary>
         /// 查询盘点单的货位数据

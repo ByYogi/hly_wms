@@ -5045,7 +5045,7 @@ WHERE (1=1) ";
         {
             try
             {
-                string strSQL = @"update Tbl_Cargo_ContainerGoods set Piece=@Piece, Piece_Date=getdate() where ProductID=@ProductID and ContainerID=@ContainerID and TypeID=@TypeID";
+                string strSQL = @"update Tbl_Cargo_ContainerGoods set Piece=@Piece, Piece_DATE = CASE WHEN Piece <> @Piece THEN GETDATE() ELSE Piece_DATE END where ProductID=@ProductID and ContainerID=@ContainerID and TypeID=@TypeID";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
                     conn.AddInParameter(cmd, "@Piece", DbType.Int64, entity.Piece);

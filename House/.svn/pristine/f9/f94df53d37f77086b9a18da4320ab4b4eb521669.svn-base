@@ -2853,8 +2853,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                 string strSQL = @"UPDATE Tbl_Cargo_ContainerGoods SET ";
                 if (entity.IsAdd) { strSQL += " Piece=Piece+@Piece"; }
                 else { strSQL += " Piece=Piece-@Piece"; }
-                if (!entity.IsBinTransfer) { strSQL += " ,Piece_Date=GETDATE()"; }
-                strSQL += " Where ID=@ID";
+                strSQL += " ,Piece_Date=GETDATE() Where ID=@ID";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
                     conn.AddInParameter(cmd, "@ID", DbType.Int32, entity.ID);
@@ -2877,8 +2876,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                 string strSQL = @"UPDATE Tbl_Cargo_ContainerGoods SET ";
                 if (entity.IsAdd) { strSQL += " Piece=Piece+@Piece"; }
                 else { strSQL += " Piece=Piece-@Piece"; }
-                if (!entity.IsBinTransfer) { strSQL += " ,Piece_Date=GETDATE()"; }
-                strSQL += " Where ContainerID=@ContainerID AND ProductID=@ProductID";
+                strSQL += " ,Piece_Date=GETDATE() Where ContainerID=@ContainerID AND ProductID=@ProductID";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
                     conn.AddInParameter(cmd, "@ContainerID", DbType.Int32, entity.ContainerID);
@@ -2926,6 +2924,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                         result.InCargoID = Convert.ToString(idr["InCargoID"]);
                         result.Piece = Convert.ToInt32(idr["Piece"]);
                         result.OP_DATE = Convert.ToDateTime(idr["OP_DATE"]);
+
                     }
                 }
             }

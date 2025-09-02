@@ -811,7 +811,7 @@ namespace House.Business.Cargo
             return man.QueryInHouseData(pIndex, pNum, entity);
         }
         /// <summary>
-        /// 保存移库位数据
+        /// 保存移库数据
         /// </summary>
         /// <param name="oldContainer"></param>
         /// <param name="newContainer"></param>
@@ -838,7 +838,7 @@ namespace House.Business.Cargo
                     if (good != null && good.ID != 0)//说明存在
                     {
                         //说明已经存在货位与产品关联表数据就修改
-                        man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = good.ID, Piece = oldContainer.Piece, IsAdd = true, IsBinTransfer = true });
+                        man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = good.ID, Piece = oldContainer.Piece, IsAdd = true });
                     }
                     else
                     {
@@ -847,7 +847,7 @@ namespace House.Business.Cargo
                     }
 
                     //2.如果是全部转移，则删除原货位产品关联数据
-                    man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = oldContainer.ID, Piece = oldContainer.Piece, IsAdd = false, IsBinTransfer = true });
+                    man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = oldContainer.ID, Piece = oldContainer.Piece, IsAdd = false });
                     //if (isAdd)
                     //{
                     //    man.DelCargoContainerGoods(new CargoContainerGoodsEntity { ID = oldContainer.ID });

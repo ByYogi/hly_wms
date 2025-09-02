@@ -16,6 +16,7 @@ namespace House.DataAccess
     {
         private static string dbProviderName = "System.Data.SqlClient";
         private static string dbConnectionString = Properties.Resources.ConnDeploySql2008;
+        //private static string dbConnectionString = Properties.Resources.LiveDB;
 
         private DbConnection connection;
 
