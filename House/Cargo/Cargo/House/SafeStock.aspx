@@ -139,6 +139,11 @@
                             return (parseInt(a) > parseInt(b) ? 1 : -1);
                         }
                     },
+                    {
+                        title: '库存度天数', field: 'DOI', align: 'right', width: '100px', sortable: true, sorter: function (a, b) {
+                            return (parseInt(a) > parseInt(b) ? 1 : -1);
+                        }
+                    },
                     /* { title: '操作时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter }*/
                 ]],
                 onLoadSuccess: function (data) { },
@@ -451,11 +456,23 @@
                         <td style="text-align: right;">安全库存数:
                         </td>
                         <td>
-                            <input name="StockNum" id="eStockNum" class="easyui-numberbox" data-options="min:0,precision:0,required:true" style="width: 250px;" validtype="length[0,5]" />
+                            <input name="StockNum" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;"  />
+                        </td>
+
+                        <td style="text-align: right;">
+                        </td>
+                        <td>
                         </td>
                         
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">OE安全库存数:
+                        </td>
+                        <td>
+                            <input name="OEStock" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;"  />
+                        </td>
 
-                        <td style="text-align: right;">云仓库存数:
+                        <td style="text-align: right;">云仓安全库存数:
                         </td>
                         <td>
                             <input name="HCYCStock" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
@@ -463,21 +480,18 @@
                         
                     </tr>
                     <tr>
-                        <td style="text-align: right;">OE库存数:
+
+                        <td style="text-align: right;">隔离库存数:
                         </td>
                         <td>
-                            <input name="OEStock" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;"  />
+                            <input name="StockNum" id="eStockNum" class="easyui-numberbox" data-options="min:0,precision:0,required:true" style="width: 250px;" validtype="length[0,5]" />
                         </td>
-
-                        <td style="text-align: right;">待处理库存数:
+                        <td style="text-align: right;">品控库存数:
                         </td>
                         <td>
                             <input name="PendingStock" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;"  />
                         </td>
                     </tr>
-
-                    
-
                     <tr>
                         <td style="text-align: right;">最小库存天数:
                         </td>
@@ -491,9 +505,6 @@
                             <input name="MaxStockDay" id="MaxStockDay_ipt" class="easyui-numberbox" style="width: 250px;" />
                         </td>
                     </tr>
-
-                    
-                    
                     <tr>
                         <td style="text-align: right;">最小库存数:
                         </td>
@@ -512,9 +523,11 @@
                         <td>
                             <input id="AvgSaleNum_ipt" name="AvgSaleNum" readonly class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
                         </td>
-                        <td style="text-align: right;">
+                        <td style="text-align: right;">库存度天数：
                         </td>
                         <td>
+                            <input id="DOI_ipt" name="DOI" readonly class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
+                   
                         </td>
                     </tr>
                   

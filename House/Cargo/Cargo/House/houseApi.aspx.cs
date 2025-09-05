@@ -2817,67 +2817,68 @@ namespace Cargo.House
         }
         #endregion
         #region 安全库存操作方法集合
-        public void QuerySafeStockData()
-        {
-            CargoSafeStockEntity queryEntity = new CargoSafeStockEntity();
-            if (!string.IsNullOrEmpty(Request["HouseID"]))
-            {
-                queryEntity.HouseID = Convert.ToString(Request["HouseID"]);
-            }
-            else
-            {
-                queryEntity.HouseID = UserInfor.CargoPermisID;
-            }
-            if (!string.IsNullOrEmpty(Request["AreaID"]))
-            {
-                queryEntity.AreaID = Convert.ToInt32(Request["AreaID"]);
-            }
-            if (!string.IsNullOrEmpty(Request["PID"]))//一级分类
-            {
-                queryEntity.ParentID = Convert.ToInt32(Request["PID"]);
-            }
-            if (!string.IsNullOrEmpty(Request["SID"]))//二级分类
-            {
-                queryEntity.TypeID = Convert.ToInt32(Request["SID"]);
-            }
-            queryEntity.Specs = Convert.ToString(Request["Specs"]);
-            queryEntity.Figure = Convert.ToString(Request["Figure"]);
-            queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);
-            queryEntity.ProductCode = Convert.ToString(Request["ProductCode"]);
-            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
-            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
-            //分页
-            //int pageIndex = Convert.ToInt32(Request["page"]);
-            //int pageSize = Convert.ToInt32(Request["rows"]);
-            CargoHouseBus bus = new CargoHouseBus();
-            List<CargoSafeStockEntity> list = bus.QuerySafeStockData(queryEntity);
+        //public void QuerySafeStockData()
+        //{
+        //    CargoSafeStockEntity queryEntity = new CargoSafeStockEntity();
+        //    if (!string.IsNullOrEmpty(Request["HouseID"]))
+        //    {
+        //        queryEntity.HouseID = Convert.ToString(Request["HouseID"]);
+        //    }
+        //    else
+        //    {
+        //        queryEntity.HouseID = UserInfor.CargoPermisID;
+        //    }
+        //    if (!string.IsNullOrEmpty(Request["AreaID"]))
+        //    {
+        //        queryEntity.AreaID = Convert.ToInt32(Request["AreaID"]);
+        //    }
+        //    if (!string.IsNullOrEmpty(Request["PID"]))//一级分类
+        //    {
+        //        queryEntity.ParentID = Convert.ToInt32(Request["PID"]);
+        //    }
+        //    if (!string.IsNullOrEmpty(Request["SID"]))//二级分类
+        //    {
+        //        queryEntity.TypeID = Convert.ToInt32(Request["SID"]);
+        //    }
+        //    queryEntity.Specs = Convert.ToString(Request["Specs"]);
+        //    queryEntity.Figure = Convert.ToString(Request["Figure"]);
+        //    queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);
+        //    queryEntity.ProductCode = Convert.ToString(Request["ProductCode"]);
+        //    if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+        //    if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+        //    //分页
+        //    //int pageIndex = Convert.ToInt32(Request["page"]);
+        //    //int pageSize = Convert.ToInt32(Request["rows"]);
+        //    CargoHouseBus bus = new CargoHouseBus();
+        //    List<CargoSafeStockEntity> list = bus.QuerySafeStockData(queryEntity);
 
-            List<CargoSafeStockEntity> footlist = new List<CargoSafeStockEntity>();
-            footlist.Add(new CargoSafeStockEntity
-            {
-                HouseName = "汇总：",
-                MinStock = list.Sum(c => c.MinStock),
-                MaxStock = list.Sum(c => c.MaxStock),
-                LessNum = list.Sum(c => c.LessNum),
-                StockNum = list.Sum(c => c.StockNum),
-                CurNum = list.Sum(c => c.CurNum),
-                MoveNum = list.Sum(c => c.MoveNum),
-                TotalNum = list.Sum(c => c.TotalNum),
-                WXSaleNum = list.Sum(c => c.WXSaleNum),
-                SaleNum = list.Sum(c => c.SaleNum),
-                TotalSaleNum = list.Sum(c => c.TotalSaleNum),
-                AvgSaleNum = list.Sum(c => c.AvgSaleNum),
-            });
-            Hashtable resHT = new Hashtable();
-            resHT["rows"] = list;
-            resHT["total"] = list.Count();
-            resHT["footer"] = footlist;
-            //JSON
-            String json = JSON.Encode(resHT);
-            Response.Clear();
-            Response.Write(json);
-            Response.End();
-        }
+        //    List<CargoSafeStockEntity> footlist = new List<CargoSafeStockEntity>();
+        //    footlist.Add(new CargoSafeStockEntity
+        //    {
+        //        HouseName = "汇总：",
+        //        MinStock = list.Sum(c => c.MinStock),
+        //        MaxStock = list.Sum(c => c.MaxStock),
+        //        LessNum = list.Sum(c => c.LessNum),
+        //        StockNum = list.Sum(c => c.StockNum),
+        //        CurNum = list.Sum(c => c.CurNum),
+        //        MoveNum = list.Sum(c => c.MoveNum),
+        //        TotalNum = list.Sum(c => c.TotalNum),
+        //        WXSaleNum = list.Sum(c => c.WXSaleNum),
+        //        SaleNum = list.Sum(c => c.SaleNum),
+        //        TotalSaleNum = list.Sum(c => c.TotalSaleNum),
+        //        AvgSaleNum = list.Sum(c => c.AvgSaleNum),
+        //        DOI = list.Sum(c => c.DOI)
+        //    });
+        //    Hashtable resHT = new Hashtable();
+        //    resHT["rows"] = list;
+        //    resHT["total"] = list.Count();
+        //    resHT["footer"] = footlist;
+        //    //JSON
+        //    String json = JSON.Encode(resHT);
+        //    Response.Clear();
+        //    Response.Write(json);
+        //    Response.End();
+        //}
         public void QuerySafeStockDataBatch()
         {
             CargoSafeStockEntity queryEntity = new CargoSafeStockEntity();
@@ -2928,6 +2929,7 @@ namespace Cargo.House
                 SaleNum = list.Sum(c => c.SaleNum),
                 TotalSaleNum = list.Sum(c => c.TotalSaleNum),
                 AvgSaleNum = list.Sum(c => c.AvgSaleNum),
+                DOI = list.Sum(c => c.DOI)
             });
             Hashtable resHT = new Hashtable();
             resHT["rows"] = list;
@@ -3918,7 +3920,7 @@ namespace Cargo.House
             }
             queryEntity.QueryStockID = queryEntity.QueryStockID.TrimEnd(',');
             //queryEntity.StockID = Convert.ToInt32(Request["StockID"]);
-           
+
             //queryEntity.ContainerCode = Convert.ToString(Request["ContainerCode"]);
             if (!string.IsNullOrEmpty(Request["StockStatus"].ToString()))
             {
@@ -3964,7 +3966,7 @@ namespace Cargo.House
                         ScanContainerCode = Convert.ToString(row["ScanContainerCode"]),
                         OldContainerID = Convert.ToInt32(row["OldContainerID"]),
                         OldContainerCode = Convert.ToString(row["OldContainerCode"]),
-   
+
                     });
                 }
                 foreach (CargoStockTakeTagEntity data in list)
@@ -4063,134 +4065,134 @@ namespace Cargo.House
 
 
 
-        //    CargoAPIMessage result = new CargoAPIMessage();
-        //    string ContainerCode = context.Request["ContainerCode"];//目标货位
-        //    int HouseID = Convert.ToInt32(context.Request["HouseID"]);//仓库代码ID
-        //    string TagCode = context.Request["TagCode"];//产品唯一编码标签码
-        //    Common.WriteTextLog("货位移动：" + TagCode);
-        //    string[] tArr = TagCode.Split('=');
-        //    if (tArr.Length > 1)
-        //    {
-        //        TagCode = tArr[1];
-        //    }
-        //    else
-        //    {
-        //        string[] gtc = TagCode.Split('|');
-        //        if (gtc.Length > 1)
-        //        {
-        //            TagCode = gtc[5];
-        //            //TagCode = tc.Substring(8, tc.Length - 8);
-        //        }
-        //    }
-        //    string UserID = context.Request["UserID"];//操作人账号
-        //    result.Result = true;
-        //    result.Message = "移库成功";
-        //    LogEntity log = new LogEntity();
-        //    log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
-        //    log.Moudle = "仓库管理";
-        //    log.NvgPage = "扫描移库";
-        //    log.UserID = UserID;//限定某一账号
-        //    log.Operate = "U";
-        //    log.Status = "0";
-        //    #region 验证
+            //    CargoAPIMessage result = new CargoAPIMessage();
+            //    string ContainerCode = context.Request["ContainerCode"];//目标货位
+            //    int HouseID = Convert.ToInt32(context.Request["HouseID"]);//仓库代码ID
+            //    string TagCode = context.Request["TagCode"];//产品唯一编码标签码
+            //    Common.WriteTextLog("货位移动：" + TagCode);
+            //    string[] tArr = TagCode.Split('=');
+            //    if (tArr.Length > 1)
+            //    {
+            //        TagCode = tArr[1];
+            //    }
+            //    else
+            //    {
+            //        string[] gtc = TagCode.Split('|');
+            //        if (gtc.Length > 1)
+            //        {
+            //            TagCode = gtc[5];
+            //            //TagCode = tc.Substring(8, tc.Length - 8);
+            //        }
+            //    }
+            //    string UserID = context.Request["UserID"];//操作人账号
+            //    result.Result = true;
+            //    result.Message = "移库成功";
+            //    LogEntity log = new LogEntity();
+            //    log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            //    log.Moudle = "仓库管理";
+            //    log.NvgPage = "扫描移库";
+            //    log.UserID = UserID;//限定某一账号
+            //    log.Operate = "U";
+            //    log.Status = "0";
+            //    #region 验证
 
-        //    if (HouseID.Equals(0))
-        //    {
-        //        result.Result = false;
-        //        result.Message = "仓库ID不能为空";
-        //        goto ERR;
-        //    }
-        //    if (string.IsNullOrEmpty(ContainerCode))
-        //    {
-        //        result.Result = false;
-        //        result.Message = "目标货位不能为空";
-        //        goto ERR;
-        //    }
-        //    if (string.IsNullOrEmpty(TagCode))
-        //    {
-        //        result.Result = false;
-        //        result.Message = "产品编码列表不能为空";
-        //        goto ERR;
-        //    }
-        //    #endregion
-        //    List<CargoProductTagEntity> taglist = new List<CargoProductTagEntity>();
-        //    CargoHouseBus house = new CargoHouseBus();
-        //    CargoInterfaceBus inter = new CargoInterfaceBus();
-        //    CargoContainerEntity tagartCon = house.QueryContainerEntityByCode(ContainerCode, HouseID);
-        //    CargoContainerShowEntity newContainer = new CargoContainerShowEntity();//目标货位实体
-        //    newContainer.ContainerID = tagartCon.ContainerID;//新货位ID
-        //    newContainer.ContainerCode = tagartCon.ContainerCode;//新货位代码
-        //    newContainer.HouseID = tagartCon.HouseID;//目标仓库ID
-        //    newContainer.AreaID = tagartCon.AreaID;//目标仓库区域ID
-        //    newContainer.InCargoID = DateTime.Now.ToString("MMdd") + Common.GetRandomSixNum().ToString();//入库单号
+            //    if (HouseID.Equals(0))
+            //    {
+            //        result.Result = false;
+            //        result.Message = "仓库ID不能为空";
+            //        goto ERR;
+            //    }
+            //    if (string.IsNullOrEmpty(ContainerCode))
+            //    {
+            //        result.Result = false;
+            //        result.Message = "目标货位不能为空";
+            //        goto ERR;
+            //    }
+            //    if (string.IsNullOrEmpty(TagCode))
+            //    {
+            //        result.Result = false;
+            //        result.Message = "产品编码列表不能为空";
+            //        goto ERR;
+            //    }
+            //    #endregion
+            //    List<CargoProductTagEntity> taglist = new List<CargoProductTagEntity>();
+            //    CargoHouseBus house = new CargoHouseBus();
+            //    CargoInterfaceBus inter = new CargoInterfaceBus();
+            //    CargoContainerEntity tagartCon = house.QueryContainerEntityByCode(ContainerCode, HouseID);
+            //    CargoContainerShowEntity newContainer = new CargoContainerShowEntity();//目标货位实体
+            //    newContainer.ContainerID = tagartCon.ContainerID;//新货位ID
+            //    newContainer.ContainerCode = tagartCon.ContainerCode;//新货位代码
+            //    newContainer.HouseID = tagartCon.HouseID;//目标仓库ID
+            //    newContainer.AreaID = tagartCon.AreaID;//目标仓库区域ID
+            //    newContainer.InCargoID = DateTime.Now.ToString("MMdd") + Common.GetRandomSixNum().ToString();//入库单号
 
-        //    //string tagList = string.Empty;
-        //    string[] tag = TagCode.Split('/');
-        //    for (int i = 0; i < tag.Length; i++)
-        //    {
-        //        if (!string.IsNullOrEmpty(tag[i].Trim()) && !taglist.Exists(c => c.TagCode.Equals(tag[i].Trim())))
-        //        {
-        //            //tagList += tag[i] + "','";
-        //            taglist.Add(new CargoProductTagEntity
-        //            {
-        //                TagCode = tag[i],
-        //                ContainerID = tagartCon.ContainerID
-        //            });
-        //        }
-        //    }
-        //    //if (!string.IsNullOrEmpty(tagList))
-        //    //{
-        //    //    tagList = tagList.Substring(0, tagList.Length - 3);
-        //    //}
-        //    foreach (var tg in taglist)
-        //    {
-        //        List<CargoContainerShowEntity> oldGoods = inter.QueryOldContainerList(tg.TagCode);
-        //        if (oldGoods.Count > 0)
-        //        {
-        //            CargoContainerShowEntity it = oldGoods[0];
-        //            it.Piece = 1;
-        //            if (it.InPiece < 1)
-        //            {
-        //                result.Result = false;
-        //                result.Message = "在库数量少于移库数量";
-        //                goto ERR;
-        //            }
-        //            if (!it.HouseID.Equals(HouseID))
-        //            {
-        //                result.Result = false;
-        //                result.Message = "非本仓库产品";
-        //                goto ERR;
-        //            }
-        //            if (!string.IsNullOrEmpty(it.MoveOrderNo) && it.MoveStatus.Equals("0"))
-        //            {
-        //                result.Result = false;
-        //                result.Message = "该标签是移库标签请用移库入库扫描";
-        //                goto ERR;
-        //            }
-        //            if (it.ContainerID.Equals(newContainer.ContainerID))
-        //            {
-        //                //result.Result = false;
-        //                //result.Message = "仓库ID相同货位不能移库";
-        //                //goto ERR;
-        //                continue;
-        //            }
-        //            newContainer.TagCode = tg.TagCode;
+            //    //string tagList = string.Empty;
+            //    string[] tag = TagCode.Split('/');
+            //    for (int i = 0; i < tag.Length; i++)
+            //    {
+            //        if (!string.IsNullOrEmpty(tag[i].Trim()) && !taglist.Exists(c => c.TagCode.Equals(tag[i].Trim())))
+            //        {
+            //            //tagList += tag[i] + "','";
+            //            taglist.Add(new CargoProductTagEntity
+            //            {
+            //                TagCode = tag[i],
+            //                ContainerID = tagartCon.ContainerID
+            //            });
+            //        }
+            //    }
+            //    //if (!string.IsNullOrEmpty(tagList))
+            //    //{
+            //    //    tagList = tagList.Substring(0, tagList.Length - 3);
+            //    //}
+            //    foreach (var tg in taglist)
+            //    {
+            //        List<CargoContainerShowEntity> oldGoods = inter.QueryOldContainerList(tg.TagCode);
+            //        if (oldGoods.Count > 0)
+            //        {
+            //            CargoContainerShowEntity it = oldGoods[0];
+            //            it.Piece = 1;
+            //            if (it.InPiece < 1)
+            //            {
+            //                result.Result = false;
+            //                result.Message = "在库数量少于移库数量";
+            //                goto ERR;
+            //            }
+            //            if (!it.HouseID.Equals(HouseID))
+            //            {
+            //                result.Result = false;
+            //                result.Message = "非本仓库产品";
+            //                goto ERR;
+            //            }
+            //            if (!string.IsNullOrEmpty(it.MoveOrderNo) && it.MoveStatus.Equals("0"))
+            //            {
+            //                result.Result = false;
+            //                result.Message = "该标签是移库标签请用移库入库扫描";
+            //                goto ERR;
+            //            }
+            //            if (it.ContainerID.Equals(newContainer.ContainerID))
+            //            {
+            //                //result.Result = false;
+            //                //result.Message = "仓库ID相同货位不能移库";
+            //                //goto ERR;
+            //                continue;
+            //            }
+            //            newContainer.TagCode = tg.TagCode;
 
-        //            //仓库同步缓存(缓存的旧的仓库信息)
-        //            //CargoProductEntity syncProduct = house.SyncTypeProduct(it.ProductID.ToString());
-        //            //34 马牌  1 同步马牌  2 同步全部品牌
-        //            //if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
-        //            //{
-        //            //    RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
-        //            //}
-        //            house.SaveMoveContainer(it, newContainer, log);
-        //        }
-        //    }
+            //            //仓库同步缓存(缓存的旧的仓库信息)
+            //            //CargoProductEntity syncProduct = house.SyncTypeProduct(it.ProductID.ToString());
+            //            //34 马牌  1 同步马牌  2 同步全部品牌
+            //            //if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+            //            //{
+            //            //    RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
+            //            //}
+            //            house.SaveMoveContainer(it, newContainer, log);
+            //        }
+            //    }
 
-        //ERR:
-        //    //JSON
-        //    String json = JSON.Encode(result);
-        //    Response.Write(result);
+            //ERR:
+            //    //JSON
+            //    String json = JSON.Encode(result);
+            //    Response.Write(result);
         }
 
 
@@ -4676,7 +4678,11 @@ namespace Cargo.House
             Response.Clear();
             Response.Write(json);
         }
-
+#if DEBUG
+        private bool IsDeBug = true;
+#else
+             private bool IsDeBug =false;
+#endif
         /// <summary>
         /// 保存轮播图照片
         /// </summary>
@@ -4702,7 +4708,10 @@ namespace Cargo.House
                 if (string.IsNullOrEmpty(imgFile.FileName)) { continue; }
                 Common.SaveUserPic(Request.Files[i], ref imgName, ref imgPath);
                 CargoBannerEntity f = new CargoBannerEntity();
-                f.PicName = imgPath;
+                if (IsDeBug)
+                    f.PicName = imgPath;
+                else
+                    f.PicName = "https://dlt.neway5.com/upload/ClientFile/" + imgName;
                 f.DelFlag = "0";
                 f.Title = "";
                 f.HouseID = string.IsNullOrEmpty(Convert.ToString(Request["HouseID"])) ? UserInfor.HouseID : Convert.ToInt32(Request["HouseID"]);

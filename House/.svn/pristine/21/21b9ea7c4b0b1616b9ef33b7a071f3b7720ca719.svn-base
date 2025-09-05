@@ -1,0 +1,1214 @@
+﻿<%@ Page Title="业务员每日销售报表统计" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="saleManReport.aspx.cs" Inherits="Cargo.Report.saleManReport" %>
+
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+            //如果是广州仓库显示公司类型选项
+            //if (HID == "9") {
+            //    $("[name='BelongHouse']").show();
+            //    $('#BelongHouse').combobox('setValue', 0);
+            //} else {
+            //    $('#BelongHouse').combobox('setValue', -1);
+            //    $("[name='BelongHouse']").hide();
+            //}
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height-35 });
+        }
+        $(document).ready(function () {
+            HID = "<%=UserInfor.HouseID%>";
+            LogiName = "<%=UserInfor.LoginName%>";
+            var RoleID = "<%=UserInfor.RoleID%>";
+            var columns = [];
+            columns.push({ title: '', field: 'RowNumber', checkbox: true, width: '30px' });
+            if (HID == "82") {
+                columns.push({ title: '业务员', field: 'SaleManName', width: '60px' });
+                columns.push({ title: '开单时间', field: 'CreateDate', width: '130px', formatter: DateTimeFormatter });
+                
+                columns.push({
+                    title: '订单号', field: 'OrderNo', width: '90px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '到达站', field: 'Dest', width: '50px'
+                });
+                columns.push({
+                    title: '客户名称', field: 'PayClientName', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '收货人', field: 'AcceptPeople', width: '55px'
+                });
+                columns.push({ title: '品牌', field: 'TypeName', width: '60px' });
+                columns.push({ title: '开单编码', field: 'ShowGoodsCode', width: '130px', });
+                columns.push({
+                    title: '货品代码', field: 'GoodsCode', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '花纹', field: 'Figure', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '载速', field: 'LoadIndex', width: '50px', formatter: function (value, row) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + row.SpeedLevel + "'>" + value + row.SpeedLevel + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '数量', field: 'Piece', width: '60px', align: 'right', formatter: function (value, row) {
+                        if (row.OrderModel == "1") {
+                            return "-" + value;
+                        } else { return value; }
+                    }
+                });
+                columns.push({
+                    title: '销售价', field: 'ActSalePrice', width: '60px', align: 'right', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                if ("<%=UserInfor.RoleCName%>".indexOf("管理员") > -1) {
+                    columns.push({
+                        title: '单价', field: 'UnitPrice', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    });
+                }
+                columns.push({
+                    title: '金额', field: 'TransportFee', width: '80px', align: 'right', formatter: function (value, row) {
+                        if (row.OrderModel == "1") {
+                            return "-" + value;
+                        } else { return value; }
+                    }
+                });
+                columns.push({
+                    title: '合计金额', field: 'TotalCharge', width: '80px', align: 'right', formatter: function (value, row) {
+                        if (row.OrderModel == "1") {
+                            return "-" + value;
+                        } else { return value; }
+                    }
+                });
+                //columns.push({
+                //    title: '客户编码', field: 'ClientNum', width: '70px', formatter: function (value) {
+                //        if (value != null && value != "") {
+                //            return "<span title='" + value + "'>" + value + "</span>";
+                //        }
+                //    }
+                //});
+
+            }
+            else if (HID == "10") {
+                //西安仓库
+                //columns.push({ title: '业务员', field: 'SaleManName', width: '60px' });
+                columns.push({ title: '开单时间', field: 'CreateDate', width: '130px', formatter: DateTimeFormatter });
+               
+                columns.push({
+                    title: '订单号', field: 'OrderNo', width: '90px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({ title: '到达站', field: 'Dest', width: '50px' });
+                columns.push({ title: '品牌', field: 'TypeName', width: '60px' });
+                columns.push({ title: '开单编码', field: 'ShowGoodsCode', width: '130px', });
+                columns.push({ title: '货品代码', field: 'GoodsCode', width: '80px' });
+                columns.push({ title: '规格', field: 'Specs', width: '80px' });
+                columns.push({ title: '花纹', field: 'Figure', width: '80px' });
+                columns.push({
+                    title: '载速', field: 'LoadIndex', width: '50px', formatter: function (value, row) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + row.SpeedLevel + "'>" + value + row.SpeedLevel + "</span>";
+                        }
+                    }
+                });
+                columns.push({ title: '批次', field: 'Batch', width: '60px' });
+                columns.push({
+                    title: '数量', field: 'Piece', width: '60px', align: 'right', formatter: function (value, row) {
+                        if (row.OrderModel == "1") {
+                            return "-" + value;
+                        } else { return value; }
+                    }
+                });
+
+                columns.push({
+                    title: '配送费用', field: 'TotalCharge', width: '80px', align: 'right', formatter: function (value, row) {
+                        if (row.OrderModel == "1") {
+                            return "-" + value;
+                        } else { return value; }
+                    }
+                });
+                columns.push({
+                    title: '订单类型', field: 'ThrowGood', width: '60px', formatter: function (val, row, index) {
+                        if (val == "0") { return "普送单"; }
+                        else if (val == "5") {
+                            if (row.OrderModel == "1") { return "退货单"; }
+                        }
+                        else if (val == "17") { return "急送单"; }
+                        else { return ""; }
+                    }
+                });
+
+                columns.push({ title: '客户名称', field: 'PayClientName', width: '80px' });
+                columns.push({ title: '收货人', field: 'AcceptPeople', width: '55px' });
+                columns.push({ title: '手机号码', field: 'AcceptCellphone', width: '80px' });
+                columns.push({ title: '收货地址', field: 'AcceptAddress', width: '150px' });
+            }
+            else {
+                if (HID == 64) {
+                    //粤信广通
+                    columns.push({ title: '市场专员', field: 'BusUserName', width: '60px' });
+                    columns.push({ title: '开单专员', field: 'SaleManName', width: '60px' });
+                } else {
+                    if ("<%=UserInfor.RoleCName%>".indexOf("仓管角色") == -1) {
+                        columns.push({
+                            title: '业务员', field: 'SaleManName', width: '60px', formatter: function (value) {
+                                if (value != null && value != "") {
+                                    return "<span title='" + value + "'>" + value + "</span>";
+                                }
+                            }
+                        });
+                    }
+                }
+                columns.push({
+                    title: '开单员', field: 'CreateAwb', width: '70px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({ title: '开单时间', field: 'CreateDate', width: '130px', formatter: DateTimeFormatter });
+             
+                columns.push({
+                    title: '订单号', field: 'OrderNo', width: '90px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '订单类型', field: 'ThrowGood', width: '60px', formatter: function (val, row, index) {
+                        if (val == "0") { return "<span title='客户单'>客户单</span>"; }
+                        else if (val == "1") { return "<span title='抛货单'>抛货单</span>"; }
+                        else if (val == "2") { return "<span title='调货单'>调货单</span>"; }
+                        else if (val == "3") { return "<span title='代发单'>代发单</span>"; }
+                        else if (val == "4") { return "<span title='周期胎'>周期胎</span>"; }
+                        else if (val == "5") {
+                            if (row.OrderModel == "1") {
+                                return "<span title='退货单'>退货单</span>";
+                            } else {
+                                return "<span title='长和订单'>长和订单</span>";
+                            }
+                        }
+                        else if (val == "6") { return "<span title='商贸订单'>商贸订单</span>"; }
+                        else if (val == "10") { return "<span title='祺航订单'>祺航订单</span>"; }
+                        else if (val == "7") { return "<span title='其它订单'>其它订单</span>"; }
+                        else if (val == "8") { return "<span title='理赔单'>理赔单</span>"; }
+                        else if (val == "9") { return "<span title='移库单'>移库单</span>"; }
+                        else if (val == "11") { return "<span title='展示单'>展示单</span>"; }
+                        else if (val == "12") { return "<span title='OES客户单'>OES客户单</span>"; }
+                        else if (val == "13") { return "<span title='二批单 '>二批单</span>"; }
+                        else if (val == "14") { return "<span title='报量单'>报量单</span>"; }
+                        else if (val == "15") { return "<span title='速配单'>速配单</span>"; }
+                        else if (val == "16") { return "<span title='促销单'>促销单</span>"; }
+                        else if (val == "17") { return "<span title='急送单'>急送单</span>"; }
+                        else if (val == "18") { return "<span title='异地单'>异地单</span>"; }
+                        else if (val == "20") { return "<span title='电商单'>电商单</span>"; }
+                        else if (val == "21") { return "<span title='订货单'>订货单</span>"; }
+                        else if (val == "22") { return "<span title='极速达'>极速达</span>"; }
+                        else if (val == "23") { return "<span title='次日达'>次日达</span>"; }
+                        else if (val == "24") { return "<span title='渠道订单'>渠道订单</span>"; }
+                        else if (val == "25") { return "<span title='退仓单'>退仓单</span>"; }
+                        else { return ""; }
+                    }
+                });
+                if ("<%=UserInfor.RoleCName%>".indexOf("仓管角色") == -1) {
+                    columns.push({
+                        title: '客户编码', field: 'ClientNum', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    });
+                }
+                columns.push({
+                    title: '客户名称', field: 'ClientName', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                if ("<%=UserInfor.RoleCName%>".indexOf("管理员") > -1) {
+                    columns.push({
+                        title: '客户单位', field: 'AcceptUnit', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    });
+                    columns.push({
+                        title: '收货人', field: 'AcceptPeople', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    });
+                    columns.push({ title: '手机号码', field: 'AcceptCellphone', width: '80px' });
+                } else {
+
+                }
+                if (HID != 64) {
+                    if ("<%=UserInfor.RoleCName%>".indexOf("马牌") == -1) {
+                        columns.push({
+                            title: '产品名称', field: 'ProductName', width: '80px', formatter: function (value) {
+                                if (value != null && value != "") {
+                                    return "<span title='" + value + "'>" + value + "</span>";
+                                }
+                            }
+                        });
+                    }
+                }
+
+                columns.push({
+                    title: '品牌', field: 'TypeName', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+
+                columns.push({
+                    title: '产品来源', field: 'SourceName', width: '80px'
+                });
+                columns.push({
+                    title: '产品ID', field: 'ProductID', width: '60px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '产品编码', field: 'ProductCode', width: '100px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({ title: '规格', field: 'Specs' });
+                columns.push({ title: '花纹', field: 'Figure' });
+                columns.push({
+                    title: '载速', field: 'LoadIndex', width: '70px', formatter: function (value, row) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + row.SpeedLevel + "'>" + value + row.SpeedLevel + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '批次', field: 'Batch', width: '60px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '数量', field: 'Piece', width: '60px', align: 'right', formatter: function (value, row) {
+                        if (row.OrderModel == "1") {
+                            return "-" + value;
+                        } else { return value; }
+                    }
+                });
+                if ("<%=UserInfor.RoleCName%>".indexOf("仓管角色") == -1) {
+                    if (RoleID != "42") {
+                        columns.push({
+                            title: '销售价', field: 'ActSalePrice', width: '60px', align: 'right', formatter: function (value) {
+                                if (value != null && value != "") {
+                                    return "<span title='" + value + "'>" + value + "</span>";
+                                }
+                            }
+                        });
+                    }
+                }
+                if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                    columns.push({
+                        title: '利润', field: 'Gross', width: '60px', align: 'right', formatter: function (value, row) {
+                            if (row.OrderModel == "1") {
+                                return "-" + value;
+                            } else { return value; }
+                        }
+                    });
+                }
+                if ("<%=UserInfor.RoleCName%>".indexOf("仓管角色") == -1) {
+                    if (RoleID != "42") {
+                        columns.push({
+                            title: '金额', field: 'TransportFee', width: '60px', align: 'right', formatter: function (value, row) {
+                                if (row.OrderModel == "1") {
+                                    return "-" + value;
+                                } else { return value; }
+                            }
+                        });
+                        columns.push({
+                            title: '合计金额', field: 'TotalCharge', width: '60px', align: 'right', formatter: function (value, row) {
+                                if (row.OrderModel == "1") {
+                                    return "-" + value;
+                                } else { return value; }
+                            }
+                        });
+                    }
+                }
+                columns.push({ title: '开单编码', field: 'ShowGoodsCode', width: '130px', });
+                columns.push({
+                    title: '货品代码', field: 'GoodsCode', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '型号', field: 'Model', width: '60px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+
+                columns.push({
+                    title: '目的站', field: 'Dest', width: '60px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+
+                columns.push({
+                    title: '所在货位', field: 'ContainerCode', width: '90px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '所在区域', field: 'AreaName', width: '60px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '所在仓库', field: 'FirstAreaName', width: '70px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '物流公司', field: 'LogisticName', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '物流结算', field: 'DeliverySettlement', width: '60px', formatter: function (value, row, index) {
+                        if (value != null && value != "") {
+                            if (value == "0") { return "<span title='现付'>现付</span>"; } else if (value == "1") { return "<span title='到付'>到付</span>"; }
+                        }
+                    }
+                });
+                columns.push({
+                    title: '物流费用', field: 'DeliveryFee', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '物流单号', field: 'LogisAwbNo', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '副单号', field: 'HAwbNo', width: '80px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '订单备注', field: 'Remark', width: '100px', formatter: function (value) {
+                        if (value != null && value != "") {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }
+                });
+                columns.push({
+                    title: '下单方式', field: 'OrderType', width: '80px', formatter: function (val, row, index) {
+                        if (val != '合计') {
+                            if (val == "0") { return "<span title='电脑下单'>电脑下单</span>"; } else if (val == "1") { return "<span title='企业号下单'>企业号下单</span>"; } else if (val == "2") { return "<span title='商城下单'>商城下单</span>"; } else if (val == "3") { return "<span title='APP下单'>APP下单</span>"; } else if (val == "4") { return "<span title='小程序下单'>小程序下单</span>"; } else { return "<span title='电脑下单'>电脑下单</span>"; }
+                        }
+                    }
+                });
+                if (HID != 64) {
+                    columns.push({
+                        title: '调货(代发)仓库', field: 'TranHouse', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    });
+                }
+
+            }
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2, 100, 200, 500],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'RowNumber',
+                url: null,
+                rownumbers: true,
+                showFooter: true,
+                toolbar: '#dgtoolbar',
+                columns: [columns],
+                onLoadSuccess: function (data) {
+                    $('.editcls').linkbutton({ text: '审核', plain: true, iconCls: 'icon-ok' });
+                    $('.delcls').linkbutton({ text: '未审', plain: true, iconCls: 'icon-no' });
+                    $(this).datagrid('resize');
+
+                },
+                onClickRow: function (index, row) {
+                    var TotalCharge = 0;
+                    $('#dg').datagrid('clearSelections');
+                    $('#dg').datagrid('selectRow', index);
+                    if (row.OrderModel == "1") {
+                        TransportFee = "-" + row.TransportFee;
+                        Piece = "-" + row.Piece;
+                        Gross = "-" + row.Gross;
+                        returnedMoney = row.TransportFee;
+                        returnedPiece = row.Piece;
+                    } else {
+                        TransportFee = row.TransportFee;
+                        Piece = row.Piece;
+                        Gross = row.Gross;
+                        NoReturnedMoney = row.TransportFee;
+                        NoReturnedPiece = row.Piece;
+                    }
+                    if (returnedPiece > 0 && NoReturnedPiece > 0) {
+                        if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, Gross: Gross, TransportFee: "￥" + TransportFee, Specs: '退货', Figure: returnedPiece, Model: "￥" + returnedMoney, Batch: "非退货", Dest: NoReturnedPiece, GoodsCode: "￥" + NoReturnedMoney, OrderType: '合计' }]);
+                        } else {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TransportFee: "￥" + TransportFee, Specs: '退货', Figure: returnedPiece, Model: "￥" + returnedMoney, Batch: "非退货", Dest: NoReturnedPiece, GoodsCode: "￥" + NoReturnedMoney, OrderType: '合计' }]);
+                        }
+                    } else {
+                        if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, Gross: Gross, TransportFee: "￥" + TransportFee, OrderType: '合计' }]);
+                        } else if (HID == "10") {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TotalCharge: "￥" + TotalCharge }]);
+                        } else {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TransportFee: "￥" + TransportFee, OrderType: '合计' }]);
+                        }
+                    }
+                },
+                onDblClickRow: function (index, row) {
+                    editItemByID(index);
+                },
+                onCheck: function (index, row) {
+                    var rows = $('#dg').datagrid('getSelections');
+                    TransportFee = 0;
+                    Piece = 0;
+                    Gross = 0;
+                    returnedMoney = 0;
+                    returnedPiece = 0;
+                    NoReturnedMoney = 0;
+                    NoReturnedPiece = 0;
+                    TotalCharge = 0;
+                    for (var i = 0; i < rows.length; i++) {
+                        if (rows[i].OrderModel == "1") {
+                            TransportFee = cutNum(TransportFee, rows[i].TransportFee);
+                            TotalCharge = cutNum(TotalCharge, rows[i].TotalCharge);
+
+                            Piece -= rows[i].Piece;
+                            Gross -= rows[i].Gross;
+                            returnedMoney = addNum(returnedMoney, rows[i].TransportFee);
+                            returnedPiece += rows[i].Piece;
+                        } else {
+                            TransportFee = addNum(TransportFee, rows[i].TransportFee);
+                            TotalCharge = addNum(TotalCharge, rows[i].TotalCharge);
+                            Piece += rows[i].Piece;
+                            Gross += rows[i].Gross;
+                            NoReturnedMoney = addNum(NoReturnedMoney, rows[i].TransportFee);
+                            NoReturnedPiece += rows[i].Piece;
+                        }
+                    }
+                    if (returnedPiece > 0 && NoReturnedPiece > 0) {
+                        if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, Gross: Gross.toFixed(2), TransportFee: "￥" + TransportFee, Specs: '退货', Figure: returnedPiece, Model: "￥" + returnedMoney, Batch: "非退货", Dest: NoReturnedPiece, GoodsCode: "￥" + NoReturnedMoney, OrderType: '合计' }]);
+                        } else {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TransportFee: "￥" + TransportFee, Specs: '退货', Figure: returnedPiece, Model: "￥" + returnedMoney, Batch: "非退货", Dest: NoReturnedPiece, GoodsCode: "￥" + NoReturnedMoney, OrderType: '合计' }]);
+                        }
+                    } else {
+                        if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, Gross: Gross.toFixed(2), TransportFee: "￥" + TransportFee, OrderType: '合计' }]);
+                        } else if (HID == "10") {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TotalCharge: "￥" + TotalCharge }]);
+                        } else {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TransportFee: "￥" + TransportFee, OrderType: '合计' }]);
+                        }
+                    }
+                },
+                onUncheck: function (index, row) {
+                    var TotalCharge = 0;
+                    if (row.OrderModel == "1") {
+                        TransportFee = addNum(TransportFee, row.TransportFee);
+                        TotalCharge = addNum(TotalCharge, rows[i].TotalCharge);
+                        Piece = Number(Piece) + row.Piece;
+                        Gross += row.Gross;
+                        returnedMoney = cutNum(returnedMoney, row.TransportFee);
+                        returnedPiece = Number(returnedPiece) - row.Piece;
+                    } else {
+                        TransportFee = cutNum(TransportFee, row.TransportFee);
+                        TotalCharge = cutNum(TotalCharge, rows[i].TotalCharge);
+                        Piece -= row.Piece;
+                        Gross -= row.Gross;
+                        NoReturnedMoney = cutNum(NoReturnedMoney, row.TransportFee);
+                        NoReturnedPiece -= row.Piece;
+                    }
+                    if (returnedPiece > 0 && NoReturnedPiece > 0) {
+                        if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, Gross: Gross.toFixed(2), TransportFee: "￥" + TransportFee, Specs: '退货', Figure: returnedPiece, Model: "￥" + returnedMoney, Batch: "非退货", Dest: NoReturnedPiece, GoodsCode: "￥" + NoReturnedMoney, OrderType: '合计' }]);
+                        } else {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TransportFee: "￥" + TransportFee, Specs: '退货', Figure: returnedPiece, Model: "￥" + returnedMoney, Batch: "非退货", Dest: NoReturnedPiece, GoodsCode: "￥" + NoReturnedMoney, OrderType: '合计' }]);
+                        }
+                    } else {
+                        if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, Gross: Gross.toFixed(2), TransportFee: "￥" + TransportFee, OrderType: '合计' }]);
+                        } else if (HID == "10") {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TotalCharge: "￥" + TotalCharge }]);
+                        } else {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TransportFee: "￥" + TransportFee, OrderType: '合计' }]);
+                        }
+                    }
+                },
+                onCheckAll: function (index, row) {
+                    var rows = $('#dg').datagrid('getSelections');
+                    TransportFee = 0;
+                    Piece = 0;
+                    Gross = 0;
+                    returnedMoney = 0;
+                    returnedPiece = 0;
+                    NoReturnedMoney = 0;
+                    NoReturnedPiece = 0;
+                    TotalCharge = 0;
+                    for (var i = 0; i < rows.length; i++) {
+                        if (rows[i].OrderModel == "1") {
+                            TransportFee = cutNum(TransportFee, rows[i].TransportFee);
+                            TotalCharge = cutNum(TotalCharge, rows[i].TotalCharge);
+                            Piece -= rows[i].Piece;
+                            Gross -= rows[i].Gross;
+                            returnedMoney = addNum(returnedMoney, rows[i].TransportFee);
+                            returnedPiece += rows[i].Piece;
+                        } else {
+                            TransportFee = addNum(TransportFee, rows[i].TransportFee);
+                            TotalCharge = addNum(TotalCharge, rows[i].TotalCharge);
+                            Piece += rows[i].Piece;
+                            Gross += rows[i].Gross;
+                            NoReturnedMoney = addNum(NoReturnedMoney, rows[i].TransportFee);
+                            NoReturnedPiece += rows[i].Piece;
+                        }
+                    }
+                    if (returnedPiece > 0 && NoReturnedPiece > 0) {
+                        if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, Gross: Gross.toFixed(2), TransportFee: "￥" + TransportFee, Specs: '退货', Figure: returnedPiece, Model: "￥" + returnedMoney, Batch: "非退货", Dest: NoReturnedPiece, GoodsCode: "￥" + NoReturnedMoney, OrderType: '合计' }]);
+                        } else {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TransportFee: "￥" + TransportFee, Specs: '退货', Figure: returnedPiece, Model: "￥" + returnedMoney, Batch: "非退货", Dest: NoReturnedPiece, GoodsCode: "￥" + NoReturnedMoney, OrderType: '合计' }]);
+                        }
+                    } else {
+                        if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, Gross: Gross.toFixed(2), TransportFee: "￥" + TransportFee, OrderType: '合计' }]);
+                        } else if (HID == "10") {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TotalCharge: "￥" + TotalCharge }]);
+                        } else {
+                            $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TransportFee: "￥" + TransportFee, OrderType: '合计' }]);
+                        }
+                    }
+                },
+                onUncheckAll: function (index, row) {
+                    TransportFee = 0;
+                    Piece = 0;
+                    Gross = 0;
+                    returnedMoney = 0;
+                    returnedPiece = 0;
+                    NoReturnedMoney = 0;
+                    NoReturnedPiece = 0;
+                    if (HID == "64" && (LogiName == "2041" || LogiName == "2042")) {
+                        $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, Gross: Gross.toFixed(2), TransportFee: TransportFee, OrderType: '合计' }]);
+                    } else if (HID == "10") {
+                        $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TotalCharge: "￥" + TransportFee }]);
+                    } else {
+                        $('#dg').datagrid('reloadFooter', [{ Figure: '合计', Piece: Piece, TransportFee: TransportFee, OrderType: '合计' }]);
+                    }
+                },
+                rowStyler: function (index, row) {
+                    if (row.ModifyPriceStatus == "1") { return "color:#a9a4a4"; };
+                    if (row.TrafficType == "2") { return "background-color:#b3ce7e"; };
+                    if (row.ThrowGood == "17") { return "background-color:#f38f8f"; };
+                }
+            });
+            var lm = "<%=UserInfor.LoginName%>";
+            var isAdmin = "<%=UserInfor.IsAdmin%>";
+            var datenow = new Date();
+            $('#StartDate').datebox('setValue', getLastDayFormatDate(datenow));
+            $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
+            $('#StartDate').combobox('textbox').bind('focus', function () { $('#StartDate').combobox('showPanel'); });
+            $('#EndDate').combobox('textbox').bind('focus', function () { $('#EndDate').combobox('showPanel'); });
+            //所在仓库
+            $('#AHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    $('#AreaID').combobox('clear');
+                    var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    $('#AreaID').combobox('reload', url);
+                    $('#SaleManID').combobox('clear');
+                    var url = '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=' + rec.HouseID;
+                    $('#SaleManID').combobox('reload', url);
+                    if (isAdmin == "0") {
+                        $('#SaleManID').combobox('setValue', '<%=UserInfor.LoginName%>');
+                        if (lm != "2132" && lm != "2521" && lm != "2534" && lm != "2542") {
+                            $('#SaleManID').combobox('readonly', 'readonly');
+                        }
+                    }
+                    $('#PID').combobox('clear');
+                    var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    $('#PID').combobox('reload', url);
+                    var HID = rec.HouseID;
+                    //如果是广州仓库显示公司类型选项
+                    //if (HID == "9") {
+                    //    $("[name='BelongHouse']").show();
+                    //    $('#BelongHouse').combobox('setValue', 0);
+                    //} else {
+                    //    $('#BelongHouse').combobox('setValue', -1);
+                    //    $("[name='BelongHouse']").hide();
+                    //}
+                }
+            });
+            var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=<%=UserInfor.HouseID%>';
+            $('#AreaID').combobox('reload', url);
+            //一级产品
+            $('#APID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLOneProductType', valueField: 'TypeID', textField: 'TypeName',
+                onSelect: function (rec) {
+                    $('#ASID').combobox('clear');
+                    $('#ASID').combobox({
+                        url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + rec.TypeID, valueField: 'TypeID', textField: 'TypeName', AddField: 'PinyinName',
+                        filter: function (q, row) {
+                            var opts = $(this).combobox('options');
+                            return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                        },
+                    });
+                }
+            });
+            $('#AHouseID').combobox('textbox').bind('focus', function () { $('#AHouseID').combobox('showPanel'); });
+            //$('#SaleManID').combobox('textbox').bind('focus', function () { $('#SaleManID').combobox('showPanel'); });
+            $('#AHouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
+
+
+            $('#PID').combobox('clear');
+            var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=<%=UserInfor.HouseID%>';
+            $('#PID').combobox('reload', url);
+
+            $('#BusinessID').combobox('clear');
+            var url = '../Client/clientApi.aspx?method=QueryBusinessIDDefault';
+            $('#BusinessID').combobox('reload', url);
+
+            //动态设置下拉框的属性
+            var HID = "<%=UserInfor.HouseID%>";
+            var data = [];
+            if (HID == "47") {
+                data.push({ "text": "全部", "id": -1 });
+                data.push({ "text": "长和订单", "id": 5 });
+                data.push({ "text": "商贸订单", "id": 6 });
+                data.push({ "text": "祺航订单", "id": 10 });
+                data.push({ "text": "其它订单", "id": 7 });
+                $("#AThrowGood").combobox("loadData", data);
+            } else {
+                if (lm == "2288") {
+                    data.push({ "text": "全部", "id": -1 });
+                    data.push({ "text": "客户单", "id": 0 });
+                    //data.push({ "text": "抛货单", "id": 1 });
+                    //data.push({ "text": "周期胎", "id": 4 });
+                    data.push({ "text": "理赔单", "id": 8 });
+                    //data.push({ "text": "速配单", "id": 15 });
+                    data.push({ "text": "促销单", "id": 16 });
+                    data.push({ "text": "急送单", "id": 17 });
+                    //data.push({ "text": "异地单", "id": 18 });
+                    data.push({ "text": "电商单", "id": 20 });
+                } else {
+                    data.push({ "text": "全部", "id": -1 });
+                    data.push({ "text": "客户单", "id": 0 });
+                    data.push({ "text": "抛货单", "id": 1 });
+                    //data.push({ "text": "内部单", "id": 2 });
+                    //data.push({ "text": "代发单", "id": 3 });
+                    //data.push({ "text": "周期胎", "id": 4 });
+                    data.push({ "text": "理赔单", "id": 8 });
+                    //data.push({ "text": "移库单", "id": 9 });
+                    //data.push({ "text": "展示单", "id": 11 });
+                    data.push({ "text": "OES客户单", "id": 12 });
+                    data.push({ "text": "二批单", "id": 13 });
+                    //data.push({ "text": "报量单", "id": 14 });
+                    //data.push({ "text": "速配单", "id": 15 });
+                    data.push({ "text": "促销单", "id": 16 });
+                    data.push({ "text": "急送单", "id": 17 });
+                    //data.push({ "text": "异地单", "id": 18 });
+                    data.push({ "text": "电商单", "id": 20 });
+                    //data.push({ "text": "订货单", "id": 21 });
+                    data.push({ "text": "极速达", "id": 22 });
+                    data.push({ "text": "次日达", "id": 23 });
+                    data.push({ "text": "渠道单", "id": 24 });
+                    data.push({ "text": "退仓单", "id": 25 });
+                }
+                $("#AThrowGood").combobox("loadData", data);
+            }
+            $("#AThrowGood").combobox("setValue", -1);
+            //if (lm == "2288") {
+            //    var ASurl = '../Product/productApi.aspx?method=QueryALLOneProductType';
+            //    $('#APID').combobox('reload', ASurl);
+            //    $('#APID').combobox('setValue', '1');
+            //    $('#ASID').combobox('clear');
+            //    var url = '../Product/productApi.aspx?method=QueryALLOneProductType&PID=1';
+            //    $('#ASID').combobox('reload', url);
+            //    $('#ASID').combobox('setValue', '34');
+            //    $('#APID').combobox('readonly', 'readonly');
+            //    $('#ASID').combobox('readonly', 'readonly');
+            //    $('#SaleManID').combobox('readonly', 'readonly');
+            //    //$("#AThrowGood").combobox("setValue", 0);
+            //    //$('#AThrowGood').combobox('readonly', 'readonly');
+
+            //}
+
+            RoleCName = "<%=UserInfor.RoleCName%>";
+            $('#hd9').hide();
+            $('#hd10').hide();
+
+            if (RoleID == "42") {
+                $('#APID').combobox('setValue', '1');
+                $("#APID").combobox("readonly", true);
+                //一级产品
+                $('#ASID').combobox('clear');
+
+                var themecombo2 = [{ 'TypeName': '马牌', 'TypeID': '34' }, { 'TypeName': '维京', 'TypeID': '345' }];
+                $("#ASID").combobox("loadData", themecombo2);
+                $('#ASID').combobox('setValue', '34');
+            }
+            if (HID == "82") {
+                $('#APID').combobox('setValue', '1');
+                $("#APID").combobox("readonly", true);
+                //一级产品
+                $('#ASID').combobox('clear');
+                var themecombo2 = [{ 'TypeName': '锦湖', 'TypeID': '163' }];
+                $("#ASID").combobox("loadData", themecombo2);
+                $('#ASID').combobox('setValue', '163');
+                $('#SaleManID').combobox('clear');
+                var salemancombo = [{ 'UserName': '柯观文', 'LoginName': '2521' }, { 'UserName': '丁志强', 'LoginName': '2522' }, { 'UserName': '戴继贤', 'LoginName': '2902' }, { 'UserName': '何佳文', 'LoginName': '2986' }, { 'UserName': '胡高飞', 'LoginName': '2760' }, { 'UserName': '卓孝钱', 'LoginName': '2825' }, { 'UserName': '黄勇', 'LoginName': '2961' }, { 'UserName': '方良柏', 'LoginName': '2826' }, { 'UserName': '陈坚文', 'LoginName': '2534' }, { 'UserName': '黄智芬', 'LoginName': '2542' }];
+                $("#SaleManID").combobox("loadData", salemancombo);
+                $('#SaleManID').combobox('setValue', <%=UserInfor.LoginName%>);
+                if (<%=UserInfor.IsAdmin%>!= 1) {
+                    $("#SaleManID").combobox("readonly", true);
+                    $('#SaleManID').combobox('textbox').unbind('focus');
+                    $('#SaleManID').combobox('textbox').css('background-color', '#e8e8e8');
+                }
+                $('#hd1').hide();
+                $('#hd2').hide();
+                $('#hd3').hide();
+                $('#hd4').hide();
+                $('#hd5').hide();
+                $('#hd6').hide();
+                $('#hd7').hide();
+                $('#td25').hide();
+                $('#td26').hide();
+
+                //$('#hd8').hide();
+                $('#hd9').show();
+                $('#hd10').show();
+            }
+            else if (HID == "10" && RoleCName.indexOf("安泰路斯") >= 0) {
+                $('#APID').combobox('setValue', '1');
+                $("#APID").combobox("readonly", true);
+                //一级产品
+                $('#ASID').combobox('clear');
+                var themecombo2 = [{ 'TypeName': '安泰路斯', 'TypeID': '258' }];
+                $("#ASID").combobox("loadData", themecombo2);
+                $('#ASID').combobox('setValue', '258');
+                $('#SaleManID').combobox('clear');
+                var salemancombo = [{ 'UserName': '安鹏', 'LoginName': '2368' }];
+                $("#SaleManID").combobox("loadData", salemancombo);
+                $('#SaleManID').combobox('setValue', '2368');
+                $("#SaleManID").combobox("readonly", true);
+                $('#SaleManID').combobox('textbox').unbind('focus');
+                $('#SaleManID').combobox('textbox').css('background-color', '#e8e8e8');
+                $("#AHouseID").combobox("readonly", true);
+
+                $('#hd1').hide();
+                $('#hd2').hide();
+                $('#hd3').hide();
+                $('#hd4').hide();
+                $('#hd5').hide();
+                $('#hd6').hide();
+                $('#hd7').hide();
+                $('#td20').hide();
+                $('#td21').hide();
+                $('#td22').hide();
+                $('#td23').hide();
+                $('#td25').hide();
+                $('#td26').hide();
+                //$('#hd8').hide();
+                $('#hd9').show();
+                $('#hd10').show();
+            }
+            else {
+                $('#SaleManID').combobox('clear');
+                var url = '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=<%=UserInfor.HouseID%>';
+                $('#SaleManID').combobox('reload', url);
+                if (isAdmin == "0") {
+                    $('#SaleManID').combobox('setValue', '<%=UserInfor.LoginName%>');
+                    if (lm != "2132" && lm != "2521" && lm != "2534" && lm != "2542") {
+                        $('#SaleManID').combobox('readonly', 'readonly');
+                    }
+                }
+            }
+            if (HID == "64") {
+                $("[name='BelongHouse']").hide();
+            }
+            $('#AClientName').combobox({
+                valueField: 'Boss', textField: 'Boss', AddField: 'PinyinName', delay: '10',
+                url: '../Client/clientApi.aspx?method=AutoCompleteClient',
+                filter: function (q, row) {
+                    var opts = $(this).combobox('options');
+                    return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                },
+                required: false
+            });
+            $('#AClientName').combobox('textbox').bind('focus', function () { $('#AClientName').combobox('showPanel'); });
+        });
+        //自定义加法运算
+        function addNum(num1, num2) {
+            var sq1, sq2, m;
+            try {
+                sq1 = num1.toString().split(".")[1].length;
+            }
+            catch (e) {
+                sq1 = 0;
+            }
+            try {
+                sq2 = num2.toString().split(".")[1].length;
+            }
+            catch (e) {
+                sq2 = 0;
+            }
+            m = Math.pow(10, Math.max(sq1, sq2));
+            return (num1 * m + num2 * m) / m;
+        }
+        //自定义减法运算
+        function cutNum(num1, num2) {
+            var sq1, sq2, m;
+            try {
+                sq1 = num1.toString().split(".")[1].length;
+            }
+            catch (e) {
+                sq1 = 0;
+            }
+            try {
+                sq2 = num2.toString().split(".")[1].length;
+            }
+            catch (e) {
+                sq2 = 0;
+            }
+            m = Math.pow(10, Math.max(sq1, sq2));
+            return (num1 * m - num2 * m) / m;
+        }
+        //查询
+        function dosearch() {
+            var lm = "<%=UserInfor.LoginName%>";
+            var ThrowGood = $("#AThrowGood").combobox('getValue');
+            var RoleID = "<%=UserInfor.RoleID%>";
+            if (RoleID == "42" && ThrowGood == -1) {
+                ThrowGood = "0,4,8,16,17,20";
+
+            }
+            //if (lm == "2288" && ThrowGood == -1) {
+            //    ThrowGood = "0,1,4,8,13,15,16,17,18,20";
+            //}
+            var roleName = "<%=UserInfor.RoleCName%>";
+
+            if (RoleCName.indexOf("锦湖") >= 0) {
+                ThrowGood = '21,5';
+            }
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'reportApi.aspx?method=QuerySaleManDailyReport';
+            $('#dg').datagrid('load', {
+                Specs: $('#ASpecs').val(),
+                Figure: $('#AFigure').val(),
+                ClientName: $('#AClientName').datebox('getValue'),
+                PID: $("#APID").combobox('getValue'),//一级产品
+                SID: $("#ASID").combobox('getValue'),//二级产品
+                StartDate: $('#StartDate').datebox('getValue'),
+                EndDate: $('#EndDate').datebox('getValue'),
+                HouseID: $("#AHouseID").combobox('getValues').toString(),//仓库ID
+                OrderType: $("#AOrderType").combobox('getValue'),
+                ProductID: $('#AProductID').val(),
+                ThrowGood: ThrowGood,
+                AreaID: $("#AreaID").combobox('getValue'),
+                TrafficType: $("#TrafficType").combobox('getValue'),
+                BusinessID: $('#BusinessID').combobox('getValue'),//所属部门
+                //BelongHouse: $('#BelongHouse').combobox('getValue'),//公司类型
+                BelongHouse: 0,//公司类型
+                AcceptPeople: $('#AAcceptPeople').val(),
+                CreateAwb: $('#CreateAwb').val(),
+                SaleManID: $('#SaleManID').combobox('getValue')
+            });
+        }
+    </script>
+</asp:Content>
+
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+        <div name="SelectDiv2" style="background: linear-gradient(to bottom, #eff5ff 0px, #e0ecff 100%) repeat-x scroll 0 0; border-color: #95b8e7; border-style: solid; border-width: 1px 1px 0px 1px;">
+        <table>
+            <tr>
+                <td>
+                    <a class="easyui-linkbutton" iconcls="icon-chart_bar" plain="false" href="../Report/reportDaily.aspx"
+                        target="_self">&nbsp;每日仓库报表&nbsp;</a>&nbsp;&nbsp;<a class="easyui-linkbutton" iconcls="icon-chart_bar" style="color: Red;" plain="false" href="../Report/saleManReport.aspx" target="_self">
+                            &nbsp;每日业务员报表&nbsp;</a>&nbsp;&nbsp;<a class="easyui-linkbutton" iconcls="icon-chart_bar" 
+                                plain="false" href="../Report/reportMoveContainer.aspx" target="_self">
+                            &nbsp;每日移库报表&nbsp;</a>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
+        <table>
+            <tr>
+                <td style="text-align: right;">查询时间:
+                </td>
+                <td colspan="1">
+                    <input id="StartDate" class="easyui-datebox" style="width: 100px" />~
+                        <input id="EndDate" class="easyui-datebox" style="width: 100px" />
+                </td>
+                <td style="text-align: right;">开单员:
+                </td>
+                <td>
+                    <input id="CreateAwb" class="easyui-textbox" data-options="prompt:'请输入开单员'" style="width: 100px" />
+                </td>
+                <td style="text-align: right;" id="hd1">订单类型:
+                </td>
+                <td id="hd2">
+                    <input class="easyui-combobox" id="AThrowGood" style="width: 80px;" panelheight="auto" data-options="valueField:'id',textField:'text'" />
+                </td>
+                <td style="text-align: right;">区域大仓:
+                </td>
+                <td>
+                    <input id="AHouseID" class="easyui-combobox" style="width: 100px;" panelheight="auto" data-options="multiple:true" />
+                </td>
+                <td style="text-align: right;">规格:
+                </td>
+                <td>
+                    <input id="ASpecs" class="easyui-textbox" data-options="prompt:'请输入规格'" style="width: 100px" />
+                </td>
+
+                <td style="text-align: right;">一级产品:
+                </td>
+                <td>
+                    <input id="APID" class="easyui-combobox" style="width: 80px;" panelheight="auto" />
+                </td>
+                <td style="text-align: right;" id="td20">业务员名:
+                </td>
+                <td id="td21">
+                    <input name="SaleManID" id="SaleManID" class="easyui-combobox" style="width: 80px;" data-options="valueField: 'LoginName',textField: 'UserName'" />
+                </td>
+                <td style="text-align: right;" id="hd3">产品ID:
+                </td>
+                <td id="hd4">
+                    <input id="AProductID" class="easyui-textbox" data-options="prompt:'请输入产品ID'" style="width: 120px" />
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right;">客户名称:
+                </td>
+                <td>
+                    <%--<input id="AClientName" class="easyui-textbox" data-options="prompt:'请输入客户名称'" style="width: 100px;" />--%>
+                    <input id="AClientName" style="width: 120px;" class="easyui-combobox AcceptPeople" data-options="valueField:'Boss',textField:'Boss',editable:true,required:false" />
+                </td>
+                <td style="text-align: right;">收货人:
+                </td>
+                <td>
+                    <input id="AAcceptPeople" class="easyui-textbox" data-options="prompt:'请输入收货人'" style="width: 100px" />
+                </td>
+
+                <td style="text-align: right;">下单方式:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="AOrderType" style="width: 80px;" panelheight="auto" editable="false">
+                        <option value="-1">全部</option>
+                        <option value="0">电脑下单</option>
+                        <option value="1">企业号下单</option>
+                        <option value="2">商城下单</option>
+                        <option value="3">APP下单</option>
+                        <option value="4">小程序下单</option>
+                    </select>
+                </td>
+                <td style="text-align: right;" id="hd5">所属仓库:
+                </td>
+                <td id="hd6">
+                    <input id="AreaID" class="easyui-combobox" style="width: 100px;" data-options="valueField:'AreaID',textField:'Name'" panelheight="auto" />
+                </td>
+                <td id="AFigureTd" style="text-align: right;">花纹:
+                </td>
+                <td>
+                    <input id="AFigure" class="easyui-textbox" data-options="prompt:'请输入花纹'" style="width: 100px" />
+                </td>
+                <td style="text-align: right;">二级产品:
+                </td>
+                <td>
+                    <input id="ASID" class="easyui-combobox" style="width: 80px;" data-options="valueField:'TypeID',textField:'TypeName',editable:true" />
+                </td>
+                <td class="ATrafficType" style="text-align: right;" id="td22">订单类型:
+                </td>
+                <td class="TrafficType" id="td23">
+                    <select class="easyui-combobox" id="TrafficType" style="width: 80px;" panelheight="auto" editable="false">
+                        <option value="-1">全部</option>
+                        <option value="0">内部订单</option>
+                        <option value="1">外采订单</option>
+                        <option value="2">采购订单</option>
+                    </select>
+                </td>
+                <td id="td25" style="text-align: right;">业务名称:
+                </td>
+                <td id="td26">
+                    <input id="BusinessID" class="easyui-combobox" style="width: 120px;" data-options="valueField:'ID',textField:'DepName',editable:false" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="dgtoolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查询&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-application_put"
+            plain="false" onclick="AwbExport(0)">&nbsp;导&nbsp;出&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-application_put"
+                plain="false" onclick="AwbExport(1)">&nbsp;导出对账单&nbsp;</a>
+        <form runat="server" id="fm1">
+            <asp:Button ID="btnAwbReconExport" runat="server" Style="display: none;" Text="导出" OnClick="btnAwbReconExport_Click" />
+            <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived_Click" />
+        </form>
+    </div>
+
+    <script type="text/javascript">
+
+        //导出数据
+        function AwbExport(ty) {
+            var row = $("#dg").datagrid('getData').rows[0];
+            if (row == null) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '没有数据可以进行导出，请重新查询！', 'warning'); return; }
+            var lm = "<%=UserInfor.LoginName%>";
+            var sm = $('#SaleManID').combobox('getValue');
+            if (sm == undefined) { sm = ""; }
+            if (lm == "2132") {
+                if (sm == undefined || sm == "") {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择业务员！', 'warning');
+                    return;
+                }
+                if (sm != "2114" && sm != "2113" && sm != "2112" && sm != "2111" && sm != "2110") {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择贵公司业务员！', 'warning');
+                    return;
+                }
+            }
+            var roleName = "<%=UserInfor.RoleCName%>";
+            var ThrowGood = $("#AThrowGood").combobox('getValue');
+            //if (lm == "2288" && ThrowGood == -1) {
+            //    ThrowGood = "0,1,4,8,13,15,16,17,18,20";
+            //}
+            var RoleID = "<%=UserInfor.RoleID%>";
+            if (RoleID == "42" && ThrowGood == -1) {
+                ThrowGood = "0,4,8,16,17,20";
+
+            }
+            if (RoleCName.indexOf("锦湖") >= 0) {
+                ThrowGood = '21,5';
+            }
+            $.messager.progress({ msg: '请稍后,正在导出中...' });
+            $.ajax({
+                //url: "reportApi.aspx?method=QuerySaleManDailyReportForExport&key=" + escape(key.toString()),
+                url: "reportApi.aspx?method=QuerySaleManDailyReportForExport&StartDate=" + $('#StartDate').datebox('getValue') + "&EndDate=" + $('#EndDate').datebox('getValue') + "&SaleManID=" + sm + "&HouseID=" + $("#AHouseID").combobox('getValues').toString() + "&AreaID=" + $("#AreaID").combobox('getValue') + "&Specs=" + encodeURIComponent($('#ASpecs').val()) + "&Figure=" + encodeURIComponent($('#AFigure').val()) + "&ClientName=" + encodeURIComponent($('#AClientName').datebox('getValue')) + "&AcceptPeople=" + encodeURIComponent($('#AAcceptPeople').val()) + "&PID=" + $("#APID").combobox('getValue') + "&SID=" + $("#ASID").combobox('getValue') + "&OrderType=" + $("#AOrderType").combobox('getValue') + "&ThrowGood=" + ThrowGood + "&BelongHouse=0" + "&ProductID=" + $('#AProductID').val() + '&BusinessID=' + $('#BusinessID').combobox('getValue'),//所属部门,
+                success: function (text) {
+                    $.messager.progress("close");
+                    if (text == "OK") {
+                        if (ty == "0") {
+                            var obj = document.getElementById("<%=btnDerived.ClientID %>"); obj.click();
+                        }
+                        else {
+                            var obj = document.getElementById("<%=btnAwbReconExport.ClientID %>"); obj.click();
+                        }
+                    }
+                    else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
+                }
+            });
+        }
+
+    </script>
+
+</asp:Content>

@@ -59,10 +59,11 @@ namespace Cargo.House
             table.Columns.Add("全渠道销售数量", typeof(int));
             table.Columns.Add("全国销售数量", typeof(int));
             table.Columns.Add("月均销量", typeof(int));
+            table.Columns.Add("库存度天数", typeof(int));
             int i = 0;
             int TStockNum = 0, TCurNum = 0, TLessNum = 0, TSaleNum=0, 
                 TMinStock = 0, TMaxStock = 0,TMoveNum = 0, TTotalNum = 0, 
-                TWXSaleNum = 0, TTotalSaleNum = 0, TAvgSaleNum = 0;
+                TWXSaleNum = 0, TTotalSaleNum = 0, TAvgSaleNum = 0, TDoi = 0;
             foreach (var it in CargoSafeStockData)
             {
                 i++;
@@ -90,13 +91,14 @@ namespace Cargo.House
                 newRows["全渠道销售数量"] = it.SaleNum;
                 newRows["全国销售数量"] = it.TotalSaleNum;
                 newRows["月均销量"] = it.AvgSaleNum;
+                newRows["库存度天数"] = it.DOI;
 
                 TStockNum += it.StockNum; TCurNum += it.CurNum;
                 TLessNum += it.LessNum; TSaleNum += it.SaleNum;
                 TMinStock += it.MinStock.GetValueOrDefault(); TMaxStock += it.MaxStock.GetValueOrDefault();
                 TMoveNum += it.MoveNum.GetValueOrDefault(); TTotalNum += it.TotalNum.GetValueOrDefault();
                 TWXSaleNum += it.WXSaleNum.GetValueOrDefault(); TTotalSaleNum += it.TotalSaleNum.GetValueOrDefault();
-                TAvgSaleNum += it.AvgSaleNum.GetValueOrDefault();
+                TAvgSaleNum += it.AvgSaleNum.GetValueOrDefault(); TDoi += it.DOI.GetValueOrDefault();
                 table.Rows.Add(newRows);
             }
             DataRow footRow = table.NewRow();
@@ -112,6 +114,7 @@ namespace Cargo.House
             footRow["全渠道销售数量"] = TSaleNum;
             footRow["全国销售数量"] = TTotalSaleNum;
             footRow["月均销量"] = TAvgSaleNum;
+            footRow["库存度天数"] = TDoi;
             table.Rows.Add(footRow);
 
             ToExcel.DataTableToExcel(table, "", "安全库存数据表");

@@ -1,0 +1,236 @@
+﻿using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo.Order;
+using House.Entity.Dto;
+using iText.Layout.Element;
+using Newtonsoft.Json;
+using NPOI.HSSF.Record.Formula.Functions;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Security.Policy;
+using System.ServiceModel.Channels;
+using System.Text;
+using System.Web;
+
+namespace Cargo.Interface
+{
+    /// <summary>
+    /// CassMallApi 的摘要说明
+    /// </summary>
+    public class CassMallApi : IHttpHandler
+    {
+#if DEBUG
+        private string CassApi = "https://api-demo.casstime.com/api";
+#else
+            private string CassApi = "https://api.cassmall.com/api";
+#endif
+        public void ProcessRequest(HttpContext context)
+        {
+            //context.Response.ContentType = "text/plain";
+            //context.Response.Write("Hello World");
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+            string appKey = context.Request.Headers["appKey"];
+            string apiName = context.Request.Headers["apiName"];
+            string session = context.Request.Headers["session"];
+            string timestamp = context.Request.Headers["timestamp"];
+            string sign = context.Request.Headers["sign"];
+
+            // 读取请求体
+            using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8))
+            {
+                var requestBody = reader.ReadToEnd();
+
+                // 解析 JSON 数据
+                var callbackData = JsonConvert.DeserializeObject<CassMallDTO>(requestBody);
+                if (callbackData != null)
+                {
+                    callbackData.requestParam = new RequestParam
+                    {
+                        appKey = "gzshly60be866dbe52",
+                        apiName = apiName,
+                        session = "f278cd1d876548f4a96ea4b427b27d88",
+                        timestamp = timestamp,
+                        sign = sign,
+                    };
+                    //保存 推送记录
+                    nwBus.AddCassMallData(new CargoCassMallEntity { SourceType = 0, SourceAction = "API", orderId = callbackData.data.orderId, ResJson = requestBody });
+
+                    // TODO: 根据 callbackData 执行相应的业务逻辑
+                    TaskExecution(callbackData);
+
+                    // 返回 200 状态码
+                    context.Response.StatusCode = 200;
+                    context.Response.Write("{\"status\": \"success\"}");
+                }
+                else
+                {
+                    // 返回 -1 失败 状态码
+                    context.Response.StatusCode = -1;
+                    context.Response.Write("{\"status\": \"error\"}");
+                }
+
+            }
+
+        }
+
+        public void TaskExecution(CassMallDTO notice)
+        {
+            switch (notice.noticeName)
+            {
+                //创建订单并支付
+                case "cassec.push.order.payed":
+                    AddMassCallOrder(notice);
+                    break;
+                //订单修改
+                case "cassec.push.order.modified":
+                    UpdateMassCallOrder(notice);
+                    break;
+                //订单已取消
+                case "cassec.push.order.cancelled":
+                    MassCallOrderCancelled(notice);
+                    break;
+                default:
+                    break;
+            }
+        }
+        public void AddMassCallOrder(CassMallDTO notice)
+        {
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+            try
+            {
+                //获取订单信息
+                string url = CassApi+ "?orderId=" + notice.data.orderId;
+                var dataStr = PostHttpRequest(url, "", "cassec.order.detail.get"
+                    , (!string.IsNullOrEmpty(notice.requestParam.session) ? notice.requestParam.session : "f278cd1d876548f4a96ea4b427b27d88")
+                    , (!string.IsNullOrEmpty(notice.requestParam.appKey) ? notice.requestParam.appKey : "gzshly60be866dbe52"));
+                var dataString = JsonConvert.DeserializeObject<CassMallStr>(dataStr);
+                var datas = dataString.result ;
+                //保存日志
+                if (datas != null)
+                {
+                    nwBus.AddCassMallData(new CargoCassMallEntity { SourceType = 1, SourceAction = "AddMassCallOrder", orderId = notice.data.orderId, ResJson = dataStr });
+                }
+                //开思数据同步保存到系统
+                foreach (var item in datas.OrderItems)
+                {
+                    item.ThirdPartySystemStr = JsonConvert.SerializeObject(item.ThirdPartySystem);
+                }
+                //1.订单数据保存
+                Common.WriteTextLog("CassMall Synchronization 1.订单数据保存 开始");
+                nwBus.AddCassMallOrder(datas.OrderHeader, datas.OrderItems);
+                //2.订单赠品保存
+                Common.WriteTextLog("CassMall Synchronization 2.订单赠品保存 开始");
+                nwBus.AddCassMallGiftItems(datas.OrderGiftItems, datas.OrderHeader.OrderId);
+                //3.订单配送信息保存
+                Common.WriteTextLog("CassMall Synchronization 3.订单配送信息保存 开始");
+                nwBus.AddCassMallPostalAddress(datas.OrderPostalAddress);
+                //4.订单条目优惠保存
+                Common.WriteTextLog("CassMall Synchronization 4.订单条目优惠保存 开始");
+                nwBus.AddCassMallItemAdjustments(datas.OrderItemAdjustments);
+            }
+            catch (Exception ex)
+            {
+                Common.WriteTextLog("CassMall Synchronization 订单数据失败：" + ex.ToString());
+            }
+        }
+        public void UpdateMassCallOrder(CassMallDTO notice)
+        {
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+            //获取订单信息
+            string url = CassApi + "?orderId=" + notice.data.orderId;
+            var dataStr = PostHttpRequest(url, "", "cassec.order.detail.get", (!string.IsNullOrEmpty(notice.requestParam.session) ? notice.requestParam.session : "f278cd1d876548f4a96ea4b427b27d88")
+                    , (!string.IsNullOrEmpty(notice.requestParam.appKey) ? notice.requestParam.appKey : "gzshly60be866dbe52"));
+            var dataString = JsonConvert.DeserializeObject<CassMallStr>(dataStr);
+            var datas = dataString.result;
+            //保存日志
+            if (datas != null)
+            {
+                nwBus.AddCassMallData(new CargoCassMallEntity { SourceType = 2, SourceAction = "UpdateMassCallOrder", orderId = notice.data.orderId, ResJson = dataStr });
+            }
+        }
+        public void MassCallOrderCancelled(CassMallDTO notice)
+        {
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.Status = "0";
+            log.NvgPage = "订单管理";
+            log.UserID = "";
+            log.Operate = "开思订单修改接口";
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+            CargoOrderBus bus = new CargoOrderBus();
+
+            //订单取消
+            //1.更新开思表状态
+            nwBus.MassCallOrderCancelled(notice);
+            //2.删除系统订单
+            var orderList = nwBus.QueryCallOrderList(notice);
+            bus.DeleteOrderInfo(orderList, log);
+        }
+        public string PostHttpRequest(string url, string Data, string apiName, string APISession,string appKey)
+        {
+            string result = string.Empty;
+            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+            TimeSpan timeSpan = DateTime.UtcNow.AddMinutes(-5) - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            DateTime dateTime = DateTime.Now;
+            long timestamp = (long)(dateTime.Subtract(new DateTime(1970, 1, 1))).TotalMilliseconds;
+            string sign = "38476BFFE6274DBCAB38647884D467C6"
+                + apiName 
+                + (!string.IsNullOrEmpty(appKey)? appKey : "gzshly60be866dbe52") 
+                + APISession 
+                + timestamp;
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] inputBytes = Encoding.UTF8.GetBytes(sign);
+                byte[] hashBytes = md5.ComputeHash(inputBytes);
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < hashBytes.Length; i++)
+                {
+                    sb.Append(hashBytes[i].ToString("x2"));
+                }
+                sign = sb.ToString().ToUpper();
+            }
+            request.Headers.Add("apiName", apiName);
+            request.Headers.Add("appKey", "gzshly60be866dbe52");
+            request.Headers.Add("sign", sign);
+            request.Headers.Add("session", APISession);
+            request.Headers.Add("timestamp", timestamp.ToString());
+            request.Method = "GET";
+            request.ContentType = "application/json";
+            //byte[] postBytes = null;
+            //postBytes = Encoding.UTF8.GetBytes(Data);
+            //request.ContentLength = postBytes.Length;
+            //using (Stream outstream = request.GetRequestStream())
+            //{
+            //    outstream.Write(postBytes, 0, postBytes.Length);
+            //}
+            using (WebResponse response = request.GetResponse())
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                        }
+                    }
+
+                }
+            }
+            return result;
+        }
+
+        public bool IsReusable
+        {
+            get
+            {
+                return false;
+            }
+        }
+    }
+}

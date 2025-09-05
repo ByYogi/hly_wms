@@ -139,7 +139,10 @@ namespace House.Entity.Cargo
         [Description("待处理库存数")]
         public int? PendingStock { get; set; }
         public int? AvgSaleNum { get; set; }
-
+        /// <summary>
+        /// Day of invenotry
+        /// </summary>
+        public int? DOI { get; set; } 
         public int? TotalNum { get; set; }
         public int? TotalSaleNum { get; set; }
         public int? WXSaleNum { get; set; }

@@ -2372,20 +2372,22 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
         /// <param name="entity"></param>
         public void AddContainerGoods(CargoContainerGoodsEntity entity)
         {
-            string strSQL = @"INSERT INTO Tbl_Cargo_ContainerGoods(ContainerID,TypeID,ProductID,Piece,Weight,InHouseTime,IsPrintInCargo,InCargoID) VALUES (@ContainerID,@TypeID,@ProductID,@Piece,@Weight,@InHouseTime,@IsPrintInCargo,@InCargoID)";
+            //string strSQL = @"INSERT INTO Tbl_Cargo_ContainerGoods(ContainerID,TypeID,ProductID,Piece,Weight,InHouseTime,IsPrintInCargo,InCargoID,Piece_DATE) VALUES (@ContainerID,@TypeID,@ProductID,@Piece,@Weight,@InHouseTime,@IsPrintInCargo,@InCargoID,@Piece_DATE)";
 
-            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-            {
-                conn.AddInParameter(cmd, "@ContainerID", DbType.Int32, entity.ContainerID);
-                conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
-                conn.AddInParameter(cmd, "@ProductID", DbType.Int32, entity.ProductID);
-                conn.AddInParameter(cmd, "@Piece", DbType.Int32, entity.Piece);
-                conn.AddInParameter(cmd, "@Weight", DbType.Decimal, entity.Weight);
-                conn.AddInParameter(cmd, "@InHouseTime", DbType.DateTime, DateTime.Now);
-                conn.AddInParameter(cmd, "@IsPrintInCargo", DbType.String, entity.IsPrintInCargo ? "1" : "0");
-                conn.AddInParameter(cmd, "@InCargoID", DbType.String, entity.InCargoID);
-                conn.ExecuteNonQuery(cmd);
-            }
+            //using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            //{
+            //    conn.AddInParameter(cmd, "@ContainerID", DbType.Int32, entity.ContainerID);
+            //    conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+            //    conn.AddInParameter(cmd, "@ProductID", DbType.Int32, entity.ProductID);
+            //    conn.AddInParameter(cmd, "@Piece", DbType.Int32, entity.Piece);
+            //    conn.AddInParameter(cmd, "@Weight", DbType.Decimal, entity.Weight);
+            //    conn.AddInParameter(cmd, "@InHouseTime", DbType.DateTime, DateTime.Now);
+            //    conn.AddInParameter(cmd, "@IsPrintInCargo", DbType.String, entity.IsPrintInCargo ? "1" : "0");
+            //    conn.AddInParameter(cmd, "@InCargoID", DbType.String, entity.InCargoID);
+            //    conn.AddInParameter(cmd, "@Piece_DATE", DbType.DateTime, entity.IsBinTransfer ? (object)DBNull.Value : DateTime.Now);
+            //    conn.ExecuteNonQuery(cmd);
+            //}
+            AddCargoContainerGoods(entity);
         }
 
         /// <summary>
@@ -2824,7 +2826,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
         {
             try
             {
-                string strSQL = @"INSERT INTO Tbl_Cargo_ContainerGoods(ContainerID,TypeID,ProductID,Piece,Weight,InHouseTime,IsPrintInCargo,InCargoID) VALUES (@ContainerID,@TypeID,@ProductID,@Piece,@Weight,@InHouseTime,@IsPrintInCargo,@InCargoID)";
+                string strSQL = @"INSERT INTO Tbl_Cargo_ContainerGoods(ContainerID,TypeID,ProductID,Piece,Weight,InHouseTime,IsPrintInCargo,InCargoID,Piece_DATE) VALUES (@ContainerID,@TypeID,@ProductID,@Piece,@Weight,@InHouseTime,@IsPrintInCargo,@InCargoID,@Piece_DATE)";
 
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
@@ -2836,6 +2838,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                     conn.AddInParameter(cmd, "@InHouseTime", DbType.DateTime, DateTime.Now);
                     conn.AddInParameter(cmd, "@IsPrintInCargo", DbType.String, entity.IsPrintInCargo ? "1" : "0");
                     conn.AddInParameter(cmd, "@InCargoID", DbType.String, entity.InCargoID);
+                    conn.AddInParameter(cmd, "@Piece_DATE", DbType.DateTime, entity.IsBinTransfer ? (object)DBNull.Value : DateTime.Now);
                     conn.ExecuteNonQuery(cmd);
                 }
             }
@@ -4128,6 +4131,11 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
             if (!string.IsNullOrEmpty(entity.SpecsType)) { strSQL += " and b.SpecsType='" + entity.SpecsType + "'"; }
             if (!string.IsNullOrEmpty(entity.IsLockStock)) { strSQL += " and b.IsLockStock='" + entity.IsLockStock + "'"; }
             if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and b.ProductCode='" + entity.ProductCode + "'"; }
+            //znf 250904
+            if (!string.IsNullOrEmpty(entity.NoType)) {
+                var noTypes = entity.NoType.Split(',');
+                strSQL += $@" and a.TypeID not in({string.Join(",", noTypes.Distinct())})";
+            }
             if (!entity.SuppClientNum.Equals(0)) { strSQL += " and b.SuppClientNum  =" + entity.SuppClientNum; }
 
             strSQL += " ) as a where a.RN=1 ";
@@ -4738,11 +4746,10 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
             List<CargoSafeStockEntity> result = new List<CargoSafeStockEntity>();
             string strSQL = "";
             var conditions = new List<string>();
-            StringBuilder strBld = new StringBuilder();
-            #region #tempALLWhsPiece 全仓库存数据临时表 
-            //将 产品全仓库存数据 存放到临时表中（能优化查询性能）
+            StringBuilder strBld = new StringBuilder("-- ############ 查询安全库存数据 ############");
+            #region 1 Tbl_Cargo_ContainerGoods 全国库存
             strBld.AppendLine(@"
--- 临时表 1: （全仓库存合计）
+-- 全国库存
 SELECT
     b.TypeID,
     b.ProductCode,
@@ -4753,25 +4760,21 @@ FROM Tbl_Cargo_ContainerGoods AS a
 INNER JOIN Tbl_Cargo_Product AS b
     ON a.ProductID = b.ProductID
 WHERE a.Piece > 0
-  AND b.SpecsType <> '5'
+  AND b.SpecsType <> '5' -- 过滤次日达库存
 GROUP BY b.TypeID, b.ProductCode, b.GoodsCode;
--- 临时表索引
-CREATE CLUSTERED INDEX IX_tempALLWhsPiece ON #tempALLWhsPiece (TypeID, ProductCode, GoodsCode);
 ");
             #endregion
 
-            //开始拼接CTE
-            strBld.AppendLine("WITH Placeholder AS (Select 1 AS Symbol) -- 占位符，方便拼接");
-
-            #region 1 Tbl_Cargo_ContainerGoods 当前仓库在库数量
+            #region 2 Tbl_Cargo_ContainerGoods 当前仓库在库数量
             strBld.Append(@"
-  ,CurStock AS (
+    -- 当前库存
     SELECT
         b.TypeID,
         b.HouseID,
         b.ProductCode,
         b.GoodsCode,
         SUM(a.Piece) AS Piece
+        INTO #tempCurStock
     FROM Tbl_Cargo_ContainerGoods AS a
     INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
     INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
@@ -4832,11 +4835,12 @@ CREATE CLUSTERED INDEX IX_tempALLWhsPiece ON #tempALLWhsPiece (TypeID, ProductCo
                 strBld.Append(string.Join(" AND ", conditions));
             }
 
-            strBld.Append(" GROUP BY b.TypeID, b.HouseID, b.ProductCode, b.GoodsCode)");
+            strBld.Append(" GROUP BY b.TypeID, b.HouseID, b.ProductCode, b.GoodsCode;");
             #endregion
 
-            #region 2 Tbl_Cargo_Order 当前仓库产品销量
-            strBld.Append(@",OrderStats AS (
+            #region 3 Tbl_Cargo_Order 当前仓库产品销量
+            strBld.Append(@"
+    -- 当前销量
     SELECT
         c.TypeID,
         c.HouseID,
@@ -4844,6 +4848,7 @@ CREATE CLUSTERED INDEX IX_tempALLWhsPiece ON #tempALLWhsPiece (TypeID, ProductCo
         c.GoodsCode,
         SUM(b.Piece) AS SaleNum,
         SUM(CASE WHEN a.OrderType = 4 THEN b.Piece ELSE 0 END) AS WXSaleNum
+    INTO #tempOrderStats
     FROM Tbl_Cargo_Order AS a
     INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
     INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
@@ -4861,10 +4866,10 @@ CREATE CLUSTERED INDEX IX_tempALLWhsPiece ON #tempALLWhsPiece (TypeID, ProductCo
 
             // 制单日期范围
             if (entity.StartDate > DateTime.MinValue && entity.StartDate.Year > 1900)
-                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
+                conditions.Add($"CAST(a.CreateDate AS DATE) >= '{entity.StartDate:yyyy-MM-dd}'");
 
             if (entity.EndDate > DateTime.MinValue && entity.EndDate.Year > 1900)
-                conditions.Add($"a.CreateDate <= '{entity.EndDate:yyyy-MM-dd}'");
+                conditions.Add($"CAST(a.CreateDate AS DATE) <= '{entity.EndDate:yyyy-MM-dd}'");
 
             // 规格条件
             if (!string.IsNullOrWhiteSpace(entity.Specs))
@@ -4924,16 +4929,18 @@ CREATE CLUSTERED INDEX IX_tempALLWhsPiece ON #tempALLWhsPiece (TypeID, ProductCo
             }
 
             // 最终 GROUP BY
-            strBld.AppendLine(" GROUP BY c.TypeID, c.HouseID, c.ProductCode, c.GoodsCode)");
+            strBld.AppendLine(" GROUP BY c.TypeID, c.HouseID, c.ProductCode, c.GoodsCode;");
             #endregion
 
-            #region 3 Tbl_Cargo_Order 产品全国销量
-            strBld.Append(@",TotalSalePiece AS (
+            #region 4 Tbl_Cargo_Order 产品全国销量
+            strBld.Append(@"
+    -- 全国销量
     SELECT
         c.TypeID,
         c.ProductCode,
         c.GoodsCode,
         SUM(b.Piece) AS Piece
+    INTO #tempTotalSalePiece
     FROM Tbl_Cargo_Order AS a
     INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
     INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
@@ -4945,10 +4952,10 @@ CREATE CLUSTERED INDEX IX_tempALLWhsPiece ON #tempALLWhsPiece (TypeID, ProductCo
             conditions = new List<string>();
             // 制单日期范围
             if (entity.StartDate != default)
-                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
+                conditions.Add($"CAST(a.CreateDate AS DATE) >= '{entity.StartDate:yyyy-MM-dd}'");
 
             if (entity.StartDate != default)
-                conditions.Add($"a.CreateDate <= '{entity.EndDate:yyyy-MM-dd}'");
+                conditions.Add($"CAST(a.CreateDate AS DATE) <= '{entity.EndDate:yyyy-MM-dd}'");
 
             // 拼接 WHERE 条件
             if (conditions.Count > 0)
@@ -4957,17 +4964,19 @@ CREATE CLUSTERED INDEX IX_tempALLWhsPiece ON #tempALLWhsPiece (TypeID, ProductCo
                 strBld.Append(string.Join(" AND ", conditions));
             }
 
-            strBld.AppendLine(" GROUP BY c.TypeID, c.ProductCode, c.GoodsCode)");
+            strBld.AppendLine(" GROUP BY c.TypeID, c.ProductCode, c.GoodsCode;");
             #endregion
 
-            #region 4 Tbl_Cargo_MoveOrderGood 当前仓库在途数量
-            strBld.Append(@",MoveStats AS (
+            #region 5 Tbl_Cargo_MoveOrderGood 当前仓库在途数量
+            strBld.Append(@"
+    -- 在途数量
     SELECT
         p.ProductCode,
         p.TypeID,
         p.GoodsCode,
         mo2.NewHouseID AS HouseID,
         SUM(mo.Piece - mo.NewPiece) AS Piece
+    INTO #tempMoveStats
     FROM Tbl_Cargo_MoveOrderGood AS mo
     INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
     INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
@@ -5048,23 +5057,25 @@ CREATE CLUSTERED INDEX IX_tempALLWhsPiece ON #tempALLWhsPiece (TypeID, ProductCo
                 strBld.Append(string.Join(" AND ", conditions));
             }
 
-            strBld.AppendLine(" GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, mo2.NewHouseID)");
+            strBld.AppendLine(" GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, mo2.NewHouseID;");
             #endregion
 
-            #region 5 Tbl_Cargo_OrderGoods 月均销量
-            strBld.AppendLine(@",MonthlySales AS (
-    SELECT 
+            #region 6 Tbl_Cargo_OrderGoods 月均销量
+            strBld.AppendLine(@"
+-- 月均销量 CTE 
+WITH MonthlySales AS (
+    SELECT
         p.ProductCode,
         p.TypeID,
         p.GoodsCode,
         ogSalePiece.HouseID,
         DATEADD(MONTH, DATEDIFF(MONTH, 0, ogSalePiece.OP_DATE), 0) AS YearMonth,
         SUM(ogSalePiece.Piece) AS Piece
-    FROM Tbl_Cargo_OrderGoods ogSalePiece
-    INNER JOIN Tbl_Cargo_Product p ON ogSalePiece.ProductID = p.ProductID
-    WHERE ogSalePiece.OP_DATE 
-        BETWEEN DATEADD(MONTH, -3, CAST(GETDATE() AS DATE)) 
-            AND DATEADD(MONTH, -1, CAST(GETDATE() AS DATE))
+    FROM Tbl_Cargo_OrderGoods AS ogSalePiece
+    INNER JOIN Tbl_Cargo_Product AS p
+        ON ogSalePiece.ProductID = p.ProductID
+    WHERE CAST(ogSalePiece.OP_DATE AS DATE) BETWEEN DATEADD(MONTH, -3, CAST(GETDATE() AS DATE))
+                                  AND DATEADD(MONTH, -1, CAST(GETDATE() AS DATE))
       AND p.ProductCode IS NOT NULL
       AND p.ProductCode <> ''
 ");
@@ -5151,21 +5162,24 @@ Weighted AS (
             ELSE 0
         END AS WeightedPiece
     FROM MonthlySales
-),
-AvgSale AS (
-    SELECT 
+)
+
+SELECT 
     ProductCode,
     TypeID,
     GoodsCode,
     HouseID,
     SUM(Piece) AS TotalPiece,       -- 最近3个月总销量
     SUM(WeightedPiece) AS AvgMonthSale  -- 加权月均销量
+    INTO #tempAvgSale
 FROM Weighted
-GROUP BY ProductCode, TypeID, GoodsCode, HouseID)");
+GROUP BY ProductCode, TypeID, GoodsCode, HouseID;");
             #endregion
 
             #region 主要语句联合查询
-            strBld.Append(@"SELECT
+            strBld.Append(@"
+-- 主查询语句
+SELECT
     s.*,
     h.Name AS HouseName,
     a.Name AS AreaName,
@@ -5176,7 +5190,7 @@ GROUP BY ProductCode, TypeID, GoodsCode, HouseID)");
     ISNULL(os.SaleNum, 0) AS SaleNum,
     ISNULL(os.WXSaleNum, 0) AS WXSaleNum,
     ISNULL(tw.Piece, 0) AS TotalNum,
-    ISNULL(tos.Piece, 0) AS TotalSaleNum,
+    ISNULL(tos.Piece, 0) AS TotalSaleNum, 
     ISNULL(ms.Piece, 0) AS MoveNum,
     CAST(ISNULL(avs.AvgMonthSale, 0) AS INT) AS AvgSaleNum,
     CASE
@@ -5184,15 +5198,47 @@ GROUP BY ProductCode, TypeID, GoodsCode, HouseID)");
         ELSE s.StockNum - ISNULL(cs.Piece, 0)
     END AS LessNum
 FROM Tbl_Cargo_SafeStock AS s
-INNER JOIN Tbl_Cargo_House AS h ON s.HouseID = h.HouseID
-INNER JOIN Tbl_Cargo_Area AS a ON s.AreaID = a.AreaID
-INNER JOIN Tbl_Cargo_ProductType AS pt ON s.TypeID = pt.TypeID
-LEFT JOIN CurStock AS cs ON s.HouseID = cs.HouseID AND s.TypeID = cs.TypeID AND s.ProductCode = cs.ProductCode AND s.GoodsCode = cs.GoodsCode
-LEFT JOIN #tempALLWhsPiece AS tw ON s.TypeID = tw.TypeID AND s.ProductCode = tw.ProductCode AND s.GoodsCode = tw.GoodsCode
-LEFT JOIN OrderStats AS os ON s.HouseID = os.HouseID AND s.TypeID = os.TypeID AND s.ProductCode = os.ProductCode AND s.GoodsCode = os.GoodsCode
-LEFT JOIN TotalSalePiece AS tos ON s.TypeID = tos.TypeID AND s.ProductCode = tos.ProductCode AND s.GoodsCode = tos.GoodsCode
-LEFT JOIN MoveStats AS ms ON s.HouseID = ms.HouseID AND s.TypeID = ms.TypeID AND s.ProductCode = ms.ProductCode AND s.GoodsCode = ms.GoodsCode
-LEFT JOIN AvgSale as avs ON s.HouseID = avs.HouseID AND s.TypeID = avs.TypeID AND s.ProductCode = avs.ProductCode AND s.GoodsCode = avs.GoodsCode
+INNER JOIN Tbl_Cargo_House AS h
+    ON s.HouseID = h.HouseID
+INNER JOIN Tbl_Cargo_Area AS a
+    ON s.AreaID = a.AreaID
+INNER JOIN Tbl_Cargo_ProductType AS pt
+    ON s.TypeID = pt.TypeID
+
+LEFT JOIN #tempCurStock AS cs
+    ON s.HouseID = cs.HouseID
+   AND s.TypeID = cs.TypeID
+   AND s.ProductCode = cs.ProductCode
+   AND s.GoodsCode = cs.GoodsCode
+
+LEFT JOIN #tempALLWhsPiece AS tw
+    ON s.TypeID = tw.TypeID
+   AND s.ProductCode = tw.ProductCode
+   AND s.GoodsCode = tw.GoodsCode
+
+LEFT JOIN #tempOrderStats AS os
+    ON s.HouseID = os.HouseID
+   AND s.TypeID = os.TypeID
+   AND s.ProductCode = os.ProductCode
+   AND s.GoodsCode = os.GoodsCode
+
+LEFT JOIN #tempTotalSalePiece AS tos
+    ON s.TypeID = tos.TypeID
+   AND s.ProductCode = tos.ProductCode
+   AND s.GoodsCode = tos.GoodsCode
+
+LEFT JOIN #tempMoveStats AS ms
+    ON s.HouseID = ms.HouseID
+   AND s.TypeID = ms.TypeID
+   AND s.ProductCode = ms.ProductCode
+   AND s.GoodsCode = ms.GoodsCode
+
+LEFT JOIN #tempAvgSale AS avs
+    ON s.HouseID = avs.HouseID
+   AND s.TypeID = avs.TypeID
+   AND s.ProductCode = avs.ProductCode
+   AND s.GoodsCode = avs.GoodsCode
+
     WHERE (1 = 1)");
 
             conditions = new List<string>();
@@ -5267,7 +5313,6 @@ LEFT JOIN AvgSale as avs ON s.HouseID = avs.HouseID AND s.TypeID = avs.TypeID AN
             strBld.AppendLine(" ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
             #endregion
 
-
             strSQL = strBld.ToString();
             using ( DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
@@ -5276,6 +5321,14 @@ LEFT JOIN AvgSale as avs ON s.HouseID = avs.HouseID AND s.TypeID = avs.TypeID AN
                 {
                     foreach (DataRow idr in dd.Rows)
                     {
+                        var avgSaleNum = idr.Field<int>("AvgSaleNum");
+                        var curNum = idr.Field<int>("CurNum") ;
+
+                        int doi = 0;
+                        if(curNum > 0 && avgSaleNum > 0)
+                        {
+                            doi = Convert.ToInt32(curNum / (avgSaleNum / 30d));
+                        }
                         result.Add(new CargoSafeStockEntity
                         {
                             SID = idr.Field<long>("SID"),
@@ -5297,7 +5350,7 @@ LEFT JOIN AvgSale as avs ON s.HouseID = avs.HouseID AND s.TypeID = avs.TypeID AN
                             MinStock = idr.Field<int>("MinStock"),
                             StockNum = idr.Field<int>("StockNum"), //安全库存数
                             LessNum = idr.Field<int>("LessNum"),   //相差数
-                            CurNum = idr.Field<int>("CurNum"),     //实际库存数
+                            CurNum = curNum,     //实际库存数
                             MoveNum = idr.Field<int>("MoveNum"),   //在途库存数
                             SaleNum = idr.Field<int>("SaleNum"),   //销售数量
                             WXSaleNum = idr.Field<int>("WXSaleNum"), //销售数量
@@ -5305,13 +5358,14 @@ LEFT JOIN AvgSale as avs ON s.HouseID = avs.HouseID AND s.TypeID = avs.TypeID AN
                             OP_DATE = idr.Field<DateTime>("OP_DATE"),
                             TotalNum = idr.Field<int>("TotalNum"),       //全国实际库存数
                             TotalSaleNum = idr.Field<int>("TotalSaleNum"), //全国销售数量
-                            AvgSaleNum = idr.Field<int>("AvgSaleNum"), //月均销量
+                            AvgSaleNum = avgSaleNum, //月均销量
 
                             MinStockDay = idr.Field<int?>("MinStockDay"),   //最小库存天数
                             MaxStockDay = idr.Field<int?>("MaxStockDay"),   //最大库存天数
                             HCYCStock = idr.Field<int?>("HCYCStock"),       //云仓库存数
                             OEStock = idr.Field<int?>("OEStock"),           //OE库存数
-                            PendingStock = idr.Field<int?>("PendingStock")  //待处理库存数
+                            PendingStock = idr.Field<int?>("PendingStock"),  //待处理库存数
+                            DOI = doi
                         });
                     }
                 }
@@ -6606,7 +6660,7 @@ WHERE
             if (!entity.HeadHouseID.Equals(0)) { strSQL += "and f.AreaID=" + entity.HeadHouseID; }
 
             strSQL += " where (1=1) and p.SpecsType <> 5 and a.Piece>0 ";
-            if (!isFull) { strSQL += " and (a.Take_DATE IS NULL OR a.Take_DATE < COALESCE(a.Piece_DATE, a.OP_DATE))"; }
+            if (!isFull) { strSQL += " AND a.Piece_DATE IS NOT NULL AND a.Piece_DATE >= DATEADD(HOUR, 18, CAST(CONVERT(date, GETDATE() - 1) AS DATETIME)) AND a.Piece_DATE < DATEADD(HOUR, 18, CAST(CONVERT(date, GETDATE()) AS DATETIME))"; }
             strSQL += " group by a.ContainerID,b.ContainerCode";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
@@ -6625,7 +6679,7 @@ WHERE
             strTag += " inner join Tbl_Cargo_ProductTag as g on a.ProductID = g.ProductID and g.OutCargoStatus = 0 and a.ContainerID = g.ContainerID";
 
             strTag += " where (1=1) and p.SpecsType <> 5  and a.Piece > 0 ";
-            if (!isFull) { strTag += " and (a.Take_DATE IS NULL OR a.Take_DATE < COALESCE(a.Piece_DATE, a.OP_DATE))"; }
+            if (!isFull) { strTag += " AND a.Piece_DATE IS NOT NULL AND a.Piece_DATE >= DATEADD(HOUR, 18, CAST(CONVERT(date, GETDATE() - 1) AS DATETIME)) AND a.Piece_DATE < DATEADD(HOUR, 18, CAST(CONVERT(date, GETDATE()) AS DATETIME))"; }
 
             //判断是否有需要盘点的标签数据
             using (DbCommand cmdTag = conn.GetSqlStringCommond(strTag))
@@ -6788,7 +6842,7 @@ WHERE
         {
             int did = 0;
             //string strSQL = @"INSERT INTO Tbl_Cargo_StockTake(HouseID,HeadHouseID,HeadHouseName,AreaID,AreaName,CreateID,CreateName,CreateDate,TakeStatus,StockNum) Values (@HouseID,@HeadHouseID,@HeadHouseName,@AreaID,@AreaName,@CreateID,@CreateName,@CreateDate,@TakeStatus,@StockNum) SELECT @@IDENTITY";
-            string strSQL = @"INSERT INTO Tbl_Cargo_StockTake(HouseID,HeadHouseID,HeadHouseName,AreaID,AreaName,CreateID,CreateName,CreateDate,TakeStatus,StockNum,TypeID,TypeName) Values (@HouseID,@HeadHouseID,@HeadHouseName,@AreaID,@AreaName,@CreateID,@CreateName,@CreateDate,@TakeStatus,@StockNum,@TypeID,@TypeName) SELECT @@IDENTITY";
+            string strSQL = @"INSERT INTO Tbl_Cargo_StockTake(HouseID,HeadHouseID,HeadHouseName,AreaID,AreaName,CreateID,CreateName,CreateDate,TakeStatus,StockNum,TypeID,TypeName,TakeMode) Values (@HouseID,@HeadHouseID,@HeadHouseName,@AreaID,@AreaName,@CreateID,@CreateName,@CreateDate,@TakeStatus,@StockNum,@TypeID,@TypeName,@TakeMode) SELECT @@IDENTITY";
             entity.EnSafe();
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
@@ -6804,6 +6858,8 @@ WHERE
                 conn.AddInParameter(cmd, "@StockNum", DbType.Int32, entity.StockNum);
                 conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
                 conn.AddInParameter(cmd, "@TypeName", DbType.String, entity.TypeName);
+
+                conn.AddInParameter(cmd, "@TakeMode", DbType.Int32, entity.TakeMode.HasValue ? entity.TakeMode : 0);
                 did = Convert.ToInt32(conn.ExecuteScalar(cmd));
             }
             return did;
@@ -6893,7 +6949,8 @@ WHERE
                                 CreateDate = Convert.ToDateTime(idr["CreateDate"]),
                                 TakeStatus = Convert.ToString(idr["TakeStatus"]),
                                 StockNum = Convert.ToInt32(idr["StockNum"]),
-                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                                TakeMode = idr.Field<byte?>("TakeMode")
                             });
                         }
                     }
@@ -6972,20 +7029,21 @@ WHERE
         /// <param name="entity"></param>
         private void UpdateStockTakeStatus(CargoStockTakeEntity entity)
         {
-            //第一次扫描盘点，更新在库库存盘点时间
             int stockID = entity.StockID;
-            string nTakeStatus = entity.TakeStatus;
-            if (nTakeStatus != "0")
-            {
-                string oTakeStatus = "";
-                CargoStockTakeEntity stock = QueryStockTake(new CargoStockTakeEntity { StockID = stockID });
-                oTakeStatus = stock.TakeStatus;
-                if (oTakeStatus == "0" && new string[] { "1", "2" }.Contains(nTakeStatus))
-                {
-                    CargoProductManager prdctMan = new CargoProductManager();
-                    prdctMan.UpdateContainerGoodsTakeDate(stockID);
-                }
-            }
+
+            ////第一次扫描盘点，更新在库库存盘点时间
+            //string nTakeStatus = entity.TakeStatus;
+            //if (nTakeStatus != "0")
+            //{
+            //    string oTakeStatus = "";
+            //    CargoStockTakeEntity stock = QueryStockTake(new CargoStockTakeEntity { StockID = stockID });
+            //    oTakeStatus = stock.TakeStatus;
+            //    if (oTakeStatus == "0" && new string[] { "1", "2" }.Contains(nTakeStatus))
+            //    {
+            //        CargoProductManager prdctMan = new CargoProductManager();
+            //        prdctMan.UpdateContainerGoodsTakeDate(stockID);
+            //    }
+            //}
 
             string strSQL = "update Tbl_Cargo_StockTake set TakeStatus=@TakeStatus where StockID=@StockID";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
@@ -7074,6 +7132,7 @@ WHERE
                             CreateDate = Convert.ToDateTime(idr["CreateDate"]),
                             TakeStatus = Convert.ToString(idr["TakeStatus"]),
                             StockNum = Convert.ToInt32(idr["StockNum"]),
+                            TakeMode = Convert.ToInt32(idr["TakeMode"]),
                             StockTakeContainerList = QueryCargoStockTakeContainerList(new CargoStockTakeContainerEntity { StockID = Convert.ToInt32(idr["StockID"]) }),
                             OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
                         });
