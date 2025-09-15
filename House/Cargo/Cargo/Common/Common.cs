@@ -749,7 +749,6 @@ namespace Cargo
         public static int GetRandomSixNum()
         {
             Random rd = new Random(Guid.NewGuid().GetHashCode());
-            // Random rd = new Random((int)DateTime.Now.Ticks);
             int sd = rd.Next(100000, 999999);
             return sd;
         }

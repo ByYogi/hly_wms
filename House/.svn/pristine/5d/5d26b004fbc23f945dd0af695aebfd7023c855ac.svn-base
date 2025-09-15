@@ -1,0 +1,141 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Cargo.House
+{
+    public partial class SafeSnap : BasePage
+    {
+        public List<CargoSafeStockEntity> CargoSafeStockData
+        {
+            get
+            {
+                if (Session["CargoSafeStockData"] == null)
+                {
+                    Session["CargoSafeStockData"] = new List<CargoSafeStockEntity>();
+                }
+                return (List<CargoSafeStockEntity>)(Session["CargoSafeStockData"]);
+            }
+            set
+            {
+                Session["CargoSafeStockData"] = value;
+            }
+        }
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (!CargoSafeStockData.Any()) return;
+
+            // 定义列名与类型
+            var columns = new[]
+            {
+                new { Name = "序号", Type = typeof(int) },
+                new { Name = "区域大仓", Type = typeof(string) },
+                new { Name = "所属仓库", Type = typeof(string) },
+                new { Name = "品牌", Type = typeof(string) },
+                new { Name = "产品编码", Type = typeof(string) },
+                new { Name = "规格", Type = typeof(string) },
+                new { Name = "花纹", Type = typeof(string) },
+                new { Name = "货品代码", Type = typeof(string) },
+                new { Name = "载重指数", Type = typeof(string) },
+                new { Name = "速度级别", Type = typeof(string) },
+
+                new { Name = "最小库存", Type = typeof(int) },
+                new { Name = "最大库存", Type = typeof(int) },
+
+                new { Name = "安全库存", Type = typeof(int) },
+                new { Name = "在库库存", Type = typeof(int) },
+                new { Name = "在途库存", Type = typeof(int) },
+                new { Name = "补货数量", Type = typeof(int) },
+                new { Name = "全国在库库存", Type = typeof(int) },
+                new { Name = "云仓销售数量", Type = typeof(int) },
+                new { Name = "全渠道销售数量", Type = typeof(int) },
+                new { Name = "全国销售数量", Type = typeof(int) },
+                new { Name = "月均销量", Type = typeof(int) },
+                new { Name = "库存度天数", Type = typeof(int) },
+                new { Name = "最小库存度天数", Type = typeof(int) },
+                new { Name = "最大库存度天数", Type = typeof(int) },
+                new { Name = "品控库存数", Type = typeof(int) },
+                new { Name = "隔离库存数", Type = typeof(int) }
+            };
+
+            DataTable table = new DataTable();
+            foreach (var col in columns)
+                table.Columns.Add(col.Name, col.Type);
+
+            // 填充数据行
+            int index = 0;
+            foreach (var item in CargoSafeStockData)
+            {
+                var row = table.NewRow();
+                row["序号"] = ++index;
+                row["区域大仓"] = item.HouseName;
+                row["所属仓库"] = item.AreaName;
+                row["品牌"] = item.TypeName;
+                row["产品编码"] = item.ProductCode;
+                row["规格"] = item.Specs?.Trim();
+                row["花纹"] = item.Figure?.Trim();
+                row["货品代码"] = item.GoodsCode?.Trim();
+                row["载重指数"] = item.LoadIndex;
+                row["速度级别"] = item.SpeedLevel;
+
+                row["最小库存"] = item.MinStock ?? (object)DBNull.Value;
+                row["最大库存"] = item.MaxStock ?? (object)DBNull.Value;
+                row["补货数量"] = item.LessNum;
+
+                row["安全库存"] = item.StockNum;
+                row["在库库存"] = item.CurNum;
+                row["在途库存"] = item.MoveNum ?? (object)DBNull.Value;
+                row["全国在库库存"] = item.TotalNum ?? (object)DBNull.Value;
+                row["云仓销售数量"] = item.WXSaleNum ?? (object)DBNull.Value;
+                row["全渠道销售数量"] = item.SaleNum;
+                row["全国销售数量"] = item.TotalSaleNum ?? (object)DBNull.Value;
+                row["月均销量"] = item.AvgSaleNum ?? (object)DBNull.Value;
+                row["库存度天数"] = item.DOI ?? (object)DBNull.Value;
+                row["最小库存度天数"] = item.MinStockDay ?? (object)DBNull.Value;
+                row["最大库存度天数"] = item.MaxStockDay ?? (object)DBNull.Value;
+                row["品控库存数"] = item.ControlStock ?? (object)DBNull.Value;
+                row["隔离库存数"] = item.IsolatedStock ?? (object)DBNull.Value;
+
+                table.Rows.Add(row);
+            }
+
+            // 添加汇总行
+            var footRow = table.NewRow();
+            footRow["区域大仓"] = "汇总：";
+
+            footRow["最小库存"] = CargoSafeStockData.Sum(x => x.MinStock.GetValueOrDefault());
+            footRow["最大库存"] = CargoSafeStockData.Sum(x => x.MaxStock.GetValueOrDefault());
+            footRow["补货数量"] = CargoSafeStockData.Sum(x => x.LessNum);
+            footRow["安全库存"] = CargoSafeStockData.Sum(x => x.StockNum);
+            footRow["在库库存"] = CargoSafeStockData.Sum(x => x.CurNum);
+            footRow["在途库存"] = CargoSafeStockData.Sum(x => x.MoveNum.GetValueOrDefault());
+            footRow["全国在库库存"] = CargoSafeStockData.Sum(x => x.TotalNum.GetValueOrDefault());
+            footRow["云仓销售数量"] = CargoSafeStockData.Sum(x => x.WXSaleNum.GetValueOrDefault());
+            footRow["全渠道销售数量"] = CargoSafeStockData.Sum(x => x.SaleNum);
+            footRow["全国销售数量"] = CargoSafeStockData.Sum(x => x.TotalSaleNum.GetValueOrDefault());
+            footRow["月均销量"] = CargoSafeStockData.Sum(x => x.AvgSaleNum.GetValueOrDefault());
+            footRow["库存度天数"] = CargoSafeStockData.Sum(x => x.DOI.GetValueOrDefault());
+            footRow["最小库存度天数"] = CargoSafeStockData.Sum(x => x.MinStockDay.GetValueOrDefault());
+            footRow["最大库存度天数"] = CargoSafeStockData.Sum(x => x.MaxStockDay.GetValueOrDefault());
+            footRow["品控库存数"] = CargoSafeStockData.Sum(x => x.ControlStock.GetValueOrDefault());
+            footRow["隔离库存数"] = CargoSafeStockData.Sum(x => x.IsolatedStock.GetValueOrDefault());
+
+            table.Rows.Add(footRow);
+
+            // 导出 Excel
+            ToExcel.DataTableToExcel(table, "", "安全库存数据表");
+
+
+        }
+    }
+}

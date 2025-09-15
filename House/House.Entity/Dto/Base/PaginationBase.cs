@@ -1,0 +1,50 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace House.Entity.Dto
+{
+    public abstract class PaginationBase
+    {
+        private int _pageIndex = 1;
+        private int _pageSize = 0;
+        private int _dataTotal = 0;
+
+        public int PageIndex
+        {
+            get => _pageIndex;
+            set => _pageIndex = value < 1 ? 1 : value;
+        }
+
+        public int PageSize
+        {
+            get => _pageSize;
+            set => _pageSize = value < 0 ? 0 : value;
+        }
+
+        public int DataTotal
+        {
+            get => _dataTotal;
+            set => _dataTotal = value < 0 ? 0 : value;
+        }
+
+        public int TotalPages => (int)Math.Ceiling((double)DataTotal / PageSize);
+        public bool IsPaging => PageSize > 0 && StartIndex > 0;
+        public bool HasPrevious => PageIndex > 1;
+        public bool HasNext => PageIndex < TotalPages;
+        public int StartIndex => (PageIndex - 1) * PageSize;
+
+        public PaginationBase SetPage(int? pageIndex = null, int? pageSize = null, int? dataTotal = null)
+        {
+            if (pageIndex.HasValue) PageIndex = pageIndex.Value;
+            if (pageSize.HasValue) PageSize = pageSize.Value;
+            if (dataTotal.HasValue) DataTotal = dataTotal.Value;
+            if (PageIndex > TotalPages) PageIndex = TotalPages == 0 ? 1 : TotalPages;
+            return this;
+        }
+    }
+
+
+}

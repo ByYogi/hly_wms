@@ -1,0 +1,204 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 微信下单数据实体1.3.7.Tbl_WX_Order（微信订单表）
+    /// </summary>
+    [Serializable]
+    public class WXOrderEntity
+    {
+        public Int64 ID { get; set; }
+        public Int64 OrderID { get; set; }
+        public string OrderNo { get; set; }
+        public string CargoOrderNo { get; set; }
+        public Int64 WXID { get; set; }
+        public int Piece { get; set; }
+        public decimal TotalCharge { get; set; }
+        public string IsTransitFee { get; set; }
+        public decimal TransitFee { get; set; }
+        public DateTime CreateDate { get; set; }
+        public string PayStatus { get; set; }
+        public string PayWay { get; set; }
+        public string OrderStatus { get; set; }
+        public DateTime OP_DATE { get; set; }
+        public string WXPayOrderNo { get; set; }
+        public string Province { get; set; }
+        public string City { get; set; }
+        public string Country { get; set; }
+        public string Address { get; set; }
+        public string Name { get; set; }
+        public string Cellphone { get; set; }
+        public int HouseID { get; set; }
+        public List<CargoProductShelvesEntity> productList { get; set; }
+        /// <summary>
+        /// 待付款
+        /// </summary>
+        public int UnPayNum { get; set; }
+        /// <summary>
+        /// 待发货
+        /// </summary>
+        public int UnSendNum { get; set; }
+        /// <summary>
+        /// 待确认
+        /// </summary>
+        public int UnConfirmNum { get; set; }
+        /// <summary>
+        /// 待收货
+        /// </summary>
+        public int UnAcceptNum { get; set; }
+        /// <summary>
+        /// 客户编码
+        /// </summary>
+        public int ClientNum { get; set; }
+        /// <summary>
+        /// 订单备注
+        /// </summary>
+        public string Memo { get; set; }
+        /// <summary>
+        /// 物流公司ID
+        /// </summary>
+        public int LogisID { get; set; }
+        /// <summary>
+        /// 配送物流名称
+        /// </summary>
+        public string LogicName { get; set; }
+        /// <summary>
+        /// 出库仓库名称
+        /// </summary>
+        public string OutHouseName { get; set; }
+        /// <summary>
+        /// 二次支付 微信订单号  账单号
+        /// </summary>
+        public string AccountNo { get; set; }
+        /// <summary>
+        /// 收银宝平台流水
+        /// </summary>
+        public string Trxid { get; set; }
+
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string OrderType { get; set; }
+        public string wxOpenID { get; set; }
+        public string SaleManID { get; set; }
+        public int TotalConsume { get; set; }
+        /// <summary>
+        /// 是否APP商城首单 0：否1：是
+        /// </summary>
+        public string IsAppFirstOrder { get; set; }
+        /// <summary>
+        /// 优惠券ID
+        /// </summary>
+        public long CouponID { get; set; }
+        /// <summary>
+        /// 规则名称
+        /// </summary>
+        public string RuleTitle { get; set; }
+        /// <summary>
+        /// 付款人姓名客户名称
+        /// </summary>
+        public string PayClientName { get; set; }
+        public string ThrowGood { get; set; }
+        /// <summary>
+        /// 供应商编码
+        /// </summary>
+        public int SuppClientNum { get; set; }
+        public string SupperName { get; set; }
+
+        public string CompanyName { get; set; }
+
+        public DateTime RefundDate { get; set; }
+        public string RefundReason { get; set; }
+        public string RefundMemo { get; set; }
+        public string RefundCheckID { get; set; }
+        public string RefundCheckName { get; set; }
+        public DateTime RefundCheckDate { get; set; }
+
+        public string GoodEvaluate { get; set; }
+        public string LogisEvaluate { get; set; }
+        public string EvaluateMemo { get; set; }
+        public string ProductCode { get; set; }
+        public string OpenOrderNo { get; set; }
+        public int ShareHouseID { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+        /// <summary>
+        /// 退款审核状态，默认0（0:未审核 1:已审核）
+        /// </summary>
+        public string RefundCheckStatus { get; set; }
+        /// <summary>
+        /// 退货来货入库单号
+        /// </summary>
+        public string FacOrderNo { get; set; }
+        #region 查询返回
+        /// <summary>
+        /// 查询仓库权限
+        /// </summary>
+        public string CargoPermisID { get; set; }
+        public string HouseName { get; set; }
+        public string ShareHouseName { get; set; }
+        public string ClientName { get; set; }
+        public string ReturnOrderNO { get; set; }
+        public int OrderNum { get; set; }
+        /// <summary>
+        /// 工厂来货订单入库状态(0:未入库1:已入库2:部分入库)
+        /// </summary>
+        public string InCargoStatus { get; set; }
+        /// <summary>
+        /// 退货数量
+        /// </summary>
+        public int ReturnPiece { get; set; }
+        #endregion
+    }
+    /// <summary>
+    /// 服务号 供应商订单数据
+    /// </summary>
+    public class WXSerViceSettleHouseEntity
+    {
+        public string WxOpenID { get; set; }
+        /// <summary>
+        /// 客户ID
+        /// </summary>
+        public int ClientID { get; set; }
+        /// <summary>
+        /// 客户编码
+        /// </summary>
+        public int ClientNum { get; set; }
+        public string SettleHouseID { get; set; }
+        public string SettleHouseName { get; set; }
+        /// <summary>
+        /// 销售数据
+        /// </summary>
+        public List<CargoOrderGoodsEntity> OrderList { get; set; }
+        /// <summary>
+        /// 退货数据
+        /// </summary>
+        public List<CargoOrderGoodsEntity> ReturnOrderList { get; set; }
+    }
+
+    public class WxReturnOrderEntity : WXOrderEntity
+    {
+        public string CaoroOrderID { get; set; }
+    }
+}

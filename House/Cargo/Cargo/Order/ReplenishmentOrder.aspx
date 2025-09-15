@@ -1,8 +1,7 @@
 ﻿<%@ Page Title="补货单" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="MoveOrderManager.aspx.cs" Inherits="Cargo.Order.MoveOrderManager" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
-    <script src="../JS/Lodop/LodopFuncs.js" type="text/javascript"></script>
-    <script src="../JS/easy/js/datagrid-cellediting.js" type="text/javascript"></script>
+    <%-- <script src="../JS/easy/js/datagrid-cellediting.js" type="text/javascript"></script> --%>
     <script type="text/javascript">
         //页面加载显示遮罩层
         var pc;
@@ -18,6 +17,7 @@
                 $(this).remove();
             });
         }
+
         window.onload = function () {
             adjustment();
             $.ajaxSetup({ async: true });
@@ -36,7 +36,7 @@
             $('#dg').datagrid({
                 width: '100%',
                 title: '', //标题内容
-                loadMsg: '数据加载中请稍候...',
+                loadMsg: '数据加载中, 请稍候...',
                 autoRowHeight: false, //行高是否自动
                 collapsible: true, //是否可折叠
                 pagination: true, //分页是否显示
@@ -45,59 +45,58 @@
                 fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
                 singleSelect: false, //设置为 true，则只允许选中一行。
                 checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
-                idField: 'ID',
+                idField: 'RplID',
                 url: null,
                 toolbar: '#toolbar',
                 columns: [[
-                    { title: '', field: 'ID', checkbox: true, width: '30px' },
+                    { title: '', field: 'RplID', checkbox: true, width: '30px' },
                     {
-                        title: '移库单号', field: 'MoveNo', width: '100px', formatter: function (value) {
+                        title: '补货单号', field: 'RplNo', width: '130px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '原仓库', field: 'OldHouseName', width: '80px', formatter: function (value) {
+                        title: '来源仓库', field: 'FromHouseName', width: '100px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '目标仓库', field: 'NewHouseName', width: '80px', formatter: function (value) {
+                        title: '目标仓库', field: 'HouseName', width: '100px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '移库数量', field: 'MoveNum', width: '90px', formatter: function (value) {
+                        title: '补货数量', field: 'Piece', width: '100px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '移库品牌', field: 'TypeNames', width: '180px', formatter: function (value) {
+                        title: '开单人', field: 'ReqByName', width: '100px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '备注', field: 'Memo', width: '300px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '开单人', field: 'UserName', width: '80px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '移库状态', field: 'MoveStatus', width: '60px',
+                        title: '补货单状态', field: 'Status', width: '100px',
                         formatter: function (val, row, index) {
-                            if (val == "0") { return "<span title='已开单'>已开单</span>"; }
-                            else if (val == "1") { return "<span title='全扫描'>全扫描</span>"; }
+                            if (val == "0") { return "<span title='待处理'>待处理</span>"; }
+                            else if (val == "1") { return "<span title='补货中'>补货中</span>"; }
                             else if (val == "2") { return "<span title='已完成'>已完成</span>"; }
-                            else if (val == "3") { return "<span title='移库中'>移库中</span>"; }
-                            else if (val == "4") { return "<span title='入库中'>入库中</span>"; }
                             else { return ""; }
                         }
                     },
-                    { title: '操作时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter },
-                    { title: '完成时间', field: 'CompDate', width: '130px', formatter: DateTimeFormatter },
+                    {
+                        title: '补货品牌', field: 'TypeNames', width: '200px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '补货原因', field: 'Reason', width: '200px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    { title: '备注', field: 'Remark', width: '200px'},
+                    { title: '开单时间', field: 'CreateDate', width: '130px', formatter: DateTimeFormatter },
+                    { title: '完成时间', field: 'CompletedDate', width: '130px', formatter: DateTimeFormatter },
                     { title: '花费天数', field: 'SpendDays', width: '130px'}
                 ]],
                 onClickRow: function (index, row) {
@@ -114,11 +113,11 @@
                 onDblClickRow: function (index, row) { editItemByID(index); }
             });
             //一级产品
-            $('#APID').combobox({
+            $('#TypeCate').combobox({
                 url: '../Product/productApi.aspx?method=QueryALLOneProductType', valueField: 'TypeID', textField: 'TypeName',
                 onSelect: function (rec) {
-                    $('#ASID').combobox('clear');
-                    $('#ASID').combobox({
+                    $('#TypeID').combobox('clear');
+                    $('#TypeID').combobox({
                         url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + rec.TypeID, valueField: 'TypeID', textField: 'TypeName', AddField: 'PinyinName',
                         filter: function (q, row) {
                             var opts = $(this).combobox('options');
@@ -128,40 +127,36 @@
                 }
             });
 
-            // $('#btnDel').hide();
             var datenow = new Date();
             $('#StartDate').datebox('setValue', getLastDayFormatDate(datenow));
-            //$('#StartDate').datebox('setValue', getNowFormatDate(datenow));
             $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
-            $('#StartDate').datebox('textbox').bind('focus', function () { $('#StartDate').datebox('showPanel'); });
-            $('#EndDate').datebox('textbox').bind('focus', function () { $('#EndDate').datebox('showPanel'); });
-            $('#MoveStatus').combobox('textbox').bind('focus', function () { $('#MoveStatus').combobox('showPanel'); });
-            $('#OldHouseID').combobox({
+            <%-- $('#StartDate').datebox('textbox').bind('focus', function () { $('#StartDate').datebox('showPanel'); });
+            $('#EndDate').datebox('textbox').bind('focus', function () { $('#EndDate').datebox('showPanel'); }); --%>
+
+            $('#HouseID').combobox({
                 url: '../House/houseApi.aspx?method=CargoPermisionHouse', valueField: 'HouseID', textField: 'Name'
             });
-            $('#NewHouseID').combobox({
+            $('#FromHouse').combobox({
                 url: '../House/houseApi.aspx?method=CargoPermisionHouse', valueField: 'HouseID', textField: 'Name'
             });
-            $('#OldHouseID').combobox('textbox').bind('focus', function () { $('#OldHouseID').combobox('showPanel'); });
-            $('#NewHouseID').combobox('textbox').bind('focus', function () { $('#NewHouseID').combobox('showPanel'); });
-            $('#OldHouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
+            $('#HouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+            $('#FromHouse').combobox('textbox').bind('focus', function () { $('#FromHouse').combobox('showPanel'); });
+            $('#HouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
         });
         //查询
         function dosearch() {
             $('#dg').datagrid('clearSelections');
             var gridOpts = $('#dg').datagrid('options');
-            gridOpts.url = 'orderApi.aspx?method=QueryMoveOrder';
+            gridOpts.url = 'orderApi.aspx?method=QueryRplOrder';
             $('#dg').datagrid('load', {
-                MoveNo: $('#MoveNo').val(),
-                Specs: $('#Specs').val(),
-                OldHouseID: $("#OldHouseID").combobox('getValue'),
-                NewHouseID: $("#NewHouseID").combobox('getValue'),
-                MoveStatus: $("#MoveStatus").combobox('getValue'),
+                RplNo: $('#RplNo').val(),
+                HouseID: $("#HouseID").combobox('getValue'),
+                FromHouse: $("#FromHouse").combobox('getValue'),
+                Status: $("#Status").combobox('getValue'),
                 StartDate: $('#StartDate').datebox('getValue'),
                 EndDate: $('#EndDate').datebox('getValue'),
-                AUserName: $('#AUserName').val(),
-                APID: $('#APID').datebox('getValue'),
-                ASID: $('#ASID').datebox('getValue')
+                TypeCate: $('#TypeCate').datebox('getValue'),
+                TypeID: $('#TypeID').datebox('getValue') 
             });
         }
     </script>
@@ -176,25 +171,25 @@
     <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
         <table>
             <tr>
-                <td style="text-align: right;">移库单号:
+                <td style="text-align: right;">补货单号:
                 </td>
                 <td>
-                    <input id="MoveNo" class="easyui-textbox" data-options="prompt:'请输入移库单号'" style="width: 120px">
+                    <input id="RplNo" class="easyui-textbox" data-options="prompt:'请输入移库单号'" style="width: 120px">
                 </td>
-                <td style="text-align: right;">规格:
-                </td>
-                <td>
+                <%-- <td style="text-align: right;">规格:
+                </td> --%>
+                <%-- <td>
                     <input id="Specs" class="easyui-textbox" data-options="prompt:'请输入规格'" style="width: 120px">
-                </td>
-                <td style="text-align: right;">原仓库:
-                </td>
-                <td>
-                    <input id="OldHouseID" class="easyui-combobox" style="width: 120px;" panelheight="auto" />
-                </td>
+                </td> --%>
                 <td style="text-align: right;">目标仓库:
                 </td>
                 <td>
-                    <input id="NewHouseID" class="easyui-combobox" style="width: 120px;" panelheight="auto" />
+                    <input id="HouseID" class="easyui-combobox" style="width: 120px;" panelheight="auto" />
+                </td>
+                <td style="text-align: right;">来源仓库:
+                </td>
+                <td>
+                    <input id="FromHouse" class="easyui-combobox" style="width: 120px;" panelheight="auto" />
                 </td>
                 <td style="text-align: right;">开单时间:
                 </td>
@@ -207,49 +202,39 @@
                 <td style="text-align: right;">移库状态:
                 </td>
                 <td>
-                    <select class="easyui-combobox" id="MoveStatus" style="width: 120px;" panelheight="auto">
-                        <option value="-1">全部</option>
-                        <option value="0">已开单</option>
-                        <option value="3">移库中</option>
-                        <option value="1">全扫描</option>
-                        <option value="4">入库中</option>
+                    <select class="easyui-combobox" id="Status" style="width: 120px;" panelheight="auto">
+                        <option value="">全部</option>
+                        <option value="0">待处理</option>
+                        <option value="1">处理中</option>
                         <option value="2">已完成</option>
                     </select>
-                </td>
-                <td style="text-align: right;">操作人姓名:
-                </td>
-                <td>
-                    <input id="AUserName" class="easyui-textbox" data-options="prompt:'请输入操作人姓名'" style="width: 120px" />
                 </td>
                 <td style="text-align: right;">一级产品:
                 </td>
                 <td>
-                    <input id="APID" class="easyui-combobox" style="width: 120px;" panelheight="auto" />
+                    <input id="TypeCate" class="easyui-combobox" style="width: 120px;" panelheight="auto" />
                 </td>
                 <td style="text-align: right;">二级产品:
                 </td>
                 <td>
-                    <input id="ASID" class="easyui-combobox" style="width: 120px;" data-options="valueField:'TypeID',textField:'TypeName'" />
+                    <input id="TypeID" class="easyui-combobox" style="width: 120px;" data-options="valueField:'TypeID',textField:'TypeName'" />
                 </td>
             </tr>
         </table>
     </div>
-    <table id="dg" class="easyui-datagrid">
-    </table>
+    <table id="dg" class="easyui-datagrid"></table>
     <div id="toolbar">
         <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
-        <a href="#" class="easyui-linkbutton" id="pickprint" iconcls="icon-printer" onclick="pickUpOrder()">&nbsp;打印拣货单&nbsp;</a>
-        <%--<a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editItem()">&nbsp;修&nbsp;改&nbsp;</a>--%>&nbsp;&nbsp;
         <a href="#" class="easyui-linkbutton" id="btnDel" iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
-        <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="AwbExport()">&nbsp;导&nbsp;出&nbsp;</a>&nbsp;&nbsp;<a href="#" id="btnTag" class="easyui-linkbutton" iconcls="icon-tag_blue" plain="false" onclick="queryTag()">&nbsp;移库标签&nbsp;</a>&nbsp;&nbsp;
-         <a href="#" id="btnLotinIn" class="easyui-linkbutton" iconcls="icon-in_cargo" plain="false" onclick="LotinCargo()">&nbsp;一键入库&nbsp;</a>&nbsp;&nbsp;
-        <%--<a href="#" id="btnExportOrder" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="AwbListExport()">&nbsp;导出移库订单列表&nbsp;</a>&nbsp;&nbsp;--%>
-        <a href="#" id="btnExportOrder" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="MoveExportOrderInfo()">&nbsp;导出移库订单列表&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="AwbExport()">&nbsp;导&nbsp;出&nbsp;</a>&nbsp;&nbsp;
+   
         <form runat="server" id="fm1">
             <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived_Click" />
             <asp:Button ID="btnMoveCode" runat="server" Style="display: none;" Text="导出" OnClick="btnMoveCode_Click" />
         </form>
     </div>
+
+
     <div id="dlg" class="easyui-dialog" style="width: 400px; height: 450px; padding: 5px 5px"
         closed="true" buttons="#dlg-buttons">
         <form id="fm" class="easyui-form" method="post">
@@ -390,10 +375,6 @@
     </div>
     <!--End 查询产品标签列表-->
 
-    <object id="LODOP_OB" title="dd" classid="clsid:2105C259-1E0C-4534-8141-A753534CB4CA"
-        width="0px" height="0px">
-        <embed id="LODOP_EM" type="application/x-print-lodop" width="0px" height="0px"></embed>
-    </object>
     <script type="text/javascript">
 
         //一键入库
@@ -712,15 +693,65 @@
                 var columns = [];
 
                 columns.push({
-                    title: '产品ID', field: 'ProductID', width: '60px', formatter: function (value) {
-                        return "<span title='" + value + "'>" + value + "</span>";
+                    title: '产品代码', field: 'ProductCode', width: '60px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '货品代码', field: 'GoodsCode', width: '90px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '货品名称', field: 'GoodsName', width: '100px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '品牌', field: 'TypeName', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '数量', field: 'Piece', width: '50px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '单位', field: 'UnitName', width: '50px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '批次', field: 'Batch', width: '50px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
                     }
-                });
-                columns.push({
-                    title: '货位代码', field: 'ContainerCode', width: '90px', formatter: function (value) {
-                        return "<span title='" + value + "'>" + value + "</span>";
-                    }
-                });
+<%-- public int ID { get; set; }                  // 主键
+public int RplID { get; set; }               // 补货单ID
+public long ProductID { get; set; }          // 产品ID
+public string ProductName { get; set; }      // 产品名称
+public string ProductCode { get; set; }      // 产品代码
+public string GoodsCode { get; set; }        // 货品代码
+public int TypeCate { get; set; } // 品类ID
+public int TypeID { get; set; }              // 品牌ID
+public string TypeName { get; set; }         // 品牌名称
+public int Piece { get; set; }               // 补货数量
+public int SysPiece { get; set; }            // 建议补货数
+public int? MinStock { get; set; }           // 最小库存数
+public int? MaxStock { get; set; }           // 最大库存数
+public int? SrcPiece { get; set; }           // 缺货仓在库数
+public int? PenddimgQty { get; set; }        // 待出库数量
+public int? InTransitQty { get; set; }       // 在途库存
+public int? AvgSalSUM { get; set; }          // 月均销量
+public DateTime CreateDate { get; set; }     // 创建时间
+public DateTime? UpdateDate { get; set; }    // 更新时间 --%>
+                );
                 columns.push({
                     title: '移库数量', field: 'Piece', width: '60px', align: 'right', editor: { type: 'numberbox', options: { precision: 0 } }, styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
@@ -809,7 +840,7 @@
                 showGrid(columns);
 
                 var gridOpts = $('#dgSave').datagrid('options');
-                gridOpts.url = 'orderApi.aspx?method=QueryMoveOrderInfo&MoveNo=' + row.MoveNo;
+                gridOpts.url = 'orderApi.aspx?method=QueryRplOrderGoods&RplID=' + row.RplID;
             }
         }
         //显示列表

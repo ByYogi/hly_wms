@@ -1,0 +1,878 @@
+﻿using House.DataAccess;
+using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data.Common;
+using System.Data;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+using System.Collections;
+using House.Entity.Cargo.Order;
+using System.Runtime.Remoting.Messaging;
+
+namespace House.Manager.Cargo
+{
+    /// <summary>
+    ///采购订单管理数据操作类
+    /// </summary>
+    public class CargoRealFactoryPurchaseOrderManager
+    {
+        private SqlHelper conn = new SqlHelper();
+        /// <summary>
+        /// 新增采购订单
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddRealPurchaseOrder(CargoRealFactoryPurchaseOrderEntity entity)
+        {
+            Int64 PurOrderID = 0;
+
+            string strSQL = "INSERT INTO Tbl_Cargo_RealFactoryPurchaseOrder(PurOrderNo, Piece, ReplyNum, TransportFee, OtherFee, TotalCharge, WhetherTax, CheckStatus, Remark, PurchaserID, DeliveryAddress, DeliveryTelephone, DeliveryBoss, DeliveryCellphone, DeliveryCity, DeliveryCountry, DeliveryProvince, PurchaseType, PurchaseInStoreType, CreateAwbID, CreateAwb, CreateDate, OP_ID, OP_DATE, ApplyID, ApplyName, ApplyDate, NextCheckID, NextCheckName,  ApplyStatus,PurDepartID,PurDepart,BusinessID,PaymentMethod,TransferAccount,OwnerShip) VALUES (@PurOrderNo, @Piece, @ReplyNum, @TransportFee, @OtherFee, @TotalCharge, @WhetherTax, @CheckStatus, @Remark, @PurchaserID, @DeliveryAddress, @DeliveryTelephone, @DeliveryBoss, @DeliveryCellphone, @DeliveryCity, @DeliveryCountry, @DeliveryProvince, @PurchaseType, @PurchaseInStoreType, @CreateAwbID, @CreateAwb, @CreateDate, @OP_ID, @OP_DATE, @ApplyID, @ApplyName, @ApplyDate, @NextCheckID,@NextCheckName,  @ApplyStatus,@PurDepartID,@PurDepart,@BusinessID,@PaymentMethod,@TransferAccount,@OwnerShip) SELECT @@IDENTITY";
+            #region 订单保存
+            entity.EnSafe();
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@PurOrderNo", DbType.String, entity.PurOrderNo);
+                conn.AddInParameter(cmd, "@Piece", DbType.Int32, entity.Piece);
+                conn.AddInParameter(cmd, "@ReplyNum", DbType.Int32, entity.ReplyNum);
+                conn.AddInParameter(cmd, "@TransportFee", DbType.Decimal, entity.TransportFee);
+                conn.AddInParameter(cmd, "@OtherFee", DbType.Decimal, entity.OtherFee);
+                conn.AddInParameter(cmd, "@TotalCharge", DbType.Decimal, entity.TotalCharge);
+                conn.AddInParameter(cmd, "@WhetherTax", DbType.String, entity.WhetherTax);
+                conn.AddInParameter(cmd, "@CheckStatus", DbType.String, entity.CheckStatus);
+                conn.AddInParameter(cmd, "@Remark", DbType.String, entity.Remark);
+                conn.AddInParameter(cmd, "@PurchaserID", DbType.Int32, entity.PurchaserID);
+                conn.AddInParameter(cmd, "@DeliveryAddress", DbType.String, entity.DeliveryAddress);
+                conn.AddInParameter(cmd, "@DeliveryTelephone", DbType.String, entity.DeliveryTelephone);
+                conn.AddInParameter(cmd, "@DeliveryBoss", DbType.String, entity.DeliveryBoss);
+                conn.AddInParameter(cmd, "@DeliveryCellphone", DbType.String, entity.DeliveryCellphone);
+                conn.AddInParameter(cmd, "@DeliveryCity", DbType.String, entity.DeliveryCity);
+                conn.AddInParameter(cmd, "@DeliveryCountry", DbType.String, entity.DeliveryCountry);
+                conn.AddInParameter(cmd, "@DeliveryProvince", DbType.String, entity.DeliveryProvince);
+                conn.AddInParameter(cmd, "@PurchaseType", DbType.String, entity.PurchaseType);
+                conn.AddInParameter(cmd, "@PurchaseInStoreType", DbType.String, entity.PurchaseInStoreType);
+                conn.AddInParameter(cmd, "@CreateAwbID", DbType.String, entity.CreateAwbID);
+                conn.AddInParameter(cmd, "@CreateAwb", DbType.String, entity.CreateAwb);
+                conn.AddInParameter(cmd, "@CreateDate", DbType.DateTime, entity.CreateDate);
+                conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, entity.OP_DATE);
+                conn.AddInParameter(cmd, "@OP_ID", DbType.String, entity.OP_ID);
+                conn.AddInParameter(cmd, "@ApplyID", DbType.String, entity.ApplyID);
+                conn.AddInParameter(cmd, "@ApplyName", DbType.String, entity.ApplyName);
+                conn.AddInParameter(cmd, "@ApplyDate", DbType.DateTime, entity.ApplyDate);
+                conn.AddInParameter(cmd, "@NextCheckID", DbType.String, entity.NextCheckID);
+                conn.AddInParameter(cmd, "@NextCheckName", DbType.String, entity.NextCheckName);
+                conn.AddInParameter(cmd, "@ApplyStatus", DbType.String, entity.ApplyStatus);
+                conn.AddInParameter(cmd, "@PurDepartID", DbType.Int32, entity.PurDepartID);
+                conn.AddInParameter(cmd, "@PurDepart", DbType.String, entity.PurDepart);
+                conn.AddInParameter(cmd, "@BusinessID", DbType.String, entity.BusinessID); 
+                conn.AddInParameter(cmd, "@OwnerShip", DbType.String, entity.OwnerShip); 
+                conn.AddInParameter(cmd, "@PaymentMethod", DbType.String, entity.PaymentMethod==null?"": entity.PaymentMethod.ToString());
+                conn.AddInParameter(cmd, "@TransferAccount", DbType.String, entity.TransferAccount == null ? "" : entity.TransferAccount.ToString());
+                PurOrderID = Convert.ToInt64(conn.ExecuteScalar(cmd));
+            }
+            #endregion
+
+            foreach (var it in entity.purchaseHouseEntities)
+            {
+                it.PurOrderID = PurOrderID;
+                AddRealFactoryPurchaseHouse(it);
+            }
+
+        }
+
+        /// <summary>
+        /// 修改采购单审批状态
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdatePurchaseOrderApproval(CargoRealFactoryPurchaseOrderEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_RealFactoryPurchaseOrder Set CheckTime=@CheckTime,CheckResult=@CheckResult,ApplyStatus=@ApplyStatus Where PurOrderID=@PurOrderID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+
+                conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, entity.PurOrderID);
+                conn.AddInParameter(cmd, "@ApplyStatus", DbType.Int32, entity.ApplyStatus);
+                conn.AddInParameter(cmd, "@CheckResult", DbType.String, entity.CheckResult);
+                conn.AddInParameter(cmd, "@CheckTime", DbType.DateTime, DateTime.Now);
+                conn.ExecuteNonQuery(cmd);
+            }
+
+        }
+        /// <summary>
+        /// 保存分配仓库采购单数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddRealFactoryPurchaseHouse(CargoRealFactoryPurchaseHouseEntity entity)
+        {
+            long FPID = 0;
+            entity.EnSafe();
+            string strSQL = @"INSERT INTO Tbl_Cargo_RealFactoryPurchaseHouse(PurOrderID,HouseID,OrderNum,ReplyNum) VALUES  (@PurOrderID,@HouseID,@OrderNum,@ReplyNum) SELECT @@IDENTITY";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, entity.PurOrderID);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@OrderNum", DbType.Int32, entity.OrderNum);
+                conn.AddInParameter(cmd, "@ReplyNum", DbType.Int32, entity.ReplyNum);
+                //conn.ExecuteNonQuery(cmd);
+                FPID = Convert.ToInt64(conn.ExecuteScalar(cmd));
+            }
+
+            foreach (var it in entity.orderGoodsEntities)
+            {
+                it.FPID = FPID;
+                it.PurOrderID = entity.PurOrderID;
+                AddRealFactoryPurchaseOrderGoods(it);
+            }
+
+        }
+        /// <summary>
+        /// 保存采购订单明细数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddRealFactoryPurchaseOrderGoods(CargoRealFactoryPurchaseOrderGoodsEntity entity)
+        {
+            entity.EnSafe();
+            string strSQL = @"INSERT INTO Tbl_Cargo_RealFactoryPurchaseOrderGoods(PurOrderID,FPID,TypeID,ProductCode,Piece,ReplyPiece,PurchasePrice) VALUES  (@PurOrderID,@FPID,@TypeID,@ProductCode,@Piece,@ReplyPiece,@PurchasePrice) SELECT @@IDENTITY";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, entity.PurOrderID);
+                conn.AddInParameter(cmd, "@FPID", DbType.Int64, entity.FPID);
+                conn.AddInParameter(cmd, "@TypeID", DbType.Int32, entity.TypeID);
+                conn.AddInParameter(cmd, "@Piece", DbType.Int32, entity.Piece);
+                conn.AddInParameter(cmd, "@ProductCode", DbType.String, entity.ProductCode);
+                conn.AddInParameter(cmd, "@ReplyPiece", DbType.Int32, entity.ReplyPiece);
+                conn.AddInParameter(cmd, "@PurchasePrice", DbType.Decimal, entity.PurchasePrice);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 获取每日最大的采购单号数据
+        /// </summary>
+        /// <returns></returns>
+        public int GetMaxPurchaseOrderNum()
+        {
+            int result = 0;
+            string strSQL = @"select COUNT(PurOrderID) as OrderNum from Tbl_Cargo_RealFactoryPurchaseOrder where (1=1) ";
+            strSQL += " and CreateDate>='" + DateTime.Now.ToString("yyyy-MM-dd") + "'";
+            strSQL += " and CreateDate<'" + DateTime.Now.AddDays(1).ToString("yyyy-MM-dd") + "'";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                //conn.AddInParameter(command, "@HouseID", DbType.Int32, entity.HouseID);
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    if (dd.Rows.Count > 0) { result = Convert.ToInt32(dd.Rows[0]["OrderNum"]); }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询采购订单数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoRealFactoryPurchaseOrderEntity QueryCargoRealFactoryPurchaseEntity(CargoRealFactoryPurchaseOrderEntity entity)
+        {
+            CargoRealFactoryPurchaseOrderEntity result = new CargoRealFactoryPurchaseOrderEntity();
+            string strSQL = "select a.*,b.PurchaserName from Tbl_Cargo_RealFactoryPurchaseOrder as a inner join Tbl_Cargo_Purchaser as b on a.PurchaserID=b.PurchaserID where (1=1)";
+            if (!entity.PurOrderID.Equals(0)) { strSQL += " and a.PurOrderID=" + entity.PurOrderID; }
+            if (!string.IsNullOrEmpty(entity.PurOrderNo)) { strSQL += " and a.PurOrderNo='" + entity.PurOrderNo + "'"; }
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.PurOrderID = Convert.ToInt64(idr["PurOrderID"]);
+                        result.PurOrderNo = Convert.ToString(idr["PurOrderNo"]);
+                        result.Piece = Convert.ToInt32(idr["Piece"]);
+                        result.ReplyNum = Convert.ToInt32(idr["ReplyNum"]);
+                        result.TransportFee = Convert.ToDecimal(idr["TransportFee"]);
+                        result.OtherFee = Convert.ToDecimal(idr["OtherFee"]);
+                        result.TotalCharge = Convert.ToDecimal(idr["TotalCharge"]);
+                        result.WhetherTax = Convert.ToString(idr["WhetherTax"]);
+                        result.CheckStatus = Convert.ToString(idr["CheckStatus"]);
+                        result.Remark = Convert.ToString(idr["Remark"]);
+                        result.PurchaserID = Convert.ToInt32(idr["PurchaserID"]);
+                        result.DeliveryBoss = Convert.ToString(idr["DeliveryBoss"]);
+                        result.DeliveryCellphone = Convert.ToString(idr["DeliveryCellphone"]);
+                        result.DeliveryAddress = Convert.ToString(idr["DeliveryAddress"]);
+                        result.DeliveryTelephone = Convert.ToString(idr["DeliveryTelephone"]);
+                        result.DeliveryProvince = Convert.ToString(idr["DeliveryProvince"]);
+                        result.DeliveryCity = Convert.ToString(idr["DeliveryCity"]);
+                        result.DeliveryCountry = Convert.ToString(idr["DeliveryCountry"]);
+                        result.PurchaseType = Convert.ToString(idr["PurchaseType"]);
+                        result.PurchaseInStoreType = Convert.ToString(idr["PurchaseInStoreType"]);
+                        result.CreateAwbID = Convert.ToString(idr["CreateAwbID"]);
+                        result.CreateAwb = Convert.ToString(idr["CreateAwb"]);
+                        result.CreateDate = Convert.ToDateTime(idr["CreateDate"]);
+                        result.ApplyID = Convert.ToString(idr["ApplyID"]);
+                        result.ApplyName = Convert.ToString(idr["ApplyName"]);
+                        result.ApplyStatus = Convert.ToString(idr["ApplyStatus"]);
+                        result.ApplyDate = string.IsNullOrEmpty(Convert.ToString(idr["ApplyDate"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["ApplyDate"]);
+                        result.OP_ID = Convert.ToString(idr["OP_ID"]);
+                        result.OP_DATE = Convert.ToDateTime(idr["OP_DATE"]);
+                        result.PurchaserName = Convert.ToString(idr["PurchaserName"]);
+                    }
+                }
+            }
+            result.purchaseOrderGoodsEntities = QueryRealPurchaseOrderGoods(new CargoRealFactoryPurchaseOrderGoodsEntity { });
+            return result;
+        }
+
+        public List<CargoRealFactoryPurchaseOrderGoodsEntity> QueryRealPurchaseOrderGoods(CargoRealFactoryPurchaseOrderGoodsEntity entity)
+        {
+            List<CargoRealFactoryPurchaseOrderGoodsEntity> result = new List<CargoRealFactoryPurchaseOrderGoodsEntity>();
+            string strSQL = "select a.*,b.OrderNum,b.FacOrderNo,b.ETATime,b.HouseID,c.Name as HouseName,d.Specs,d.Figure,d.LoadIndex,d.SpeedLevel,d.GoodsCode,e.TypeName from Tbl_Cargo_RealFactoryPurchaseOrderGoods as a inner join Tbl_Cargo_RealFactoryPurchaseHouse as b on a.FPID=b.FPID inner join Tbl_Cargo_House as c on b.HouseID=c.HouseID inner join Tbl_Cargo_ProductSpec as d on a.ProductCode=d.ProductCode inner join Tbl_Cargo_ProductType as e on a.TypeID=e.TypeID where (1=1)";
+            if (!entity.PurOrderID.Equals(0)) { strSQL += " and a.PurOrderID=" + entity.PurOrderID; }
+
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.Add(new CargoRealFactoryPurchaseOrderGoodsEntity
+                        {
+                            GoodsID = Convert.ToInt64(idr["GoodsID"]),
+                            FPID = Convert.ToInt64(idr["FPID"]),
+                            PurOrderID = Convert.ToInt64(idr["PurOrderID"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            ReplyPiece = Convert.ToInt32(idr["ReplyPiece"]),
+                            PurchasePrice = Convert.ToDecimal(idr["PurchasePrice"]),
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            ProductCode = Convert.ToString(idr["ProductCode"]),
+                            FacOrderNo = Convert.ToString(idr["FacOrderNo"]),
+                            HouseName = Convert.ToString(idr["HouseName"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            Figure = Convert.ToString(idr["Figure"]),
+                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                            TypeName = Convert.ToString(idr["TypeName"]),
+                            OrderNum = Convert.ToInt32(idr["OrderNum"]),
+                            ETATime = string.IsNullOrEmpty(Convert.ToString(idr["ETATime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["ETATime"])
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 采购单查询方法
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+
+        public Hashtable QueryCargoRealPurchase(int pIndex, int pNum, CargoRealFactoryPurchaseOrderEntity entity)
+        {
+            List<CargoRealFactoryPurchaseOrderEntity> result = new List<CargoRealFactoryPurchaseOrderEntity>();
+            Hashtable resHT = new Hashtable();
+            #region 获取订单明细
+            string strSQL = @" SELECT TOP " + pNum + $@"* FROM (select * from ( select ROW_NUMBER() OVER(ORDER BY CreateDate DESC) AS RowNumber,*,(case when InCargoQty<=0 then 0 when InCargoQty=fInCargoQty then 1 when InCargoQty>0 then 2 else 0 end) as PurchaseInStoreState from ( SELECT DISTINCT a.*,b.PurchaserName,b.PurchaserShortName, b.HouseID,b.Telephone,
+                        isnull((select sum(isnull(InPiece,0))
+                                     from Tbl_Cargo_RealFactoryPurchaseOrderGoods as bb
+                                              inner join Tbl_Cargo_FactoryOrder as c
+                                                        on c.FacOrderNo = a.PurOrderNo and c.ProductCode = bb.ProductCode and a.PurOrderID=bb.PurOrderID
+                                                        where InCargoStatus = 1),0) fInCargoQty, --获取已入库的总数
+                      isnull((select sum(isnull(InPiece,0))
+                                     from Tbl_Cargo_RealFactoryPurchaseOrderGoods as bb
+                                              inner join Tbl_Cargo_FactoryOrder as c
+                                                        on c.FacOrderNo = a.PurOrderNo and c.ProductCode = bb.ProductCode and a.PurOrderID=bb.PurOrderID),0) InCargoQty --获取入库总数
+                        ,(case when (select isnull(count(1),0) from Tbl_Cargo_FactoryFile as files where files.FacOrderNo = a.PurOrderNo)>0 then 1 else 0 end) IsDocument
+                        FROM Tbl_Cargo_RealFactoryPurchaseOrder as a inner join Tbl_Cargo_Purchaser as b on a.PurchaserID=b.PurchaserID WHERE (1=1)";
+
+            if (!entity.PurDepartID.Equals(0)) { strSQL += " and a.PurDepartID =" + entity.PurDepartID; }
+            if (!entity.PurchaserID.Equals(0)) { strSQL += " and a.PurchaserID =" + entity.PurchaserID; }
+            if (!string.IsNullOrEmpty(entity.PurOrderNo)) { strSQL += " and a.PurOrderNo='" + entity.PurOrderNo + "'"; }
+            if (!string.IsNullOrEmpty(entity.PurchaserName)) { strSQL += " and b.PurchaserName like '%" + entity.PurchaserName + "%'"; }
+            if (!string.IsNullOrEmpty(entity.ApplyStatus)) { strSQL += " and a.ApplyStatus='" + entity.ApplyStatus + "'"; }
+            if (!string.IsNullOrEmpty(entity.PurchaseType)) { strSQL += " and a.PurchaseType='" + entity.PurchaseType + "'"; }
+            if (!string.IsNullOrEmpty(entity.PurchaseInStoreType)) { strSQL += " and a.PurchaseInStoreType='" + entity.PurchaseInStoreType + "'"; }
+
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strSQL += " and a.CreateDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+            }
+           
+            strSQL += ") as aa) as bb where 1=1";
+            if (!string.IsNullOrEmpty(entity.PurchaseInStoreState))
+            {
+                strSQL += " and PurchaseInStoreState='" + entity.PurchaseInStoreState + "'";
+            }
+            if (!string.IsNullOrEmpty(entity.PurchaseUploadDoc))
+            {
+                strSQL += $@" 
+                       and IsDocument ={entity.PurchaseUploadDoc} ";
+            }
+            strSQL += ") as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))  order by RowNumber";
+            #endregion
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                #region 获取数据
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoRealFactoryPurchaseOrderEntity
+                        {
+                            PurOrderNo = Convert.ToString(idr["PurOrderNo"]),
+                            PurOrderID = Convert.ToInt64(idr["PurOrderID"]),
+                            PurDepartID = Convert.ToInt32(idr["PurDepartID"]),
+                            PurDepart = Convert.ToString(idr["PurDepart"]),
+                            ReplyNum = Convert.ToInt32(idr["ReplyNum"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            TransportFee = Convert.ToDecimal(idr["TransportFee"]),
+                            OtherFee = Convert.ToDecimal(idr["OtherFee"]),
+                            TotalCharge = Convert.ToDecimal(idr["TotalCharge"]),
+                            WhetherTax = Convert.ToString(idr["WhetherTax"]),
+                            CheckStatus = Convert.ToString(idr["CheckStatus"]),
+                            Remark = Convert.ToString(idr["Remark"]),
+                            PurchaserID = Convert.ToInt32(idr["PurchaserID"]),
+                            PurchaserName = Convert.ToString(idr["PurchaserName"]),
+                            DeliveryAddress = Convert.ToString(idr["DeliveryAddress"]),
+                            DeliveryBoss = Convert.ToString(idr["DeliveryBoss"]),
+                            DeliveryCellphone = Convert.ToString(idr["DeliveryCellphone"]),
+                            DeliveryTelephone = Convert.ToString(idr["DeliveryTelephone"]),
+                            DeliveryProvince = Convert.ToString(idr["DeliveryProvince"]),
+                            DeliveryCountry = Convert.ToString(idr["DeliveryCountry"]),
+                            DeliveryCity = Convert.ToString(idr["DeliveryCity"]),
+                            PurchaseType = Convert.ToString(idr["PurchaseType"]),
+                            PurchaseInStoreType = Convert.ToString(idr["PurchaseInStoreType"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                            CreateDate = Convert.ToDateTime(idr["CreateDate"]),
+                            CreateAwb = Convert.ToString(idr["CreateAwb"]),
+                            CreateAwbID = Convert.ToString(idr["CreateAwbID"]),
+                            ApplyID = Convert.ToString(idr["ApplyID"]),
+                            ApplyName = Convert.ToString(idr["ApplyName"]),
+                            CheckResult = Convert.ToString(idr["CheckResult"]),
+                            ApplyStatus = Convert.ToString(idr["ApplyStatus"]),
+                            NextCheckID = Convert.ToString(idr["NextCheckID"]),
+                            NextCheckName = Convert.ToString(idr["NextCheckName"]),
+                            ApplyDate = string.IsNullOrEmpty(Convert.ToString(idr["ApplyDate"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["ApplyDate"]),
+                            CheckTime = string.IsNullOrEmpty(Convert.ToString(idr["CheckTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["CheckTime"]),
+                            OP_ID = Convert.ToString(idr["OP_ID"]),
+                            PaymentMethod = string.IsNullOrEmpty(Convert.ToString(idr["PaymentMethod"])) ? -1 : Convert.ToInt32(idr["PaymentMethod"]),
+                            IsDocument = string.IsNullOrEmpty(Convert.ToString(idr["IsDocument"])) ? 0 : Convert.ToInt32(idr["IsDocument"]),
+                            TransferAccount = string.IsNullOrEmpty(Convert.ToString(idr["TransferAccount"])) ? -1 : Convert.ToInt32(idr["TransferAccount"]),
+                            PurchaseInStoreState = Convert.ToString(idr["PurchaseInStoreState"]),
+                            HouseID = Convert.ToString(idr["HouseID"]),
+                            Telephone = Convert.ToString(idr["Telephone"]),
+                            OwnerShip = Convert.ToString(idr["OwnerShip"]),
+                        });
+                    }
+                }
+                #endregion
+            }
+            //if (!string.IsNullOrEmpty(entity.PurchaseInStoreState)) {
+            //    result = result.Where(a => a.PurchaseInStoreState == entity.PurchaseInStoreState).ToList();
+            //}
+
+            resHT["rows"] = result;
+            #region 获取总数
+            string strCount = @"select count(1) as TotalCount
+                                      from (select *,(case when InCargoQty <= 0 then 0 when InCargoQty = fInCargoQty then 1 when InCargoQty > 0 then 2 else 0 end) as PurchaseInStoreState
+                                            from (SELECT DISTINCT a.*,isnull((select sum(isnull(InPiece, 0)) from Tbl_Cargo_RealFactoryPurchaseOrderGoods as bb inner join Tbl_Cargo_FactoryOrder as c
+                                                                                              on c.FacOrderNo = a.PurOrderNo and c.ProductCode = bb.ProductCode and a.PurOrderID = bb.PurOrderID where InCargoStatus = 1), 0) fInCargoQty, --获取已入库的总数
+                                                                  isnull((select sum(isnull(InPiece, 0)) from Tbl_Cargo_RealFactoryPurchaseOrderGoods as bb inner join Tbl_Cargo_FactoryOrder as c
+                                                                                              on c.FacOrderNo = a.PurOrderNo and c.ProductCode = bb.ProductCode and a.PurOrderID = bb.PurOrderID), 0) InCargoQty,   --获取入库总数
+                                                                  (case when (select isnull(count(1), 0) from Tbl_Cargo_FactoryFile as files where files.FacOrderNo = a.PurOrderNo) > 0 then 1 else 0 end) IsDocument
+                                                  FROM Tbl_Cargo_RealFactoryPurchaseOrder as a
+                                                           inner join Tbl_Cargo_Purchaser as b on a.PurchaserID = b.PurchaserID
+                                                  WHERE (1 = 1)";
+            if (!entity.PurDepartID.Equals(0)) { strCount += " and a.PurDepartID =" + entity.PurDepartID; }
+            if (!entity.PurchaserID.Equals(0)) { strCount += " and a.PurchaserID =" + entity.PurchaserID; }
+            if (!string.IsNullOrEmpty(entity.PurOrderNo)) { strCount += " and a.PurOrderNo='" + entity.PurOrderNo + "'"; }
+            if (!string.IsNullOrEmpty(entity.ApplyStatus)) { strCount += " and a.ApplyStatus='" + entity.ApplyStatus + "'"; }
+            if (!string.IsNullOrEmpty(entity.PurchaseType)) { strCount += " and a.PurchaseType='" + entity.PurchaseType + "'"; }
+            if (!string.IsNullOrEmpty(entity.PurchaseInStoreType)) { strCount += " and a.PurchaseInStoreType='" + entity.PurchaseInStoreType + "'"; }
+
+            if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strCount += " and a.CreateDate>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+            }
+            if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+            {
+                strCount += " and a.CreateDate<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+            }
+         
+            strCount += $@"  ) as aa) as bb where 1 = 1 ";
+
+            if (!string.IsNullOrEmpty(entity.PurchaseUploadDoc))
+            {
+                strCount += $@" and IsDocument={entity.PurchaseUploadDoc} ";
+            }
+
+            if (!string.IsNullOrEmpty(entity.PurchaseInStoreState))
+            {
+                strCount += $@" and PurchaseInStoreState='{entity.PurchaseInStoreState}' ";
+            }
+
+            using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
+            {
+                using (DataTable idrCount = conn.ExecuteDataTable(cmd))
+                {
+                    if (idrCount.Rows.Count > 0)
+                    {
+                        resHT["total"] = Convert.ToInt32(idrCount.Rows[0]["TotalCount"]);
+                    }
+                }
+            }
+            #endregion
+            return resHT;
+        }
+        /// <summary>
+        /// 查询采购仓库订单
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRealFactoryPurchaseHouseEntity> cargoRealFactoryPurchaseHouses(CargoRealFactoryPurchaseHouseEntity entity)
+        {
+            List<CargoRealFactoryPurchaseHouseEntity> result = new List<CargoRealFactoryPurchaseHouseEntity>();
+
+            string strSQL = "select a.*,b.Name as HouseName,c.LogisticName from Tbl_Cargo_RealFactoryPurchaseHouse as a inner join Tbl_Cargo_House as b on a.HouseID=b.HouseID left join Tbl_Cargo_Logistic as c on a.LogisID=c.ID Where (1=1)";
+            if (!entity.PurOrderID.Equals(0)) { strSQL += " and a.PurOrderID=" + entity.PurOrderID; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.Add(new CargoRealFactoryPurchaseHouseEntity()
+                        {
+                            FacOrderNo = Convert.ToString(idr["FacOrderNo"]),
+                            FPID = Convert.ToInt64(idr["FPID"]),
+                            PurOrderID = Convert.ToInt64(idr["PurOrderID"]),
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            OrderNum = Convert.ToInt32(idr["OrderNum"]),
+                            ReplyNum = Convert.ToInt32(idr["ReplyNum"]),
+                            LogisAwbNo = Convert.ToString(idr["LogisAwbNo"]),
+                            HouseName = Convert.ToString(idr["HouseName"]),
+                            LogisID = string.IsNullOrEmpty(Convert.ToString(idr["LogisID"])) ? 0 : Convert.ToInt32(idr["LogisID"]),
+                            LogisticName = Convert.ToString(idr["LogisticName"]),
+                            ETATime = string.IsNullOrEmpty(Convert.ToString(idr["ETATime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["ETATime"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询采购清单明细
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRealFactoryPurchaseOrderGoodsEntity> cargoRealFactoryPurchaseOrderGoods(CargoRealFactoryPurchaseOrderGoodsEntity entity)
+        {
+            List<CargoRealFactoryPurchaseOrderGoodsEntity> result = new List<CargoRealFactoryPurchaseOrderGoodsEntity>();
+            string strSQL = "select a.*,c.TypeName,b.Specs,b.Figure,b.GoodsCode,b.Model,b.LoadIndex,b.SpeedLevel,b.ProductName,isnull(e.InPiece,0) as InPiece,isnull(e.InCargoStatus,0) as InCargoStatus from Tbl_Cargo_RealFactoryPurchaseOrderGoods as a inner join Tbl_Cargo_ProductSpec as b on a.ProductCode=b.ProductCode inner join Tbl_Cargo_ProductType as c on b.TypeID=c.TypeID   inner join Tbl_Cargo_RealFactoryPurchaseOrder as d on d.PurOrderID=a.PurOrderID left join Tbl_Cargo_FactoryOrder as e on e.FacOrderNo=d.PurOrderNo and e.ProductCode=a.ProductCode where (1=1) ";
+
+            if (!entity.PurOrderID.Equals(0)) { strSQL += " and a.PurOrderID=" + entity.PurOrderID; }
+            if (!entity.FPID.Equals(0)) { strSQL += " and a.FPID=" + entity.FPID; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.Add(new CargoRealFactoryPurchaseOrderGoodsEntity
+                        {
+                            GoodsID = Convert.ToInt64(idr["GoodsID"]),
+                            FPID = Convert.ToInt64(idr["FPID"]),
+                            PurOrderID = Convert.ToInt64(idr["PurOrderID"]),
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            TypeName = Convert.ToString(idr["TypeName"]),
+                            ProductCode = Convert.ToString(idr["ProductCode"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            Figure = Convert.ToString(idr["Figure"]),
+                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            ReplyPiece = Convert.ToInt32(idr["ReplyPiece"]),
+                            PurchasePrice = Convert.ToDecimal(idr["PurchasePrice"]),
+                            Model = Convert.ToString(idr["Model"]),
+                            GoodsName = Convert.ToString(idr["ProductName"]),
+                            InPiece = Convert.ToInt32(idr["InPiece"]),
+                            InCargoStatus = Convert.ToInt32(idr["InCargoStatus"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 查询采购清单明细
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRealFactoryPurchaseOrderGoodsEntity> cargoRealFactoryPurchaseOrderGoodsExport(CargoRealFactoryPurchaseOrderGoodsEntity entity)
+        {
+            List<CargoRealFactoryPurchaseOrderGoodsEntity> resultGodds = new List<CargoRealFactoryPurchaseOrderGoodsEntity>();
+
+            string strSQL = $@"select a.*,
+                                       c.TypeName,b.Specs,b.Figure,b.GoodsCode,b.Model,b.LoadIndex,b.SpeedLevel,b.ProductName,e.InPiece,
+                                       e.InCargoStatus,d.PurOrderNo,d.PurDepart,(case when (select count(1) from Tbl_Cargo_FactoryFile as f where f.FacOrderNo=e.FacOrderNo)>0 then 1 else 0 end) IsDocument,d.WhetherTax,g.PurchaserName,
+                                       d.PurchaseType,d.PurchaseInStoreType,d.PaymentMethod,d.TransferAccount,d.CreateAwb,d.CreateDate,d.ApplyStatus,
+                                       i.Name as HouseName, h.ETATime, tcig.InHouseTime
+                                from Tbl_Cargo_RealFactoryPurchaseOrderGoods as a
+                                         inner join Tbl_Cargo_ProductSpec as b on a.ProductCode = b.ProductCode
+                                         inner join Tbl_Cargo_ProductType as c on b.TypeID = c.TypeID
+                                         inner join Tbl_Cargo_RealFactoryPurchaseOrder as d on d.PurOrderID = a.PurOrderID
+                                         left join Tbl_Cargo_FactoryOrder as e on e.FacOrderNo = d.PurOrderNo and e.ProductCode = a.ProductCode
+                                         inner join Tbl_Cargo_Purchaser as g on d.PurchaserID=g.PurchaserID
+                                         inner join Tbl_Cargo_RealFactoryPurchaseHouse as h on d.PurOrderID=h.PurOrderID
+                                         inner join Tbl_Cargo_House as i on h.HouseID = i.HouseID
+                                         --left join (select * from dbo.Tbl_Cargo_Product tcp where tcp.SourceOrderNo is not null and tcp.SourceOrderNo<>'' ) tcp on d.PurOrderNo = tcp.SourceOrderNo and b.GoodsCode = tcp.GoodsCode
+                                         left join Tbl_Cargo_Product tcp on d.PurOrderNo = tcp.SourceOrderNo and b.GoodsCode = tcp.GoodsCode and tcp.SourceOrderNo is not null and tcp.SourceOrderNo <> ''
+                                         left join (select ProductID,max(InHouseTime) as InHouseTime from Tbl_Cargo_InContainerGoods group by ProductID) tcig on tcp.ProductID = tcig.ProductID
+                                where (1 = 1) ";
+
+            if (entity.PurOrderArrID.Count>0) { strSQL += $@" and a.PurOrderID in({string.Join(",", entity.PurOrderArrID)})"; }
+            strSQL += $@" order by PurOrderNo";
+            //if (!entity.FPID.Equals(0)) { strSQL += " and a.FPID=" + entity.FPID; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        resultGodds.Add(new CargoRealFactoryPurchaseOrderGoodsEntity
+                        {
+                            GoodsID = Convert.ToInt64(idr["GoodsID"]),
+                            FPID = Convert.ToInt64(idr["FPID"]),
+                            PurOrderID = Convert.ToInt64(idr["PurOrderID"]), 
+                            PurOrderNo = Convert.ToString(idr["PurOrderNo"]), //采购单号
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            TypeName = Convert.ToString(idr["TypeName"]),
+                            ProductCode = Convert.ToString(idr["ProductCode"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            Figure = Convert.ToString(idr["Figure"]),
+                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            ReplyPiece = Convert.ToInt32(idr["ReplyPiece"]),
+                            PurchasePrice = Convert.ToDecimal(idr["PurchasePrice"]),
+                            Model = Convert.ToString(idr["Model"]),
+                            GoodsName = Convert.ToString(idr["ProductName"]),
+                            InPiece =string.IsNullOrEmpty(Convert.ToString(idr["InPiece"]))?0: Convert.ToInt32(idr["InPiece"]), //入库数量
+                            IsDocument = Convert.ToInt32(idr["IsDocument"]), //上传单据
+                            InCargoStatus = string.IsNullOrEmpty(Convert.ToString(idr["InCargoStatus"])) ? -1 :  Convert.ToInt32(idr["InCargoStatus"]), //入库状态
+                            HouseName = Convert.ToString(idr["HouseName"]), //采购仓库
+                            PurDepart = Convert.ToString(idr["PurDepart"]), //需求部门
+                            WhetherTax = Convert.ToInt32(idr["WhetherTax"]), //含税
+                            PurchaserName = Convert.ToString(idr["PurchaserName"]), //供应商
+                            PurchaseType = Convert.ToInt32(idr["PurchaseType"]), //采购单类型
+                            PurchaseInStoreType = Convert.ToInt32(idr["PurchaseInStoreType"]), //入库单类型
+                            PaymentMethod = string.IsNullOrEmpty(Convert.ToString(idr["PaymentMethod"])) ? -1 : Convert.ToInt32(idr["PaymentMethod"]), //付款方式   
+                            TransferAccount = string.IsNullOrEmpty(Convert.ToString(idr["TransferAccount"])) ? -1 : Convert.ToInt32(idr["TransferAccount"]), //转账账户   
+                            CreateAwb = Convert.ToString(idr["CreateAwb"]), //开单员   
+                            CreateDate = Convert.ToString(idr["CreateDate"]), //开单时间   
+                            ApplyStatus = Convert.ToInt32(idr["ApplyStatus"]), //审核状态   
+                            InHouseTime = string.IsNullOrEmpty(Convert.ToString(idr["InHouseTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["InHouseTime"]), //入库时间   
+                            ETATime = string.IsNullOrEmpty(Convert.ToString(idr["ETATime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["ETATime"]), //预计入库时间   
+                        });
+                    }
+                }
+            }
+            return resultGodds;
+        }
+
+        /// <summary>
+        /// 查询采购清单明细用于来货导入
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoRealFactoryPurchaseOrderGoodsEntity> cargoRealFactoryPurchaseOrderGoodsFactory(CargoRealFactoryPurchaseOrderGoodsEntity entity)
+        {
+            List<CargoRealFactoryPurchaseOrderGoodsEntity> result = new List<CargoRealFactoryPurchaseOrderGoodsEntity>();
+            string strSQL = @"	SELECT
+h.HouseID,
+o.PurOrderID,
+o.PurOrderNo,
+o.WhetherTax,
+o.PurDepart,
+o.PurDepartID,
+h.CargoDepart,
+c.TypeID,
+c.TypeName,
+b.*,
+h.DepCity,
+h.Person,
+h.Cellphone,
+
+g.*
+	FROM 
+	Tbl_Cargo_RealFactoryPurchaseOrderGoods AS g 
+	LEFT JOIN Tbl_Cargo_RealFactoryPurchaseHouse ph ON g.PurOrderID= ph.PurOrderID  AND g.FPID= ph.FPID
+	LEFT JOIN Tbl_Cargo_RealFactoryPurchaseOrder o ON g.PurOrderID= o.PurOrderID  
+	
+	LEFT JOIN Tbl_Cargo_House h ON ph.HouseID= h.HouseID 
+	LEFT JOIN Tbl_Cargo_ProductSpec as b on g.ProductCode=b.ProductCode	
+	LEFT JOIN Tbl_Cargo_ProductType as c on b.TypeID=c.TypeID	
+
+	WHERE (1=1) ";
+
+            if (!entity.PurOrderID.Equals(0)) { strSQL += " and g.PurOrderID=" + entity.PurOrderID; }
+            //if (!entity.FPID.Equals(0)) { strSQL += " and a.FPID=" + entity.FPID; }
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.Add(new CargoRealFactoryPurchaseOrderGoodsEntity
+                        {
+                            GoodsID = Convert.ToInt64(idr["GoodsID"]),
+                            FPID = Convert.ToInt64(idr["FPID"]),
+                            PurOrderID = Convert.ToInt64(idr["PurOrderID"]),
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            TypeName = Convert.ToString(idr["TypeName"]),
+                            ProductCode = Convert.ToString(idr["ProductCode"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            Figure = Convert.ToString(idr["Figure"]),
+                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            ReplyPiece = Convert.ToInt32(idr["ReplyPiece"]),
+                            PurchasePrice = Convert.ToDecimal(idr["PurchasePrice"]),
+                            Model = Convert.ToString(idr["Model"]),
+                            Born = Convert.ToString(idr["Born"]),
+
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            PurOrderNo = Convert.ToString(idr["PurOrderNo"]),
+                            WhetherTax = Convert.ToInt32(idr["WhetherTax"]),
+
+                            Supplier = Convert.ToString(idr["PurDepart"]),
+                            SuppClientNum = Convert.ToString(idr["PurDepartID"]),
+                            SupplierAddress = Convert.ToString(idr["PurDepart"]),
+
+                            ReceiveName = Convert.ToString(idr["Person"]),
+                            ReceiveCity = Convert.ToString(idr["DepCity"]),
+                            ReceiveMobile = Convert.ToString(idr["Cellphone"]),
+
+                            ProductName = Convert.ToString(idr["CargoDepart"]),
+
+                            //Source = Convert.ToString(idr["ClientNum"]),
+                            //SourceName = Convert.ToString(idr["PurchaserShortName"]),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 修改采购单表的数量和金额
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdatePurchaseOrderPiece(CargoRealFactoryPurchaseOrderEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_RealFactoryPurchaseOrder Set Piece=@Piece,ReplyNum=@ReplyNum,TransportFee=@TransportFee,TotalCharge=@TransportFee+OtherFee Where PurOrderID=@PurOrderID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, entity.PurOrderID);
+                conn.AddInParameter(cmd, "@TransportFee", DbType.Decimal, entity.TransportFee);
+                conn.AddInParameter(cmd, "@ReplyNum", DbType.Int32, entity.ReplyNum);
+                conn.AddInParameter(cmd, "@Piece", DbType.Int32, entity.Piece);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 删除采购单
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DeleteRealPurchaseOrder(CargoRealFactoryPurchaseOrderEntity entity)
+        {
+            string strSQL = "delete from Tbl_Cargo_RealFactoryPurchaseOrder where PurOrderID=@PurOrderID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, entity.PurOrderID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        /// <summary>
+        /// 删除采购单仓库数据 通过采购单号
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DeleteRealPurchaseHouseByPurOrderID(CargoRealFactoryPurchaseHouseEntity entity)
+        {
+            string strSQL = "delete from Tbl_Cargo_RealFactoryPurchaseHouse where PurOrderID=@PurOrderID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, entity.PurOrderID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        public void DelPurchaseGoodsByPurOrderID(CargoRealFactoryPurchaseOrderGoodsEntity entity)
+        {
+            string strSQL = "delete from Tbl_Cargo_RealFactoryPurchaseOrderGoods where PurOrderID=@PurOrderID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, entity.PurOrderID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        public void DeleteRealPurchaseHouse(CargoRealFactoryPurchaseHouseEntity entity)
+        {
+            string strSQL = "delete from Tbl_Cargo_RealFactoryPurchaseHouse where FPID=@FPID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@FPID", DbType.Int64, entity.FPID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        public void DeleteRealPurchaseHouseData(string FPIDStr, long PurOrderID)
+        {
+            string strSQL = "delete from Tbl_Cargo_RealFactoryPurchaseHouse where PurOrderID=@PurOrderID and FPID not in (" + FPIDStr + ")";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, PurOrderID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+        public void UpdatePurchaseHousePiece(CargoRealFactoryPurchaseHouseEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_RealFactoryPurchaseHouse Set ReplyNum=@ReplyNum,OrderNum=@OrderNum Where FPID=@FPID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@FPID", DbType.Int64, entity.FPID);
+                conn.AddInParameter(cmd, "@OrderNum", DbType.Int32, entity.OrderNum);
+                conn.AddInParameter(cmd, "@ReplyNum", DbType.Int32, entity.ReplyNum);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+
+        /// <summary>
+        /// 修改到货时间和物流单号
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateETRTimeLogisAwbNo(CargoRealFactoryPurchaseHouseEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_RealFactoryPurchaseHouse Set LogisAwbNo=@LogisAwbNo,ETATime=@ETATime,LogisID=@LogisID Where FPID=@FPID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@FPID", DbType.Int64, entity.FPID);
+                conn.AddInParameter(cmd, "@LogisID", DbType.Int32, entity.LogisID);
+                conn.AddInParameter(cmd, "@LogisAwbNo", DbType.String, entity.LogisAwbNo);
+                conn.AddInParameter(cmd, "@ETATime", DbType.DateTime, entity.ETATime);
+                conn.ExecuteNonQuery(cmd);
+            }
+
+        }
+        /// <summary>
+        /// 修改数量和价格
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdatePurchaseReplyNum(CargoRealFactoryPurchaseOrderGoodsEntity entity)
+        {
+            string strSQL = "update Tbl_Cargo_RealFactoryPurchaseOrderGoods set Piece=@Piece,ReplyPiece=@ReplyPiece,PurchasePrice=@PurchasePrice where GoodsID=@GoodsID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@Piece", DbType.Int32, entity.Piece);
+                conn.AddInParameter(cmd, "@ReplyPiece", DbType.Int32, entity.ReplyPiece);
+                conn.AddInParameter(cmd, "@PurchasePrice", DbType.Decimal, entity.PurchasePrice);
+                conn.AddInParameter(cmd, "@GoodsID", DbType.Int64, entity.GoodsID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+
+        /// <summary>
+        /// 删除采购单明细
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelPurchaseGoods(CargoRealFactoryPurchaseOrderGoodsEntity entity)
+        {
+            string strSQL = "delete from Tbl_Cargo_RealFactoryPurchaseOrderGoods where GoodsID=@GoodsID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@GoodsID", DbType.Int64, entity.GoodsID);
+                conn.ExecuteNonQuery(cmd);
+            }
+        }
+
+        public List<CargoRealFactoryPurchaseOrderGoodsEntity> QueryPurGoodsGroup(CargoRealFactoryPurchaseOrderGoodsEntity entity)
+        {
+            List<CargoRealFactoryPurchaseOrderGoodsEntity> result = new List<CargoRealFactoryPurchaseOrderGoodsEntity>();
+            string strSQL = "select PurOrderID,FPID,SUM(Piece) as Piece,SUM(ReplyPiece) as ReplyPiece,SUM(Piece*PurchasePrice) as PieceFee,SUM(ReplyPiece*PurchasePrice) as ReplyFee from Tbl_Cargo_RealFactoryPurchaseOrderGoods where PurOrderID=@PurOrderID group by PurOrderID,FPID";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@PurOrderID", DbType.Int64, entity.PurOrderID);
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.Add(new CargoRealFactoryPurchaseOrderGoodsEntity
+                        {
+                            FPID = Convert.ToInt64(idr["FPID"]),
+                            PurOrderID = Convert.ToInt64(idr["PurOrderID"]),
+                            Piece = Convert.ToInt32(idr["Piece"]),
+                            ReplyPiece = Convert.ToInt32(idr["ReplyPiece"]),
+                            PieceFee = Convert.ToDecimal(idr["PieceFee"]),
+                            ReplyFee = Convert.ToDecimal(idr["ReplyFee"]),
+                        });
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 更改转账方式
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdatePurchaseOrderTransferType(CargoRealFactoryPurchaseOrderEntity entity)
+        {
+            string strSQL = @"UPDATE Tbl_Cargo_RealFactoryPurchaseOrder Set PaymentMethod=@PaymentMethod,TransferAccount=@TransferAccount Where PurOrderID=@PurOrderID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+
+                conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, entity.PurOrderID);
+                conn.AddInParameter(cmd, "@PaymentMethod", DbType.Int32, entity.PaymentMethod);
+                conn.AddInParameter(cmd, "@TransferAccount", DbType.Int32, entity.TransferAccount);
+                conn.ExecuteNonQuery(cmd);
+            }
+
+        }
+
+        public List<CargoFactoryOrderEntity> QueryCargoRealFactoryData(CargoRealFactoryPurchaseOrderEntity entity)
+        {
+            List<CargoFactoryOrderEntity> result = new List<CargoFactoryOrderEntity>();
+            //CargoFactoryOrderEntity result = new CargoFactoryOrderEntity();
+            string strSQL = "select  b.* from Tbl_Cargo_RealFactoryPurchaseOrder as a inner join Tbl_Cargo_FactoryOrder as b on a.PurOrderNo=b.FacOrderNo where 1=1";
+            if (!string.IsNullOrEmpty(entity.PurOrderNo)) { strSQL += " and a.PurOrderNo='" + entity.PurOrderNo + "'"; }
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        result.Add(new CargoFactoryOrderEntity
+                        {
+                            FacOrderNo = Convert.ToString(idr["FacOrderNo"]),
+                            FacName = Convert.ToString(idr["FacName"]),
+                            OrderType = Convert.ToInt32(idr["OrderType"]),
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            Source = Convert.ToInt32(idr["Source"]),
+                            ProductID = Convert.ToString(idr["ProductID"]),
+                            ProductName = Convert.ToString(idr["ProductName"])
+                        });
+                    }
+                }
+            }
+            //result.purchaseOrderGoodsEntities = QueryRealPurchaseOrderGoods(new CargoFactoryOrderEntity { });
+            return result;
+        }
+
+
+    }
+}

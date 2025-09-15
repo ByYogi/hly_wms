@@ -1,25 +1,27 @@
 ﻿using House.DataAccess;
+using House.Entity;
 using House.Entity.Cargo;
+using House.Entity.Cargo.Order;
+using House.Entity.Cargo.Product;
+using House.Entity.Dto;
+using House.Entity.Dto.Order;
+using House.Entity.House;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Data;
 using System.Data.Common;
+using System.Data.SqlClient;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
-using House.Entity.House;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Diagnostics;
-using House.Entity.Cargo.Order;
-using System.Security.Policy;
-using House.Entity;
-using System.ComponentModel.Design;
 using System.Reflection;
-using House.Entity.Dto;
-using House.Entity.Cargo.Product;
+using System.Runtime.InteropServices;
 using System.Runtime.Remoting.Metadata.W3cXsd2001;
+using System.Security.Cryptography;
+using System.Security.Policy;
+using System.Text;
 
 namespace House.Manager.Cargo
 {
@@ -2726,6 +2728,10 @@ namespace House.Manager.Cargo
             {
                 strSQL += ",ShopCode";
             }
+            if (entity.OutCargoTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.OutCargoTime.ToString("yyyy-MM-dd") != "1900-01-01")
+            {
+                strSQL += ",OutCargoTime";
+            }
             strSQL += ") VALUES (@OrderNo,@OrderNum,@HAwbNo,@LogisAwbNo,@LogisID,@Dep,@Dest,@Piece,@Weight,@Volume,@InsuranceFee,@TransitFee,@TransportFee,@DeliveryFee,@OtherFee,@TotalCharge,@Rebate,@CheckOutType,@TrafficType,@DeliveryType,@AcceptUnit,@AcceptPeople,@AcceptTelephone,@AcceptCellphone,@AcceptAddress,@CreateAwb,@CreateDate,@OP_ID,@OP_DATE,@AwbStatus,@Remark,@SaleManID,@SaleManName,@SaleCellPhone,@HouseID,@CreateAwbID,@OrderType,@OrderModel,@ClientNum,@ThrowGood,@TranHouse,@OutHouseName,@ModifyPriceStatus,@PayClientNum,@PayClientName,@BelongHouse,@IsPrintPrice,@PostponeShip,@DeliverySettlement,@LineID,@LineName,@SuppClientNum,@WXOrderNo,@CollectMoney,@OpenOrderNo,@OpenOrderSource,@BusinessID,@OverDueFee,@CouponType,@ShareHouseID,@ShareHouseName,@OrignHouseID,@OrignHouseName,@CheckStatus,@BateAmount,@OnlinePaidAmount";
             if (!string.IsNullOrEmpty(entity.FinanceSecondCheck))
             {
@@ -2739,9 +2745,14 @@ namespace House.Manager.Cargo
             {
                 strSQL += ",@FinanceSecondCheckDate";
             }
+
             if (!string.IsNullOrEmpty(entity.ShopCode))
             {
                 strSQL += ",@ShopCode";
+            }
+            if (entity.OutCargoTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.OutCargoTime.ToString("yyyy-MM-dd") != "1900-01-01")
+            {
+                strSQL += ",@OutCargoTime";
             }
             strSQL += ") SELECT SCOPE_IDENTITY()";
             try
@@ -2825,6 +2836,10 @@ namespace House.Manager.Cargo
                     if (!string.IsNullOrEmpty(entity.ShopCode))
                     {
                         conn.AddInParameter(cmd, "@ShopCode", DbType.String, entity.ShopCode);
+                    }
+                    if (entity.OutCargoTime.ToString("yyyy-MM-dd") != "0001-01-01" && entity.OutCargoTime.ToString("yyyy-MM-dd") != "1900-01-01")
+                    {
+                        conn.AddInParameter(cmd, "@OutCargoTime", DbType.DateTime, entity.OutCargoTime);
                     }
                     conn.AddInParameter(cmd, "@OverDueFee", DbType.Decimal, entity.OverDueFee);
                     conn.AddInParameter(cmd, "@CouponType", DbType.String, entity.CouponType);
@@ -4961,7 +4976,7 @@ AcceptCellphone,HouseID,HouseName,OP_ID,Piece,PushType,PushStatus,LogisID) selec
         {
             List<CargoContainerShowEntity> result = new List<CargoContainerShowEntity>();
             string strSQL = "select * from Tbl_Cargo_ProductTag where OrderNo in (";
-            strSQL = "select c.HouseID,a.ContainerID,c.OutCargoID,c.ActSalePrice,c.OrderNo,c.ContainerCode,c.Piece,a.TagCode,a.TyreCode,a.InCargoTime,a.OutCargoOperID,a.OutCargoTime,b.ProductID,b.Specs,b.Figure,b.Model,b.GoodsCode,b.LoadIndex,b.SpeedLevel,b.Batch,g.TypeName,d.Name as AreaName,f.Name as ParentAreaName,o.PayClientName From Tbl_Cargo_OrderGoods as c inner join Tbl_Cargo_Order o on c.OrderNo=o.OrderNo inner join Tbl_Cargo_Container as h on c.ContainerCode=h.ContainerCode and c.AreaID=h.AreaID inner join Tbl_Cargo_ProductTag as a on c.ProductID=a.ProductID and c.OrderNo=a.OrderNo and h.ContainerID=a.ContainerID inner join Tbl_Cargo_Product as b on a.ProductID=b.ProductID left join Tbl_Cargo_Area as d on c.AreaID=d.AreaID left join Tbl_Cargo_Area as e on d.ParentID=e.AreaID left join Tbl_Cargo_Area as f on e.ParentID=f.AreaID left join Tbl_Cargo_ProductType as g on b.TypeID=g.TypeID where c.OrderNo in (";
+            strSQL = "select c.HouseID,a.ContainerID,c.OutCargoID,c.ActSalePrice,c.OrderNo,c.ContainerCode,c.Piece,a.TagCode,a.TyreCode,a.InCargoTime,a.OutCargoOperID,a.OutCargoTime,b.ProductID,b.Specs,b.Figure,b.Model,b.GoodsCode,b.LoadIndex,b.SpeedLevel,b.Batch,b.SuppClientNum,b.Supplier,g.TypeName,d.Name as AreaName,f.Name as ParentAreaName,o.PayClientName From Tbl_Cargo_OrderGoods as c inner join Tbl_Cargo_Order o on c.OrderNo=o.OrderNo inner join Tbl_Cargo_Container as h on c.ContainerCode=h.ContainerCode and c.AreaID=h.AreaID inner join Tbl_Cargo_ProductTag as a on c.ProductID=a.ProductID and c.OrderNo=a.OrderNo and h.ContainerID=a.ContainerID inner join Tbl_Cargo_Product as b on a.ProductID=b.ProductID left join Tbl_Cargo_Area as d on c.AreaID=d.AreaID left join Tbl_Cargo_Area as e on d.ParentID=e.AreaID left join Tbl_Cargo_Area as f on e.ParentID=f.AreaID left join Tbl_Cargo_ProductType as g on b.TypeID=g.TypeID where c.OrderNo in (";
             string orderNoStr = "";
             foreach (var item in OrderNo)
             {
@@ -5002,7 +5017,9 @@ AcceptCellphone,HouseID,HouseName,OP_ID,Piece,PushType,PushStatus,LogisID) selec
                             ContainerID = Convert.ToInt32(idr["ContainerID"]),
                             HouseID = Convert.ToInt32(idr["HouseID"]),
                             ParentAreaName = Convert.ToString(idr["ParentAreaName"]),
-                            PayClientName = Convert.ToString(idr["PayClientName"])
+                            PayClientName = Convert.ToString(idr["PayClientName"]),
+                            SuppClientNum = Convert.ToInt32(idr["SuppClientNum"]),
+                            Supplier = Convert.ToString(idr["Supplier"]),
                         });
                     }
                 }
@@ -5461,7 +5478,7 @@ a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.H
             List<CargoOrderEntity> result = new List<CargoOrderEntity>();
             try
             {
-                string strSQL = @"select *,ar.Name as AreaName,ps.SourceName from Tbl_Cargo_OrderGoods a inner join Tbl_Cargo_Order b on a.OrderNo=b.OrderNo inner join Tbl_Cargo_Product p on p.ProductID=a.ProductID left join Tbl_Cargo_ProductSource ps on p.Source=ps.Source left join Tbl_Cargo_Area ar on a.AreaID=ar.AreaID left join tbl_cargo_Logistic c on b.LogisID=c.ID left join Tbl_WX_Order d on b.WXOrderNo=d.OrderNo where b.OrderModel = '1' and b.ThrowGood = '5' ";
+                string strSQL = @"select *,ar.Name as AreaName,ps.SourceName,b.Remark from Tbl_Cargo_OrderGoods a inner join Tbl_Cargo_Order b on a.OrderNo=b.OrderNo inner join Tbl_Cargo_Product p on p.ProductID=a.ProductID left join Tbl_Cargo_ProductSource ps on p.Source=ps.Source left join Tbl_Cargo_Area ar on a.AreaID=ar.AreaID left join tbl_cargo_Logistic c on b.LogisID=c.ID left join Tbl_WX_Order d on b.WXOrderNo=d.OrderNo where b.OrderModel = '1' and b.ThrowGood = '5' ";
 
                 //订单编号 
                 if (!string.IsNullOrEmpty(entity.OrderNo)) { strSQL += " and b.OrderNo = '" + entity.OrderNo.ToUpper() + "'"; }
@@ -7113,6 +7130,7 @@ a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.H
             return result;
 
         }
+
         /// <summary>
         /// 根据移库单号查询移库单明细
         /// </summary>
@@ -7392,6 +7410,7 @@ FROM
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
             return resHT;
         }
+
         /// <summary>
         /// 查询移库单导出
         /// </summary>
@@ -9998,6 +10017,313 @@ WHERE ExterOrderAlloNum = (
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
         }
         #endregion
+        #region 补货单方法集合
+        public CargoRplOrderListDto QueryRplOrder(CargoRplOrderListDto entity)
+        {
+            CargoRplOrderListDto result = new CargoRplOrderListDto();
+            var queryentity = entity.QueryEntity;
+            try
+            {
+                //entity.EnSafe();
+                #region 组装查询SQL语句
+                StringBuilder strbld = new StringBuilder();
+                List<string> conditions = new List<string>();
+                List<SqlParameter> parameters = new List<SqlParameter>();
+                strbld.AppendLine("------------------查询补货单列表-----------------");
+
+                //补货单详情表
+                strbld.AppendLine(@"
+WITH rog AS (
+SELECT
+	RplID
+FROM Tbl_Cargo_RplOrderGoods
+WHERE (1=1) @{conditions}
+GROUP BY RplID
+)
+"); 
+                if (queryentity.TypeID.HasValue)
+                {
+                    conditions.Add("TypeID = @TypeID");
+                    parameters.Add(new SqlParameter("@TypeID", SqlDbType.Int) { Value = queryentity.TypeID.Value });
+                }
+
+                if (queryentity.TypeCate.HasValue)
+                {
+                    conditions.Add("TypeCate = @TypeCate");
+                    parameters.Add(new SqlParameter("@TypeCate", SqlDbType.Int) { Value = queryentity.TypeCate.Value });
+                }
+                if (conditions.Count > 0)
+                {
+                    strbld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+                }
+                else
+                {
+                    strbld.Replace("@{conditions}", "");
+                }
+
+
+                strbld.AppendLine(@"
+SELECT 
+	TOP @{pagesize}
+	* ,
+    COUNT(1) OVER() AS TotalCount
+FROM (
+    SELECT
+	    DISTINCT ROW_NUMBER() OVER (ORDER BY ro.RplID DESC) AS RowNumber,
+	    ro.*,
+	    ro2.TypeNames
+    FROM
+	    Tbl_Cargo_RplOrder AS ro
+	    LEFT JOIN (
+		    SELECT
+			    ro.RplID,
+			    STUFF(
+				    (
+					    SELECT
+						    DISTINCT ',' + rog.TypeName
+					    FROM
+						    Tbl_Cargo_RplOrderGoods rog
+					    WHERE
+						    ro.RplID = rog.RplID FOR XML PATH(''),
+						    TYPE
+				    ).value('.', 'NVARCHAR(MAX)'),
+				    1,
+				    1,
+				    ''
+			    ) AS TypeNames
+		    FROM
+			    Tbl_Cargo_RplOrder ro
+	    ) ro2 ON ro2.RplID = ro.RplID
+		INNER JOIN rog ON rog.RplID = ro.RplID
+    WHERE 1 = 1 AND rog.RplID IS NOT NULL @{conditions}
+) a
+WHERE RowNumber > @{startindex}
+ORDER BY RowNumber ASC
+");
+                conditions = new List<string>();
+                strbld.Replace("@{pagesize}", entity.PageSize.ToString());
+                strbld.Replace("@{startindex}", entity.StartIndex.ToString());
+
+
+                if (!string.IsNullOrEmpty(queryentity.RplNo))
+                {
+                    conditions.Add("ro.RplNO LIKE @RplNO");
+                    parameters.Add(new SqlParameter("@RplNO", SqlDbType.NVarChar, 50) { Value = '%' + queryentity.RplNo + '%' });
+                }
+                if (queryentity.Status.HasValue)
+                {
+                    conditions.Add("ro.Status = @Status");
+                    parameters.Add(new SqlParameter("@Status", SqlDbType.TinyInt) { Value = queryentity.Status.Value });
+                }
+                if (queryentity.HouseID.HasValue)
+                {
+                    conditions.Add("ro.HouseID = @HouseID");
+                    parameters.Add(new SqlParameter("@HouseID", SqlDbType.Int) { Value = queryentity.HouseID.Value });
+                }
+                if (queryentity.FromHouse.HasValue)
+                {
+                    conditions.Add("ro.FromHouse = @FromHouse");
+                    parameters.Add(new SqlParameter("@FromHouse", SqlDbType.Int) { Value = queryentity.FromHouse.Value });
+                }
+                if (queryentity.ReqByName != null)
+                {
+                    conditions.Add("ro.ReqByName LIKE N'%'+@ReqByName+'%'");
+                    parameters.Add(new SqlParameter("@ReqByName", SqlDbType.NVarChar, 50) { Value = queryentity.ReqByName });
+                }
+                if (queryentity.StartDate.HasValue)
+                {
+                    conditions.Add("ro.CreateDate >= @StartDate");
+                    parameters.Add(new SqlParameter("@StartDate", SqlDbType.DateTime) { Value = queryentity.StartDate.Value.Date });
+                }
+                if (queryentity.EndDate.HasValue)
+                {
+                    conditions.Add("ro.CreateDate < @EndDate");
+                    parameters.Add(new SqlParameter("@EndDate", SqlDbType.DateTime) { Value = queryentity.EndDate.Value.Date.AddDays(1) });
+                }
+
+                if (conditions.Count > 0)
+                {
+                    strbld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+                }
+                else
+                {
+                    strbld.Replace("@{conditions}", "");
+                }
+
+                #endregion
+                string strSQL = strbld.ToString();
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    command.Parameters.AddRange(parameters.ToArray());
+                    string paramsStr = string.Join(", ", command.Parameters.Cast<SqlParameter>().Select(p => $"{p.ParameterName}={p.Value}"));
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        List<CargoRplOrderDto> sqlData = new List<CargoRplOrderDto>();
+                        bool isFirst = true;
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            if (isFirst)
+                            {
+                                result.DataTotal = idr.Field<int>("TotalCount");
+                                isFirst = false;
+                            }
+                            result.DataTotal = idr.Field<int>("TotalCount");
+                            sqlData.Add(new CargoRplOrderDto
+                            {
+                                RplID = idr.Field<int>("RplID"),
+                                RplNo = idr.Field<string>("RplNo"),
+                                FromHouse = idr.Field<int?>("FromHouse"),
+                                HouseID = idr.Field<int?>("HouseID"),
+                                HouseName = idr.Field<string>("HouseName"),
+                                FromHouseName = idr.Field<string>("FromHouseName"),
+                                ReqBy = idr.Field<string>("ReqBy"),
+                                ReqByName = idr.Field<string>("ReqByName"),
+                                Piece = idr.Field<int?>("Piece"),
+                                Status = idr.Field<byte?>("Status"),
+                                TypeNames = idr.Field<string>("TypeNames"),
+                                Reason = idr.Field<string>("Reason"),
+                                Remark = idr.Field<string>("Remark"),
+                                CreateDate = idr.Field<DateTime>("CreateDate"),
+                                CompletedDate = idr.Field<DateTime?>("CompletedDate")
+                            });
+                        }
+                        result.Data = sqlData;
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+
+
+        public CargoRplOrderGoodsListDto QueryRplOrderGoods(CargoRplOrderGoodsListDto entity)
+        {
+            CargoRplOrderGoodsListDto result = new CargoRplOrderGoodsListDto();
+            var queryentity = entity.QueryEntity;
+            try
+            {
+                //entity.EnSafe();
+                #region 组装查询SQL语句
+                StringBuilder strbld = new StringBuilder();
+                List<string> conditions = new List<string>();
+                List<SqlParameter> parameters = new List<SqlParameter>();
+                strbld.AppendLine("------------------查询补货单详情列表-----------------");
+                strbld.AppendLine(@"
+SELECT @{pagesize}
+	* ,
+    COUNT(1) OVER() AS TotalCount
+FROM (
+    SELECT
+	    DISTINCT ROW_NUMBER() OVER (ORDER BY rog.RplID DESC,rog.ID ASC) AS RowNumber,
+	    rog.*
+    FROM
+	    Tbl_Cargo_RplOrderGoods AS rog
+    WHERE 1 = 1 @{conditions}
+) a
+WHERE 1 = 1 @{startindex}
+ORDER BY RowNumber ASC
+");
+                conditions = new List<string>();
+
+                if(entity.IsPaging)
+                {
+                    strbld.Replace("@{pagesize}", "TOP " + entity.PageSize.ToString());
+                    strbld.Replace("@{startindex}", "RowNumber > " + entity.PageSize.ToString());
+                }
+                else
+                {
+                    strbld.Replace("@{pagesize}", "");
+                    strbld.Replace("@{startindex}", "");
+                }
+
+
+                if (queryentity.RplID.HasValue)
+                {
+                    conditions.Add("rog.RplID = @RplID");
+                    parameters.Add(new SqlParameter("@RplID", SqlDbType.Int) { Value = queryentity.RplID.Value });
+                }
+
+                if (conditions.Count > 0)
+                {
+                    strbld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+                }
+                else
+                {
+                    strbld.Replace("@{conditions}", "");
+                }
+
+                #endregion
+                string strSQL = strbld.ToString();
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    command.Parameters.AddRange(parameters.ToArray());
+                    string paramsStr = string.Join(", ", command.Parameters.Cast<SqlParameter>().Select(p => $"{p.ParameterName}={p.Value}"));
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        List<CargoRplOrderGoodsDto> sqlData = new List<CargoRplOrderGoodsDto>();
+                        bool isFirst = true;
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            if (isFirst)
+                            {
+                                result.DataTotal = idr.Field<int>("TotalCount");
+                                isFirst = false;
+                            }
+                            result.DataTotal = idr.Field<int>("TotalCount");
+                            sqlData.Add(new CargoRplOrderGoodsDto
+                            {
+                                ID = idr.Field<int>("ID"),
+                                RplID = idr.Field<int>("RplID"),
+                                ProductID = idr.Field<long>("ProductID"),
+                                ProductName = idr.Field<string>("ProductName"),
+                                ProductCode = idr.Field<string>("ProductCode"),
+                                GoodsCode = idr.Field<string>("GoodsCode"),
+                                TypeCate = idr.Field<int?>("TypeCate"),
+                                TypeID = idr.Field<int?>("TypeID"),
+                                TypeName = idr.Field<string>("TypeName"),
+                                Piece = idr.Field<int?>("Piece"),
+                                SysPiece = idr.Field<int?>("SysPiece"),
+                                MinStock = idr.Field<int?>("MinStock"),
+                                MaxStock = idr.Field<int?>("MaxStock"),
+                                SrcPiece = idr.Field<int?>("SrcPiece"),
+                                PenddimgQty = idr.Field<int?>("PenddimgQty"),
+                                InTransitQty = idr.Field<int?>("InTransitQty"),
+                                AvgSalSUM = idr.Field<int?>("AvgSalSUM"),
+                                CreateDate = idr.Field<DateTime>("CreateDate"),
+                                UpdateDate = idr.Field<DateTime?>("UpdateDate")
+
+                                /*
+                                  public int ID { get; set; }                  // 主键
+        public int RplID { get; set; }               // 补货单ID
+        public long ProductID { get; set; }          // 产品ID
+        public string ProductName { get; set; }      // 产品名称
+        public string ProductCode { get; set; }      // 产品代码
+        public string GoodsCode { get; set; }        // 货品代码
+        public int TypeCate { get; set; } // 品类ID
+        public int TypeID { get; set; }              // 品牌ID
+        public string TypeName { get; set; }         // 品牌名称
+        public int Piece { get; set; }               // 补货数量
+        public int SysPiece { get; set; }            // 建议补货数
+        public int? MinStock { get; set; }           // 最小库存数
+        public int? MaxStock { get; set; }           // 最大库存数
+        public int? SrcPiece { get; set; }           // 缺货仓在库数
+        public int? PenddimgQty { get; set; }        // 待出库数量
+        public int? InTransitQty { get; set; }       // 在途库存
+        public int? AvgSalSUM { get; set; }          // 月均销量
+        public DateTime CreateDate { get; set; }     // 创建时间
+        public DateTime? UpdateDate { get; set; }    // 更新时间
+                                */
+                            });
+                        }
+                        result.Data = sqlData;
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+
+        #endregion
         #region 来货单 
         public void AddPurchaseOrderInfo(CargoOrderEntity entity, List<CargoProductEntity> productList)
         {
@@ -10270,7 +10596,7 @@ WHERE ExterOrderAlloNum = (
         {
             List<CargoProductEntity> result = new List<CargoProductEntity>();
             //string strSQL = "select a.*,b.TypeName From Tbl_Cargo_PurchaseOrderGoods as a inner join Tbl_Cargo_ProductType as b on a.TypeID = b.TypeID Where (1=1)";and a.LoadIndex = d.LoadIndex and a.SpeedLevel = d.SpeedLevel
-            string strSQL = "select a.*,c.FacOrderNo,c.HouseID,b.TypeName,ISNULL(d.InCargoStatus,1) as InCargoStatus,ISNULL(d.InPiece,a.Piece) as InPiece,ISNULL(d.ID,0) as FacID From Tbl_Cargo_PurchaseOrderGoods as a inner join Tbl_Cargo_ProductType as b on a.TypeID = b.TypeID inner join Tbl_Cargo_PurchaseOrder as c on a.OrderID=c.OrderID left join Tbl_Cargo_FactoryOrder as d on a.TypeID = d.TypeID and a.Specs = d.Specs and a.Figure = d.Figure and a.GoodsCode = d.GoodsCode and c.FacOrderNo = d.FacOrderNo Where (1=1)";
+            string strSQL = "select a.*,c.FacOrderNo,c.HouseID,b.TypeName,ISNULL(d.InCargoStatus,0) as InCargoStatus,ISNULL(d.InPiece,a.Piece) as InPiece,ISNULL(d.ID,0) as FacID From Tbl_Cargo_PurchaseOrderGoods as a inner join Tbl_Cargo_ProductType as b on a.TypeID = b.TypeID inner join Tbl_Cargo_PurchaseOrder as c on a.OrderID=c.OrderID left join Tbl_Cargo_FactoryOrder as d on a.TypeID = d.TypeID and a.Specs = d.Specs and a.Figure = d.Figure and a.GoodsCode = d.GoodsCode and c.FacOrderNo = d.FacOrderNo Where (1=1)";
             if (!entity.OrderID.Equals(0)) { strSQL += " and a.OrderID=" + entity.OrderID; }
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
@@ -12623,8 +12949,9 @@ WHERE ExterOrderAlloNum = (
             var result = new List<CargoOrderDayStatisticsEntity>();
             try
             {
-                string strSQL = $@"
-                    --先修改覆盖现有数据
+                /*
+                 
+                           --先修改覆盖现有数据
                      update a3 set Piece=a4.Piece ,TotalCharge=a4.TotalCharge
                      from Tbl_Cargo_OrderDayStatistics as a3
                      inner join (
@@ -12652,9 +12979,16 @@ group by TypeID,HouseID,Piece,TotalCharge,throwgood,OrderModel,Year,Month,Day,op
  where exists (select * from Tbl_Cargo_OrderDayStatistics as aa where aa.TypeID=TypeID and aa.HouseID=HouseID and aa.DayStatisticsTime=a2.DayStatisticsTime)
  ) a4 on a3.TypeID=a4.TypeID and a3.HouseID=a4.HouseID and a3.ProductCode=a4.ProductCode and a3.SuppID=a4.SuppClientNum and a3.ThrowGood=a4.ThrowGood and a3.OrderModel=a4.OrderModel and a3.DayStatisticsTime=a4.DayStatisticsTime
                     --再新增
+
+                 */
+
+                                string strSQL = $@"
+                    --先删除现有数据
+delete from Tbl_Cargo_OrderDayStatistics where DayStatisticsTime>='{st}' and DayStatisticsTime<='{et}'
+                    --再新增
                     ;insert into Tbl_Cargo_OrderDayStatistics(typeid, houseid, piece, totalcharge, throwgood, ordermodel, year, month, day, opid,DayStatisticsTime,SuppID,ProductCode)
                    select  * from (
- select TypeID,HouseID,Piece,TotalCharge,throwgood,OrderModel,Year,Month,Day,opid,DayStatisticsTime,SuppClientNum,ProductCode from (
+ select TypeID,HouseID,sum(Piece) Piece,TotalCharge,throwgood,OrderModel,Year,Month,Day,opid,DayStatisticsTime,SuppClientNum,ProductCode from (
  select orderGoods.RelateOrderNo, h.TypeID,e.HouseID,sum(orderGoods.Piece) Piece,sum(orders.TotalCharge) TotalCharge,(case when orders.OrderModel=1 then (select top 1 ThrowGood from Tbl_Cargo_Order where OrderNo=orderGoods.RelateOrderNo) else orders.throwgood end) throwgood,orders.OrderModel
                         ,datename(YYYY,(convert(varchar(10),orders.CreateDate,23)))as Year,datename(month,(convert(varchar(10),orders.CreateDate,23))) as Month,datename(day ,(convert(varchar(10),orders.CreateDate,23))) as Day
                              ,'' as opid,(convert(varchar(10),orders.CreateDate,23)) DayStatisticsTime,orders.SuppClientNum,ProductCode
@@ -12669,12 +13003,11 @@ group by TypeID,HouseID,Piece,TotalCharge,throwgood,OrderModel,Year,Month,Day,op
                                  left join Tbl_Cargo_Area as j on c.ParentID = j.AreaID
                                  left join Tbl_Cargo_Area as k on j.ParentID = k.AreaID
                         where convert(varchar(10), orders.CreateDate, 23) >='{st}'
-                          and convert(varchar(10), orders.CreateDate, 23) <='{et}' and CheckStatus=1 and orders.FinanceSecondCheck=1 and orders.OrderType = '4'
+                          and convert(varchar(10), orders.CreateDate, 23) <='{et}' and (AwbStatus>1 or (CheckStatus = 1 and orders.FinanceSecondCheck = 1)) and orders.OrderType = '4'
                           group by orderGoods.RelateOrderNo, h.TypeID,e.HouseID,ProductCode,orders.throwgood,orders.OrderModel,orders.SuppClientNum,convert(varchar(10),orders.CreateDate,23)
                                 ) a3
-group by TypeID,HouseID,Piece,TotalCharge,throwgood,OrderModel,Year,Month,Day,opid,DayStatisticsTime,SuppClientNum,ProductCode                      
-) a2
-                    where not exists (select * from Tbl_Cargo_OrderDayStatistics as aa where aa.TypeID=TypeID and aa.HouseID=a2.HouseID and aa.ProductCode=a2.ProductCode and aa.SuppID=a2.SuppClientNum and aa.DayStatisticsTime=a2.DayStatisticsTime)";
+group by TypeID,HouseID,TotalCharge,throwgood,OrderModel,Year,Month,Day,opid,DayStatisticsTime,SuppClientNum,ProductCode                      
+) a2";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
                     conn.AddInParameter(cmd, "@opid", DbType.String, opid);

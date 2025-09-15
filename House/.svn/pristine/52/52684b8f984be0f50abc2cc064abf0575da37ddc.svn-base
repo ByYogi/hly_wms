@@ -1,0 +1,875 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace House.Entity.Dto
+{
+    public class CassMallDTO
+    {
+        /// <summary>
+        /// 推送目标类型(STORE:店铺,GARAGE:维修厂,LOGISTICS_COMPANY:物流公司)
+        /// </summary>
+        public string pushTargetType { get; set; }
+        /// <summary>
+        /// 推送目标id
+        /// </summary>
+        public string pushTargetId { get; set; }
+        /// <summary>
+        /// 推送的通知的名称
+        /// </summary>
+        public string noticeName { get; set; }
+        /// <summary>
+        /// 消息内容, 所有消息的具体内容都包含在data里面
+        /// </summary>
+        public CassMallData data { get; set; }
+        /// <summary>
+        /// Token信息
+        /// </summary>
+        public CassMallToken token { get; set; }
+        public RequestParam requestParam { get; set; }
+    }
+    public class RequestParam
+    {
+        public string appKey { get; set; }
+        public string apiName { get; set; }
+        public string session { get; set; }
+        public string timestamp { get; set; }
+        public string sign { get; set; }
+    }
+    public class CassMallData
+    {
+        /// <summary>
+        /// 订单id
+        /// </summary>
+        public string orderId { get; set; }
+        /// <summary>
+        /// 发货单id
+        /// </summary>
+        public string shipmentId { get; set; }
+        /// <summary>
+        /// 退货单id
+        /// </summary>
+        public string returnReportId { get; set; }
+        /// <summary>
+        /// 取消原因
+        /// </summary>
+        public string cancelReason { get; set; }
+        /// <summary>
+        /// 取消时间
+        /// </summary>
+        public string cancelTime { get; set; }
+    }
+    public class CassMallToken
+    {
+        public string token { get; set; }
+        public string appKey { get; set; }
+        public string productStoreId { get; set; }
+    }
+    
+    public class CassMallStr
+    {
+        public int code { get; set; }
+        public string message { get; set; }
+        public OrderDto result { get; set; }
+    }
+    public class OrderDto
+    {
+        /// <summary>
+        /// 订单头部信息
+        /// </summary>
+        public OrderHeader OrderHeader { get; set; }
+        /// <summary>
+        /// 订单条目列表
+        /// </summary>
+        public List<OrderItem> OrderItems { get; set; }
+        /// <summary>
+        /// 订单赠品条目列表
+        /// </summary>
+        public List<OrderGiftItem> OrderGiftItems { get; set; }
+        /// <summary>
+        /// 订单配送信息
+        /// </summary>
+        public OrderPostalAddress OrderPostalAddress { get; set; }
+        /// <summary>
+        /// 订单条目优惠列表
+        /// </summary>
+        public List<OrderItemAdjustment> OrderItemAdjustments { get; set; }
+    }
+
+    public class OrderHeader
+    {
+        public long CID { get; set; }
+        /// <summary>
+        /// 订单id
+        /// </summary>
+        public string OrderId { get; set; }
+
+        /// <summary>
+        /// 订单类型
+        /// </summary>
+        public string OrderTypeId { get; set; }
+
+        /// <summary>
+        /// 订单类型描述
+        /// </summary>
+        public string OrderTypeIdDesc { get; set; }
+
+        /// <summary>
+        /// 订单名称
+        /// </summary>
+        public string OrderName { get; set; }
+
+        /// <summary>
+        /// 订单下单渠道
+        /// </summary>
+        public string SalesChannelEnumId { get; set; }
+
+        /// <summary>
+        /// 订单下单时间(时间戳字符串)
+        /// </summary>
+        public string OrderDate { get; set; }
+        public DateTime? OrderDateTime { get; set; }
+        public DateTime OrderDateStr { get; set; }
+
+        /// <summary>
+        /// 订单终端
+        /// </summary>
+        public string SourceId { get; set; }
+
+        /// <summary>
+        /// 订单提交人
+        /// </summary>
+        public string CreateBy { get; set; }
+
+        /// <summary>
+        /// 订单提交人名称
+        /// </summary>
+        public string CreateName { get; set; }
+
+        /// <summary>
+        /// 订单来源
+        /// </summary>
+        public string OriginalSource { get; set; }
+
+        /// <summary>
+        /// 订单来源描述
+        /// </summary>
+        public string OriginalSourceDesc { get; set; }
+
+        /// <summary>
+        /// 订单状态
+        /// </summary>
+        public string StatusId { get; set; }
+
+        /// <summary>
+        /// 订单评价状态
+        /// </summary>
+        public string EvaluateStatus { get; set; }
+
+        /// <summary>
+        /// 订单状态描述
+        /// </summary>
+        public string StatusIdDesc { get; set; }
+
+        /// <summary>
+        /// 订单支付状态
+        /// </summary>
+        public string PaymentStatus { get; set; }
+
+        /// <summary>
+        /// 订单支付状态描述
+        /// </summary>
+        public string PaymentStatusDesc { get; set; }
+
+        /// <summary>
+        /// 订单开票状态
+        /// </summary>
+        public string InvoiceStatus { get; set; }
+
+        /// <summary>
+        /// 公司店铺类型
+        /// </summary>
+        public string OrderStoreType { get; set; }
+
+        /// <summary>
+        /// 订单询价ID
+        /// </summary>
+        public string InquiryId { get; set; }
+
+        /// <summary>
+        /// 报价单ID
+        /// </summary>
+        public string QuotationId { get; set; }
+
+        /// <summary>
+        /// 总价(商品原价总金额)
+        /// </summary>
+        public decimal Amount { get; set; }
+
+        /// <summary>
+        /// 整单实付金额
+        /// </summary>
+        public decimal ActualAmount { get; set; }
+
+        /// <summary>
+        /// 整单折扣金额
+        /// </summary>
+        public decimal? DiscountAmount { get; set; }
+
+        /// <summary>
+        /// 业务员/报价员Id
+        /// </summary>
+        public string SalesmanId { get; set; }
+
+        /// <summary>
+        /// 业务员/报价员
+        /// </summary>
+        public string SalesmanName { get; set; }
+
+        /// <summary>
+        /// 订单备注
+        /// </summary>
+        public string Remark { get; set; }
+
+        /// <summary>
+        /// 车型品牌ID
+        /// </summary>
+        public string CarBrandId { get; set; }
+
+        /// <summary>
+        /// 车型品牌
+        /// </summary>
+        public string CarBrandName { get; set; }
+        /// <summary>
+        /// 订单买家信息
+        /// </summary>
+        public Buyer Buyer { get; set; }
+        /// <summary>
+        /// 订单卖家信息
+        /// </summary>
+        public Seller Seller { get; set; }
+        /// <summary>
+        /// 订单履约店铺信息
+        /// </summary>
+        public FulfillStore FulfillStore { get; set; }
+
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string InCreateStatus { get; set; }
+        public string CancelReason { get; set; }
+        public string AconsigneeName { get; set; }
+        public string SellerName { get; set; }
+        public long? CancelTime { get; set; }
+        public string receiverName { get; set; }
+    }
+
+    public class Buyer
+    {
+        /// <summary>
+        /// 公司ID
+        /// </summary>
+        public string CompanyId { get; set; }
+
+        /// <summary>
+        /// 公司全称
+        /// </summary>
+        public string CompanyName { get; set; }
+
+        /// <summary>
+        /// 公司类型
+        /// </summary>
+        public string CompanyType { get; set; }
+
+        /// <summary>
+        /// 公司简称
+        /// </summary>
+        public string CompanyDisplayName { get; set; }
+
+        /// <summary>
+        /// 公司客户代码
+        /// </summary>
+        public string CompanyCode { get; set; }
+
+        /// <summary>
+        /// 公司店铺编码
+        /// </summary>
+        public string CompanyStoreId { get; set; }
+
+        /// <summary>
+        /// 外部公司ID
+        /// </summary>
+        public string OuterCompanyId { get; set; }
+    }
+
+    public class Seller
+    {
+        /// <summary>
+        /// 公司ID
+        /// </summary>
+        public string CompanyId { get; set; }
+
+        /// <summary>
+        /// 公司全称
+        /// </summary>
+        public string CompanyName { get; set; }
+
+        /// <summary>
+        /// 公司类型
+        /// </summary>
+        public string CompanyType { get; set; }
+
+        /// <summary>
+        /// 公司简称
+        /// </summary>
+        public string CompanyDisplayName { get; set; }
+
+        /// <summary>
+        /// 公司客户代码
+        /// </summary>
+        public string CompanyCode { get; set; }
+
+        /// <summary>
+        /// 公司店铺编码
+        /// </summary>
+        public string CompanyStoreId { get; set; }
+
+        /// <summary>
+        /// 供应商ID
+        /// </summary>
+        public string VendorId { get; set; }
+    }
+
+    public class FulfillStore
+    {
+        /// <summary>
+        /// 供应商ID
+        /// </summary>
+        public string VendorId { get; set; }
+
+        /// <summary>
+        /// 店铺ID
+        /// </summary>
+        public string StoreId { get; set; }
+
+        /// <summary>
+        /// 店铺名称
+        /// </summary>
+        public string StoreName { get; set; }
+
+        /// <summary>
+        /// 角色类型：FULFILL-履约方
+        /// </summary>
+        public string RoleType { get; set; }
+
+        /// <summary>
+        /// 店铺类型（AGENT:托盘商，DISTRIBUTOR:代理商，GENERAL:一般店铺）
+        /// </summary>
+        public string StoreType { get; set; }
+    }
+
+    public class OrderItem
+    {
+        /// <summary>
+        /// 主键ID
+        /// </summary>
+        public long SID { get; set; }
+        /// <summary>
+        /// 订单ID
+        /// </summary>
+        public string OrderId { get; set; }
+
+        /// <summary>
+        /// 订单条目编码
+        /// </summary>
+        public string OrderItemSeqId { get; set; }
+
+        /// <summary>
+        /// 报价条目ID
+        /// </summary>
+        public string QuoteId { get; set; }
+
+        /// <summary>
+        /// 购买数量
+        /// </summary>
+        public decimal Quantity { get; set; }
+
+        /// <summary>
+        /// 实际成交价(单价)
+        /// </summary>
+        public decimal ActualPrice { get; set; }
+
+        /// <summary>
+        /// 商家原始报价
+        /// </summary>
+        public decimal OriginalSellerPrice { get; set; }
+
+        /// <summary>
+        /// 条目描述
+        /// </summary>
+        public string ItemDescription { get; set; }
+
+        /// <summary>
+        /// 退货数量
+        /// </summary>
+        public decimal? CancelQuantity { get; set; }
+
+        /// <summary>
+        /// 订单条目类型: SUITE_ORDER_ITEM-套件, PRODUCT_ORDER_ITEM-常规零件
+        /// </summary>
+        public string OrderItemTypeId { get; set; }
+
+        /// <summary>
+        /// 订单条目是否校验并更新库存
+        /// </summary>
+        public bool CheckInventory { get; set; }
+
+        /// <summary>
+        /// 包邮状态: N--不包邮，Y--包邮
+        /// </summary>
+        public string PostageStatus { get; set; }
+
+        /// <summary>
+        /// 外部系统商品id
+        /// </summary>
+        public string CustomerProductId { get; set; }
+
+        /// <summary>
+        /// 商品编码
+        /// </summary>
+        public string ProductId { get; set; }
+
+        /// <summary>
+        /// 商品名称
+        /// </summary>
+        public string ProductName { get; set; }
+
+        /// <summary>
+        /// 商品品牌编码
+        /// </summary>
+        public string BrandId { get; set; }
+
+        /// <summary>
+        /// 商品品牌名称
+        /// </summary>
+        public string BrandName { get; set; }
+
+        /// <summary>
+        /// 商品品质
+        /// </summary>
+        public string Quality { get; set; }
+
+        /// <summary>
+        /// 商品品质名称
+        /// </summary>
+        public string QualityName { get; set; }
+
+        /// <summary>
+        /// 商品商家编码
+        /// </summary>
+        public string InternalNum { get; set; }
+
+        /// <summary>
+        /// 商品译码名称
+        /// </summary>
+        public string PartsName { get; set; }
+
+        /// <summary>
+        /// 零件号
+        /// </summary>
+        public string PartsNum { get; set; }
+
+        /// <summary>
+        /// 原厂零件号
+        /// </summary>
+        public string OriginalPartsNum { get; set; }
+
+        /// <summary>
+        /// 替换件零件号
+        /// </summary>
+        public string ReplacePartsNum { get; set; }
+
+        /// <summary>
+        /// 售后政策
+        /// </summary>
+        public string AfterSalePolicy { get; set; }
+
+        /// <summary>
+        /// 询价商品是否调货
+        /// </summary>
+        public bool Dispatch { get; set; }
+
+        /// <summary>
+        /// 询价时调货订单的调货时间(时间戳字符串)
+        /// </summary>
+        public string DispatchTime { get; set; }
+        public string FacilityId { get; set; }
+        public string FacilityName { get; set; }
+        public int Facilityquantity { get; set; }
+        public string WaybillOnlineFlag { get; set; }
+        public string ThirdPartySystemStr { get; set; }
+        /// <summary>
+        /// 第三方系统信息
+        /// </summary>
+        public ThirdPartySystem ThirdPartySystem { get; set; }
+        /// <summary>
+        /// 订单头条目发货信息
+        /// </summary>
+        public List<ItemInventory> ItemInventories { get; set; }
+    }
+
+    public class ThirdPartySystem
+    {
+        /// <summary>
+        /// 第三方唯一字段
+        /// </summary>
+        public List<KeyValuePair> ThirdOnlyCodes { get; set; }
+        /// <summary>
+        /// 第三方秘钥信息
+        /// </summary>
+        public List<KeyValuePair> ThirdSecrets { get; set; }
+    }
+
+    public class KeyValuePair
+    {
+        /// <summary>
+        /// 实例值：fittingscoding
+        /// </summary>
+        public string Key { get; set; }
+        /// <summary>
+        /// 实例值：11141707260
+        /// </summary>
+        public string Value { get; set; }
+    }
+
+    public class ItemInventory
+    {
+        /// <summary>
+        /// 订单ID
+        /// </summary>
+        public string OrderId { get; set; }
+
+        /// <summary>
+        /// 订单条目ID
+        /// </summary>
+        public string OrderItemSeqId { get; set; }
+
+        /// <summary>
+        /// 仓库ID
+        /// </summary>
+        public string FacilityId { get; set; }
+
+        /// <summary>
+        /// 发货仓名称
+        /// </summary>
+        public string FacilityName { get; set; }
+
+        /// <summary>
+        /// 发货数量
+        /// </summary>
+        public decimal? Quantity { get; set; }
+
+        /// <summary>
+        /// 是否支持在线下运单
+        /// </summary>
+        public bool WaybillOnlineFlag { get; set; }
+    }
+
+    public class OrderGiftItem
+    {
+        /// <summary>
+        /// 赠品编码
+        /// </summary>
+        public string GiftCode { get; set; }
+
+        /// <summary>
+        /// 赠品名称
+        /// </summary>
+        public string GiftName { get; set; }
+
+        /// <summary>
+        /// 赠品原价
+        /// </summary>
+        public decimal? OriginalPrice { get; set; }
+
+        /// <summary>
+        /// 赠品数量
+        /// </summary>
+        public int? Quantity { get; set; }
+
+        /// <summary>
+        /// 是否商城售卖商品
+        /// </summary>
+        public bool IsSellProduct { get; set; }
+        public string orderId { get; set; }
+    }
+    /// <summary>
+    /// 订单配送信息
+    /// </summary>
+    public class OrderPostalAddress
+    {
+        /// <summary>
+        /// 订单Id 示例: A123456
+        /// </summary>
+        public string OrderId { get; set; }
+
+        /// <summary>
+        /// 收货地址ID 示例: 61440a280fafbf00019b58aa
+        /// </summary>
+        public string Id { get; set; }
+
+        /// <summary>
+        /// 门牌号 示例: 1705号
+        /// </summary>
+        public string HouseNumber { get; set; }
+
+        /// <summary>
+        /// 收货人 示例: 我是收货人
+        /// </summary>
+        public string ReceiverName { get; set; }
+
+        /// <summary>
+        /// 省ID 示例: CN-44
+        /// </summary>
+        public string ProvinceGeoId { get; set; }
+
+        /// <summary>
+        /// 省名称 示例: 广东省
+        /// </summary>
+        public string ProvinceGeoName { get; set; }
+
+        /// <summary>
+        /// 市ID 示例: CN-44-3
+        /// </summary>
+        public string CityGeoId { get; set; }
+
+        /// <summary>
+        /// 市名称 示例: 深圳市
+        /// </summary>
+        public string CityGeoName { get; set; }
+
+        /// <summary>
+        /// 区ID 示例: CN-44-3-5
+        /// </summary>
+        public string CountyGeoId { get; set; }
+
+        /// <summary>
+        /// 区名称 示例: 龙岗区
+        /// </summary>
+        public string CountyGeoName { get; set; }
+
+        /// <summary>
+        /// 街道ID 示例: 44030710
+        /// </summary>
+        public string VillageGeoId { get; set; }
+
+        /// <summary>
+        /// 街道名称 示例: 坂田街道
+        /// </summary>
+        public string VillageGeoName { get; set; }
+
+        /// <summary>
+        /// 地址 示例: 坂田街道发达路云里智能园13栋1楼01A室云里梦想乐园
+        /// </summary>
+        public string Address { get; set; }
+
+        /// <summary>
+        /// 座机号码 示例: 0755-18180808
+        /// </summary>
+        public string ContactTel { get; set; }
+
+        /// <summary>
+        /// 手机号码 示例: 13688889999
+        /// </summary>
+        public string ContactNumber { get; set; }
+
+        /// <summary>
+        /// 经度 示例: 114.069076
+        /// </summary>
+        public double Longitude { get; set; }
+
+        /// <summary>
+        /// 纬度 示例: 22.631201
+        /// </summary>
+        public double Latitude { get; set; }
+
+        /// <summary>
+        /// 是否精确地址 示例: false
+        /// </summary>
+        public bool Accurate { get; set; }
+        /// <summary>
+        /// 订单配送物流信息
+        /// </summary>
+        public List<OrderWayDetail> OrderWayDetails { get; set; }
+    }
+
+    public class OrderWayDetail
+    {
+        /// <summary>
+        /// 订单Id 示例: A123456
+        /// </summary>
+        public string OrderId { get; set; }
+
+        /// <summary>
+        /// id 示例: 61440a280fafbf00019b58a7
+        /// </summary>
+        public string Id { get; set; }
+
+        /// <summary>
+        /// 仓库id 示例: PRE001
+        /// </summary>
+        public string FacilityId { get; set; }
+
+        /// <summary>
+        /// 仓库名称 示例: 深圳坂田街道仓
+        /// </summary>
+        public string FacilityName { get; set; }
+
+        /// <summary>
+        /// 物流公司id 示例: SFAB
+        /// </summary>
+        public string CompanyId { get; set; }
+
+        /// <summary>
+        /// 物流公司名称 示例: 顺丰快递
+        /// </summary>
+        public string CompanyName { get; set; }
+
+        /// <summary>
+        /// 站点id 示例: arrive_home
+        /// </summary>
+        public string LocationId { get; set; }
+
+        /// <summary>
+        /// 站点名称 示例: 送货上门
+        /// </summary>
+        public string LocationName { get; set; }
+
+        /// <summary>
+        /// 运输方式code 示例: CAR_FREIGHT
+        /// </summary>
+        public string TransportationCode { get; set; }
+
+        /// <summary>
+        /// 运输方式名称 示例: 汽运
+        /// </summary>
+        public string TransportationName { get; set; }
+
+        /// <summary>
+        /// 配送类型 示例: arrive_home
+        /// </summary>
+        public string DeliverType { get; set; }
+
+        /// <summary>
+        /// 落地配物流公司code 示例: SFAB
+        /// </summary>
+        public string LandingLogisticsLocationCode { get; set; }
+
+        /// <summary>
+        /// 落地配物流公司名称 示例: 顺丰快递
+        /// </summary>
+        public string LandingLogisticsLocationName { get; set; }
+
+        /// <summary>
+        /// 用于展示班次名称 示例: 送货上门
+        /// </summary>
+        public string DisplayLocation { get; set; }
+
+        /// <summary>
+        /// 是否小狮快送 示例: false
+        /// </summary>
+        public bool Wholion { get; set; }
+
+        /// <summary>
+        /// 小狮快送服务类型 示例: null
+        /// </summary>
+        public string WholionServiceType { get; set; }
+
+        /// <summary>
+        /// 小狮快送车型 示例: null
+        /// </summary>
+        public string WholionCarModel { get; set; }
+
+        /// <summary>
+        /// 小狮快送产品+车型 示例: null
+        /// </summary>
+        public string WholionServiceCar { get; set; }
+
+        /// <summary>
+        /// 小狮快送班次代码 示例: null
+        /// </summary>
+        public string WholionLineShiftCode { get; set; }
+
+        /// <summary>
+        /// 小狮配送距离，单位m 示例: null
+        /// </summary>
+        public string Distance { get; set; }
+
+        /// <summary>
+        /// 小狮配送时效 示例: null
+        /// </summary>
+        public string TimeEfficiency { get; set; }
+
+        /// <summary>
+        /// 小狮送达时间 示例: null
+        /// </summary>
+        public string ArrivalTime { get; set; }
+
+        /// <summary>
+        /// 小狮快送站点 示例: null
+        /// </summary>
+        public string WholionLocationId { get; set; }
+
+        /// <summary>
+        /// 小狮快送站点名称 示例: null
+        /// </summary>
+        public string WholionLocationName { get; set; }
+
+        /// <summary>
+        /// 费用金额 示例: 0.00
+        /// </summary>
+        public decimal? FeeAmount { get; set; }
+    }
+
+    public class OrderItemAdjustment
+    {
+        /// <summary>
+        /// 订单id 示例: A123456
+        /// </summary>
+        public long AID { get; set; }
+        public string OrderId { get; set; }
+
+        /// <summary>
+        /// 订单条目编码 示例: 00001
+        /// </summary>
+        public string OrderItemSeqId { get; set; }
+
+        /// <summary>
+        /// 优惠类型 示例: GOLDCOIN
+        /// FLOW:开思立减,
+        /// PAY_ONLINE:平台在线支付优惠,
+        /// COUPON:平台优惠券,
+        /// GOLDCOIN:平台金币,
+        /// PROMOTION_FULLOFF:PROMOTION_FULLOFF,
+        /// STORE_COUPON:店铺优惠券,
+        /// STORE_PROMOTION_FULLOFF:商家促销,
+        /// INQUIRY_FULLOFF:商家促销,
+        /// STORE_CUSTOMIZE_INQ_FULLOFF:店铺定制采购满减,
+        /// STORE_CUSTOMIZE_INQ_COMBO:店铺定制采购套餐优惠,
+        /// NAIL_BOX:订箱费
+        /// </summary>
+        public string AdjustmentType { get; set; }
+
+        /// <summary>
+        /// 优惠类型描述 示例: 平台金币
+        /// </summary>
+        public string AdjustmentDesc { get; set; }
+
+        /// <summary>
+        /// 优惠金额(单个商品) 示例: 846.48
+        /// </summary>
+        public decimal? AdjustmentAmount { get; set; }
+    }
+
+}

@@ -611,7 +611,6 @@
     <Content Include="JS\Autocomplete\Client.js" />
     <Content Include="JS\easy\js\ajaxfileupload.js" />
     <Content Include="JS\easy\js\datagrid-cellediting.js" />
-    <Content Include="JS\easy\js\datagrid-scrollview.js" />
     <Content Include="JS\EChart\chart.umd.js" />
     <Content Include="JS\EChart\chartjs-plugin-datalabels.min.js" />
     <Content Include="JS\FloatNavi\base.css" />
@@ -2630,6 +2629,7 @@
       <DependentUpon>wxClientCheck.aspx</DependentUpon>
     </Compile>
     <Compile Include="Common\HlyCommon.cs" />
+    <Compile Include="Common\Extensions\HttpRequestExtensions.cs" />
     <Compile Include="Common\JSSDKUtil\ICacheProvider.cs" />
     <Compile Include="Common\JSSDKUtil\JsApiEnum.cs" />
     <Compile Include="Common\JSSDKUtil\JSSDK.cs" />

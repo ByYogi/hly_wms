@@ -17,6 +17,7 @@ using House.Entity.Cargo.Order;
 using House.Entity.Dto;
 using System.Configuration;
 using System.Web.Script.Serialization;
+using House.Entity.Dto.Order;
 
 namespace House.Business.Cargo
 {
@@ -499,9 +500,23 @@ namespace House.Business.Cargo
                         }
                     }
                     //如果有马牌订单号，更新到马牌订单表
-                    if (!string.IsNullOrEmpty(entity.OpenOrderNo))
+                    if (!string.IsNullOrEmpty(entity.OpenOrderNo) && entity.OpenOrderSource=="1")
                     {
                         interfaceManager.UpdateContiOrderCreateData(new saleOpenInfoResp
+                        {
+                            orderCode = entity.OpenOrderNo,
+                            CargoOrderNo = entity.OrderNo,
+                            ClientNum = entity.ClientNum,
+                            InCreateStatus = "1",
+                            CreateAwbID = entity.CreateAwbID,
+                            CreateAwb = entity.CreateAwb,
+                            CreateDate = entity.CreateDate,
+                        });
+                    }
+                    //如果有开思订单号，更新到马牌订单表
+                    if (!string.IsNullOrEmpty(entity.OpenOrderNo) && entity.OpenOrderSource=="2")
+                    {
+                        interfaceManager.UpdateCassMallOrderCreateData(new saleOpenInfoResp
                         {
                             orderCode = entity.OpenOrderNo,
                             CargoOrderNo = entity.OrderNo,
@@ -3852,6 +3867,20 @@ namespace House.Business.Cargo
                     throw;
                 }
             }
+        }
+        #endregion
+        #region 补货单方法集合
+        public CargoRplOrderListDto QueryRplOrder(CargoRplOrderListDto entity)
+        {
+            CargoRplOrderListDto rtData = new CargoRplOrderListDto();
+            rtData = man.QueryRplOrder(entity);
+            return rtData;
+        }
+        public CargoRplOrderGoodsListDto QueryRplOrderGoods(CargoRplOrderGoodsListDto entity)
+        {
+            CargoRplOrderGoodsListDto rtData = new CargoRplOrderGoodsListDto();
+            rtData = man.QueryRplOrderGoods(entity);
+            return rtData;
         }
         #endregion
         #region 来货单

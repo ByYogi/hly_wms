@@ -33,6 +33,9 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json.Net35">
+      <HintPath>..\DLL\Newtonsoft.Json.Net35.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -140,6 +143,8 @@
     <Compile Include="Cargo\Order\CargoOrderStatusEntity.cs" />
     <Compile Include="Cargo\Order\CargoPurchaseOrderEntity.cs" />
     <Compile Include="Cargo\Order\CargoPurchaseOrderGoodsEntity.cs" />
+    <Compile Include="Cargo\Order\CargoRplOrder.cs" />
+    <Compile Include="Cargo\Order\CargoRplOrderGoods.cs" />
     <Compile Include="Cargo\Product\CargoImportEntity.cs" />
     <Compile Include="Cargo\Product\CargoProductAccessCountEntity.cs" />
     <Compile Include="Cargo\Product\CargoProductAccessDetailsEntity.cs" />
@@ -221,9 +226,13 @@
     <Compile Include="Cargo\WX\WXUserAddressEntity.cs" />
     <Compile Include="Cargo\WX\WXUserEntity.cs" />
     <Compile Include="Cargo\WX\WXUserPointEntity.cs" />
+    <Compile Include="Dto\Base\ListResponsBase.cs" />
+    <Compile Include="Dto\Order\CargoRplOrderDto.cs" />
     <Compile Include="Dto\CassMallDTO.cs" />
     <Compile Include="Dto\ContainerGoodsInsertDto.cs" />
     <Compile Include="Dto\ExportPurchaseOrderDto.cs" />
+    <Compile Include="Dto\Order\CargoRplOrderGoodsListDto.cs" />
+    <Compile Include="Dto\Base\PaginationBase.cs" />
     <Compile Include="Dto\TempProducts.cs" />
     <Compile Include="House\SystemOrganizeEntity.cs" />
     <Compile Include="Log\ErrMessage.cs" />

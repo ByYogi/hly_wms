@@ -4746,10 +4746,12 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
             List<CargoSafeStockEntity> result = new List<CargoSafeStockEntity>();
             string strSQL = "";
             var conditions = new List<string>();
-            StringBuilder strBld = new StringBuilder("-- ############ 查询安全库存数据 ############");
-            #region 1 Tbl_Cargo_ContainerGoods 全国库存
+            StringBuilder strBld = new StringBuilder();
+            strBld.AppendLine("-- ############ 查询安全库存数据 ############");
+            strBld.AppendLine("SET STATISTICS TIME ON;");
+            #region Tbl_Cargo_ContainerGoods 全国库存
             strBld.AppendLine(@"
--- 全国库存
+PRINT('------------ 全国库存 ------------');
 SELECT
     b.TypeID,
     b.ProductCode,
@@ -4762,100 +4764,135 @@ INNER JOIN Tbl_Cargo_Product AS b
 WHERE a.Piece > 0
   AND b.SpecsType <> '5' -- 过滤次日达库存
 GROUP BY b.TypeID, b.ProductCode, b.GoodsCode;
+CREATE UNIQUE INDEX IX_#tempALLWhsPiece
+ON #tempALLWhsPiece(ProductCode,TypeID,GoodsCode)
+INCLUDE(Piece);
 ");
             #endregion
+            #region Tbl_Cargo_Area 区域仓库
+            strBld.AppendLine(@"
+PRINT('------------ 区域仓库 ------------');
+WITH ChildAreaCTE AS (
+	SELECT
+		HouseID,
+		AreaID AS RootArea,
+		ParentID AS ParentArea,
+		AreaID AS AreaID,
+		Name AS RootName,
+		CAST('' AS varchar(50)) AS ParentName,
+		Name AS AreaName,
+		1 AS Level
+	FROM
+		Tbl_Cargo_Area a
+	WHERE (1=1)
+		AND ParentID = 0
+		AND a.IsShowStock = 0 @{conditions}
+	UNION ALL
+	
+	SELECT
+		c.HouseID,
+		c.RootArea,
+		a.ParentID AS ParentArea,
+		a.AreaID,
+		c.RootName,
+		c.AreaName,
+		a.Name AS AreaName,
+		c.Level + 1
+	FROM
+		Tbl_Cargo_Area a
+		INNER JOIN ChildAreaCTE c ON a.ParentID = c.AreaID
+    WHERE (1=1)
+		AND a.IsShowStock = 0 @{conditions}
+)
+SELECT
+	* INTO #tempChildArea
+FROM
+	ChildAreaCTE 
+OPTION (MAXRECURSION 2); --只查到2级子仓库，如有3级子仓库就报错，防止无限递归。业务逻辑也只允许最大2级子仓（注：根仓库是0级）
+CREATE UNIQUE INDEX IX_#tempChildArea
+ON #tempChildArea (HouseID,AreaID)
+INCLUDE(RootArea);
+");
 
-            #region 2 Tbl_Cargo_ContainerGoods 当前仓库在库数量
+            conditions = new List<string>();
+            if (!string.IsNullOrEmpty(entity.HouseID))
+                conditions.Add($"a.HouseID IN ({entity.HouseID})");
+
+            if (conditions.Count > 0)
+            {
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+            }
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+            }
+            #endregion
+            #region Tbl_Cargo_ContainerGoods 当前库存
             strBld.Append(@"
-    -- 当前库存
-    SELECT
-        b.TypeID,
-        b.HouseID,
-        b.ProductCode,
-        b.GoodsCode,
-        SUM(a.Piece) AS Piece
-        INTO #tempCurStock
-    FROM Tbl_Cargo_ContainerGoods AS a
-    INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
-    INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
-    INNER JOIN Tbl_Cargo_ProductType c ON a.TypeID = c.TypeID
-    INNER JOIN Tbl_Cargo_Area AS e ON d.AreaID = e.AreaID
-    INNER JOIN Tbl_Cargo_Area AS f ON e.ParentID = f.AreaID
-    INNER JOIN Tbl_Cargo_Area AS g ON f.ParentID = g.AreaID AND g.IsShowStock = 0 AND g.HouseID = b.HouseID
-    WHERE a.Piece > 0
-      AND b.SpecsType != 5");
+PRINT('------------ 当前库存 ------------');
+SELECT
+    b.TypeID,
+    b.HouseID,
+    b.ProductCode,
+    b.GoodsCode,
+    SUM(a.Piece) AS Piece
+    INTO #tempCurStock
+FROM Tbl_Cargo_ContainerGoods AS a
+INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
+INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
+INNER JOIN Tbl_Cargo_ProductType c ON a.TypeID = c.TypeID
+INNER JOIN #tempChildArea ca ON d.AreaID = ca.AreaID AND b.HouseID = ca.HouseID
+WHERE a.Piece > 0
+    AND b.SpecsType != 5 @{conditions}
+GROUP BY b.TypeID, b.HouseID, b.ProductCode, b.GoodsCode;
+CREATE UNIQUE INDEX IX_#tempCurStock
+ON #tempCurStock(ProductCode,TypeID,GoodsCode,HouseID)
+INCLUDE(Piece);
+");
 
             conditions = new List<string>();
             if (!string.IsNullOrEmpty(entity.HouseID))
                 conditions.Add($"b.HouseID IN ({entity.HouseID})");
-
-            if (entity.AreaID != 0)
-                conditions.Add($"g.AreaID = {entity.AreaID}");
-
-            if (!string.IsNullOrWhiteSpace(entity.Specs))
-            {
-                string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "");
-                if (res.Length <= 3 && !string.IsNullOrEmpty(res))
-                {
-                    conditions.Add($"b.Specs LIKE '%{res}%'");
-                }
-                else if (res.Length > 3 && res.Length <= 5)
-                {
-                    conditions.Add($"(b.Specs LIKE '%{res.Substring(0, 3)}/{res.Substring(3)}%' OR b.Specs LIKE '%{res.Substring(0, 3)}R{res.Substring(3)}%')");
-                }
-                else if (res.Length > 5)
-                {
-                    var part1 = res.Substring(0, 3);
-                    var part2 = res.Substring(3, 2);
-                    var part3 = res.Substring(5);
-                    conditions.Add($@"
-                        (b.Specs LIKE '%{part1}/{part2}R{part3}%'
-                        OR b.Specs LIKE '%{part1}/{part2}RF{part3}%'
-                        OR b.Specs LIKE '%{part1}/{part2}ZR{part3}%'
-                        OR b.Specs LIKE '%{part1}/{part2}ZRF{part3}%'
-                        OR b.Specs LIKE '%{part1}R{res.Substring(3)}%'
-                        OR b.Specs LIKE '{entity.Specs}')");
-                }
-            }
-            if (!string.IsNullOrEmpty(entity.Figure))
-                conditions.Add($"b.Figure LIKE '%{entity.Figure}%'");
-
-            if (!string.IsNullOrEmpty(entity.GoodsCode))
-                conditions.Add($"b.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
             if (entity.TypeID != 0)
                 conditions.Add($"a.TypeID = {entity.TypeID}");
-
             if (entity.ParentID != 0)
                 conditions.Add($"c.ParentID = {entity.ParentID}");
 
             if (conditions.Count > 0)
             {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
             }
-
-            strBld.Append(" GROUP BY b.TypeID, b.HouseID, b.ProductCode, b.GoodsCode;");
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+            }
             #endregion
-
-            #region 3 Tbl_Cargo_Order 当前仓库产品销量
+            #region Tbl_Cargo_Order 当前销量
             strBld.Append(@"
-    -- 当前销量
-    SELECT
-        c.TypeID,
-        c.HouseID,
-        c.ProductCode,
-        c.GoodsCode,
-        SUM(b.Piece) AS SaleNum,
-        SUM(CASE WHEN a.OrderType = 4 THEN b.Piece ELSE 0 END) AS WXSaleNum
-    INTO #tempOrderStats
-    FROM Tbl_Cargo_Order AS a
-    INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
-    INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
-    INNER JOIN Tbl_Cargo_ProductType d ON c.TypeID = d.TypeID
-    WHERE a.ThrowGood != 25
-      AND a.OrderModel = 0 
-      AND c.SpecsType != 5
+PRINT('------------ 当前销量 ------------');
+SELECT
+    c.TypeID,
+    c.HouseID,
+    c.ProductCode,
+    c.GoodsCode,
+    SUM(b.Piece) AS SaleNum,
+    SUM(CASE WHEN a.OrderType = 4 THEN b.Piece ELSE 0 END) AS WXSaleNum
+INTO #tempOrderStats
+FROM Tbl_Cargo_Order AS a
+INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
+INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
+INNER JOIN Tbl_Cargo_ProductType d ON c.TypeID = d.TypeID
+INNER JOIN #tempChildArea ca ON b.HouseID = ca.HouseID AND b.AreaID = ca.AreaID
+WHERE a.ThrowGood != 25
+    AND a.OrderModel = 0 
+    AND ISNULL(c.ProductCode, '') <> ''
+    AND c.SpecsType != 5 @{conditions}
+GROUP BY c.TypeID, c.HouseID, c.ProductCode, c.GoodsCode;
+CREATE UNIQUE INDEX IX_#tempOrderStats
+ON #tempOrderStats(ProductCode,TypeID,GoodsCode,HouseID)
+INCLUDE(SaleNum, WXSaleNum);
 ");
 
             conditions = new List<string>();
@@ -4863,206 +4900,159 @@ GROUP BY b.TypeID, b.ProductCode, b.GoodsCode;
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
                 conditions.Add($"a.HouseID IN ({entity.HouseID})");
-
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
             // 制单日期范围
-            if (entity.StartDate > DateTime.MinValue && entity.StartDate.Year > 1900)
-                conditions.Add($"CAST(a.CreateDate AS DATE) >= '{entity.StartDate:yyyy-MM-dd}'");
-
-            if (entity.EndDate > DateTime.MinValue && entity.EndDate.Year > 1900)
-                conditions.Add($"CAST(a.CreateDate AS DATE) <= '{entity.EndDate:yyyy-MM-dd}'");
-
-            // 规格条件
-            if (!string.IsNullOrWhiteSpace(entity.Specs))
-            {
-                string res = entity.Specs.ToUpper()
-                    .Replace("/", "")
-                    .Replace("R", "")
-                    .Replace("C", "")
-                    .Replace("F", "")
-                    .Replace("Z", "");
-
-                if (res.Length <= 3 && !string.IsNullOrEmpty(res))
-                {
-                    conditions.Add($"c.Specs LIKE '%{res}%'");
-                }
-                else if (res.Length > 3 && res.Length <= 5)
-                {
-                    conditions.Add($"(c.Specs LIKE '%{res.Substring(0, 3)}/{res.Substring(3)}%' OR c.Specs LIKE '%{res.Substring(0, 3)}R{res.Substring(3)}%')");
-                }
-                else if (res.Length > 5)
-                {
-                    var part1 = res.Substring(0, 3);
-                    var part2 = res.Substring(3, 2);
-                    var part3 = res.Substring(5);
-
-                    conditions.Add($@"
-                        (c.Specs LIKE '%{part1}/{part2}R{part3}%'
-                        OR c.Specs LIKE '%{part1}/{part2}RF{part3}%'
-                        OR c.Specs LIKE '%{part1}/{part2}ZR{part3}%'
-                        OR c.Specs LIKE '%{part1}/{part2}ZRF{part3}%'
-                        OR c.Specs LIKE '%{part1}R{res.Substring(3)}%'
-                        OR c.Specs LIKE '{entity.Specs}')");
-                }
-            }
-
-            // 其他字段条件
-            if (!string.IsNullOrEmpty(entity.Figure))
-                conditions.Add($"c.Figure LIKE '%{entity.Figure}%'");
-
-            if (!string.IsNullOrEmpty(entity.GoodsCode))
-                conditions.Add($"c.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
-            if (!string.IsNullOrEmpty(entity.ProductCode))
-                conditions.Add($"c.ProductCode LIKE '%{entity.ProductCode}%'");
-
+            if (entity.StartDate != default)
+                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
+            if (entity.EndDate != default)
+                conditions.Add($"a.CreateDate <= '{entity.EndDate:yyyy-MM-dd}'");
             if (entity.TypeID != 0)
                 conditions.Add($"c.TypeID = {entity.TypeID}");
-
             if (entity.ParentID != 0)
                 conditions.Add($"d.ParentID = {entity.ParentID}");
 
             // 统一拼接 WHERE 条件
             if (conditions.Count > 0)
             {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
             }
-
-            // 最终 GROUP BY
-            strBld.AppendLine(" GROUP BY c.TypeID, c.HouseID, c.ProductCode, c.GoodsCode;");
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+            }
             #endregion
-
-            #region 4 Tbl_Cargo_Order 产品全国销量
+            #region Tbl_Cargo_Order 全国销量
             strBld.Append(@"
-    -- 全国销量
-    SELECT
-        c.TypeID,
-        c.ProductCode,
-        c.GoodsCode,
-        SUM(b.Piece) AS Piece
-    INTO #tempTotalSalePiece
-    FROM Tbl_Cargo_Order AS a
-    INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
-    INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
-    WHERE a.ThrowGood != 25
-        AND a.OrderModel = 0
-        AND c.SpecsType != 5
-        AND c.ProductCode IS NOT NULL
-        AND c.ProductCode <> ''");
+PRINT('------------ 全国销量 ------------');
+SELECT
+    c.TypeID,
+    c.ProductCode,
+    c.GoodsCode,
+    SUM(b.Piece) AS Piece
+INTO #tempTotalSalePiece
+FROM Tbl_Cargo_Order AS a
+INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
+INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
+WHERE a.ThrowGood != 25
+    AND a.OrderModel = 0
+    AND c.SpecsType != 5
+    AND ISNULL(c.ProductCode, '') <> '' @{conditions}
+GROUP BY c.TypeID, c.ProductCode, c.GoodsCode;
+CREATE UNIQUE INDEX IX_#tempTotalSalePiece
+ON #tempTotalSalePiece(ProductCode,TypeID,GoodsCode)
+INCLUDE(Piece);
+");
             conditions = new List<string>();
             // 制单日期范围
             if (entity.StartDate != default)
-                conditions.Add($"CAST(a.CreateDate AS DATE) >= '{entity.StartDate:yyyy-MM-dd}'");
-
-            if (entity.StartDate != default)
-                conditions.Add($"CAST(a.CreateDate AS DATE) <= '{entity.EndDate:yyyy-MM-dd}'");
+                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
+            if (entity.EndDate != default)
+                conditions.Add($"a.CreateDate <= '{entity.EndDate:yyyy-MM-dd}'");
 
             // 拼接 WHERE 条件
             if (conditions.Count > 0)
             {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+            }
+            else
+            {
+                strBld.Replace("@{conditions}", "");
             }
 
-            strBld.AppendLine(" GROUP BY c.TypeID, c.ProductCode, c.GoodsCode;");
             #endregion
-
-            #region 5 Tbl_Cargo_MoveOrderGood 当前仓库在途数量
+            #region Tbl_Cargo_MoveOrderGood 在途库存
             strBld.Append(@"
-    -- 在途数量
-    SELECT
-        p.ProductCode,
-        p.TypeID,
-        p.GoodsCode,
-        mo2.NewHouseID AS HouseID,
-        SUM(mo.Piece - mo.NewPiece) AS Piece
-    INTO #tempMoveStats
-    FROM Tbl_Cargo_MoveOrderGood AS mo
-    INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
-    INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
-    INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-    INNER JOIN Tbl_Cargo_Container AS c ON mo.ContainerID = c.ContainerID
-    INNER JOIN Tbl_Cargo_Area AS a ON c.AreaID = a.AreaID
-    INNER JOIN Tbl_Cargo_Area AS a2 ON a.ParentID = a2.AreaID
-    INNER JOIN Tbl_Cargo_Area AS a3 ON a2.ParentID = a3.AreaID AND a3.HouseID = p.HouseID
-    WHERE mo2.MoveStatus <> 2
-      AND p.ProductCode IS NOT NULL
-      AND p.ProductCode <> ''
-      AND a3.IsShowStock = 0
+PRINT('------------ 在途库存 ------------');
+SELECT * INTO #tempITI FROM (
+-- 移库单
+SELECT
+    'MoveOrder' AS Src,
+    p.ProductCode,
+    p.TypeID,
+    p.GoodsCode,
+    mo2.NewHouseID AS HouseID,
+    SUM(mo.Piece - mo.NewPiece) AS Piece
+FROM Tbl_Cargo_MoveOrderGood AS mo
+INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
+INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+INNER JOIN #tempChildArea ca ON mo2.NewAreaID = ca.AreaID AND mo2.NewHouseID = ca.HouseID
+WHERE mo2.MoveStatus <> 2
+    AND ISNULL(p.ProductCode, '') <> ''
+    AND mo.Piece - mo.NewPiece > 0 @{conditions}
+GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, mo2.NewHouseID
+UNION ALL
+-- 采购单
+SELECT
+    'PurchaseOrder' AS Src,
+    p.ProductCode,
+    p.TypeID,
+    p.GoodsCode,
+    p.HouseID,
+    SUM(pog.Piece) Piece
+FROM Tbl_Cargo_PurchaseOrderGoods AS pog
+INNER JOIN Tbl_Cargo_PurchaseOrder AS po ON po.OrderID = pog.OrderID
+INNER JOIN (SELECT 
+    DISTINCT
+    ProductCode,
+    TypeID,
+    GoodsCode,
+    HouseID 
+    FROM 
+    Tbl_Cargo_Product) AS p ON p.ProductCode = pog.ProductCode AND p.TypeID = pog.TypeID AND p.GoodsCode = pog.GoodsCode AND p.HouseID = po.HouseID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+LEFT JOIN (SELECT DISTINCT FacOrderNo,InCargoStatus FROM Tbl_Cargo_FactoryOrder) AS fo ON po.FacOrderNo = fo.FacOrderNo  -- 筛除工厂来货单全收货状态
+WHERE po.ReceivingStatus <> 1 -- 筛除全收货状态
+    AND po.TrafficType <> 2 -- 筛除退货
+    AND ISNULL(p.ProductCode, '') <> ''     
+    AND (fo.InCargoStatus IS NULL OR fo.InCargoStatus <> 1) @{conditions2}
+GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, p.HouseID
+) ITI;
+CREATE UNIQUE INDEX IX_#tempITI
+ON #tempITI(ProductCode,TypeID,GoodsCode,HouseID,Src)
+INCLUDE(Piece);
 ");
             conditions = new List<string>();
+            var conditions2 = new List<string>();
 
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
-                conditions.Add($"mo2.NewHouseID IN ({entity.HouseID})");
-
-            // 区域 ID
-            if (entity.AreaID != 0)
-                conditions.Add($"a3.AreaID = {entity.AreaID}");
-
-            // 规格条件
-            if (!string.IsNullOrWhiteSpace(entity.Specs))
             {
-                string res = entity.Specs.ToUpper()
-                    .Replace("/", "")
-                    .Replace("R", "")
-                    .Replace("C", "")
-                    .Replace("F", "")
-                    .Replace("Z", "");
-
-                if (res.Length <= 3 && !string.IsNullOrEmpty(res))
-                {
-                    conditions.Add($"p.Specs LIKE '%{res}%'");
-                }
-                else if (res.Length > 3 && res.Length <= 5)
-                {
-                    conditions.Add($"(p.Specs LIKE '%{res.Substring(0, 3)}/{res.Substring(3)}%' OR p.Specs LIKE '%{res.Substring(0, 3)}R{res.Substring(3)}%')");
-                }
-                else if (res.Length > 5)
-                {
-                    var part1 = res.Substring(0, 3);
-                    var part2 = res.Substring(3, 2);
-                    var part3 = res.Substring(5);
-
-                    conditions.Add($@"
-                        (p.Specs LIKE '%{part1}/{part2}R{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}RF{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}ZR{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}ZRF{part3}%'
-                        OR p.Specs LIKE '%{part1}R{res.Substring(3)}%'
-                        OR p.Specs LIKE '{entity.Specs}')");
-                }
+                conditions.Add($"mo2.NewHouseID IN ({entity.HouseID})");
+                conditions2.Add($"p.HouseID IN ({entity.HouseID})");
             }
-
-            // 其他字段条件
-            if (!string.IsNullOrEmpty(entity.Figure))
-                conditions.Add($"p.Figure LIKE '%{entity.Figure}%'");
-
-            if (!string.IsNullOrEmpty(entity.GoodsCode))
-                conditions.Add($"p.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
-            if (!string.IsNullOrEmpty(entity.ProductCode))
-                conditions.Add($"p.ProductCode LIKE '%{entity.ProductCode}%'");
-
+            // 区域 ID
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+            {
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
+            }
             if (entity.TypeID != 0)
+            {
                 conditions.Add($"pt.TypeID = {entity.TypeID}");
-
+                conditions2.Add($"pt.TypeID = {entity.TypeID}");
+            }
             if (entity.ParentID != 0)
+            {
                 conditions.Add($"pt.ParentID = {entity.ParentID}");
+                conditions2.Add($"pt.ParentID = {entity.ParentID}");
+            }
 
             // 拼接动态 WHERE 条件
             if (conditions.Count > 0)
             {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+                strBld.Replace("@{conditions2}", "AND " + string.Join(" AND ", conditions2));
             }
-
-            strBld.AppendLine(" GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, mo2.NewHouseID;");
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+                strBld.Replace("@{conditions2}", "");
+            }
             #endregion
-
-            #region 6 Tbl_Cargo_OrderGoods 月均销量
+            #region Tbl_Cargo_OrderGoods 月均销量
             strBld.AppendLine(@"
--- 月均销量 CTE 
+PRINT('------------ 月均销量 ------------');
 WITH MonthlySales AS (
     SELECT
         p.ProductCode,
@@ -5074,75 +5064,10 @@ WITH MonthlySales AS (
     FROM Tbl_Cargo_OrderGoods AS ogSalePiece
     INNER JOIN Tbl_Cargo_Product AS p
         ON ogSalePiece.ProductID = p.ProductID
+    INNER JOIN #tempChildArea ca ON ogSalePiece.AreaID = ca.AreaID AND ogSalePiece.HouseID = ca.HouseID
     WHERE CAST(ogSalePiece.OP_DATE AS DATE) BETWEEN DATEADD(MONTH, -3, CAST(GETDATE() AS DATE))
                                   AND DATEADD(MONTH, -1, CAST(GETDATE() AS DATE))
-      AND p.ProductCode IS NOT NULL
-      AND p.ProductCode <> ''
-");
-
-            conditions = new List<string>();
-
-            // 仓库 ID
-            if (!string.IsNullOrEmpty(entity.HouseID))
-                conditions.Add($"ogSalePiece.HouseID IN ({entity.HouseID})");
-
-            // 区域 ID
-            if (entity.AreaID != 0)
-                conditions.Add($"ogSalePiece.AreaID = {entity.AreaID}");
-
-            // 规格条件
-            if (!string.IsNullOrWhiteSpace(entity.Specs))
-            {
-                string res = entity.Specs.ToUpper()
-                    .Replace("/", "")
-                    .Replace("R", "")
-                    .Replace("C", "")
-                    .Replace("F", "")
-                    .Replace("Z", "");
-
-                if (res.Length <= 3 && !string.IsNullOrEmpty(res))
-                {
-                    conditions.Add($"p.Specs LIKE '%{res}%'");
-                }
-                else if (res.Length > 3 && res.Length <= 5)
-                {
-                    conditions.Add($"(p.Specs LIKE '%{res.Substring(0, 3)}/{res.Substring(3)}%' OR p.Specs LIKE '%{res.Substring(0, 3)}R{res.Substring(3)}%')");
-                }
-                else if (res.Length > 5)
-                {
-                    var part1 = res.Substring(0, 3);
-                    var part2 = res.Substring(3, 2);
-                    var part3 = res.Substring(5);
-
-                    conditions.Add($@"
-                        (p.Specs LIKE '%{part1}/{part2}R{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}RF{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}ZR{part3}%'
-                        OR p.Specs LIKE '%{part1}/{part2}ZRF{part3}%'
-                        OR p.Specs LIKE '%{part1}R{res.Substring(3)}%'
-                        OR p.Specs LIKE '{entity.Specs}')");
-                }
-            }
-
-            // 其他字段条件
-            if (!string.IsNullOrEmpty(entity.Figure))
-                conditions.Add($"p.Figure LIKE '%{entity.Figure}%'");
-
-            if (!string.IsNullOrEmpty(entity.GoodsCode))
-                conditions.Add($"p.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
-            if (!string.IsNullOrEmpty(entity.ProductCode))
-                conditions.Add($"p.ProductCode LIKE '%{entity.ProductCode}%'");
-
-            // 拼接动态 WHERE 条件
-            if (conditions.Count > 0)
-            {
-                strBld.Append(" AND ");
-                strBld.AppendLine(string.Join(" AND ", conditions));
-            }
-
-            strBld.AppendLine(@"
-      AND ogSalePiece.HouseID IN (93)
+        AND ISNULL(p.ProductCode, '') <> '' @{conditions}
     GROUP BY 
         p.ProductCode, p.TypeID, p.GoodsCode, ogSalePiece.HouseID,
         DATEADD(MONTH, DATEDIFF(MONTH, 0, ogSalePiece.OP_DATE), 0)
@@ -5170,19 +5095,41 @@ SELECT
     GoodsCode,
     HouseID,
     SUM(Piece) AS TotalPiece,       -- 最近3个月总销量
-    SUM(WeightedPiece) AS AvgMonthSale  -- 加权月均销量
+    CEILING(SUM(WeightedPiece)) AS AvgMonthSale  -- 加权月均销量
     INTO #tempAvgSale
 FROM Weighted
-GROUP BY ProductCode, TypeID, GoodsCode, HouseID;");
+GROUP BY ProductCode, TypeID, GoodsCode, HouseID;
+CREATE UNIQUE INDEX IX_#tempAvgSale
+ON #tempAvgSale(ProductCode,TypeID,GoodsCode,HouseID)
+INCLUDE(AvgMonthSale);
+");
+
+            conditions = new List<string>();
+
+            // 仓库 ID
+            if (!string.IsNullOrEmpty(entity.HouseID))
+                conditions.Add($"ogSalePiece.HouseID IN ({entity.HouseID})");
+            // 区域 ID
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
+            // 拼接动态 WHERE 条件
+            if (conditions.Count > 0)
+            {
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+            }
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+            }
             #endregion
 
-            #region 主要语句联合查询
+            #region 主查询
             strBld.Append(@"
--- 主查询语句
+PRINT('------------ 主查询 ------------');
 SELECT
     s.*,
     h.Name AS HouseName,
-    a.Name AS AreaName,
+    ca.AreaName,
     pt.ParentID,
     pt.TypeParentName AS ParentName,
     pt.TypeName,
@@ -5194,14 +5141,13 @@ SELECT
     ISNULL(ms.Piece, 0) AS MoveNum,
     CAST(ISNULL(avs.AvgMonthSale, 0) AS INT) AS AvgSaleNum,
     CASE
-        WHEN s.StockNum - ISNULL(cs.Piece, 0) <= 0 THEN 0
-        ELSE s.StockNum - ISNULL(cs.Piece, 0)
+        WHEN s.StockNum - ISNULL(cs.Piece, 0) - ISNULL(ms.Piece, 0) <= 0 THEN 0
+        ELSE s.StockNum - ISNULL(cs.Piece, 0) - ISNULL(ms.Piece, 0)
     END AS LessNum
 FROM Tbl_Cargo_SafeStock AS s
 INNER JOIN Tbl_Cargo_House AS h
     ON s.HouseID = h.HouseID
-INNER JOIN Tbl_Cargo_Area AS a
-    ON s.AreaID = a.AreaID
+INNER JOIN #tempChildArea ca ON s.AreaID = ca.AreaID AND s.HouseID = ca.HouseID
 INNER JOIN Tbl_Cargo_ProductType AS pt
     ON s.TypeID = pt.TypeID
 
@@ -5227,31 +5173,28 @@ LEFT JOIN #tempTotalSalePiece AS tos
    AND s.ProductCode = tos.ProductCode
    AND s.GoodsCode = tos.GoodsCode
 
-LEFT JOIN #tempMoveStats AS ms
+LEFT JOIN #tempITI AS ms
     ON s.HouseID = ms.HouseID
    AND s.TypeID = ms.TypeID
    AND s.ProductCode = ms.ProductCode
    AND s.GoodsCode = ms.GoodsCode
 
 LEFT JOIN #tempAvgSale AS avs
-    ON s.HouseID = avs.HouseID
+   ON s.HouseID = avs.HouseID
    AND s.TypeID = avs.TypeID
    AND s.ProductCode = avs.ProductCode
    AND s.GoodsCode = avs.GoodsCode
-
-    WHERE (1 = 1)");
+WHERE (1 = 1) @{conditions}
+ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
 
             conditions = new List<string>();
 
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
                 conditions.Add($"s.HouseID IN ({entity.HouseID})");
-
             // 区域 ID
             if (!string.IsNullOrEmpty(entity.ParamAreaID))
-                conditions.Add($"a.AreaID IN ({entity.ParamAreaID})");
-            else if (entity.AreaID != 0)
-                conditions.Add($"a.AreaID = {entity.AreaID}");
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
 
             // 规格条件
             if (!string.IsNullOrWhiteSpace(entity.Specs))
@@ -5290,34 +5233,31 @@ LEFT JOIN #tempAvgSale AS avs
             // 其他字段条件
             if (!string.IsNullOrEmpty(entity.Figure))
                 conditions.Add($"s.Figure LIKE '%{entity.Figure}%'");
-
             if (!string.IsNullOrEmpty(entity.GoodsCode))
                 conditions.Add($"s.GoodsCode LIKE '%{entity.GoodsCode}%'");
-
             if (!string.IsNullOrEmpty(entity.ProductCode))
                 conditions.Add($"s.ProductCode LIKE '%{entity.ProductCode}%'");
-
             if (entity.TypeID != 0)
                 conditions.Add($"s.TypeID = {entity.TypeID}");
-
             if (entity.ParentID != 0)
                 conditions.Add($"pt.ParentID = {entity.ParentID}");
 
             // 拼接 WHERE 条件
             if (conditions.Count > 0)
             {
-                strBld.Append(" AND ");
-                strBld.Append(string.Join(" AND ", conditions));
+                strBld.Replace("@{conditions}", " AND " + string.Join(" AND ", conditions));
             }
-
-            strBld.AppendLine(" ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+            }
             #endregion
 
             strSQL = strBld.ToString();
             using ( DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 #region 获取数据
-                using (DataTable dd = conn.ExecuteDataTable(command))
+                using (DataTable dd = conn.ExecuteDataTable(command))                              
                 {
                     foreach (DataRow idr in dd.Rows)
                     {
@@ -5327,7 +5267,8 @@ LEFT JOIN #tempAvgSale AS avs
                         int doi = 0;
                         if(curNum > 0 && avgSaleNum > 0)
                         {
-                            doi = Convert.ToInt32(curNum / (avgSaleNum / 30d));
+                            doi = Convert.ToInt32(Math.Floor(curNum / (avgSaleNum / 30d)));
+                            doi = Math.Max(1, doi); // 苏老师：0表示该货品未启用状态，所以最少显示1天
                         }
                         result.Add(new CargoSafeStockEntity
                         {
@@ -5348,24 +5289,26 @@ LEFT JOIN #tempAvgSale AS avs
                             ProductCode = idr.Field<string>("ProductCode"),
                             MaxStock = idr.Field<int>("MaxStock"),
                             MinStock = idr.Field<int>("MinStock"),
-                            StockNum = idr.Field<int>("StockNum"), //安全库存数
-                            LessNum = idr.Field<int>("LessNum"),   //相差数
-                            CurNum = curNum,     //实际库存数
-                            MoveNum = idr.Field<int>("MoveNum"),   //在途库存数
-                            SaleNum = idr.Field<int>("SaleNum"),   //销售数量
-                            WXSaleNum = idr.Field<int>("WXSaleNum"), //销售数量
+                            StockNum = idr.Field<int>("StockNum"),  //安全库存数
+                            LessNum = idr.Field<int>("LessNum"),    //相差数
+                            CurNum = curNum,    //实际库存数
+                            MoveNum = idr.Field<int>("MoveNum"),    //在途库存数
+                            SaleNum = idr.Field<int>("SaleNum"),    //销售数量
+                            WXSaleNum = idr.Field<int>("WXSaleNum"),    //销售数量
                             OPID = idr.Field<string>("OPID"),
                             OP_DATE = idr.Field<DateTime>("OP_DATE"),
-                            TotalNum = idr.Field<int>("TotalNum"),       //全国实际库存数
-                            TotalSaleNum = idr.Field<int>("TotalSaleNum"), //全国销售数量
-                            AvgSaleNum = avgSaleNum, //月均销量
+                            TotalNum = idr.Field<int>("TotalNum"),  //全国实际库存数
+                            TotalSaleNum = idr.Field<int>("TotalSaleNum"),  //全国销售数量
+                            AvgSaleNum = avgSaleNum,    //月均销量
 
                             MinStockDay = idr.Field<int?>("MinStockDay"),   //最小库存天数
                             MaxStockDay = idr.Field<int?>("MaxStockDay"),   //最大库存天数
-                            HCYCStock = idr.Field<int?>("HCYCStock"),       //云仓库存数
-                            OEStock = idr.Field<int?>("OEStock"),           //OE库存数
-                            PendingStock = idr.Field<int?>("PendingStock"),  //待处理库存数
-                            DOI = doi
+                            HCYCStock = idr.Field<int?>("HCYCStock"),   //云仓库存数
+                            OEStock = idr.Field<int?>("OEStock"),   //OE库存数
+                            PendingStock = idr.Field<int?>("PendingStock"), //待处理库存数
+                            IsolatedStock = idr.Field<int?>("IsolatedStock"),   //待处理库存数
+                            ControlStock = idr.Field<int?>("ControlStock"), //待处理库存数
+                            DOI = doi   //库存度天数
                         });
                     }
                 }
@@ -5431,7 +5374,9 @@ LEFT JOIN #tempAvgSale AS avs
     MaxStockDay,
     HCYCStock,
     OEStock,
-    PendingStock
+    PendingStock,
+    IsolatedStock,
+    ControlStock
   )
 VALUES
   (
@@ -5453,7 +5398,9 @@ VALUES
     @MaxStockDay,
     @HCYCStock,
     @OEStock,
-    @PendingStock
+    @PendingStock,
+    @IsolatedStock,
+    @ControlStock
   )";
             try
             {
@@ -5463,8 +5410,8 @@ VALUES
                 int minStock = 0;
                 if (AvgSaleNum.HasValue && MaxStockDay.HasValue)
                 {
-                    maxStock = (int)Math.Round((double)entity.AvgSaleNum / 30 * (double)entity.MaxStockDay);
-                    minStock = (int)Math.Round((double)entity.AvgSaleNum / 30 * (double)entity.MinStockDay);
+                    maxStock = (int)Math.Ceiling((double)entity.AvgSaleNum / 30 * (double)entity.MaxStockDay);
+                    minStock = (int)Math.Ceiling((double)entity.AvgSaleNum / 30 * (double)entity.MinStockDay);
                 }
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
@@ -5488,6 +5435,8 @@ VALUES
                     conn.AddInParameter(cmd, "@HCYCStock", DbType.Int32, entity.HCYCStock.HasValue ? (object)entity.HCYCStock.Value : DBNull.Value);
                     conn.AddInParameter(cmd, "@OEStock", DbType.Int32, entity.OEStock.HasValue ? (object)entity.OEStock.Value : DBNull.Value);
                     conn.AddInParameter(cmd, "@PendingStock", DbType.Int32, entity.PendingStock.HasValue ? (object)entity.PendingStock.Value : DBNull.Value);
+                    conn.AddInParameter(cmd, "@IsolatedStock", DbType.Int32, entity.IsolatedStock.HasValue ? (object)entity.IsolatedStock.Value : DBNull.Value);
+                    conn.AddInParameter(cmd, "@ControlStock", DbType.Int32, entity.ControlStock.HasValue ? (object)entity.ControlStock.Value : DBNull.Value);
                     conn.ExecuteNonQuery(cmd);
                 }
             }
@@ -5520,7 +5469,9 @@ SET
   MaxStockDay = @MaxStockDay,
   HCYCStock = @HCYCStock,
   OEStock = @OEStock,
-  PendingStock = @PendingStock
+  PendingStock = @PendingStock,
+  IsolatedStock = @IsolatedStock,
+  ControlStock = @ControlStock
 WHERE
   SID = @SID";
             try
@@ -5533,8 +5484,8 @@ WHERE
                     int minStock = 0;
                     if(AvgSaleNum.HasValue && MaxStockDay.HasValue)
                     {
-                        maxStock = (int)Math.Round((double)entity.AvgSaleNum / 30 * (double)entity.MaxStockDay);
-                        minStock = (int)Math.Round((double)entity.AvgSaleNum / 30 * (double)entity.MinStockDay);
+                        maxStock = (int)Math.Ceiling((double)entity.AvgSaleNum / 30 * (double)entity.MaxStockDay);
+                        minStock = (int)Math.Ceiling((double)entity.AvgSaleNum / 30 * (double)entity.MinStockDay);
                     }
                     conn.AddInParameter(cmd, "@SID", DbType.Int64, entity.SID);
                     conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
@@ -5557,6 +5508,8 @@ WHERE
                     conn.AddInParameter(cmd, "@HCYCStock", DbType.Int32, entity.HCYCStock.HasValue ? (object)entity.HCYCStock.Value : DBNull.Value);
                     conn.AddInParameter(cmd, "@OEStock", DbType.Int32, entity.OEStock.HasValue ? (object)entity.OEStock.Value : DBNull.Value);
                     conn.AddInParameter(cmd, "@PendingStock", DbType.Int32, entity.PendingStock.HasValue ? (object)entity.PendingStock.Value : DBNull.Value);
+                    conn.AddInParameter(cmd, "@IsolatedStock", DbType.Int32, entity.IsolatedStock.HasValue ? (object)entity.IsolatedStock.Value : DBNull.Value);
+                    conn.AddInParameter(cmd, "@ControlStock", DbType.Int32, entity.ControlStock.HasValue ? (object)entity.ControlStock.Value : DBNull.Value);
 
                     conn.ExecuteNonQuery(cmd);
                 }
@@ -5592,14 +5545,322 @@ WHERE
         public List<CargoSafeStockEntity> QueryWarnStockData(CargoSafeStockEntity entity)
         {
             List<CargoSafeStockEntity> result = new List<CargoSafeStockEntity>();
-            string strSQL = "select g.Name as HouseName,h.Name as AreaName,j.TypeName,f.HouseID,f.AreaID,a.TypeID,a.GoodsCode,f.Specs,f.Figure,f.ProductCode,f.LoadIndex,f.SpeedLevel,f.StockNum,SUM(b.Piece) as CurNum,SUM(b.Piece)-f.StockNum as LessNum From Tbl_Cargo_Product as a inner join Tbl_Cargo_ContainerGoods as b on a.ProductID=b.ProductID inner join Tbl_Cargo_Container as c on b.ContainerID=c.ContainerID left join Tbl_Cargo_Area as d on c.AreaID=d.AreaID left join Tbl_Cargo_Area as e on d.ParentID=e.AreaID right join Tbl_Cargo_SafeStock as f on f.HouseID=a.HouseID ";
-            if (!entity.HouseID.Equals("9")) { strSQL += " and f.AreaID=e.ParentID"; }
-            strSQL += " and f.GoodsCode=a.GoodsCode left join Tbl_Cargo_House as g on f.HouseID=g.HouseID left join Tbl_Cargo_Area as h on f.AreaID=h.AreaID left join Tbl_Cargo_ProductType as j on a.TypeID=j.TypeID where (1=1)";
-            if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and a.HouseID  in (" + entity.HouseID + ")"; }
-            if (!entity.TypeID.Equals(0)) { strSQL += " and a.TypeID=" + entity.TypeID; }
-            if (!string.IsNullOrEmpty(entity.ParamAreaID)) { strSQL += " and e.ParentID in(" + entity.ParamAreaID + ")"; }
-            else if (!entity.AreaID.Equals(0) && !entity.HouseID.Equals("9")) { strSQL += " and e.ParentID in(" + entity.AreaID + ")"; }
-            strSQL += " group by a.GoodsCode,f.HouseID,f.StockNum,f.AreaID,f.Specs,f.Figure,f.ProductCode,f.LoadIndex,f.SpeedLevel,a.TypeID,g.Name,h.Name,j.TypeName order by HouseID,  SUM(b.Piece)-f.StockNum asc";
+
+            var conditions = new List<string>();
+            StringBuilder strBld = new StringBuilder("-- ############ 查询告警库存数据 ############");
+            #region Tbl_Cargo_Area 区域仓信息
+            strBld.AppendLine(@"
+-- 区域仓库
+WITH ChildAreaCTE AS (
+	SELECT
+		HouseID,
+		AreaID AS RootArea,
+		ParentID AS ParentArea,
+		AreaID AS AreaID,
+		Name AS RootName,
+		CAST('' AS varchar(50)) AS ParentName,
+		Name AS AreaName,
+		1 AS Level
+	FROM
+		Tbl_Cargo_Area a
+	WHERE (1=1)
+		AND ParentID = 0
+		AND a.IsShowStock = 0 @{conditions}
+	UNION ALL
+	
+	SELECT
+		c.HouseID,
+		c.RootArea,
+		a.ParentID AS ParentArea,
+		a.AreaID,
+		c.RootName,
+		c.AreaName,
+		a.Name AS AreaName,
+		c.Level + 1
+	FROM
+		Tbl_Cargo_Area a
+		INNER JOIN ChildAreaCTE c ON a.ParentID = c.AreaID
+    WHERE (1=1)
+		AND a.IsShowStock = 0 @{conditions}
+)
+SELECT
+	* INTO #tempChildArea
+FROM
+	ChildAreaCTE 
+OPTION (MAXRECURSION 2); --只查到2级子仓库，如有3级子仓库就报错，防止无限递归。业务逻辑也只允许最大2级子仓（注：根仓库是0级）
+CREATE UNIQUE INDEX IX_#tempChildArea
+ON #tempChildArea (HouseID,AreaID)
+INCLUDE(RootArea);
+");
+
+            conditions = new List<string>();
+            if (!string.IsNullOrEmpty(entity.HouseID))
+                conditions.Add($"a.HouseID IN ({entity.HouseID})");
+
+            if (conditions.Count > 0)
+            {
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+            }
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+            }
+            #endregion
+            #region Tbl_Cargo_ContainerGoods 当前仓库在库数量
+            strBld.Append(@"
+-- 当前库存
+SELECT
+    b.TypeID,
+    b.HouseID,
+    b.ProductCode,
+    b.GoodsCode,
+    SUM(a.Piece) AS Piece
+    INTO #tempCurStock
+FROM Tbl_Cargo_ContainerGoods AS a
+INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
+INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
+INNER JOIN Tbl_Cargo_ProductType c ON a.TypeID = c.TypeID
+INNER JOIN #tempChildArea ca ON d.AreaID = ca.AreaID AND b.HouseID = ca.HouseID
+WHERE a.Piece > 0
+    AND b.SpecsType != 5 @{conditions}
+GROUP BY b.TypeID, b.HouseID, b.ProductCode, b.GoodsCode;
+CREATE UNIQUE INDEX IX_#tempCurStock
+ON #tempCurStock(ProductCode,TypeID,GoodsCode,HouseID)
+INCLUDE(Piece);
+");
+
+            conditions = new List<string>();
+            if (!string.IsNullOrEmpty(entity.HouseID))
+                conditions.Add($"b.HouseID IN ({entity.HouseID})");
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
+            if (entity.TypeID != 0)
+                conditions.Add($"a.TypeID = {entity.TypeID}");
+            if (entity.ParentID != 0)
+                conditions.Add($"c.ParentID = {entity.ParentID}");
+
+            if (conditions.Count > 0)
+            {
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+            }
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+            }
+            #endregion
+            #region Tbl_Cargo_Order 当前仓库产品近3个月销售记录
+            strBld.Append(@"
+--  当前仓库产品近3个月销售记录
+SELECT
+    c.TypeID,
+    c.HouseID,
+    c.ProductCode,
+    c.GoodsCode,
+    MAX(a.CreateDate) CreateDate,
+    SUM(b.Piece) AS SaleNum
+INTO #tempOrderStats
+FROM Tbl_Cargo_Order AS a
+INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
+INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
+INNER JOIN Tbl_Cargo_ProductType d ON c.TypeID = d.TypeID
+INNER JOIN #tempChildArea ca ON b.HouseID = ca.HouseID AND b.AreaID = ca.AreaID
+WHERE a.ThrowGood != 25
+    AND a.OrderModel = 0 
+    AND c.SpecsType != 5
+    AND a.CreateDate >= DATEADD(MONTH,-2,GETDATE()) @{conditions}
+GROUP BY c.TypeID, c.HouseID, c.ProductCode, c.GoodsCode;
+CREATE UNIQUE INDEX IX_#tempOrderStats
+ON #tempOrderStats(ProductCode,TypeID,GoodsCode,HouseID)
+INCLUDE(SaleNum);
+");
+            conditions = new List<string>();
+
+            // 仓库 ID
+            if (!string.IsNullOrEmpty(entity.HouseID))
+                conditions.Add($"b.HouseID IN ({entity.HouseID})");
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
+            if (entity.TypeID != 0)
+                conditions.Add($"c.TypeID = {entity.TypeID}");
+            if (entity.ParentID != 0)
+                conditions.Add($"d.ParentID = {entity.ParentID}");
+
+            // 统一拼接 WHERE 条件
+            if (conditions.Count > 0)
+            {
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+            }
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+            }
+            #endregion
+            #region Tbl_Cargo_MoveOrderGood 当前仓库在途数量
+            strBld.Append(@"
+-- 查询货品在途库存; ITI(In-Transit Inventory)
+SELECT * INTO #tempITI FROM (
+-- 移库单
+SELECT
+    'MoveOrder' AS Src,
+    p.ProductCode,
+    p.TypeID,
+    p.GoodsCode,
+    mo2.NewHouseID AS HouseID,
+    SUM(mo.Piece - mo.NewPiece) AS Piece
+FROM Tbl_Cargo_MoveOrderGood AS mo
+INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
+INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+INNER JOIN #tempChildArea ca ON mo2.NewAreaID = ca.AreaID AND mo2.NewHouseID = ca.HouseID
+WHERE mo2.MoveStatus <> 2
+    AND p.ProductCode IS NOT NULL
+    AND p.ProductCode <> ''
+    AND mo.Piece - mo.NewPiece > 0 @{conditions}
+GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, mo2.NewHouseID
+UNION ALL
+-- 采购单
+SELECT
+    'PurchaseOrder' AS Src,
+    p.ProductCode,
+    p.TypeID,
+    p.GoodsCode,
+    p.HouseID,
+    SUM(pog.Piece) Piece
+FROM Tbl_Cargo_PurchaseOrderGoods AS pog
+INNER JOIN Tbl_Cargo_PurchaseOrder AS po ON po.OrderID = pog.OrderID
+INNER JOIN (SELECT 
+    DISTINCT
+    ProductCode,
+    TypeID,
+    GoodsCode,
+    HouseID 
+    FROM 
+    Tbl_Cargo_Product) AS p ON p.ProductCode = pog.ProductCode AND p.TypeID = pog.TypeID AND p.GoodsCode = pog.GoodsCode AND p.HouseID = po.HouseID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+LEFT JOIN (SELECT DISTINCT FacOrderNo,InCargoStatus FROM Tbl_Cargo_FactoryOrder) AS fo ON po.FacOrderNo = fo.FacOrderNo  -- 筛除工厂来货单全收货状态
+WHERE po.ReceivingStatus <> 1 -- 筛除全收货状态
+    AND po.TrafficType <> 2 -- 筛除退货
+    AND p.ProductCode IS NOT NULL
+    AND p.ProductCode <> ''
+    AND (fo.InCargoStatus IS NULL OR fo.InCargoStatus <> 1) @{conditions2}
+GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, p.HouseID
+) ITI;
+CREATE UNIQUE INDEX IX_#tempITI
+ON #tempITI(ProductCode,TypeID,GoodsCode,HouseID,Src)
+INCLUDE(Piece);
+");
+            conditions = new List<string>();
+            var conditions2 = new List<string>();
+
+            // 仓库 ID
+            if (!string.IsNullOrEmpty(entity.HouseID))
+            {
+                conditions.Add($"mo2.NewHouseID IN ({entity.HouseID})");
+                conditions2.Add($"p.HouseID IN ({entity.HouseID})");
+            }
+            // 区域 ID
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+            {
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
+            }
+            if (entity.TypeID != 0)
+            {
+                conditions.Add($"pt.TypeID = {entity.TypeID}");
+                conditions2.Add($"pt.TypeID = {entity.TypeID}");
+            }
+            if (entity.ParentID != 0)
+            {
+                conditions.Add($"pt.ParentID = {entity.ParentID}");
+                conditions2.Add($"pt.ParentID = {entity.ParentID}");
+            }
+
+            // 拼接动态 WHERE 条件
+            if (conditions.Count > 0)
+            {
+                strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+                strBld.Replace("@{conditions2}", "AND " + string.Join(" AND ", conditions2));
+            }
+            else
+            {
+                strBld.Replace("@{conditions}", "");
+                strBld.Replace("@{conditions2}", "");
+            }
+            #endregion
+
+            strBld.AppendLine(@"
+SELECT
+  g.Name AS HouseName,
+  h.Name AS AreaName,
+  j.TypeName,
+  f.SID,
+  f.HouseID,
+  f.AreaID,
+  f.TypeID,
+  f.GoodsCode,
+  f.Specs,
+  f.Figure,
+  f.ProductCode,
+  f.LoadIndex,
+  f.SpeedLevel,
+  f.StockNum,
+  os.CreateDate AS LastSalDate,
+  COALESCE(ms.Piece, 0) AS MoveNum,
+  cs.Piece AS CurNum,
+  cs.Piece + COALESCE(ms.Piece, 0) - f.StockNum AS LessNum
+FROM 
+    Tbl_Cargo_SafeStock AS f
+  INNER JOIN #tempCurStock AS cs 
+   ON  f.HouseID = cs.HouseID --当前库数
+   AND f.TypeID = cs.TypeID
+   AND f.ProductCode = cs.ProductCode
+   AND f.GoodsCode = cs.GoodsCode
+  INNER JOIN #tempOrderStats AS os 
+   ON  f.HouseID = os.HouseID -- 销量
+   AND f.TypeID = os.TypeID
+   AND f.ProductCode = os.ProductCode
+   AND f.GoodsCode = os.GoodsCode
+  LEFT JOIN #tempITI AS ms 
+   ON  f.HouseID = ms.HouseID  -- 在途数量
+   AND f.TypeID = ms.TypeID
+   AND f.ProductCode = ms.ProductCode
+   AND f.GoodsCode = ms.GoodsCode
+  LEFT JOIN Tbl_Cargo_House AS g ON f.HouseID = g.HouseID
+  LEFT JOIN Tbl_Cargo_Area AS h ON f.AreaID = h.AreaID
+  LEFT JOIN Tbl_Cargo_ProductType AS j ON f.TypeID = j.TypeID
+WHERE
+  (1 = 1)
+  AND cs.Piece + COALESCE(ms.Piece, 0) - f.StockNum < 0
+");
+
+            //string strSQL = "select g.Name as HouseName,h.Name as AreaName,j.TypeName,f.HouseID,f.AreaID,a.TypeID,a.GoodsCode,f.Specs,f.Figure,f.ProductCode,f.LoadIndex,f.SpeedLevel,f.StockNum,SUM(b.Piece) as CurNum,SUM(b.Piece)-f.StockNum as LessNum From Tbl_Cargo_Product as a inner join Tbl_Cargo_ContainerGoods as b on a.ProductID=b.ProductID inner join Tbl_Cargo_Container as c on b.ContainerID=c.ContainerID left join Tbl_Cargo_Area as d on c.AreaID=d.AreaID left join Tbl_Cargo_Area as e on d.ParentID=e.AreaID right join Tbl_Cargo_SafeStock as f on f.HouseID=a.HouseID ";
+            //if (!entity.HouseID.Equals("9")) { strSQL += " and f.AreaID=e.ParentID"; }
+            //strSQL += " and f.GoodsCode=a.GoodsCode left join Tbl_Cargo_House as g on f.HouseID=g.HouseID left join Tbl_Cargo_Area as h on f.AreaID=h.AreaID left join Tbl_Cargo_ProductType as j on a.TypeID=j.TypeID where (1=1)";
+
+            //if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and a.HouseID  in (" + entity.HouseID + ")"; }
+            //if (!entity.TypeID.Equals(0)) { strSQL += " and a.TypeID=" + entity.TypeID; }
+            //if (!string.IsNullOrEmpty(entity.ParamAreaID)) { strSQL += " and e.ParentID in(" + entity.ParamAreaID + ")"; }
+            //else if (!entity.AreaID.Equals(0) && !entity.HouseID.Equals("9")) { strSQL += " and e.ParentID in(" + entity.AreaID + ")"; }
+            conditions = new List<string>();
+
+            // 仓库 ID
+            if (!string.IsNullOrEmpty(entity.HouseID))
+                conditions.Add($"f.HouseID IN ({entity.HouseID})");
+            // 区域 ID
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"f.AreaID IN ({entity.ParamAreaID})");
+            if (entity.TypeID != 0)
+                conditions.Add($"f.TypeID = {entity.TypeID}");
+            // 拼接动态 WHERE 条件
+            if (conditions.Count > 0)
+            {
+                strBld.Append(" AND ");
+                strBld.Append(string.Join(" AND ", conditions));
+            }
+
+            //strSQL += @" group by a.GoodsCode,f.HouseID,f.StockNum,f.AreaID,f.Specs,f.Figure,f.ProductCode,f.LoadIndex,f.SpeedLevel,a.TypeID,g.Name,h.Name,j.TypeName 
+            //    order by HouseID,  SUM(b.Piece)-f.StockNum asc";
+
+            string strSQL = strBld.ToString();
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 #region 获取数据
@@ -5624,7 +5885,9 @@ WHERE
                                 SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
                                 StockNum = Convert.ToInt32(idr["StockNum"]),
                                 CurNum = Convert.ToInt32(idr["CurNum"]),
-                                LessNum = Convert.ToInt32(idr["LessNum"])
+                                MoveNum = Convert.ToInt32(idr["MoveNum"]),
+                                LessNum = Convert.ToInt32(idr["LessNum"]),
+                                LastSalDate = idr.Field<DateTime?>("LastSalDate")
                             });
                         }
                     }
@@ -5746,7 +6009,80 @@ WHERE
             }
             return safeStockEntity;
         }
-
+        public List<CargoAreaEntity> GetHouseAreaList()
+        {
+            List<CargoAreaEntity> list = new List<CargoAreaEntity>();
+            string strSQL = $@"select  * from Tbl_Cargo_Area where 1=1";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        list.Add(new CargoAreaEntity()
+                        {
+                            AreaID = Convert.ToInt32(idr["AreaID"]),
+                            Name = Convert.ToString(idr["Name"]),
+                            Code = Convert.ToString(idr["Code"]),
+                            HouseID = Convert.ToInt32(idr["HouseID"]),
+                            ParentID = Convert.ToInt32(idr["ParentID"]),
+                            Remark = Convert.ToString(idr["Remark"]),
+                            AreaType = Convert.ToString(idr["AreaType"]),
+                            OrderCode = Convert.ToString(idr["OrderCode"]),
+                            OrderDep = Convert.ToString(idr["OrderDep"]),
+                            Longitude = Convert.ToString(idr["Longitude"]),
+                            Latitude = Convert.ToString(idr["Latitude"]),
+                            Address = Convert.ToString(idr["Address"]),
+                            DelFlag = Convert.ToString(idr["DelFlag"]),
+                            VirtualInventory = Convert.ToString(idr["VirtualInventory"]),
+                            ContiHouseCode = Convert.ToString(idr["ContiHouseCode"]),
+                            IsShowStock = Convert.ToString(idr["IsShowStock"])
+                        });
+                    }
+                }
+            }
+            return list;
+        }
+        public CargoSafeStockEntity FirstSafeStock(CargoSafeStockEntity entity)
+        {
+            CargoSafeStockEntity cargo = null;
+            string strSQL = $@"select  * from Tbl_Cargo_SafeStock where HouseID=@HouseID and AreaID=@AreaID and ProductCode=@ProductCode";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@AreaID", DbType.String, entity.AreaID);
+                conn.AddInParameter(command, "@HouseID", DbType.String, entity.HouseID);
+                conn.AddInParameter(command, "@ProductCode", DbType.String, entity.ProductCode);
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        cargo = (new CargoSafeStockEntity()
+                        {
+                            AreaID = Convert.ToInt32(idr["AreaID"]),
+                            OPID = Convert.ToString(idr["OPID"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                            TypeID = Convert.ToInt32(idr["TypeID"]),
+                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                            Specs = Convert.ToString(idr["Specs"]),
+                            ProductCode = Convert.ToString(idr["ProductCode"]),
+                            HouseID = Convert.ToString(idr["HouseID"]),
+                            SID = long.Parse(Convert.ToString(idr["SID"])),
+                        });
+                    }
+                }
+            }
+            return cargo;
+        }
+        public string QueryHouseNameByID(int HouseID)
+        {
+            string strSQL = $"select Name from Tbl_Cargo_House where HouseID = @HouseID";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@HOuseID", DbType.Int32, HouseID);
+                string HouseName = conn.ExecuteScalar(command)?.ToString();
+                return HouseName;
+            }
+        }
         #endregion
         #region 基础规格管理
         /// <summary>
@@ -8122,7 +8458,6 @@ WHERE
             }
         }
         #endregion
-
         #region 仓库订单语音播报
         /// <summary>
         /// 获取语音播报列表
@@ -8241,7 +8576,6 @@ WHERE
 
 
         #endregion
-
         #region 仓库目标
 
         public List<CargoHouseAimEntity> QueryHouseAimList(CargoHouseAimEntity entity)
@@ -8454,7 +8788,6 @@ WHERE
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
         }
         #endregion
-
         #region 品牌仓库共享
         public List<CargoHouseBrandShareEntity> QueryHouseShareList(CargoHouseBrandShareEntity entity)
         {
@@ -8495,82 +8828,7 @@ WHERE
 
 
         #endregion
-        public List<CargoAreaEntity> GetHouseAreaList()
-        {
-            List<CargoAreaEntity> list = new List<CargoAreaEntity>();
-            string strSQL = $@"select  * from Tbl_Cargo_Area where 1=1";
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                using (DataTable dt = conn.ExecuteDataTable(command))
-                {
-                    foreach (DataRow idr in dt.Rows)
-                    {
-                        list.Add(new CargoAreaEntity()
-                        {
-                            AreaID = Convert.ToInt32(idr["AreaID"]),
-                            Name = Convert.ToString(idr["Name"]),
-                            Code = Convert.ToString(idr["Code"]),
-                            HouseID = Convert.ToInt32(idr["HouseID"]),
-                            ParentID = Convert.ToInt32(idr["ParentID"]),
-                            Remark = Convert.ToString(idr["Remark"]),
-                            AreaType = Convert.ToString(idr["AreaType"]),
-                            OrderCode = Convert.ToString(idr["OrderCode"]),
-                            OrderDep = Convert.ToString(idr["OrderDep"]),
-                            Longitude = Convert.ToString(idr["Longitude"]),
-                            Latitude = Convert.ToString(idr["Latitude"]),
-                            Address = Convert.ToString(idr["Address"]),
-                            DelFlag = Convert.ToString(idr["DelFlag"]),
-                            VirtualInventory = Convert.ToString(idr["VirtualInventory"]),
-                            ContiHouseCode = Convert.ToString(idr["ContiHouseCode"]),
-                            IsShowStock = Convert.ToString(idr["IsShowStock"])
-                        });
-                    }
-                }
-            }
-            return list;
-        }
-
-        public CargoSafeStockEntity FirstSafeStock(CargoSafeStockEntity entity)
-        {
-            CargoSafeStockEntity cargo = null;
-            string strSQL = $@"select  * from Tbl_Cargo_SafeStock where HouseID=@HouseID and AreaID=@AreaID and ProductCode=@ProductCode";
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                conn.AddInParameter(command, "@AreaID", DbType.String, entity.AreaID);
-                conn.AddInParameter(command, "@HouseID", DbType.String, entity.HouseID);
-                conn.AddInParameter(command, "@ProductCode", DbType.String, entity.ProductCode);
-                using (DataTable dt = conn.ExecuteDataTable(command))
-                {
-                    foreach (DataRow idr in dt.Rows)
-                    {
-                        cargo = (new CargoSafeStockEntity()
-                        {
-                            AreaID = Convert.ToInt32(idr["AreaID"]),
-                            OPID = Convert.ToString(idr["OPID"]),
-                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
-                            TypeID = Convert.ToInt32(idr["TypeID"]),
-                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
-                            Specs = Convert.ToString(idr["Specs"]),
-                            ProductCode = Convert.ToString(idr["ProductCode"]),
-                            HouseID = Convert.ToString(idr["HouseID"]),
-                            SID = long.Parse(Convert.ToString(idr["SID"])),
-                        });
-                    }
-                }
-            }
-            return cargo;
-        }
-
-        public string QueryHouseNameByID(int HouseID)
-        {
-            string strSQL = $"select Name from Tbl_Cargo_House where HouseID = @HouseID";
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                conn.AddInParameter(command, "@HOuseID", DbType.Int32, HouseID);
-                string HouseName = conn.ExecuteScalar(command)?.ToString();
-                return HouseName;
-            }
-        }
+       
     }
 
 }
