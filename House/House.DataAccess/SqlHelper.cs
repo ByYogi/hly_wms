@@ -15,8 +15,8 @@ namespace House.DataAccess
     public class SqlHelper
     {
         private static string dbProviderName = "System.Data.SqlClient";
-        //private static string dbConnectionString = Properties.Resources.ConnDeploySql2008;
-        private static string dbConnectionString = Properties.Resources.LiveDB;
+        private static string dbConnectionString = Properties.Resources.ConnDeploySql2008;
+        //private static string dbConnectionString = Properties.Resources.LiveDB;
 
         private DbConnection connection;
 

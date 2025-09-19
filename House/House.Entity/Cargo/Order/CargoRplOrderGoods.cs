@@ -18,11 +18,12 @@ namespace House.Entity.Cargo.Order
         public int TypeID { get; set; }              // 品牌ID
         public string TypeName { get; set; }         // 品牌名称
         public int Piece { get; set; }               // 补货数量
+        public int DonePiece { get; set; }               // 补货数量
         public int SysPiece { get; set; }            // 建议补货数
         public int? MinStock { get; set; }           // 最小库存数
         public int? MaxStock { get; set; }           // 最大库存数
         public int? SrcPiece { get; set; }           // 缺货仓在库数
-        public int? PenddimgQty { get; set; }        // 待出库数量
+        public int? PendingQty { get; set; }        // 待出库数量
         public int? InTransitQty { get; set; }       // 在途库存
         public int? AvgSalSUM { get; set; }          // 月均销量
         public DateTime CreateDate { get; set; }     // 创建时间

@@ -409,7 +409,7 @@ namespace Cargo
             // RedisHelper.HashSet("HCYCHouseStockSyc", "93_34_LTCT215551603", "LTCT215551603");
             // RedisHelper.HashSet("HCYCHouseStockSyc", "93_34_LTCT225551801", "LTCT225551801");
             CargoInterfaceBus bus = new CargoInterfaceBus();
-            List<CargoProductEntity> testList = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 91 });
+            List<CargoProductEntity> testList = bus.QueryNextDayStockSync(new CargoProductEntity {  });
 
             bus.SaveNextDayProductData(testList);
             return;
