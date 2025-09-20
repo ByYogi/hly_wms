@@ -4735,6 +4735,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
             string strSQL = "";
             var conditions = new List<string>();
             StringBuilder strBld = new StringBuilder();
+
             strBld.AppendLine("-- ############ 查询安全库存数据 ############");
             strBld.AppendLine("SET STATISTICS TIME ON;");
             #region Tbl_Cargo_ContainerGoods 全国库存
@@ -4892,9 +4893,9 @@ INCLUDE(SaleNum, WXSaleNum);
                 conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
             // 制单日期范围
             if (entity.StartDate != default)
-                conditions.Add($"CAST(a.CreateDate AS DATE) >= '{entity.StartDate:yyyy-MM-dd}'");
+                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
             if (entity.EndDate != default)
-                conditions.Add($"CAST(a.CreateDate AS DATE) <= '{entity.EndDate:yyyy-MM-dd}'");
+                conditions.Add($"a.CreateDate < '{entity.EndDate.AddDays(1):yyyy-MM-dd}'");
             if (entity.TypeID != 0)
                 conditions.Add($"c.TypeID = {entity.TypeID}");
             if (entity.ParentID != 0)
@@ -4934,9 +4935,9 @@ INCLUDE(Piece);
             conditions = new List<string>();
             // 制单日期范围
             if (entity.StartDate != default)
-                conditions.Add($"CAST(a.CreateDate AS DATE) >= '{entity.StartDate:yyyy-MM-dd}'");
+                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
             if (entity.EndDate != default)
-                conditions.Add($"CAST(a.CreateDate AS DATE) <= '{entity.EndDate:yyyy-MM-dd}'");
+                conditions.Add($"a.CreateDate < '{entity.EndDate.AddDays(1):yyyy-MM-dd}'");
 
             // 拼接 WHERE 条件
             if (conditions.Count > 0)

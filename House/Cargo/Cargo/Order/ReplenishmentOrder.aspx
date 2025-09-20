@@ -247,9 +247,11 @@
         <a href="#" class="easyui-linkbutton tblBtn" id="btnSearch" iconcls="icon-search" plain="false">查询</a>
         </span>
         <span class="space">
-        <a href="#" class="easyui-linkbutton tblBtn" id="btnAdd" iconcls="icon-add" plain="false" >新增</a>
-        <a href="#" class="easyui-linkbutton tblBtn" id="btnEdit" iconcls="icon-edit" plain="false" >修改</a>
+        <%-- <a href="#" class="easyui-linkbutton tblBtn" id="btnAdd" iconcls="icon-add" plain="false" >新增</a>
+        <a href="#" class="easyui-linkbutton tblBtn" id="btnEdit" iconcls="icon-edit" plain="false" >修改</a> --%>
         <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >删除</a>
+        <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >合并补货单</a>
+        <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >转为移库单</a>
         </span>
         <span class="space">
         <a href="#" class="easyui-linkbutton tblBtn" id="btnExport" iconcls="icon-application_put" plain="false">导出</a>
@@ -264,8 +266,7 @@
 
 
 
-    <div id="dlgOrder" class="easyui-dialog"
-        closable="false" buttons="#dlgOrder-buttons">
+    <div id="dlgOrder" class="easyui-dialog"  buttons="#dlgOrder-buttons" closable="true">
         <%-- <form id="fm" class="easyui-form" method="post">
             <input type="hidden" name="HouseID" />
             <table>
@@ -361,7 +362,7 @@
                     </td>
                 </tr>
             </table>
-        </form> --%>
+        </form>  --%>
         <table>
             <tr>
                 <td>
@@ -400,12 +401,76 @@
             $('#dlgOrder').dialog({
                 modal: true,
                 title: '补货单详情',
-                width: 1000,
-                height: 540,
-                closed: true,
+                width: 900,
+                height: 640,
+                closed: true
             });
 
-            showGrid();
+            const columns = [{
+                    title: '产品代码', field: 'ProductCode', width: '60px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '产品名称', field: 'GoodsName', width: '100px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '货品代码', field: 'GoodsCode', width: '90px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '品牌', field: 'TypeName', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '花纹', field: 'Figure', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '载速', field: 'LISS', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '补货数量', field: 'Piece', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '完成数量', field: 'DonePiece', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }]
+            $('#dgSave').datagrid({
+                width: '880px',
+                height: '300px',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: true, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '',
+                onClickCell: onClickCell,
+                columns: [columns],
+                rowStyler: function (index, row) {
+                    if (row.Piece != row.NewPiece) { return "background-color:#f7d9d9"; };
+                }
+            });
         })
         //统一事件绑定
         $(function() {
@@ -416,8 +481,9 @@
             $('#btnSearch').on('click', dosearch)
         });
         function addHandle() {
+            $('#dlgOrder').dialog("center");
             $('#dlgOrder').dialog('open').dialog('setTitle', '添加移库单');
-            <%-- $('#fm').form('clear'); --%>
+     
         }
         function editHandle() {
             <%-- 
@@ -555,80 +621,12 @@
                 $('#dlgOrder').dialog('open').dialog('setTitle', row.MoveNo + '补货明细');
                 
                 
-                showGrid();
 
                 var gridOpts = $('#dgSave').datagrid('options');
                 gridOpts.url = 'orderApi.aspx?method=QueryRplOrderGoods&RplID=' + row.RplID;
             }
         }
-        //显示列表
-        function showGrid() {
-            const columns = [{
-                    title: '产品代码', field: 'ProductCode', width: '60px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '产品名称', field: 'GoodsName', width: '100px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '货品代码', field: 'GoodsCode', width: '90px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '品牌', field: 'TypeName', width: '80px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '花纹', field: 'Figure', width: '80px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '载速', field: 'LISS', width: '80px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '补货数量', field: 'Piece', width: '80px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
-                    {
-                        title: '完成数量', field: 'DonePiece', width: '80px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    }]
-            $('#dgSave').datagrid({
-                width: '1050px',
-                height: '450px',
-                title: '', //标题内容
-                loadMsg: '数据加载中请稍候...',
-                autoRowHeight: false, //行高是否自动
-                collapsible: false, //是否可折叠
-                pagination: false, //分页是否显示
-                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
-                singleSelect: true, //设置为 true，则只允许选中一行。
-                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
-                idField: 'ID',
-                url: null,
-                toolbar: '',
-                onClickCell: onClickCell,
-                columns: [columns],
-                rowStyler: function (index, row) {
-                    if (row.Piece != row.NewPiece) { return "background-color:#f7d9d9"; };
-                }
-            });
-        }
+
         //删除仓库信息
         function DelItem() {
             var rows = $('#dg').datagrid('getSelections');

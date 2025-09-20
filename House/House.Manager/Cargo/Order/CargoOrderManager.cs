@@ -10020,6 +10020,71 @@ WHERE ExterOrderAlloNum = (
         }
         #endregion
         #region 补货单方法集合
+        public string GetNewRplNo()
+        {
+            string strSql = @"
+DECLARE @prefix NVARCHAR(20);
+DECLARE @maxNo NVARCHAR(50);
+DECLARE @newNo NVARCHAR(50);
+DECLARE @seq INT;
+
+-- 前缀：RO + yyMMdd
+SET @prefix = 'RO' + RIGHT(CONVERT(CHAR(6), GETDATE(), 12), 6);  
+
+-- 找当日最大流水
+SELECT @maxNo = MAX(RplNo)
+FROM Tbl_Cargo_RplOrder
+WHERE RplNo LIKE @prefix + '%';
+
+-- 截取最后四位并+1
+IF @maxNo IS NULL
+    SET @seq = 1;
+ELSE
+    SET @seq = CAST(RIGHT(@maxNo, 4) AS INT) + 1;
+
+-- 生成新的单号
+SET @newNo = @prefix + RIGHT('0000' + CAST(@seq AS VARCHAR(4)), 4);
+
+SELECT @newNo AS NewRplNo;
+";
+            using (DbCommand command = conn.GetSqlStringCommond(strSql))
+            {
+                string newRplNo = conn.ExecuteScalar(command)?.ToString();
+                if (string.IsNullOrWhiteSpace(newRplNo))
+                {
+                    throw new ApplicationException("获取最新补货单号失败");
+                }
+                return newRplNo;
+            }
+        }
+        //自动决定创建补货单
+        public void AutoGeneralRplOrder(RplOrderAutoGeneratParam entity)
+        {
+            var goodslist = entity.GoodsList;
+            if (!goodslist.Any())
+            {
+                return;
+            }
+            foreach (var goods in goodslist)
+            {
+                long ProductID = goods.ProductID;
+                int AreaID = goods.AreaID;
+                //查询产品基础信息
+
+                //查询品牌品类信息
+
+                //查询安全库存配置，获取最小库存数和最大库存数
+
+                //查询在库数
+
+                //查询在途待入库数
+
+                //查询月均销量
+            }
+
+            //传入参数
+            return;
+        }
         public CargoRplOrderListDto QueryRplOrder(CargoRplOrderListDto entity)
         {
             CargoRplOrderListDto result = new CargoRplOrderListDto();
@@ -10656,43 +10721,6 @@ VALUES
             }
         }
         
-        public string GetNewRplNo()
-        {
-            string strSql = @"
-DECLARE @prefix NVARCHAR(20);
-DECLARE @maxNo NVARCHAR(50);
-DECLARE @newNo NVARCHAR(50);
-DECLARE @seq INT;
-
--- 前缀：RO + yyMMdd
-SET @prefix = 'RO' + RIGHT(CONVERT(CHAR(6), GETDATE(), 12), 6);  
-
--- 找当日最大流水
-SELECT @maxNo = MAX(RplNo)
-FROM Tbl_Cargo_RplOrder
-WHERE RplNo LIKE @prefix + '%';
-
--- 截取最后四位并+1
-IF @maxNo IS NULL
-    SET @seq = 1;
-ELSE
-    SET @seq = CAST(RIGHT(@maxNo, 4) AS INT) + 1;
-
--- 生成新的单号
-SET @newNo = @prefix + RIGHT('0000' + CAST(@seq AS VARCHAR(4)), 4);
-
-SELECT @newNo AS NewRplNo;
-";
-            using (DbCommand command = conn.GetSqlStringCommond(strSql))
-            {
-                string newRplNo = conn.ExecuteScalar(command)?.ToString();
-                if (string.IsNullOrWhiteSpace(newRplNo))
-                {
-                    throw new ApplicationException("获取最新补货单号失败");
-                }
-                return newRplNo;
-            }
-        }
         #endregion
         #region 来货单 
         public void AddPurchaseOrderInfo(CargoOrderEntity entity, List<CargoProductEntity> productList)
