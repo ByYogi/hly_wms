@@ -39,13 +39,6 @@ aspnet_client/
 *.mdf
 *.ldf
 
-# WebForms 特有
-*.designer.cs
-*.designer.vb
-*.refresh
-*.resx
-*.generated.cs
-*.generated.vb
 
 # Visual Studio 临时文件
 .vs/
