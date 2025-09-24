@@ -22,7 +22,6 @@ x86/
 publish/
 
 # 编译生成的文件
-*.dll
 *.pdb
 *.cache
 *.log
