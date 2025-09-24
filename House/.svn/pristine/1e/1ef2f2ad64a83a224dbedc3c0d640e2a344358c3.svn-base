@@ -4735,7 +4735,6 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
             string strSQL = "";
             var conditions = new List<string>();
             StringBuilder strBld = new StringBuilder();
-
             strBld.AppendLine("-- ############ 查询安全库存数据 ############");
             strBld.AppendLine("SET STATISTICS TIME ON;");
             #region Tbl_Cargo_ContainerGoods 全国库存
@@ -4893,9 +4892,9 @@ INCLUDE(SaleNum, WXSaleNum);
                 conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
             // 制单日期范围
             if (entity.StartDate != default)
-                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
+                conditions.Add($"CAST(a.CreateDate AS DATE) >= '{entity.StartDate:yyyy-MM-dd}'");
             if (entity.EndDate != default)
-                conditions.Add($"a.CreateDate < '{entity.EndDate.AddDays(1):yyyy-MM-dd}'");
+                conditions.Add($"CAST(a.CreateDate AS DATE) <= '{entity.EndDate:yyyy-MM-dd}'");
             if (entity.TypeID != 0)
                 conditions.Add($"c.TypeID = {entity.TypeID}");
             if (entity.ParentID != 0)
@@ -4935,9 +4934,9 @@ INCLUDE(Piece);
             conditions = new List<string>();
             // 制单日期范围
             if (entity.StartDate != default)
-                conditions.Add($"a.CreateDate >= '{entity.StartDate:yyyy-MM-dd}'");
+                conditions.Add($"CAST(a.CreateDate AS DATE) >= '{entity.StartDate:yyyy-MM-dd}'");
             if (entity.EndDate != default)
-                conditions.Add($"a.CreateDate < '{entity.EndDate.AddDays(1):yyyy-MM-dd}'");
+                conditions.Add($"CAST(a.CreateDate AS DATE) <= '{entity.EndDate:yyyy-MM-dd}'");
 
             // 拼接 WHERE 条件
             if (conditions.Count > 0)
@@ -4953,50 +4952,91 @@ INCLUDE(Piece);
             #region Tbl_Cargo_MoveOrderGood 在途库存
             strBld.Append(@"
 PRINT('------------ 在途库存 ------------');
+SELECT * INTO #tempITI FROM (
+-- 移库单
 SELECT
+    'MoveOrder' AS Src,
+    p.ProductCode,
+    p.TypeID,
+    p.GoodsCode,
+    mo2.NewHouseID AS HouseID,
+    SUM(mo.Piece - mo.NewPiece) AS Piece
+FROM Tbl_Cargo_MoveOrderGood AS mo
+INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
+INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+INNER JOIN #tempChildArea ca ON mo2.NewAreaID = ca.AreaID AND mo2.NewHouseID = ca.HouseID
+WHERE mo2.MoveStatus <> 2
+    AND ISNULL(p.ProductCode, '') <> ''
+    AND mo.Piece - mo.NewPiece > 0 @{conditions}
+GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, mo2.NewHouseID
+UNION ALL
+-- 采购单
+SELECT
+    'PurchaseOrder' AS Src,
     p.ProductCode,
     p.TypeID,
     p.GoodsCode,
     p.HouseID,
-	SUM(ReplyNumber - fo.InPiece) Piece
-INTO #tempITI 
-FROM
-	Tbl_Cargo_FactoryOrder fo
-    INNER JOIN (SELECT DISTINCT ProductCode, TypeID, GoodsCode, HouseID FROM Tbl_Cargo_Product) AS p ON fo.ProductCode = p.ProductCode AND fo.HouseID = p.HouseID --无法使用ProductID匹配，用ProductID匹配会匹配不到数据；产品表有异常重复数据，需要去重
-    INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-WHERE
-	(1 = 1)
-	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
-    AND ISNULL(p.ProductCode, '') <> '' @{conditions}
-GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, p.HouseID;
+    SUM(pog.Piece) Piece
+FROM Tbl_Cargo_PurchaseOrderGoods AS pog
+INNER JOIN Tbl_Cargo_PurchaseOrder AS po ON po.OrderID = pog.OrderID
+INNER JOIN (SELECT 
+    DISTINCT
+    ProductCode,
+    TypeID,
+    GoodsCode,
+    HouseID 
+    FROM 
+    Tbl_Cargo_Product) AS p ON p.ProductCode = pog.ProductCode AND p.TypeID = pog.TypeID AND p.GoodsCode = pog.GoodsCode AND p.HouseID = po.HouseID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+LEFT JOIN (SELECT DISTINCT FacOrderNo,InCargoStatus FROM Tbl_Cargo_FactoryOrder) AS fo ON po.FacOrderNo = fo.FacOrderNo  -- 筛除工厂来货单全收货状态
+WHERE po.ReceivingStatus <> 1 -- 筛除全收货状态
+    AND po.TrafficType <> 2 -- 筛除退货
+    AND ISNULL(p.ProductCode, '') <> ''     
+    AND (fo.InCargoStatus IS NULL OR fo.InCargoStatus <> 1) @{conditions2}
+GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, p.HouseID
+) ITI;
+CREATE UNIQUE INDEX IX_#tempITI
+ON #tempITI(ProductCode,TypeID,GoodsCode,HouseID,Src)
+INCLUDE(Piece);
 ");
             conditions = new List<string>();
+            var conditions2 = new List<string>();
 
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
             {
-                conditions.Add($"p.HouseID IN ({entity.HouseID})");
+                conditions.Add($"mo2.NewHouseID IN ({entity.HouseID})");
+                conditions2.Add($"p.HouseID IN ({entity.HouseID})");
+            }
+            // 区域 ID
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+            {
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
             }
             if (entity.TypeID != 0)
             {
                 conditions.Add($"pt.TypeID = {entity.TypeID}");
+                conditions2.Add($"pt.TypeID = {entity.TypeID}");
             }
             if (entity.ParentID != 0)
             {
                 conditions.Add($"pt.ParentID = {entity.ParentID}");
+                conditions2.Add($"pt.ParentID = {entity.ParentID}");
             }
 
             // 拼接动态 WHERE 条件
             if (conditions.Count > 0)
             {
                 strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+                strBld.Replace("@{conditions2}", "AND " + string.Join(" AND ", conditions2));
             }
             else
             {
                 strBld.Replace("@{conditions}", "");
+                strBld.Replace("@{conditions2}", "");
             }
-
-
             #endregion
             #region Tbl_Cargo_OrderGoods 月均销量
             strBld.AppendLine(@"
@@ -5643,52 +5683,96 @@ INCLUDE(SaleNum);
                 strBld.Replace("@{conditions}", "");
             }
             #endregion
-            #region Tbl_Cargo_MoveOrderGood 在途库存
+            #region Tbl_Cargo_MoveOrderGood 当前仓库在途数量
             strBld.Append(@"
-PRINT('------------ 在途库存 ------------');
+-- 查询货品在途库存; ITI(In-Transit Inventory)
+SELECT * INTO #tempITI FROM (
+-- 移库单
 SELECT
+    'MoveOrder' AS Src,
+    p.ProductCode,
+    p.TypeID,
+    p.GoodsCode,
+    mo2.NewHouseID AS HouseID,
+    SUM(mo.Piece - mo.NewPiece) AS Piece
+FROM Tbl_Cargo_MoveOrderGood AS mo
+INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
+INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+INNER JOIN #tempChildArea ca ON mo2.NewAreaID = ca.AreaID AND mo2.NewHouseID = ca.HouseID
+WHERE mo2.MoveStatus <> 2
+    AND p.ProductCode IS NOT NULL
+    AND p.ProductCode <> ''
+    AND mo.Piece - mo.NewPiece > 0 @{conditions}
+GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, mo2.NewHouseID
+UNION ALL
+-- 采购单
+SELECT
+    'PurchaseOrder' AS Src,
     p.ProductCode,
     p.TypeID,
     p.GoodsCode,
     p.HouseID,
-	SUM(ReplyNumber - fo.InPiece) Piece
-INTO #tempITI 
-FROM
-	Tbl_Cargo_FactoryOrder fo
-    INNER JOIN (SELECT DISTINCT ProductCode, TypeID, GoodsCode, HouseID FROM Tbl_Cargo_Product) AS p ON fo.ProductCode = p.ProductCode AND fo.HouseID = p.HouseID --无法使用ProductID匹配，用ProductID匹配会匹配不到数据；产品表有异常重复数据，需要去重
-    INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-WHERE
-	(1 = 1)
-	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
-    AND ISNULL(p.ProductCode, '') <> '' @{conditions}
-GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, p.HouseID;
+    SUM(pog.Piece) Piece
+FROM Tbl_Cargo_PurchaseOrderGoods AS pog
+INNER JOIN Tbl_Cargo_PurchaseOrder AS po ON po.OrderID = pog.OrderID
+INNER JOIN (SELECT 
+    DISTINCT
+    ProductCode,
+    TypeID,
+    GoodsCode,
+    HouseID 
+    FROM 
+    Tbl_Cargo_Product) AS p ON p.ProductCode = pog.ProductCode AND p.TypeID = pog.TypeID AND p.GoodsCode = pog.GoodsCode AND p.HouseID = po.HouseID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+LEFT JOIN (SELECT DISTINCT FacOrderNo,InCargoStatus FROM Tbl_Cargo_FactoryOrder) AS fo ON po.FacOrderNo = fo.FacOrderNo  -- 筛除工厂来货单全收货状态
+WHERE po.ReceivingStatus <> 1 -- 筛除全收货状态
+    AND po.TrafficType <> 2 -- 筛除退货
+    AND p.ProductCode IS NOT NULL
+    AND p.ProductCode <> ''
+    AND (fo.InCargoStatus IS NULL OR fo.InCargoStatus <> 1) @{conditions2}
+GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, p.HouseID
+) ITI;
+CREATE UNIQUE INDEX IX_#tempITI
+ON #tempITI(ProductCode,TypeID,GoodsCode,HouseID,Src)
+INCLUDE(Piece);
 ");
             conditions = new List<string>();
+            var conditions2 = new List<string>();
 
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
             {
-                conditions.Add($"p.HouseID IN ({entity.HouseID})");
+                conditions.Add($"mo2.NewHouseID IN ({entity.HouseID})");
+                conditions2.Add($"p.HouseID IN ({entity.HouseID})");
+            }
+            // 区域 ID
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+            {
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
             }
             if (entity.TypeID != 0)
             {
                 conditions.Add($"pt.TypeID = {entity.TypeID}");
+                conditions2.Add($"pt.TypeID = {entity.TypeID}");
             }
             if (entity.ParentID != 0)
             {
                 conditions.Add($"pt.ParentID = {entity.ParentID}");
+                conditions2.Add($"pt.ParentID = {entity.ParentID}");
             }
 
             // 拼接动态 WHERE 条件
             if (conditions.Count > 0)
             {
                 strBld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+                strBld.Replace("@{conditions2}", "AND " + string.Join(" AND ", conditions2));
             }
             else
             {
                 strBld.Replace("@{conditions}", "");
+                strBld.Replace("@{conditions2}", "");
             }
-
             #endregion
 
             strBld.AppendLine(@"

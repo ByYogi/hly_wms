@@ -10028,266 +10028,6 @@ WHERE ExterOrderAlloNum = (
         }
         #endregion
         #region 补货单方法集合
-        public string GetNewRplNo()
-        {
-            string strSql = @"
-DECLARE @prefix NVARCHAR(20);
-DECLARE @maxNo NVARCHAR(50);
-DECLARE @newNo NVARCHAR(50);
-DECLARE @seq INT;
-
--- 前缀：RO + yyMMdd
-SET @prefix = 'RO' + RIGHT(CONVERT(CHAR(6), GETDATE(), 12), 6);  
-
--- 找当日最大流水
-SELECT @maxNo = MAX(RplNo)
-FROM Tbl_Cargo_RplOrder
-WHERE RplNo LIKE @prefix + '%';
-
--- 截取最后四位并+1
-IF @maxNo IS NULL
-    SET @seq = 1;
-ELSE
-    SET @seq = CAST(RIGHT(@maxNo, 4) AS INT) + 1;
-
--- 生成新的单号
-SET @newNo = @prefix + RIGHT('0000' + CAST(@seq AS VARCHAR(4)), 4);
-
-SELECT @newNo AS NewRplNo;
-";
-            using (DbCommand command = conn.GetSqlStringCommond(strSql))
-            {
-                string newRplNo = conn.ExecuteScalar(command)?.ToString();
-                if (string.IsNullOrWhiteSpace(newRplNo))
-                {
-                    throw new ApplicationException("获取最新补货单号失败");
-                }
-                return newRplNo;
-            }
-        }
-
-        //自动决定创建补货单
-        public void AutoGeneralRplOrder(RplOrderAutoGeneratParam entity)
-        {
-            var goodslist = entity.GoodsList;
-            if (!goodslist.Any())
-            {
-                return;
-            }
-            string createPrdctTempSql = @"
-CREATE TABLE 
-	#productTemp(
-		ProductID BIGINT,
-		AreaID INT
-	);
-";
-            string insertPrdctTempSql = @"
-INSERT #productTemp(ProductID, ProductCode, HouseID, AreaID)
-VALUES @{productValues};
-";
-            List<CargoRplOrderDtlDto> toAddEntities = new List<CargoRplOrderDtlDto>();
-            using (DbCommand command = conn.GetSqlStringCommond(createPrdctTempSql))
-            {
-                //创建临时表
-                conn.ExecuteNonQuery(command);
-
-                int index = 1;
-                List<string> productValues = new List<string>();
-                List<SqlParameter> sqlParameters = new List<SqlParameter>();
-                foreach (var goods in goodslist)
-                {
-                    productValues.Add($"(@ProductID{index}, @ProductCode{index}, @HouseID{index}, @AreaID{index})");
-                    sqlParameters.AddRange(new List<SqlParameter>
-                    {
-                        new SqlParameter($"@ProductID{index}", goods.ProductID),
-                        new SqlParameter($"@AreaID{index}", goods.AreaID),
-
-                    });
-                }
-                if (productValues.Any())
-                {
-                    insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", string.Join("," + Environment.NewLine, productValues));
-                }
-                else
-                {
-                    insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", "");
-                }
-
-                //插入数据
-                command.CommandText = insertPrdctTempSql;
-                command.Parameters.AddRange(sqlParameters.ToArray());
-                conn.ExecuteNonQuery(command);
-                command.Parameters.Clear(); //使用后清除参数
-
-                string queryOutofStockSql = @"
--- 产品&品牌
-WITH pCTE as (
-SELECT 
-	p.ProductID,
-	p.ProductName,
-	p.ProductCode,
-	p.GoodsCode,
-	pt.TypeID,
-	pt.TypeName,
-	pt.ParentID,
-	pTemp.AreaID,
-    h.HouseID,
-	h.Name HouseName,
-	h.ParentID HouseParentID,
-	h.ParentName HouseParentName
-FROM
-	Tbl_Cargo_Product p
-	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-	INNER JOIN #productTemp pTemp ON p.ProductID = pTemp.ProductID
-	LEFT JOIN Tbl_Cargo_House h ON p.HouseID = h.HouseID
-),
---在途
-iti AS (
-	
-	SELECT
-		fo.ProductCode,
-		fo.HouseID,
-		SUM(ReplyNumber - fo.InPiece) Piece
-	FROM
-		Tbl_Cargo_FactoryOrder fo
-		INNER JOIN #productTemp ptemp ON fo.ProductID = ptemp.ProductID
-	WHERE
-		(1 = 1)
-		AND fo.InCargoStatus = 0
-		OR fo.InCargoStatus = 2
-	GROUP BY
-		fo.ProductCode,
-		fo.HouseID
-),
---在库
-isi AS (
-	
-	SELECT
-		p.ProductCode,
-		p.HouseID,
-		p.AreaID,
-		SUM(cg.Piece) Piece
-	FROM
-		Tbl_Cargo_ContainerGoods cg
-		INNER JOIN Tbl_Cargo_Container c ON cg.ContainerID = c.ContainerID
-		INNER JOIN pCTE p ON p.ProductID = p.ProductID
-	GROUP BY
-		p.ProductCode,
-		p.HouseID,
-		c.AreaID
-),
---在补货
-ro as (
-SELECT
-	rog.ProductCode, 
-	ro.HouseID,
-	SUM(rog.Piece - rog.DonePiece) Piece
-FROM
-	Tbl_Cargo_RplOrderGoods rog 
-	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
-WHERE
-	ro.Status IN (0,1,2)
-GROUP BY rog.ProductCode, ro.HouseID
-)
-
---安全库存配置
-SELECT
-	ss.SID,
-	ss.AreaID,
-	ss.MinStock,
-	ss.MaxStock,
-	mss.WeightedMonthSale,
-	isi.Piece InPiece,
-	iti.Piece InTransitPiece,
-	ro.Piece RestockingPiece,
-	ss.MaxStock - (isi.Piece + iti.Piece - ro.Piece) Piece,
-	p.*
-FROM
-	Tbl_Cargo_SafeStock ss
-	INNER JOIN pCTE p ON p.ProductCode = ss.ProductCode AND p.AreaID = ss.AreaID
-	LEFT JOIN iti ON iti.ProductCode = p.ProductCode AND iti.HouseID = p.HouseID
-	LEFT JOIN isi ON isi.ProductCode = p.ProductCode AND isi.AreaID = p.AreaID
-	LEFT JOIN Tbl_Cargo_MonthSaleStatic mss ON mss.ProductCode = p.ProductCode AND mss.AreaID = p.AreaID
-	LEFT JOIN ro ON ro.ProductCode = p.ProductCode AND ro.HouseID = p.HouseID
-WHERE 
-	ss.MinStock > 0 AND MaxStock > 0
-	AND (isi.Piece + iti.Piece - ro.Piece) < ss.MinStock 
-	AND ss.MaxStock - (isi.Piece + iti.Piece - ro.Piece) > 0
-";
-                //获取库存低于安全库存的产品
-                command.CommandText = queryOutofStockSql;
-
-                List<CargoRplOrderGoodsDto> toAddRows = new List<CargoRplOrderGoodsDto>();
-                using (var dt = conn.ExecuteDataTable(command))
-                {
-                    if (dt.Rows.Count == 0) return;
-                    foreach (DataRow dr in dt.Rows)
-                    {
-                        toAddRows.Add(new CargoRplOrderGoodsDto()
-                        {
-                            ProductID = dr.Field<long>("ProductID"),
-                            ProductName = dr.Field<string>("ProductName"),
-                            ProductCode = dr.Field<string>("ProductCode"),
-                            GoodsCode = dr.Field<string>("GoodsCode"),
-                            TypeCate = dr.Field<int>("ParentID"),
-                            TypeID = dr.Field<int>("TypeID"),
-                            TypeName = dr.Field<string>("TypeName"),
-                            Specs = dr.Field<string>("Specs"),
-                            Figure = dr.Field<string>("Figure"),
-                            LoadIndex = dr.Field<string>("LoadIndex"),
-                            SpeedLevel = dr.Field<string>("SpeedLevel"),
-                            Piece = dr.Field<int>("Piece"),
-                            SysPiece = dr.Field<int>("Piece"),
-                            HouseID = dr.Field<int>("HouseID"),
-                            AreaID = dr.Field<int>("AreaID"),
-                            HouseName = dr.Field<string>("HouseName"),
-                            HouseParentID = dr.Field<int>("HouseParentID"),
-                            HouseParentName = dr.Field<string>("HouseParentName"),
-
-                            MinStock = dr.Field<int>("MinStock"),
-                            MaxStock = dr.Field<int>("MaxStock"),
-                            SrcPiece = dr.Field<int>("InPiece"),
-                            InTransitQty = dr.Field<int>("InTransitPiece"),
-                            RestockingQty = dr.Field<int>("RestockingPiece"),
-                            AvgSalSUM = dr.Field<int>("WeightedMonthSale")
-                        });
-                    }
-                }
-                //按照大仓分组
-                foreach (var item in toAddRows.GroupBy(x => x.HouseID))
-                {
-                    //寻找上级仓库
-                    int HouseID = item.Key.Value;
-                    var firstData = item.FirstOrDefault();
-                    int totalReplPiece = item.Select(x => x.Piece).OfType<int>().Sum();
-                    CargoRplOrderDtlDto toAddEntity = new CargoRplOrderDtlDto()
-                    {
-                        HouseID = HouseID,
-                        HouseName = firstData.HouseName,
-                        FromHouse = firstData.HouseParentID,
-                        FromHouseName = firstData.HouseParentName,
-                        ReqBy = entity.ReqBy,
-                        ReqByName = entity.ReqByName,
-                        ScrType = entity.SrcType,
-                        SrcCode = entity.SrcCode,
-                        SrcID = entity.SrcID,
-                        Piece = totalReplPiece,
-                        Reason = "",
-                        Remark = "",
-                        Rows = item.ToList()
-                    };
-                    toAddEntities.Add(toAddEntity);
-                }
-            }
-
-
-            foreach (var toAddEntity in toAddEntities)
-            {
-                AddRplOrder(toAddEntity);
-            }
-
-            return;
-        }
         public CargoRplOrderListDto QueryRplOrder(CargoRplOrderListDto entity)
         {
             CargoRplOrderListDto result = new CargoRplOrderListDto();
@@ -10773,7 +10513,7 @@ INSERT INTO
 		MinStock,
 		MaxStock,
 		SrcPiece,
-		RestockingQty,
+		PendingQty,
 		InTransitQty,
 		AvgSalSUM,
 		CreateDate,
@@ -10796,11 +10536,11 @@ VALUES
                         int? typeCate = null;
                         int sysPiece = 0;
 
-                        int minstock, maxstock, srcpiece, restockingqty, intransiqty, avgSalsum;
+                        int minstock, maxstock, srcpiece, penddingqty, intransiqty, avgSalsum;
                         minstock = row.MinStock.GetValueOrDefault();
                         maxstock = row.MaxStock.GetValueOrDefault();
                         srcpiece = row.SrcPiece.GetValueOrDefault();
-                        restockingqty = row.RestockingQty.GetValueOrDefault();
+                        penddingqty = row.PendingQty.GetValueOrDefault();
                         intransiqty = row.InTransitQty.GetValueOrDefault();
                         avgSalsum = row.AvgSalSUM.GetValueOrDefault();
 
@@ -10832,7 +10572,7 @@ VALUES
                         string minstockParam = "@MinStock" + rowIndex;
                         string maxstockParam = "@MaxStock" + rowIndex;
                         string srcPieceParam = "@SrcPiece" + rowIndex;
-                        string restockingqtyParam = "@RestockingQty" + rowIndex;
+                        string pendingParam = "@PendingQty" + rowIndex;
                         string intransiQtyParam = "@InTransitQty" + rowIndex;
                         string avgSalSumParam = "@AvgSalSUM" + rowIndex;
                         string donePieceParam = "@DonePiece" + rowIndex;
@@ -10840,7 +10580,7 @@ VALUES
                         string updateDateParam = "@UpdateDate" + rowIndex;
 
                         sqlvaluesStrList.Add($"({rplIDParam}, {productIDParam}, {productNameParam}, {productCodeParam}, {goodsCodeParam}, {typeCateParam}, {typeIDParam}, {typeNameParam}, {pieceParam}," +
-                            $"{sysPieceParam}, {donePieceParam}, {minstock}, {maxstock}, {sysPiece}, {restockingqty}, {intransiQtyParam}, {avgSalsum}, {createDateParam}, {updateDateParam})");
+                            $"{sysPieceParam}, {donePieceParam}, {minstock}, {maxstock}, {sysPiece}, {penddingqty}, {intransiQtyParam}, {avgSalsum}, {createDateParam}, {updateDateParam})");
 
                         rowssqlParameters.AddRange(new List<SqlParameter>()
                         {
@@ -10860,7 +10600,7 @@ VALUES
                             new SqlParameter(minstockParam, SqlDbType.Int) { Value = minstock },
                             new SqlParameter(maxstockParam, SqlDbType.Int) { Value = maxstock },
                             new SqlParameter(srcPieceParam, SqlDbType.Int) { Value = srcpiece },
-                            new SqlParameter(restockingqtyParam, SqlDbType.Int) { Value = restockingqty },
+                            new SqlParameter(pendingParam, SqlDbType.Int) { Value = penddingqty },
                             new SqlParameter(intransiQtyParam, SqlDbType.Int) { Value = intransiqty },
                             new SqlParameter(avgSalSumParam, SqlDbType.Int) { Value = avgSalsum },
 
@@ -10901,7 +10641,7 @@ VALUES
                                         MinStock = dr.Field<int?>("MinStock"),
                                         MaxStock = dr.Field<int?>("MaxStock"),
                                         SrcPiece = dr.Field<int?>("SrcPiece"),
-                                        RestockingQty = dr.Field<int?>("RestockingQty"),
+                                        PendingQty = dr.Field<int?>("PendingQty"),
                                         InTransitQty = dr.Field<int?>("InTransitQty"),
                                         AvgSalSUM = dr.Field<int?>("AvgSalSUM"),
                                         CreateDate = dr.Field<DateTime>("CreateDate"),
@@ -10924,6 +10664,43 @@ VALUES
             }
         }
         
+        public string GetNewRplNo()
+        {
+            string strSql = @"
+DECLARE @prefix NVARCHAR(20);
+DECLARE @maxNo NVARCHAR(50);
+DECLARE @newNo NVARCHAR(50);
+DECLARE @seq INT;
+
+-- 前缀：RO + yyMMdd
+SET @prefix = 'RO' + RIGHT(CONVERT(CHAR(6), GETDATE(), 12), 6);  
+
+-- 找当日最大流水
+SELECT @maxNo = MAX(RplNo)
+FROM Tbl_Cargo_RplOrder
+WHERE RplNo LIKE @prefix + '%';
+
+-- 截取最后四位并+1
+IF @maxNo IS NULL
+    SET @seq = 1;
+ELSE
+    SET @seq = CAST(RIGHT(@maxNo, 4) AS INT) + 1;
+
+-- 生成新的单号
+SET @newNo = @prefix + RIGHT('0000' + CAST(@seq AS VARCHAR(4)), 4);
+
+SELECT @newNo AS NewRplNo;
+";
+            using (DbCommand command = conn.GetSqlStringCommond(strSql))
+            {
+                string newRplNo = conn.ExecuteScalar(command)?.ToString();
+                if (string.IsNullOrWhiteSpace(newRplNo))
+                {
+                    throw new ApplicationException("获取最新补货单号失败");
+                }
+                return newRplNo;
+            }
+        }
         #endregion
         #region 来货单 
         public void AddPurchaseOrderInfo(CargoOrderEntity entity, List<CargoProductEntity> productList)

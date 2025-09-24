@@ -6197,51 +6197,6 @@ WHERE
 
             return result;
         }
-        /// <summary>
-        /// 查询基础产品数据列表
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        /// <exception cref="ApplicationException"></exception>
-        public List<CargoProductEntity> QueryProductDataBasic(CargoProductEntity entity)
-        {
-            List<CargoProductEntity> result = new List<CargoProductEntity>();
-            try
-            {
-                string strSQL = $@"
-select a.*,c.TypeName,c.ParentID,c.TypeParentName from Tbl_Cargo_ProductSpec as a
- inner join Tbl_Cargo_ProductType as c on a.TypeID=c.TypeID
-where a.GoodsCode='{entity.GoodsCode}'
-";
-                using (DbCommand cmdAdd = conn.GetSqlStringCommond(strSQL))
-                {
-                    using (DataTable dt = conn.ExecuteDataTable(cmdAdd))
-                    {
-                        foreach (DataRow idr in dt.Rows)
-                        {
-                            result.Add(new CargoProductEntity
-                            {
-                                ProductCode = Convert.ToString(idr["ProductCode"]),
-                                TypeID = Convert.ToInt32(idr["TypeID"]),
-                                TypeName = Convert.ToString(idr["TypeName"]),
-                                ParentID = Convert.ToInt32(idr["ParentID"]),
-                                Specs = Convert.ToString(idr["Specs"]),
-                                GoodsCode = Convert.ToString(idr["GoodsCode"]),
-                                Model = Convert.ToString(idr["Model"]),
-                                Figure = Convert.ToString(idr["Figure"]),
-                                LoadIndex = Convert.ToString(idr["LoadIndex"]),
-                                SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
-                                Born = Convert.ToString(idr["Born"]),
-                            });
-                        }
-
-                    }
-                }
-            }
-            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
-
-            return result;
-        }
 
         public Hashtable QueryPageALLProductData(int pIndex, int pNum, CargoProductEntity entity)
         {

@@ -10773,7 +10773,7 @@ INSERT INTO
 		MinStock,
 		MaxStock,
 		SrcPiece,
-		RestockingQty,
+		PendingQty,
 		InTransitQty,
 		AvgSalSUM,
 		CreateDate,
@@ -10796,7 +10796,7 @@ VALUES
                         int? typeCate = null;
                         int sysPiece = 0;
 
-                        int minstock, maxstock, srcpiece, restockingqty, intransiqty, avgSalsum;
+                        int minstock, maxstock, srcpiece, penddingqty, intransiqty, avgSalsum;
                         minstock = row.MinStock.GetValueOrDefault();
                         maxstock = row.MaxStock.GetValueOrDefault();
                         srcpiece = row.SrcPiece.GetValueOrDefault();
@@ -10832,7 +10832,7 @@ VALUES
                         string minstockParam = "@MinStock" + rowIndex;
                         string maxstockParam = "@MaxStock" + rowIndex;
                         string srcPieceParam = "@SrcPiece" + rowIndex;
-                        string restockingqtyParam = "@RestockingQty" + rowIndex;
+                        string pendingParam = "@PendingQty" + rowIndex;
                         string intransiQtyParam = "@InTransitQty" + rowIndex;
                         string avgSalSumParam = "@AvgSalSUM" + rowIndex;
                         string donePieceParam = "@DonePiece" + rowIndex;
@@ -10840,7 +10840,7 @@ VALUES
                         string updateDateParam = "@UpdateDate" + rowIndex;
 
                         sqlvaluesStrList.Add($"({rplIDParam}, {productIDParam}, {productNameParam}, {productCodeParam}, {goodsCodeParam}, {typeCateParam}, {typeIDParam}, {typeNameParam}, {pieceParam}," +
-                            $"{sysPieceParam}, {donePieceParam}, {minstock}, {maxstock}, {sysPiece}, {restockingqty}, {intransiQtyParam}, {avgSalsum}, {createDateParam}, {updateDateParam})");
+                            $"{sysPieceParam}, {donePieceParam}, {minstock}, {maxstock}, {sysPiece}, {penddingqty}, {intransiQtyParam}, {avgSalsum}, {createDateParam}, {updateDateParam})");
 
                         rowssqlParameters.AddRange(new List<SqlParameter>()
                         {
@@ -10860,7 +10860,7 @@ VALUES
                             new SqlParameter(minstockParam, SqlDbType.Int) { Value = minstock },
                             new SqlParameter(maxstockParam, SqlDbType.Int) { Value = maxstock },
                             new SqlParameter(srcPieceParam, SqlDbType.Int) { Value = srcpiece },
-                            new SqlParameter(restockingqtyParam, SqlDbType.Int) { Value = restockingqty },
+                            new SqlParameter(pendingParam, SqlDbType.Int) { Value = penddingqty },
                             new SqlParameter(intransiQtyParam, SqlDbType.Int) { Value = intransiqty },
                             new SqlParameter(avgSalSumParam, SqlDbType.Int) { Value = avgSalsum },
 

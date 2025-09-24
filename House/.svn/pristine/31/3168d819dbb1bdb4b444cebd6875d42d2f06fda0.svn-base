@@ -485,7 +485,6 @@ namespace House.Business.Cargo
             CargoClientManager client = new CargoClientManager();
             CargoWeiXinManager wxMan = new CargoWeiXinManager();
             CargoInterfaceManager interfaceManager = new CargoInterfaceManager();
-
             //使用事务
             using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
             {
@@ -503,7 +502,7 @@ namespace House.Business.Cargo
                         }
                     }
                     //如果有马牌订单号，更新到马牌订单表
-                    if (!string.IsNullOrEmpty(entity.OpenOrderNo) && entity.OpenOrderSource == "1")
+                    if (!string.IsNullOrEmpty(entity.OpenOrderNo) && entity.OpenOrderSource=="1")
                     {
                         interfaceManager.UpdateContiOrderCreateData(new saleOpenInfoResp
                         {
@@ -517,7 +516,7 @@ namespace House.Business.Cargo
                         });
                     }
                     //如果有开思订单号，更新到马牌订单表
-                    if (!string.IsNullOrEmpty(entity.OpenOrderNo) && entity.OpenOrderSource == "2")
+                    if (!string.IsNullOrEmpty(entity.OpenOrderNo) && entity.OpenOrderSource=="2")
                     {
                         interfaceManager.UpdateCassMallOrderCreateData(new saleOpenInfoResp
                         {
@@ -541,25 +540,6 @@ namespace House.Business.Cargo
                     lw.WriteLog(log);
                     throw;
                 }
-            }
-            
-            //销售单创建后库存变少，检查是否需要创建补货单
-            List<RplOrderAutoGeneratParam_Goods> rplGoodsList = new List<RplOrderAutoGeneratParam_Goods>();
-            if(entity != null && entity.goodsList != null && entity.goodsList.Any())
-            {
-                RplOrderAutoGeneratParam rplParam = new RplOrderAutoGeneratParam()
-                {
-                    ReqBy = entity.CreateAwbID,
-                    ReqByName = entity.CreateAwb,
-                    SrcType = 1, //销售单标记
-                    SrcCode = entity.OrderNo,
-                    GoodsList = entity.goodsList.Select(x => new RplOrderAutoGeneratParam_Goods()
-                    {
-                        ProductID = x.ProductID,
-                        AreaID = x.AreaID,
-                    }).ToList()
-                };
-                TryGeneralRplOrder(rplParam);
             }
         }
         /// <summary>
@@ -3892,28 +3872,6 @@ namespace House.Business.Cargo
         }
         #endregion
         #region 补货单方法集合
-
-        public void TryGeneralRplOrder(RplOrderAutoGeneratParam entity)
-        {
-            LogEntity log = new LogEntity();
-            log.Moudle = "补货单";
-            log.Status = "0";
-            log.NvgPage = "尝试生成补货单";
-            log.UserID = entity.ReqBy;
-            log.Operate = "A";
-            LogWrite<CargoOrderEntity> lw = new LogWrite<CargoOrderEntity>();
-            try
-            {
-                man.AutoGeneralRplOrder(entity);
-            }
-            catch (Exception ex)
-            {
-                log.Status = "1";
-                log.Memo = ex.Message + " " + ex.StackTrace;
-                lw.WriteLog(log);
-                return;
-            }
-        }
         public CargoRplOrderListDto QueryRplOrder(CargoRplOrderListDto entity)
         {
             CargoRplOrderListDto rtData = new CargoRplOrderListDto();

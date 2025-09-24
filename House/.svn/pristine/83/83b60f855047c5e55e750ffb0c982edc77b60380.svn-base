@@ -44,7 +44,7 @@ namespace House.Entity.Dto.Order
 
         //计算字段
         public string LISS { get => LoadIndex + SpeedLevel; } //LoadIndex SpeedSymbol 载重指数 + 速度级别
-        public int SrcRealPiece { get => SrcPiece.GetValueOrDefault() + InTransitQty.GetValueOrDefault(); }
+        public int SrcRealPiece { get => SrcPiece.GetValueOrDefault() + InTransitQty.GetValueOrDefault() }
 
 
     }
