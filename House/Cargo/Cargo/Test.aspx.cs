@@ -406,6 +406,7 @@ namespace Cargo
         }
         protected void Page_Load(object sender, EventArgs e)
         {
+
             // RedisHelper.HashSet("HCYCHouseStockSyc", "93_34_LTCT215551603", "LTCT215551603");
             // RedisHelper.HashSet("HCYCHouseStockSyc", "93_34_LTCT225551801", "LTCT225551801");
             CargoInterfaceBus bus = new CargoInterfaceBus();

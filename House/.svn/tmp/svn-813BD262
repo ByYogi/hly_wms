@@ -469,6 +469,74 @@ namespace HouseServices
             CargoOrderBus orderBus = new CargoOrderBus();
             CargoHouseBus house = new CargoHouseBus();
 
+            #region 增量同步共享仓库存至前置仓
+            //以TypeID为Key，ProductCode为Value
+            Dictionary<int, string> DPdicCass = new Dictionary<int, string>();
+            Dictionary<int, string> SJdicCass = new Dictionary<int, string>();
+            string StProductCode = string.Empty;
+            RedisValue[] HCYCredisValues = RedisHelper.HashKeys("HCYCHouseStockSyc");
+            foreach (RedisValue redisValue in HCYCredisValues)
+            {
+                string key = redisValue.ToString();//93_34_LTCT245452005
+                string ProductCodeV = Convert.ToString(RedisHelper.HashGet("HCYCHouseStockSyc", key));
+                int HouseID = Convert.ToInt32(key.Split('_')[0]);
+                //品牌ID
+                int TypeID = Convert.ToInt32(key.Split('_')[1]);
+                //产品编码
+                string ProductCode = Convert.ToString(key.Split('_')[2]);
+
+                //处理东平云仓和顺捷云仓库存数据
+                if (HouseID.Equals(93))
+                {
+                    if (DPdicCass.ContainsKey(TypeID))
+                    {
+                        // 获取当前Key的内容
+                        string currentValue = DPdicCass[TypeID];
+
+                        // 更新内容
+                        string updatedValue = currentValue + "','" + ProductCode;
+                        DPdicCass[TypeID] = updatedValue;
+                    }
+                    else
+                    {
+                        DPdicCass.Add(TypeID, ProductCode);
+                    }
+                }
+                else if (HouseID.Equals(100))
+                {
+                    if (SJdicCass.ContainsKey(TypeID))
+                    {
+                        // 获取当前Key的内容
+                        string currentValue = SJdicCass[TypeID];
+
+                        // 更新内容
+                        string updatedValue = currentValue + "','" + ProductCode;
+                        SJdicCass[TypeID] = updatedValue;
+                    }
+                    else
+                    {
+                        SJdicCass.Add(TypeID, ProductCode);
+                    }
+                }
+            }
+
+            //开始同步东平仓增量库存
+            foreach (var cass in DPdicCass)
+            {
+                List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 93, TypeID = cass.Key, ProductCode = cass.Value });
+                bus.SaveNextDayProductData(entities);
+            }
+            //开始同步顺捷仓增量库存
+            foreach (var cass in SJdicCass)
+            {
+                List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 100, TypeID = cass.Key, ProductCode = cass.Value });
+                bus.SaveNextDayProductData(entities);
+            }
+
+            RedisHelper.KeyDelete("HCYCHouseStockSyc");
+            LogHelper.WriteLog("HCYCHouseStockSyc缓存删除成功");
+            #endregion
+
             #region 前置仓次日达订单自动同步共享仓生成订单
             RedisValue[] redisValues = RedisHelper.HashKeys("NextDayOrderShareSync");
             foreach (RedisValue redisValue in redisValues)
@@ -507,9 +575,7 @@ namespace HouseServices
                 ent.LogisID = houseEnt.HouseID.Equals(97) || houseEnt.HouseID.Equals(95) || houseEnt.HouseID.Equals(101) ? 62 : houseEnt.HouseID.Equals(136) ? 383 : 34;
                 ent.CreateDate = DateTime.Now;
                 string outID = DateTime.Now.ToString("yyMMdd") + GetRandomFourNumString();//出库单号
-                ent.OrderNo = GetMaxOrderNumByCurrentDate(houseEnt.HouseID, houseEnt.HouseCode, out OrderNum);
-                ent.OutHouseName = houseEnt.Name;
-                ent.OrderNum = OrderNum;
+
 
                 List<CargoInterfaceEntity> goods = new List<CargoInterfaceEntity>();
                 ArrayList rows = (ArrayList)JSON.Decode(goodsList);
@@ -532,11 +598,38 @@ namespace HouseServices
                     if (stockList.Count <= 0)
                     {
                         LogHelper.WriteLog("商品库存不足");
+                        #region 商品库存不足
+                        QySendInfoEntity sendNoStock = new QySendInfoEntity();
+                        sendNoStock.title = "次日达订单 商品库存不足";
+                        //推送给提交人
+                        sendNoStock.msgType = msgType.textcard;
+                        sendNoStock.agentID = "1000003";//消息通知的应用
+                        sendNoStock.AgentSecret = "VkkRCESh5hxT8FStrYa0jWjIg0ux--M670SoFFyuimM";
+                        //sendNoStock.toUser = "1000,";
+                        sendNoStock.toTag = "66";
+                        //send.toTag = "19";
+                        sendNoStock.content = "<div></div><div>出库仓库：" + houseEnt.Name + "-出库" + "</div><div>商城订单号：" + ent.WXOrderNo + "</div><div>出库订单号：" + ent.OrderNo + "</div><div>订单数量：" + ent.Piece.ToString() + "</div><div>订单金额：" + ent.TotalCharge.ToString("F2") + "</div><div>货物信息：" + outHouseList.FirstOrDefault().GoodsName + "</div><div>付款方式：现付</div><div>送货方式：次日达</div><div>门店名称：" + ent.AcceptUnit + "</div><div>收货信息：" + ent.AcceptPeople + " " + ent.AcceptCellphone + "</div><div>收货地址：" + ent.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
+                        sendNoStock.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + ent.OrderNo;
+                        WXQYSendHelper.DLTQYPushInfo(sendNoStock);
+                        #endregion
                         continue;
                     }
                     if (stockList.Sum(c => c.StockNum) < piece)
                     {
-                        LogHelper.WriteLog("商品库存不足");
+                        #region 商品库存不足
+                        QySendInfoEntity sendNoStock = new QySendInfoEntity();
+                        sendNoStock.title = "次日达订单 商品库存不足";
+                        //推送给提交人
+                        sendNoStock.msgType = msgType.textcard;
+                        sendNoStock.agentID = "1000003";//消息通知的应用
+                        sendNoStock.AgentSecret = "VkkRCESh5hxT8FStrYa0jWjIg0ux--M670SoFFyuimM";
+                        //sendNoStock.toUser = "1000,";
+                        sendNoStock.toTag = "66";
+                        //send.toTag = "19";
+                        sendNoStock.content = "<div></div><div>出库仓库：" + houseEnt.Name + "-出库" + "</div><div>商城订单号：" + ent.WXOrderNo + "</div><div>出库订单号：" + ent.OrderNo + "</div><div>订单数量：" + ent.Piece.ToString() + "</div><div>订单金额：" + ent.TotalCharge.ToString("F2") + "</div><div>货物信息：" + outHouseList.FirstOrDefault().GoodsName + "</div><div>付款方式：现付</div><div>送货方式：次日达</div><div>门店名称：" + ent.AcceptUnit + "</div><div>收货信息：" + ent.AcceptPeople + " " + ent.AcceptCellphone + "</div><div>收货地址：" + ent.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
+                        sendNoStock.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + ent.OrderNo;
+                        WXQYSendHelper.DLTQYPushInfo(sendNoStock);
+                        #endregion
                         //LogHelper.WriteLog(productBasic[0].Specs + " " + productBasic[0].Figure + "库存不足");
                         continue;
                     }
@@ -657,7 +750,9 @@ namespace HouseServices
                 ent.WXOrderNo = "";
                 ent.OrderType = "0";
                 ent.OpenOrderSource = "1";
-
+                ent.OrderNo = GetMaxOrderNumByCurrentDate(houseEnt.HouseID, houseEnt.HouseCode, out OrderNum);
+                ent.OutHouseName = houseEnt.Name;
+                ent.OrderNum = OrderNum;
 
                 ent.goodsList = entDest;
 
@@ -729,76 +824,6 @@ namespace HouseServices
             }
             #endregion
 
-            LogHelper.WriteLog("开始增量同步共享仓库存至前置仓");
-
-
-            #region 增量同步共享仓库存至前置仓
-            //以TypeID为Key，ProductCode为Value
-            Dictionary<int, string> DPdicCass = new Dictionary<int, string>();
-            Dictionary<int, string> SJdicCass = new Dictionary<int, string>();
-            string StProductCode = string.Empty;
-            RedisValue[] HCYCredisValues = RedisHelper.HashKeys("HCYCHouseStockSyc");
-            foreach (RedisValue redisValue in HCYCredisValues)
-            {
-                string key = redisValue.ToString();//93_34_LTCT245452005
-                string ProductCodeV = Convert.ToString(RedisHelper.HashGet("HCYCHouseStockSyc", key));
-                int HouseID = Convert.ToInt32(key.Split('_')[0]);
-                //品牌ID
-                int TypeID = Convert.ToInt32(key.Split('_')[1]);
-                //产品编码
-                string ProductCode = Convert.ToString(key.Split('_')[2]);
-
-                //处理东平云仓和顺捷云仓库存数据
-                if (HouseID.Equals(93))
-                {
-                    if (DPdicCass.ContainsKey(TypeID))
-                    {
-                        // 获取当前Key的内容
-                        string currentValue = DPdicCass[TypeID];
-
-                        // 更新内容
-                        string updatedValue = currentValue + "','" + ProductCode;
-                        DPdicCass[TypeID] = updatedValue;
-                    }
-                    else
-                    {
-                        DPdicCass.Add(TypeID, ProductCode);
-                    }
-                }
-                else if (HouseID.Equals(100))
-                {
-                    if (SJdicCass.ContainsKey(TypeID))
-                    {
-                        // 获取当前Key的内容
-                        string currentValue = SJdicCass[TypeID];
-
-                        // 更新内容
-                        string updatedValue = currentValue + "','" + ProductCode;
-                        SJdicCass[TypeID] = updatedValue;
-                    }
-                    else
-                    {
-                        SJdicCass.Add(TypeID, ProductCode);
-                    }
-                }
-            }
-
-            //开始同步东平仓增量库存
-            foreach (var cass in DPdicCass)
-            {
-                List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 93, TypeID = cass.Key, ProductCode = cass.Value });
-                bus.SaveNextDayProductData(entities);
-            }
-            //开始同步顺捷仓增量库存
-            foreach (var cass in SJdicCass)
-            {
-                List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 100, TypeID = cass.Key, ProductCode = cass.Value });
-                bus.SaveNextDayProductData(entities);
-            }
-
-            RedisHelper.KeyDelete("HCYCHouseStockSyc");
-            LogHelper.WriteLog("HCYCHouseStockSyc缓存删除成功");
-            #endregion
         }
         /// <summary>
         /// 每月清零优惠额度

@@ -63,7 +63,6 @@ namespace HouseServices
             System.Timers.Timer PushNextDatTime = new System.Timers.Timer();
             System.Timers.Timer RemoveOrderQuotaTime = new System.Timers.Timer();
             System.Timers.Timer AutomaticAvoidance = new System.Timers.Timer();
-            System.Timers.Timer SalePieceStaticTime = new System.Timers.Timer();
 
             //马牌订单和库存同步接口定时器
             ContiTime.Elapsed += ContiTime_Elapsed;
@@ -126,12 +125,6 @@ namespace HouseServices
             ///优惠卷失效
             AutomaticAvoidance.Elapsed += AutomaticAvoidance_Elapsed;
             AutomaticAvoidance.Interval = 60 * 60 * 1000;//1小时跳动一次
-            AutomaticAvoidance.Enabled = true;
-
-            //每月和每日销量 生成静态化销量数据
-            SalePieceStaticTime.Elapsed += GenerateDailySalesSnapshot;
-            SalePieceStaticTime.Elapsed += GenerateMonthlySalesSnapshot;
-            AutomaticAvoidance.Interval = 60 * 60 * 1000 * 2;//2小时跳动一次
             AutomaticAvoidance.Enabled = true;
         }
         /// <summary>
@@ -7320,21 +7313,6 @@ namespace HouseServices
             return;
         }
 
-        #endregion
-
-        #region 每月每日销量 数据静态化
-        //昨日销量数据静态化
-        void GenerateDailySalesSnapshot(object sender, ElapsedEventArgs e)
-        {
-            CargoOrderBus orderBus = new CargoOrderBus();
-            orderBus.GenerateDailySalesSnapshot();
-        }
-        //上月月均销量数据静态化
-        void GenerateMonthlySalesSnapshot(object sender, ElapsedEventArgs e)
-        {
-            CargoOrderBus orderBus = new CargoOrderBus();
-            orderBus.GenerateMonthlySalesSnapshot();
-        }
         #endregion
     }
 }
