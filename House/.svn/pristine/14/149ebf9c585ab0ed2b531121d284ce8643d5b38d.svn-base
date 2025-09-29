@@ -1,0 +1,159 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 盘点数据列表数据结构实体1.2.12.Tbl_Cargo_StockTake（盘点数据表）
+    /// </summary>
+    [Serializable]
+    public class CargoStockTakeEntity
+    {
+
+        public int StockID { get; set; }
+        public int HouseID { get; set; }
+        public string HouseName { get; set; }
+        public int HeadHouseID { get; set; }
+        public string HeadHouseName { get; set; }
+        public int AreaID { get; set; }
+        public string AreaName { get; set; }
+        public string CreateID { get; set; }
+        public string CreateName { get; set; }
+        public DateTime CreateDate { get; set; }
+        /// <summary>
+        /// 盘点状态 0：未盘点：盘点中2：盘点完成
+        /// </summary>
+        public string TakeStatus { get; set; }
+        public int StockNum { get; set; }
+        public DateTime OP_DATE { get; set; }
+        public int TypeID { get; set; }
+        public string TypeName { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        /// <summary>
+        /// 盘点模式：0：全量盘点； 1：动态盘点
+        /// </summary>
+        public byte? TakeMode { get; set; }
+        public byte? TakeType { get; set; } //0|1
+        public int? SplitThreshold { get; set; }
+        public List<CargoStockTakeContainerEntity> StockTakeContainerList { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+    /// <summary>
+    /// 盘点货位数据结构实体1.2.13.Tbl_Cargo_StockTakeContainer（盘点货位数据表）
+    /// </summary>
+    [Serializable]
+    public class CargoStockTakeContainerEntity
+    {
+        public int StockID { get; set; }
+        public int ContainerID { get; set; }
+
+        public string ContainerCode { get; set; }
+        public int StockNum { get; set; }
+        /// <summary>
+        /// 盘点提交状态0：未提交1：已提交
+        /// </summary>
+        public string StockStatus { get; set; }
+
+        public DateTime StockDate { get; set; }
+        public DateTime OP_DATE { get; set; }
+        public int TakePiece { get; set; }
+        public string TakeUser { get; set; }
+        public string TakeUserName { get; set; }
+        public int ReviewStatus { get; set; }
+        public string ReviewUser { get; set; }
+        public string ReviewUserName { get; set; }
+        public DateTime ReviewTime { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+    /// <summary>
+    /// 盘点数据标签结构实体
+    /// </summary>
+    [Serializable]
+    public class CargoStockTakeTagEntity
+    {
+        public long ProductID { get; set; }
+        public int StockID { get; set; }
+        public string QueryStockID { get; set; }
+        public string TagCode { get; set; }
+        public string ContainerCode { get; set; }
+        public int ContainerID { get; set; }
+        public string ScanStatus { get; set; }
+        public string StockStatus { get; set; }
+        public string TakeSubmitStatus { get; set; }
+        public string ScanLoginName { get; set; }
+        public string ScanUserName { get; set; }
+        public string ProductName { get; set; }
+        public string Batch { get; set; }
+        public string Remark { get; set; }
+
+        public string TypeName { get; set; }
+        public string Specs { get; set; }
+        public string Figure { get; set; }
+        public string LoadIndex { get; set; }
+        public string SpeedLevel { get; set; }
+        public string GoodsCode { get; set; }
+        public string VoiceContent { get; set; }
+        public DateTime? ScanDate { get; set; }
+        public int ScanContainerID { get; set; }
+        public string ScanContainerCode { get; set; }
+        public int OldContainerID { get; set; }
+        public string OldContainerCode { get; set; }
+        
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

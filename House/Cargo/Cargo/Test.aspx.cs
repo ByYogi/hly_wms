@@ -4,6 +4,7 @@ using House.Business.Cargo;
 using House.Entity;
 using House.Entity.Cargo;
 using House.Entity.Cargo.Interface;
+using House.Entity.Dto.Order.CargoRpl;
 using iText.Kernel.Pdf;
 using Memcached.ClientLibrary;
 using Newtonsoft.Json;
@@ -406,6 +407,30 @@ namespace Cargo
         }
         protected void Page_Load(object sender, EventArgs e)
         {
+            CargoOrderBus ordrBus = new CargoOrderBus();
+
+            //销售单创建后库存变少，检查是否需要创建补货单
+            List<RplOrderAutoGeneratParam_Goods> rplGoodsList = new List<RplOrderAutoGeneratParam_Goods>();
+            RplOrderAutoGeneratParam rplParam = new RplOrderAutoGeneratParam()
+            {
+                ReqBy = "3345",
+                ReqByName = "胡忠俊",
+                SrcType = 1, //销售单标记
+                SrcCode = "YJ250929082",
+                GoodsList = new List<RplOrderAutoGeneratParam_Goods>()
+                {
+                    new RplOrderAutoGeneratParam_Goods()
+                    {
+                        ProductID = 938921,
+                        AreaID = 3677
+                    },
+                }
+            };
+            ordrBus.TryGeneralRplOrder(rplParam);
+            return;
+
+            ordrBus.GenerateDailySalesSnapshot();
+            return;
 
             // RedisHelper.HashSet("HCYCHouseStockSyc", "93_34_LTCT215551603", "LTCT215551603");
             // RedisHelper.HashSet("HCYCHouseStockSyc", "93_34_LTCT225551801", "LTCT225551801");

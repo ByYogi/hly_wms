@@ -1,0 +1,2299 @@
+﻿using House.Entity;
+using House.Entity.Cargo;
+using House.Entity.Cargo.House;
+using House.Entity.Cargo.Product;
+using House.Manager;
+using House.Manager.Cargo;
+using House.Manager.Common;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Management.Instrumentation;
+using System.Reflection;
+using System.Text;
+using System.Transactions;
+
+namespace House.Business.Cargo
+{
+    /// <summary>
+    /// 仓库管理逻辑操作类
+    /// </summary>
+    public class CargoHouseBus
+    {
+        #region 仓库管理操作方法集合
+        private CargoHouseManager man = new CargoHouseManager();
+        private CargoFactoryOrderManager foman = new CargoFactoryOrderManager();
+        /// <summary>
+        /// 判断仓库名是否存在 true:表示存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns>true:表示存在</returns>
+        public bool IsExistCargoHouse(CargoHouseEntity entity)
+        {
+            return man.IsExistCargoHouse(entity);
+        }
+        /// <summary>
+        /// 判断仓库代码是否存在 true:表示存在 
+        /// </summary>
+        /// <param name="housecode"></param>
+        /// <returns></returns>
+        public bool IsExistCargoHouse(string houseCode, int houseID = 0)
+        {
+            return man.IsExistCargoHouse(houseCode, houseID);
+        }
+        /// <summary>
+        /// 根据仓库ID查询仓库数据
+        /// </summary>
+        /// <param name="houseID"></param>
+        /// <returns></returns>
+        public CargoHouseEntity QueryCargoHouseByID(int houseID)
+        {
+            return man.QueryCargoHouseByID(houseID);
+        }
+        /// <summary>
+        /// 新增仓库数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoHouse(CargoHouseEntity entity, LogEntity log)
+        {
+            LogWrite<CargoHouseEntity> lw = new LogWrite<CargoHouseEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    if (entity.ParentID.HasValue)
+                    {
+                        entity.ParentName = man.QueryHouseNameByID(entity.ParentID.Value);
+                    }
+                    man.AddCargoHouse(entity);
+                    log.Memo = "新增仓库";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增仓库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改仓库数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateCargoHouse(CargoHouseEntity entity, LogEntity log)
+        {
+            LogWrite<CargoHouseEntity> lw = new LogWrite<CargoHouseEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    if (entity.ParentID.HasValue)
+                    {
+                        entity.ParentName = man.QueryHouseNameByID(entity.ParentID.Value);
+                    }
+                    man.UpdateCargoHouse(entity);
+                    log.Memo = "修改仓库";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改仓库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 删除仓库数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoHouse(List<CargoHouseEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoHouseEntity> lw = new LogWrite<CargoHouseEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelCargoHouse(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "作废仓库：仓库ID：" + it.HouseID.ToString() + "，仓库名称：" + it.Name.Trim() + "，联系人：" + it.Person.Trim() + "，联系手机：" + it.Cellphone.Trim();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "作废仓库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 仓库查询
+        /// </summary>
+        /// <param name="pIndex">当前页数</param>
+        /// <param name="pNum">每页多少条数据</param>
+        /// <param name="strWhere">查询条件</param>
+        /// <param name="strCountWhere">查询总数的查询条件</param>
+        /// <returns></returns>
+        public Hashtable QueryCargoHouse(int pIndex, int pNum, CargoHouseEntity entity)
+        {
+            return man.QueryCargoHouse(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询仓库
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoHouseEntity QueryCargoHouse(CargoHouseEntity entity)
+        {
+            return man.QueryCargoHouse(entity);
+        }
+        public List<CargoHouseEntity> BigDataQueryCargoHouse()
+        {
+            return man.BigDataQueryCargoHouse();
+        }
+
+
+        /// <summary>
+        /// 查询所有正常状态的仓库
+        /// </summary>
+        /// <returns></returns>
+        public List<CargoHouseEntity> QueryALLHouse()
+        {
+            return man.QueryALLHouse();
+        }
+        public List<CargoHouseEntity> QueryALLHouse(CargoHouseEntity entity)
+        {
+            return man.QueryALLHouse(entity);
+        }
+        /// <summary>
+        /// 查询城市
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoCityEntity> QueryCityData(CargoCityEntity entity)
+        {
+            return man.QueryCityData(entity);
+        }
+        /// <summary>
+        /// 判断是否存在配送区域
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistDeliveryArea(CargoAreaEntity entity)
+        {
+            return man.IsExistDeliveryArea(entity);
+        }
+        /// <summary>
+        /// 查询慧采云仓小程序广告Banner数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        /// <exception cref="ApplicationException"></exception>
+        public List<CargoBannerEntity> QueryHouseBannerList(CargoBannerEntity entity)
+        {
+            return man.QueryHouseBannerList(entity);
+        }
+        /// <summary>
+        /// 判断是否同步开思
+        /// </summary>
+        /// <param name="HouseID"></param>
+        /// <returns></returns>
+        public string SyncTypeHouse(string HouseID)
+        {
+            return man.SyncTypeHouse(HouseID);
+        }
+        /// <summary>
+        /// 开思同步产品信息  ProductID
+        /// </summary>
+        /// <param name="ProductID"></param>
+        /// <returns></returns>
+        public CargoProductEntity SyncTypeProduct(string ProductID)
+        {
+            return man.SyncTypeProduct(ProductID);
+        }
+        /// <summary>
+        /// 开思同步产品信息 OrderNo
+        /// </summary>
+        /// <param name="OrderNo"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> SyncTypeOrderNo(string OrderNo)
+        {
+            return man.SyncTypeOrderNo(OrderNo);
+        }
+        /// <summary>
+        /// 开思同步产品信息 MoveNo
+        /// </summary>
+        /// <param name="MoveNo"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> SyncTypeMoveNo(string MoveNo)
+        {
+            return man.SyncTypeMoveNo(MoveNo);
+        }
+        #endregion
+        #region 区域管理操作方法集合
+        /// <summary>
+        /// 查询所有区域信息
+        /// </summary>
+        public Hashtable QueryCargoArea(int pIndex, int pNum, CargoAreaEntity entity)
+        {
+            return man.QueryCargoArea(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 新增区域数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoArea(CargoAreaEntity entity, LogEntity log)
+        {
+            LogWrite<CargoAreaEntity> lw = new LogWrite<CargoAreaEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddCargoArea(entity);
+                    log.Memo = "新增区域";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增区域，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改区域
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoArea(CargoAreaEntity entity, LogEntity log)
+        {
+            LogWrite<CargoAreaEntity> lw = new LogWrite<CargoAreaEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateCargoArea(entity);
+                    log.Memo = "修改区域";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改区域，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 查询所有父ID为0的区域
+        /// </summary>
+        /// <returns></returns>
+        public List<CargoAreaEntity> QueryALLArea(CargoAreaEntity entity)
+        {
+            return man.QueryALLArea(entity);
+        }
+        /// <summary>
+        /// 根据仓库区域ID查询该所区域所在的仓库
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoAreaEntity QueryHouseByAreaID(CargoAreaEntity entity)
+        {
+            return man.QueryHouseByAreaID(entity);
+        }
+        public CargoAreaEntity QueryHouseByDeliveryArea(CargoAreaEntity entity)
+        {
+            return man.QueryHouseByDeliveryArea(entity);
+        }
+        /// <summary>
+        /// 根据客户查询该客户的订单出库仓库顺序
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoAreaEntity> QueryOutHouseLevelList(CargoAreaEntity entity)
+        {
+            return man.QueryOutHouseLevelList(entity);
+        }
+        public List<CargoAreaEntity> QueryALLAreaRecur(CargoAreaEntity entity)
+        {
+            return man.QueryALLAreaRecur(entity);
+        }
+        /// <summary>
+        /// 删除区域
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoArea(List<CargoAreaEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoAreaEntity> lw = new LogWrite<CargoAreaEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelCargoArea(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "删除区域：区域ID：" + it.AreaID.ToString() + "，区域代码：" + it.Code.Trim() + "，所属仓库ID：" + it.HouseID + "，备注：" + it.Remark.Trim();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除区域，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        public void UpdateCargoAreaType(List<CargoAreaEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoAreaEntity> lw = new LogWrite<CargoAreaEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateCargoAreaType(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "修改区域状态：区域ID：" + it.AreaID.ToString() + "，区域代码：" + it.Code.Trim() + "，所属仓库ID：" + it.HouseID + "，备注：" + it.Remark.Trim() + "，状态：" + it.DelFlag.Trim();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改区域状态，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 通过区域ID查询区域信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoAreaEntity QueryAreaByAreaID(CargoAreaEntity entity)
+        {
+            return man.QueryAreaByAreaID(entity);
+        }
+        /// <summary>
+        /// 判断是否存在相同的区域代码
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoAreaCode(CargoAreaEntity entity)
+        {
+            return man.IsExistCargoAreaCode(entity);
+        }
+        /// <summary>
+        /// 判断是否存在相同的订单代码
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoOrderCode(CargoAreaEntity entity)
+        {
+            return man.IsExistCargoOrderCode(entity);
+        }
+        /// <summary>
+        /// 该区域下是否存在货位
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoContainerArea(CargoAreaEntity entity)
+        {
+            return man.IsExistCargoContainerArea(entity);
+        }
+        /// <summary>
+        /// 通过区域ID查询区域信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoAreaEntity QueryAreaByDeliveryArea(CargoAreaEntity entity)
+        {
+            return man.QueryAreaByDeliveryArea(entity);
+        }
+        /// <summary>
+        /// 查询区域
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoAreaEntity> QueryAreaListByDeliveryArea(CargoAreaEntity entity)
+        {
+            return man.QueryAreaListByDeliveryArea(entity);
+        }
+        public List<CargoContainerStarEntity> QueryAreaContainer(CargoAreaEntity entity)
+        {
+            return man.QueryAreaContainer(entity);
+        }
+        #endregion
+        #region 货位管理操作方法集合
+        /// <summary>
+        /// 货位查询
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryCargoContainer(int pIndex, int pNum, CargoContainerEntity entity)
+        {
+            return man.QueryCargoContainer(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 新增货位数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoContainer(CargoContainerEntity entity, LogEntity log)
+        {
+            LogWrite<CargoContainerEntity> lw = new LogWrite<CargoContainerEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddCargoContainer(entity);
+                    log.Memo = "新增货位";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增货位，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改货位 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoContainer(CargoContainerEntity entity, LogEntity log)
+        {
+            LogWrite<CargoContainerEntity> lw = new LogWrite<CargoContainerEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateCargoContainer(entity);
+                    log.Memo = "修改货位";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改货位，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 判断是否存在相同的货位代码
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoContainerCode(CargoContainerEntity entity)
+        {
+            return man.IsExistCargoContainerCode(entity);
+        }
+        /// <summary>
+        /// 判断是否存在订单下的货位号码
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistOrderContainerCode(CargoContainerEntity entity)
+        {
+            return man.IsExistOrderContainerCode(entity);
+        }
+        /// <summary>
+        /// 判断该货位下是否存在库存
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistContainerGood(CargoContainerEntity entity)
+        {
+            return man.IsExistContainerGood(entity);
+        }
+        /// <summary>
+        /// 根据区域ID查询该 区域 下的所有货位数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerEntity> QueryContainerByAreaID(CargoContainerEntity entity)
+        {
+            return man.QueryContainerByAreaID(entity);
+        }
+        /// <summary>
+        /// 根据货位类型返回该货位类型的最大货位号
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public string ReturnContainerNum(CargoContainerEntity entity)
+        {
+            string result = string.Empty;
+            int n = man.ReturnContainerNum(entity);
+            switch (n.ToString().Length)
+            {
+                case 1:
+                    result = "000" + n.ToString();
+                    break;
+                case 2:
+                    result = "00" + n.ToString();
+                    break;
+                case 3:
+                    result = "0" + n.ToString();
+                    break;
+                case 4:
+                    result = n.ToString();
+                    break;
+                default:
+                    break;
+            }
+            return result;
+        }
+        /// <summary>
+        /// 删除货位
+        /// </summary>
+        /// <param name="entity"></param>
+        public int DelCargoContainer(List<CargoContainerEntity> entity, LogEntity log)
+        {
+            ///1.判断该货位上是否有货物，如果有则提示不能删除，先拉下货物下架再删除
+            ///2.如果没有货物则可以删除
+            int result = 0;
+            LogWrite<CargoContainerEntity> lw = new LogWrite<CargoContainerEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelCargoContainer(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "删除货位：货位ID：" + it.ContainerID.ToString() + "，货位代码：" + it.ContainerCode.Trim() + "，货位类型：" + it.ContainerType + "，可放最大件数：" + it.MaxPiece.ToString() + "，可放最大重量：" + it.MaxWeight.ToString() + "，可放最大体积：" + it.MaxVolume.ToString() + "，预警件数：" + it.WarnPiece.ToString() + "，所属区域ID：" + it.AreaID + "，备注：" + it.Remark.Trim();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除货位，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 通过产品类型查询货位，按星级排序
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerEntity> QueryContainerByType(CargoContainerEntity entity)
+        {
+            return man.QueryContainerByType(entity);
+        }
+        /// <summary>
+        /// 查询货位数据实体
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoContainerEntity QueryContainerEntity(CargoContainerEntity entity)
+        {
+            return man.QueryContainerEntity(entity);
+        }
+        /// <summary>
+        /// 根据货位代码查询货位数据
+        /// </summary>
+        /// <param name="containerCode"></param>
+        /// <returns></returns>
+        public CargoContainerEntity QueryContainerEntityByCode(string containerCode, int HouseID)
+        {
+            return man.QueryContainerEntityByCode(containerCode, HouseID);
+        }
+        public CargoContainerEntity QueryContainerEntityByID(int containerID)
+        {
+            return man.QueryContainerEntityByID(containerID);
+        }
+        /// <summary>
+        /// 根据类型ID、规格、花纹、载重指数、速度指数、订单年、订单月
+        /// </summary>
+        /// <param name="TypeID">类型ID</param>
+        /// <param name="Specs">规格</param>
+        /// <param name="Figure">花纹</param>
+        /// <param name="LoadIndex">载重指数</param>
+        /// <param name="SpeedLevel">速度指数</param>
+        /// <param name="ProYear">订单年</param>
+        /// <param name="ProMonth">订单月</param>
+        /// <returns></returns>
+        public CargoProductBasicPriceEntity QueryProductBasicPrice(CargoProductBasicPriceEntity entity)
+        {
+            return man.QueryProductBasicPrice(entity);
+        }
+        public CargoContainerEntity QueryTopOneContainer(CargoContainerEntity entity)
+        {
+            return man.QueryTopOneContainer(entity);
+        }
+        /// <summary>
+        /// 给小程序使用，按ProductCode汇总库存数据查询库存数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerShowEntity> QueryHouseStockDataMiniPro(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.QueryHouseStockDataMiniPro(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 小程序特价促销商品查询方法
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerShowEntity> QueryReduceSaleMiniPro(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.QueryReduceSaleMiniPro(pIndex, pNum, entity);
+        }
+        #endregion
+        #region 入库操作方法集合
+        /// <summary>
+        /// 保存入库单
+        /// </summary>
+        /// <param name="entity"></param>
+        public void SaveProductInCargo(List<CargoContainerGoodsEntity> entity, LogEntity log)
+        {
+            CargoProductManager pro = new CargoProductManager();
+            LogWrite<CargoContainerGoodsEntity> lw = new LogWrite<CargoContainerGoodsEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    log.Memo = "入库操作：产品类型ID：" + entity[0].TypeID.ToString();
+                    foreach (var it in entity)
+                    {
+                        man.AddContainerGoods(it);
+                        ////1.判断目标货位在货位产品表中是否存在 根据目标货位ID，旧货位产品类型ID，产品ID判断
+                        //CargoContainerGoodsEntity good = man.IsExistCargoContainerGoods(new CargoContainerGoodsEntity { ContainerID = it.ContainerID, TypeID = it.TypeID, ProductID = it.ProductID });
+                        //if (good != null && good.ID != 0)//说明存在 增加进去就OK
+                        //{
+                        //    //说明已经存在货位与产品关联表数据就修改
+                        //    man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = good.ID, Piece = it.Piece, IsAdd = true });
+                        //}
+                        //else
+                        //{
+                        //    ////2.根据产品信息查询在库库存ID是否存在
+                        //    //int GoodID = man.QueryContainerGoodsIDByProductInfo(it);
+                        //    //if (!GoodID.Equals(0))
+                        //    //{
+                        //    //    //就修改在库库存数据即可
+                        //    //    //说明已经存在货位与产品关联表数据就修改
+                        //    //    man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = GoodID, Piece = it.Piece, IsAdd = true });
+                        //    //}
+                        //    //else
+                        //    //{
+                        //    //    man.AddContainerGoods(it);
+                        //    //}
+                        //}
+                        //保存入库单表
+                        man.AddInContainerGoods(it);
+                        //修改货位上的产品件数
+                        man.UpdateContainerInPiece(new CargoContainerEntity { ContainerID = it.ContainerID, InPiece = it.Piece, IsAdd = true });
+                        //修改产品的入库状态 
+                        pro.UpdateCargoProductStatus(new CargoProductEntity { ProductID = it.ProductID, InCargoStatus = "1" });
+                        //修改工厂订单导入的入库状态
+                        foman.UpdateCargoStatus(new CargoProductEntity { ProductID = it.ProductID, InCargoStatus = "1" });
+                        //写日志 
+                        log.Memo += "产品ID：" + it.ProductID.ToString() + "，产品规格：" + it.Specs + "，型号：" + it.Model + "，花纹：" + it.Figure + ",货位ID：" + it.ContainerID.ToString() + "，入库件数：" + it.Piece.ToString();
+                    }
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "入库操作，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改在库库存数量
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void saveInHouseNum(List<CargoContainerGoodsEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoContainerGoodsEntity> lw = new LogWrite<CargoContainerGoodsEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var it in entity)
+                    {
+                        man.UpdateCargoContainerGoodsPiece(it);
+                        //man.UpdateContainerInPiece(new CargoContainerEntity { IsAdd = it.IsAdd, InPiece = it.Piece, ContainerID = it.ContainerID });
+                        if (it.IsAdd)
+                        {
+                            log.Memo = "增加库存成功：ID：" + it.ID.ToString() + "，货位ID：" + it.ContainerID.ToString() + "，产品ID：" + it.ProductID.ToString() + "，变动数量：" + it.Piece.ToString() + "，原有数量：" + it.OldPiece.ToString() + "，新数量：" + it.NewPiece.ToString();
+
+                        }
+                        else
+                        {
+
+                            log.Memo = "减少库存成功：ID：" + it.ID.ToString() + "，货位ID：" + it.ContainerID.ToString() + "，产品ID：" + it.ProductID.ToString() + "，变动数量：" + it.Piece.ToString() + "，原有数量：" + it.OldPiece.ToString() + "，新数量：" + it.NewPiece.ToString();
+                        }
+                    }
+
+
+                    //foreach (var it in entity)
+                    //{
+                    //    log.Memo += "货位ID：" + it.ContainerID.ToString() + "，入库件数：" + it.Piece.ToString();
+                    //}
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        #endregion
+        #region 打印入库单
+        /// <summary>
+        /// 查找未打印入库单的数据
+        /// </summary>
+        public List<CargoContainerShowEntity> QueryNoPrintInCargoAwbData(CargoContainerShowEntity entity)
+        {
+            return man.QueryNoPrintInCargoAwbData(entity);
+        }
+        #endregion
+        #region 入库管理
+        /// <summary>
+        /// 查询在库的产品数据
+        /// </summary>
+        public Hashtable QueryInHouseData(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.QueryInHouseData(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 保存移库位数据
+        /// </summary>
+        /// <param name="oldContainer"></param>
+        /// <param name="newContainer"></param>
+        /// <param name="log"></param>
+        public void SaveMoveContainer(CargoContainerShowEntity oldContainer, CargoContainerShowEntity newContainer, LogEntity log)
+        {
+            LogWrite<CargoContainerEntity> lw = new LogWrite<CargoContainerEntity>();
+            CargoInterfaceManager inMan = new CargoInterfaceManager();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    //True：表示全部转移，False：部分转移 
+                    bool isAdd = false;
+                    CargoContainerGoodsEntity oldgood = man.QueryCargoContainerGoods(new CargoContainerGoodsEntity { ID = oldContainer.ID });
+                    //如果件数和要移动的件数一致，则说明全部转移，否则部分转移
+                    if (oldgood.Piece.Equals(oldContainer.Piece))
+                    {
+                        isAdd = true;
+                    }
+                    //1.判断目标货位在货位产品表中是否存在 根据目标货位ID，旧货位产品类型ID，产品ID判断
+                    CargoContainerGoodsEntity good = man.IsExistCargoContainerGoods(new CargoContainerGoodsEntity { ContainerID = newContainer.ContainerID, TypeID = oldContainer.TypeID, ProductID = oldContainer.ProductID });
+                    if (good != null && good.ID != 0)//说明存在
+                    {
+                        //说明已经存在货位与产品关联表数据就修改
+                        man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = good.ID, Piece = oldContainer.Piece, IsAdd = true, IsBinTransfer = true });
+                    }
+                    else
+                    {
+                        //新增货位与产品关联表数据
+                        man.AddCargoContainerGoods(new CargoContainerGoodsEntity { ContainerID = newContainer.ContainerID, TypeID = oldContainer.TypeID, ProductID = oldContainer.ProductID, Piece = oldContainer.Piece, Weight = 0, InHouseTime = DateTime.Now, IsPrintInCargo = false, InCargoID = newContainer.InCargoID, IsBinTransfer = true });
+                    }
+
+                    //2.如果是全部转移，则删除原货位产品关联数据
+                    man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = oldContainer.ID, Piece = oldContainer.Piece, IsAdd = false, IsBinTransfer = true });
+                    //if (isAdd)
+                    //{
+                    //    man.DelCargoContainerGoods(new CargoContainerGoodsEntity { ID = oldContainer.ID });
+                    //}
+                    //else
+                    //{
+                    //    man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = oldContainer.ID, Piece = oldContainer.Piece, IsAdd = false });
+                    //}
+                    //3.修改货位表的在库件数
+                    man.UpdateContainerInPiece(new CargoContainerEntity { ContainerID = newContainer.ContainerID, InPiece = oldContainer.Piece, IsAdd = true });
+                    man.UpdateContainerInPiece(new CargoContainerEntity { ContainerID = oldContainer.ContainerID, InPiece = oldContainer.Piece, IsAdd = false });
+                    //保存移库数据
+                    man.AddMoveContainer(new CargoMoveContainerEntity
+                    {
+                        OldCCode = oldContainer.ContainerCode,
+                        OldCID = oldContainer.ContainerID,
+                        ProductID = oldContainer.ProductID,
+                        MoveNum = oldContainer.Piece,
+                        MoveStatus = isAdd ? "1" : "2",
+                        NewCCode = newContainer.ContainerCode,
+                        NewCID = newContainer.ContainerID,
+                        HouseID = newContainer.HouseID,
+                        OPID = log.UserID
+                    });
+                    //4.处理标签货位数据
+                    List<CargoProductTagEntity> tagEntities = new List<CargoProductTagEntity>();
+                    tagEntities.Add(new CargoProductTagEntity { TagCode = newContainer.TagCode, ContainerID = newContainer.ContainerID });
+                    inMan.UpdateProductTagContainID(tagEntities);
+                    log.Memo = "移库成功：原货位ID：" + oldContainer.ContainerID.ToString() + "，产品ID：" + oldContainer.ProductID.ToString() + "，类型ID：" + oldContainer.TypeID.ToString() + "，移库件数：" + oldContainer.Piece.ToString() + "，目标货位ID：" + newContainer.ContainerID.ToString() + "，目标货位代码：" + newContainer.ContainerCode + "，目标仓库：" + newContainer.HouseID.ToString() + "，目标区域：" + newContainer.AreaID.ToString();
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "移库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 根据在库表ID查询在库产品数据信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerShowEntity> QueryInHouseProductByID(CargoContainerGoodsEntity entity)
+        {
+            return man.QueryInHouseProductByID(entity);
+        }
+        /// <summary>
+        /// 判断目标货位在货位产品表中是否存在 根据目标货位ID，旧货位产品类型ID，产品ID判断
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoContainerGoodsEntity IsExistCargoContainerGoods(CargoContainerGoodsEntity entity)
+        {
+            return man.IsExistCargoContainerGoods(entity);
+        }
+        /// <summary>
+        /// 查询产品的货位数统计
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable queryStatisInHouseNum(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.queryStatisInHouseNum(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 根据产品信息查询该规格和花纹所在的货位
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerEntity> QueryInContainerByProduct(CargoProductEntity entity)
+        {
+            return man.QueryInContainerByProduct(entity);
+        }
+        /// <summary>
+        /// 根据产品ID查询在库库存数量
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerGoodsEntity> QueryCargoContainerGoodsByProductID(CargoContainerGoodsEntity entity)
+        {
+            return man.QueryCargoContainerGoodsByProductID(entity);
+        }
+        /// <summary>
+        /// 根据ID查询货位产品关联表数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoContainerGoodsEntity QueryCargoContainerGoods(CargoContainerGoodsEntity entity)
+        {
+            return man.QueryCargoContainerGoods(entity);
+        }
+
+        /// <summary>
+        /// 根据仓库ID查询货位ID
+        /// </summary>
+        /// <remarks>
+        ///  备注：查询第一条ContainerType='VIR'，有则取该货位号ContainerID。为空则倒序取第一条数据的货位号
+        /// </remarks>
+        /// <param name="houseId"></param>
+        public int QueryCargoContainerGoodsContainerID(int houseId)
+        {
+            return man.QueryCargoContainerGoodsContainerID(houseId);
+        }
+        #endregion
+        #region 出库管理
+        /// <summary>
+        /// 查询所有在库的产品数据
+        /// </summary>
+        public List<CargoContainerShowEntity> QueryALLHouseData(CargoContainerShowEntity entity)
+        {
+            return man.QueryALLHouseData(entity);
+        }
+        public List<CargoContainerShowEntity> QueryALLHouseStockData(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.QueryALLHouseStockData(pIndex, pNum, entity);
+        }
+        public List<CargoContainerShowEntity> QueryALLHouseData(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.QueryALLHouseData(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 查询所有产品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerShowEntity> PreQueryALLProduct(CargoContainerShowEntity entity)
+        {
+            return man.PreQueryALLProduct(entity);
+        }
+        /// <summary>
+        /// 出库保存
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void saveOutCargoData(List<CargoContainerShowEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoContainerShowEntity> lw = new LogWrite<CargoContainerShowEntity>();
+
+            try
+            {
+                log.Memo = "出库成功 订单号：" + entity[0].OrderNo + "，出库单号：" + entity[0].OutCargoID.ToString();
+                //1.保存出库单数据
+                man.saveOutCargoData(entity);
+                //2.判断出库的件数是否为全部出，如果是全部出则删除入库单数据，修改货位表在库件数，如果不是全部出，则入库表，货位表修改出库件数
+                foreach (var it in entity)
+                {
+                    CargoContainerGoodsEntity cont = man.QueryCargoContainerGoods(new CargoContainerGoodsEntity { ID = it.ID });
+                    //}
+                    //if (it.Piece.Equals(it.InPiece))//表示全部出库
+                    //{
+                    if (it.Piece.Equals(cont.Piece))//表示全部出库
+                    {
+                        //man.DelCargoContainerGoods(new CargoContainerGoodsEntity { ID = it.ID });
+                        //修改入库单的在货位件数
+                        man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = it.ID, Piece = it.Piece, IsAdd = false });
+                    }
+                    else
+                    {
+                        //修改入库单的在货位件数
+                        man.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = it.ID, Piece = it.Piece, IsAdd = false });
+                    }
+                    man.UpdateContainerInPiece(new CargoContainerEntity { ContainerID = it.ContainerID, InPiece = it.Piece, IsAdd = false });
+
+                    log.Memo += " 所在仓库：" + it.HouseName + " 所在区域：" + it.AreaName + " 产品类型：" + it.TypeName + " 产品名称：" + it.ProductName + " 型号：" + it.Model + " 规格：" + it.Specs + " 花纹：" + it.Figure + " 货位ID：" + it.ContainerID.ToString() + " 产品类型ID：" + it.TypeID.ToString() + " 产品ID：" + it.ProductID.ToString() + " 出库件数：" + it.Piece.ToString() + " 业务员销售价：" + it.ActSalePrice.ToString() + " 进仓价:" + it.SupplySalePrice.ToString();
+                }
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "出库失败，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+
+        }
+        /// <summary>
+        /// 打印出库单
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerShowEntity> QueryNoPrintOutCargoAwbData(CargoContainerShowEntity entity)
+        {
+            return man.QueryNoPrintOutCargoAwbData(entity);
+        }
+        /// <summary>
+        /// 查询出库单数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryOutHouseData(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.QueryOutHouseData(pIndex, pNum, entity);
+        }
+
+        #endregion
+        #region 安全库存操作方法集合
+        /// <summary>
+        /// 查询安全库存数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoSafeStockEntity> QuerySafeStockData(CargoSafeStockEntity entity)
+        {
+            return man.QuerySafeStockData(entity);
+        }
+        /// <summary>
+        /// 查询是否存在指定数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistSafeStockData(CargoSafeStockEntity entity)
+        {
+            return man.IsExistSafeStockData(entity);
+        }
+        /// <summary>
+        /// 新增安全库存数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void InsertSafeStockData(CargoSafeStockEntity entity, LogEntity log)
+        {
+            LogWrite<CargoSafeStockEntity> lw = new LogWrite<CargoSafeStockEntity>();
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.InsertSafeStockData(entity);
+                    log.Memo = "新增安全库存";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增安全库存失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改安全库存数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateSafeStockData(CargoSafeStockEntity entity, LogEntity log)
+        {
+            LogWrite<CargoSafeStockEntity> lw = new LogWrite<CargoSafeStockEntity>();
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateSafeStockData(entity);
+                    log.Memo = "修改安全库存";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改安全库存失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 删除安全库存数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DeleteSafeStockData(List<CargoSafeStockEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductBasicPriceEntity> lw = new LogWrite<CargoProductBasicPriceEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DeleteSafeStockData(entity);
+                    log.Memo = "删除安全库存：区域大仓ID";
+                    foreach (var it in entity)
+                    {
+                        log.Memo += it.HouseID + "，仓库ID：" + it.AreaID + "，产品类型ID:" + it.TypeID + "，规格:" + it.Specs + "，花纹:" + it.Figure + "，货品代码:" + it.GoodsCode + "，载重指数:" + it.LoadIndex + "，速度级别:" + it.SpeedLevel + "，安全库存:" + it.StockNum + "，操作人ID:" + it.OPID;
+                    }
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除安全库存失败，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 告警库存数据查询
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoSafeStockEntity> QueryWarnStockData(CargoSafeStockEntity entity)
+        {
+            return man.QueryWarnStockData(entity);
+        }
+        /// <summary>
+        /// 查询库存
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryStockBookData(CargoProductEntity entity)
+        {
+            return man.QueryStockBookData(entity);
+        }
+
+        public CargoSafeStockEntity QueryStockDataByProductCode(CargoSafeStockEntity entity)
+        {
+            return man.QueryStockDataByProductCode(entity);
+        }
+
+        #endregion
+        #region 基础规格管理
+        /// <summary>
+        /// 查询当前基础数据表中每个品牌的最大顺序号
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public string GetMaxProductCodeNum(CargoProductEntity entity)
+        {
+            string result = string.Empty;
+            int n = man.ReturnMaxBasicSpecsNum(entity);
+            switch (n.ToString().Length)
+            {
+                case 1:
+                    result = "000000" + n.ToString();
+                    break;
+                case 2:
+                    result = "00000" + n.ToString();
+                    break;
+                case 3:
+                    result = "0000" + n.ToString();
+                    break;
+                case 4:
+                    result = "000" + n.ToString();
+                    break;
+                case 5:
+                    result = "00" + n.ToString();
+                    break;
+                case 6:
+                    result = "0" + n.ToString();
+                    break;
+                default:
+                    result = n.ToString();
+                    break;
+            }
+            return result;
+        }
+        public Hashtable QueryALLProductData(int pIndex, int pNum, CargoProductEntity entity)
+        {
+            return man.QueryALLProductData(pIndex, pNum, entity);
+        }
+        public List<CargoProductEntity> QueryALLProductData(CargoProductEntity entity)
+        {
+            return man.QueryALLProductData(entity);
+        }
+        public List<CargoProductEntity> QueryProductDataBasic(CargoProductEntity entity)
+        {
+            return man.QueryProductDataBasic(entity);
+        }
+        /// <summary>
+        /// 分页查询进仓单 产品信息
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryPageALLProductData(int pIndex, int pNum, CargoProductEntity entity)
+        {
+            return man.QueryPageALLProductData(pIndex, pNum, entity);
+        }
+        public List<CargoProductEntity> QueryALLProductSpecData(CargoProductEntity entity)
+        {
+            return man.QueryALLProductSpecData(entity);
+        }
+        public List<CargoProductEntity> QueryHouseALLProductName(CargoProductEntity entity)
+        {
+            return man.QueryHouseALLProductName(entity);
+        }
+        /// <summary>
+        /// 新增产品
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoProductSpec(CargoProductEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                man.AddCargoProductSpec(entity);
+                log.Memo = "新增基础规格";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增基础规格，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改产品
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoProductSpec(CargoProductEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                man.UpdateCargoProductSpec(entity);
+                log.Memo = "修改基础规格";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改基础规格，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 删除产品
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoProductSpec(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                man.DelCargoProductSpec(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除基础规格：规格ID：" + it.SID.ToString() + "，规格：" + it.Specs.Trim() + "，花纹：" + it.Figure.ToString() + "，型号：" + it.Model.Trim() + "，货品代码：" + it.GoodsCode.Trim() + "，载重：" + it.LoadIndex + "，速度：" + it.SpeedLevel.ToString() + "，产地：" + it.Born.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除基础规格，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        public List<CargoProductEntity> QueryALLProductSpecPieceData(CargoProductEntity entity)
+        {
+            return man.QueryALLProductSpecPieceData(entity);
+        }
+        /// 根据轮胎规格返回轮胎的最大数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public string ReturnMaxBasicSpecsNum(CargoProductEntity entity)
+        {
+            string result = string.Empty;
+            int n = man.ReturnMaxBasicSpecsNum(entity);
+            switch (n.ToString().Length)
+            {
+                case 1:
+                    result = "0" + n.ToString();
+                    break;
+                case 2:
+                    result = n.ToString();
+                    break;
+                default:
+                    break;
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 查询供应商 查询入驻仓库的某品牌的供应商
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoSupplierProductPrice> QueryHouseSupplier(CargoSupplierProductPrice entity)
+        {
+            return man.QueryHouseSupplier(entity);
+        }
+
+        #endregion
+        #region 盘点管理
+        /// <summary>
+        /// 生成盘点单
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="genType">
+        /// 生成类型，取值说明：
+        /// <c>full</c> 表示全量盘点生成；
+        /// <c>par</c> 表示部分差异盘点生成。
+        /// </param>
+        public void SaveStockTake(CargoStockTakeEntity entity, LogEntity log, string genType = "full")
+        {
+            LogWrite<CargoStockTakeEntity> lw = new LogWrite<CargoStockTakeEntity>();
+            int[] StockIDs;
+
+            genType = genType.ToLower();
+            if (string.IsNullOrEmpty(genType) || !(genType.Equals("full") || genType.Equals("part")))
+            {
+                entity.TakeMode = 0;
+                genType = "full"; //默认为全盘
+            }
+            else 
+            {
+                if (genType.Equals("part"))
+                {
+                    entity.TakeMode = 1;
+                }
+                else
+                {
+                    entity.TakeMode = 0;
+                }
+            }
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    StockIDs = man.SaveStockTake(entity, genType);
+                    log.Memo = "新增盘点单，盘点单号:" + string.Join(",", StockIDs) + ",区域大仓:" + entity.HouseID.ToString() + ",前置仓:" + entity.HeadHouseName + ",盘点区域:" + entity.AreaName + ",创建人:" + entity.CreateName;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+
+            foreach (var StockID in StockIDs)
+            {
+                CargoStockTakeEntity stock = man.QueryStockTakeNum(StockID);
+                man.UpdateStockTakeNum(new CargoStockTakeEntity { StockID = StockID, StockNum = stock.StockNum });
+            }
+        }
+
+        public void SaveStockTakeFile(List<CargoStockTakeFileEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoStockTakeFileEntity> lw = new LogWrite<CargoStockTakeFileEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.SaveStockTakeFile(it);
+                    log.Memo = "新增库存盘点附件；" + "盘点单号：" + it.StockID.ToString() + ",附件名称：" + it.FileName + ",上传人:" + it.UploadUserName;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+
+        public void DelStockTakePicsByStockID(int stockID)
+        {
+            List<int> stockPicIDs = man.QueryStockTakePicIDsByStockID(stockID);
+            if (stockPicIDs.Any())
+            {
+                DelStockTakePics(stockPicIDs.ToArray());
+            }
+        }
+        public void DelStockTakePics(int[] IDs)
+        {
+            LogEntity log = new LogEntity();
+            log.Moudle = "库存盘点";
+            log.NvgPage = "附件删除";
+            log.Status = "0";
+            log.Operate = "D";
+
+            LogWrite<CargoStockTakeFileEntity> lw = new LogWrite<CargoStockTakeFileEntity>();
+            try
+            {
+                using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+                {
+                    //删除物理文件
+                    var stockPics = man.QueryStockTakePicsByIDs(IDs);
+
+                    if (stockPics.Any())
+                    {
+                        foreach (var fileInfo in stockPics)
+                        {
+                            string storageFilePath = fileInfo.FilePath;
+                            // 检查文件是否存在
+                            if (File.Exists(storageFilePath))
+                            {
+                                // 删除文件
+                                File.Delete(storageFilePath);
+                            }
+                        }
+                    }
+
+                    //删除数据表文件信息
+                    man.DelStockTakePics(IDs);
+                    scope.Complete();
+                }
+
+                log.Memo = "删除库存盘点附件；附件ID：" + string.Join(",", IDs);
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+        public List<CargoStockTakeFileEntity> QueryStockTakePics(int StockID)
+        {
+            LogEntity log = new LogEntity();
+            log.Moudle = "库存盘点";
+            log.NvgPage = "附件查询";
+            log.Status = "0";
+            log.Operate = "Q";
+            try
+            {
+                var stockTakeList = man.QueryStockTakePics(StockID);
+                return stockTakeList;
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                throw;
+            }
+        }
+
+
+
+        public Hashtable QueryStockTakeData(int pIndex, int pNum, CargoStockTakeEntity entity)
+        {
+            return man.QueryStockTakeData(pIndex, pNum, entity);
+        }
+        public CargoStockTakeEntity QueryStockTake(CargoStockTakeEntity entity)
+        {
+            return man.QueryStockTake(entity);
+        }
+        /// <summary>
+        /// 删除盘点单
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelStockTake(List<CargoStockTakeEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoStockTakeEntity> lw = new LogWrite<CargoStockTakeEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var item in entity)
+                    {
+                        DelStockTakePicsByStockID(item.StockID);
+                    }
+                    man.DelStockTake(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "删除盘点单：盘点单号：" + it.StockID.ToString() + "，盘点仓库：" + it.HeadHouseName.Trim() + "，区域大仓：" + it.HouseID.ToString() + "，盘点区域：" + it.AreaName + ",创建人:" + it.CreateName;
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 查询时间段所有的盘点单数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoStockTakeEntity> QueryCargoStockTakeList(CargoStockTakeEntity entity)
+        {
+            return man.QueryCargoStockTakeList(entity);
+        }
+        public List<CargoStockTakeTagEntity> QueryCargoStockTagList(CargoStockTakeTagEntity entity)
+        {
+            return man.QueryCargoStockTagList(entity);
+        }
+        public List<CargoStockTakeTagEntity> QueryCargoStockContainerIDTagList(CargoStockTakeTagEntity entity)
+        {
+            return man.QueryCargoStockContainerIDTagList(entity);
+        }
+        /// <summary>
+        /// 查询盘点单的货位数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoStockTakeContainerEntity> QueryCargoStockTakeContainerList(CargoStockTakeContainerEntity entity)
+        {
+            return man.QueryCargoStockTakeContainerList(entity);
+        }
+        /// <summary>
+        /// 修改盘点货位的提交状态
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateStockTakeStatus(CargoStockTakeContainerEntity entity, LogEntity log)
+        {
+            LogWrite<CargoStockTakeContainerEntity> lw = new LogWrite<CargoStockTakeContainerEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateStockTakeStatus(entity);
+                    log.Memo = "提交货位盘点：盘点单号：" + entity.StockID.ToString() + "，盘点货位：" + entity.ContainerCode + "，提交状态：" + entity.StockStatus;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 盘点单下的货位是否存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoStockTakeContainerEntity QueryStockTakeContainerCode(CargoStockTakeContainerEntity entity)
+        {
+            return man.QueryStockTakeContainerCode(entity);
+        }
+        /// <summary>
+        /// 保存盘点标签数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddStockTakeTag(CargoStockTakeTagEntity entity, LogEntity log)
+        {
+            LogWrite<CargoStockTakeTagEntity> lw = new LogWrite<CargoStockTakeTagEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddStockTakeTag(entity);
+                    log.Memo = "轮胎标签扫描：盘点单号：" + entity.StockID.ToString() + "，盘点货位：" + entity.ContainerCode + "，标签号：" + entity.TagCode + ",扫描状态:" + entity.ScanStatus + ",盘点状态:" + entity.StockStatus + ",扫描人:" + entity.ScanUserName;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 查询盘点标签数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoStockTakeTagEntity QueryStockTakeTagEntity(CargoStockTakeTagEntity entity)
+        {
+            return man.QueryStockTakeTagEntity(entity);
+        }
+        public void RvwStockTakeContainerPiece(int stockid, int[] containerIds, string userid, string username)
+        {
+            LogEntity log = new LogEntity();
+            log.Moudle = "库存盘点";
+            log.Status = "0";
+            log.NvgPage = "审核库位盘点数量";
+            log.Operate = "U";
+            LogWrite<CargoOrderEntity> lw = new LogWrite<CargoOrderEntity>();
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    log.Memo = "审核数据；" + "盘点单ID：" + stockid.ToString() + ",审核人ID:" + userid + ",审核人:" + username + ",库位ID集：(" + string.Join(",", containerIds) + ")";
+                    lw.WriteLog(log);
+
+                    man.RvwStockTakeContainerPiece(stockid, containerIds, userid, username);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = ex.Message + " " + ex.StackTrace;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        #endregion
+        #region 销量统计
+        public List<CargoContainerShowEntity> SaleStatistics(CargoContainerShowEntity entity)
+        {
+            return man.SaleStatistics(entity);
+        }
+        /// <summary>
+        /// 插入小程序用户行为数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void InsertCargoBehavior(CargoBehaviorEntity entity)
+        {
+            man.InsertCargoBehavior(entity);
+        }
+        /// <summary>
+        /// 根据产品分类ID返回产品分类名称
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public string QueryProductTypeName(CargoProductTypeEntity entity)
+        {
+            CargoProductManager cm = new CargoProductManager();
+            return cm.QueryProductTypeName(entity);
+        }
+
+        #endregion
+        #region 线路管理操作方法集合
+        public bool IsExistCargoLogisLine(CargoLogisLineEntity entity)
+        {
+            return man.IsExistCargoLogisLine(entity);
+        }
+
+        public void AddCargoLogisLine(CargoLogisLineEntity entity, LogEntity log)
+        {
+            LogWrite<CargoLogisLineEntity> lw = new LogWrite<CargoLogisLineEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddCargoLogisLine(entity);
+                    log.Memo = "新增线路";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        public void UpdateCargoLogisLine(CargoLogisLineEntity entity, LogEntity log)
+        {
+            LogWrite<CargoLogisLineEntity> lw = new LogWrite<CargoLogisLineEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateCargoLogisLine(entity);
+                    log.Memo = "修改线路";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        public void DelCargoLogisLine(List<CargoLogisLineEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoLogisLineEntity> lw = new LogWrite<CargoLogisLineEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelCargoLogisLine(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "作废线路：仓库ID：" + it.HouseID.ToString() + "，线路名称：" + it.LineName.Trim();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        public void DelCargoLogisLineClient(List<CargoLogisLineClientEntity> result, LogEntity log)
+        {
+
+            LogWrite<CargoLogisLineClientEntity> lw = new LogWrite<CargoLogisLineClientEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var entity in result)
+                    {
+                        man.DelCargoLogisLineClient(entity);
+
+                        log.Memo = "解绑线路客户：线路ID：" + entity.LineID.ToString() + "，客户ID：" + entity.ClientID.ToString() + "，客户名称：" + entity.ClientShortName + "，联系人：" + entity.Boss;
+                        lw.WriteLog(log);
+                    }
+
+
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 查询物流线路数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoLogisLineEntity> QueryCargoLogisLineList(CargoLogisLineEntity entity)
+        {
+            return man.QueryCargoLogisLineList(entity);
+        }
+        public CargoLogisLineEntity QueryCargoLogisLineEntity(CargoLogisLineEntity entity)
+        {
+            return man.QueryCargoLogisLineEntity(entity);
+        }
+        public Hashtable QueryCargoLogisLine(int pIndex, int pNum, CargoLogisLineEntity entity)
+        {
+            return man.QueryCargoLogisLine(pIndex, pNum, entity);
+        }
+
+        /// <summary>
+        /// 通过线路ID查询所有绑定的客户数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoLogisLineClientEntity> QueryLogisLineClientListData(CargoLogisLineClientEntity entity)
+        {
+            return man.QueryLogisLineClientListData(entity);
+        }
+        public void AddCargoLogisLineClient(List<CargoLogisLineClientEntity> result, LogEntity log)
+        {
+            LogWrite<CargoLogisLineClientEntity> lw = new LogWrite<CargoLogisLineClientEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var entity in result)
+                    {
+                        man.AddCargoLogisLineClient(entity);
+                        log.Memo = "绑定线路客户：线路ID：" + entity.LineID.ToString() + "，客户ID：" + entity.ClientID.ToString();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 判断客户是否绑定线路
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoLogisLineClient(CargoLogisLineClientEntity entity)
+        {
+            return man.IsExistCargoLogisLineClient(entity);
+        }
+        public CargoLogisLineClientEntity QueryLogisLineClient(long ClientID)
+        {
+            return man.QueryLogisLineClient(ClientID);
+        }
+        #endregion
+
+        #region 线网关系操作方法
+        /// <summary>
+        /// 根据省，城市和仓库判断 是否已经存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistLineNetMapp(CargoLineNetMappingEntity entity)
+        {
+            return man.IsExistLineNetMapp(entity);
+        }
+        public Hashtable QueryLineNetMapp(int pIndex, int pNum, CargoLineNetMappingEntity entity)
+        {
+            return man.QueryLineNetMapp(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 删除数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelLineNetMapp(List<CargoLineNetMappingEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoLineNetMappingEntity> lw = new LogWrite<CargoLineNetMappingEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelLineNetMapp(entity);
+                    foreach (var it in entity)
+                    {
+                        log.Memo = "区域大仓：" + it.HouseName + "，仓库名称：" + it.AreaName + "，城市：" + it.City + "，省：" + it.Province;
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 新增数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddLineNetMapp(CargoLineNetMappingEntity entity, LogEntity log)
+        {
+            LogWrite<CargoLineNetMappingEntity> lw = new LogWrite<CargoLineNetMappingEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddLineNetMapp(entity);
+                    log.Memo = "新增线网关系：城市：" + entity.City + ",省：" + entity.Province + ",区域大仓：" + entity.HouseName + ",所属仓库：" + entity.AreaName + ",客户名称：" + entity.ClientName + "，客户编码：" + entity.ClientNum.ToString() + ",店代码：" + entity.ShopCode;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改线网关系
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateLineNetMapp(CargoLineNetMappingEntity entity, LogEntity log)
+        {
+            LogWrite<CargoLineNetMappingEntity> lw = new LogWrite<CargoLineNetMappingEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateLineNetMapp(entity);
+                    log.Memo = "修改线网关系：客户名称：" + entity.ClientName + "，客户编码：" + entity.ClientNum.ToString() + ",店代码：" + entity.ShopCode + "，级别：" + entity.OrderLevel;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+
+        #endregion
+
+        /// <summary>
+        /// 获取语音播报列表
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoVoiceBroadEntity> GetVoiceBroadList(CargoVoiceBroadEntity entity)
+        {
+            return man.GetVoiceBroadList(entity);
+        }
+
+        /// <summary>
+        /// 删除数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoVoiceBroad(List<CargoVoiceBroadEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoVoiceBroadEntity> lw = new LogWrite<CargoVoiceBroadEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelCargoVoiceBroad(entity);
+                    //foreach (var it in entity)
+                    //{
+                    //log.Memo = "删除仓库订阅：" + it.UserName + "，仓库信息：" + it.HouseID;
+                    lw.WriteLog(log);
+                    //}
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 新增数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoVoiceBroad(List<CargoVoiceBroadEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoVoiceBroadEntity> lw = new LogWrite<CargoVoiceBroadEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddCargoVoiceBroad(entity);
+                    //log.Memo = "新增仓库订阅：" + entity.UserName + "，仓库信息：" + entity.HouseID;
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        public List<CargoHouseAimEntity> QueryHouseAimList(CargoHouseAimEntity entity)
+        {
+            return man.QueryHouseAimList(entity);
+        }
+        public List<CargoHouseBrandShareEntity> QueryHouseShareList(CargoHouseBrandShareEntity entity)
+        {
+            return man.QueryHouseShareList(entity);
+        }
+        public bool IsExistCargoHouseAim(CargoHouseAimEntity entity)
+        {
+            return man.IsExistCargoHouseAim(entity);
+        }
+        public bool IsExistCargoHouseShare(CargoHouseBrandShareEntity entity)
+        {
+            return man.IsExistCargoHouseShare(entity);
+        }
+        /// <summary>
+        /// 新增仓库目标
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void AddCargoHouseAim(CargoHouseAimEntity entity, LogEntity log)
+        {
+            LogWrite<CargoHouseAimEntity> lw = new LogWrite<CargoHouseAimEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddCargoHouseAim(entity);
+                    log.Memo = "新增仓库目标";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增仓库目标，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 新增品牌共享仓库
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void AddCargoHouseShare(CargoHouseBrandShareEntity entity, LogEntity log)
+        {
+            LogWrite<CargoHouseBrandShareEntity> lw = new LogWrite<CargoHouseBrandShareEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddCargoHouseShare(entity);
+                    log.Memo = "新增品牌共享仓库";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增仓库目标，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 修改品牌共享仓库
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void UpdateCargoHouseShare(CargoHouseBrandShareEntity entity, LogEntity log)
+        {
+            LogWrite<CargoHouseBrandShareEntity> lw = new LogWrite<CargoHouseBrandShareEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.UpdateCargoHouseShare(entity);
+                    log.Memo = "修改品牌共享仓库";
+                    lw.WriteLog(entity, log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "修改仓库目标，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 删除仓库目标
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void DelHouseAim(List<CargoHouseAimEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoHouseAimEntity> lw = new LogWrite<CargoHouseAimEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelHouseAim(entity);
+                    log.Memo = "删除仓库目标";
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除仓库目标，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 删除仓库共享
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void DelHouseShare(List<CargoHouseBrandShareEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoHouseBrandShareEntity> lw = new LogWrite<CargoHouseBrandShareEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.DelHouseShare(entity);
+                    log.Memo = "删除仓库目标";
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "删除仓库目标，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        /// <summary>
+        /// 同步仓库共享
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void ShareHouseSynchronization(List<CargoHouseBrandShareEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoHouseBrandShareEntity> lw = new LogWrite<CargoHouseBrandShareEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    CargoInterfaceBus nwBus = new CargoInterfaceBus();
+
+                    foreach (var item in entity)
+                    {
+                        //清空指定仓库库存
+                        nwBus.SetNextDayStockZero(item);
+                        //获取产品数据
+                        List<CargoProductEntity> entities = nwBus.QueryNextDayStockSync(new CargoProductEntity {HouseID=item.ShareHouseID,TypeID=item.BrandID,MainHouseID=item.MainHouseID });
+                        //同步
+                        nwBus.SaveNextDayProductData(entities);
+                    }
+
+                    log.Memo = "同步仓库目标";
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "同步仓库目标，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        public List<CargoAreaEntity> GetHouseAreaList()
+        {
+            return man.GetHouseAreaList();
+        }
+        /// <summary>
+        /// 导入安全库存
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void SaveImportSafeStock(List<CargoSafeStockEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoSafeStockEntity> lw = new LogWrite<CargoSafeStockEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    foreach (var item in entity)
+                    {
+                        var data = man.FirstSafeStock(item);
+                        if (data == null)
+                        {
+                            man.InsertSafeStockData(item);
+                        }
+                        else
+                        {
+                            item.SID = data.SID;
+                            item.OPID = data.OPID;
+                            item.OP_DATE = data.OP_DATE;
+                            man.UpdateSafeStockData(item);
+                        }
+                    }
+
+                    log.Memo = "导入安全库存";
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "导入安全库存，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// 判断是否添加缓存
+        /// </summary>
+        /// <param name="H"></param>
+        /// <param name="T"></param>
+        /// <returns></returns>
+        public bool IsAddCaching(int houseID, int typeID)
+        {
+            //100 顺捷云仓 93 东平云仓   9 优科豪马、31 韩泰、34 马牌、648 狄安祺达(绿标)
+            Dictionary<int, string> myDictionary = new Dictionary<int, string> { };
+            myDictionary.Add(100, "9,31,34,648");
+            myDictionary.Add(93, "9,31,34,648");
+
+            if (myDictionary.TryGetValue(houseID, out string typeIds))
+            {
+                string[] validTypeIds = typeIds.Split(',');
+                foreach (string validTypeId in validTypeIds)
+                {
+                    if (int.Parse(validTypeId) == typeID)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        //获取开思对应仓库
+        public List<CargoAreaEntity> GetCassHouses()
+        {
+            return man.GetCassHouses();
+        }
+        public List<CargoProductSpecEntity> GetCassProDucts()
+        {
+            return man.GetCassProDucts();
+        }
+
+    }
+}

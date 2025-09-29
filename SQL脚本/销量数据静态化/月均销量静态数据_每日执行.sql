@@ -1,5 +1,48 @@
-PRINT('------------ 删除上月数据 ------------');
 
+PRINT('------------ 区域仓库 ------------');
+WITH ChildAreaCTE AS (
+	SELECT
+		HouseID,
+		AreaID AS RootArea,
+		ParentID AS ParentArea,
+		AreaID AS AreaID,
+		Name AS RootName,
+		CAST('' AS varchar(50)) AS ParentName,
+		Name AS AreaName,
+		1 AS Level
+	FROM
+		Tbl_Cargo_Area a
+	WHERE (1=1)
+		AND ParentID = 0
+		AND a.IsShowStock = 0 AND a.HouseID IN (1,3,9,45,65,82,84,93,96,97,98,99,100,101,102,105,106,107,108,111,109,110,112,113,114,115,116,117,118,119,121,120,122,123,124,125,126,127,13,14,15,10,23,24,25,27,128,30,64,32,131,129,130,29,132,135,134,133,94,90,91,89,88,87,86,83,81,80,79,78,77,76,75,73,74,72,71,70,69,68,67,63,60,58,59,55,57,56,49,50,53,48,47,46,44,43,33,31,136,137,138)
+	UNION ALL
+	
+	SELECT
+		c.HouseID,
+		c.RootArea,
+		a.ParentID AS ParentArea,
+		a.AreaID,
+		c.RootName,
+		c.AreaName,
+		a.Name AS AreaName,
+		c.Level + 1
+	FROM
+		Tbl_Cargo_Area a
+		INNER JOIN ChildAreaCTE c ON a.ParentID = c.AreaID
+    WHERE (1=1)
+		AND a.IsShowStock = 0 AND a.HouseID IN (1,3,9,45,65,82,84,93,96,97,98,99,100,101,102,105,106,107,108,111,109,110,112,113,114,115,116,117,118,119,121,120,122,123,124,125,126,127,13,14,15,10,23,24,25,27,128,30,64,32,131,129,130,29,132,135,134,133,94,90,91,89,88,87,86,83,81,80,79,78,77,76,75,73,74,72,71,70,69,68,67,63,60,58,59,55,57,56,49,50,53,48,47,46,44,43,33,31,136,137,138)
+)
+SELECT
+	* INTO #childArea
+FROM
+	ChildAreaCTE 
+OPTION (MAXRECURSION 2); --只查到2级子仓库，如有3级子仓库就报错，防止无限递归。业务逻辑也只允许最大2级子仓（注：根仓库是0级）
+CREATE UNIQUE INDEX IX_#childArea
+ON #childArea (HouseID,AreaID)
+INCLUDE(RootArea);
+
+
+PRINT('------------ 删除上月数据 ------------');
 DECLARE @LastMonth DATE = DATEADD(MONTH, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0));
 DELETE FROM Tbl_Cargo_MonthSaleStatic
 WHERE YearMonth = @LastMonth;
@@ -28,16 +71,16 @@ DateRange AS (
         p.ProductCode,
         p.TypeID,
         p.HouseID,
-        og.AreaID,
+        ca.RootArea AreaID,
         DATEADD(MONTH, DATEDIFF(MONTH, 0, og.OP_DATE), 0) YearMonth,
         SUM(ISNULL(og.Piece,0)) AS Piece
     FROM Tbl_Cargo_Product AS p
-    INNER JOIN Tbl_Cargo_OrderGoods AS og
-        ON og.ProductID = p.ProductID
+        INNER JOIN Tbl_Cargo_OrderGoods AS og ON og.ProductID = p.ProductID
+        INNER JOIN #childArea ca ON ca.AreaID = og.AreaID
     WHERE ISNULL(p.ProductCode, '') <> ''
         AND DATEADD(MONTH, DATEDIFF(MONTH, 0, og.OP_DATE), 0) BETWEEN DATEADD(MONTH, -2, @LastMonth) AND @LastMonth
     GROUP BY 
-        p.ProductCode, p.TypeID, p.HouseID, og.AreaID, DATEADD(MONTH, DATEDIFF(MONTH, 0, og.OP_DATE), 0)
+        p.ProductCode, p.TypeID, p.HouseID, ca.RootArea, DATEADD(MONTH, DATEDIFF(MONTH, 0, og.OP_DATE), 0)
 )
 
 ,MonthlySalesOrg AS (
@@ -50,7 +93,6 @@ DateRange AS (
             CROSS JOIN MonthDim d
         ) p
         LEFT JOIN MonthlySalesGroup m ON m.ProductCode = p.ProductCode AND m.TypeID = p.TypeID AND m.HouseID = p.HouseID AND m.AreaID = p.AreaID AND m.YearMonth = p.YearMonth
-   
 )
 
 SELECT * 

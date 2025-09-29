@@ -14,7 +14,6 @@ WITH ChildAreaCTE AS (
 		Tbl_Cargo_Area a
 	WHERE (1=1)
 		AND ParentID = 0
-		AND a.IsShowStock = 0 AND a.HouseID IN (1,3,9,45,65,82,84,93,96,97,98,99,100,101,102,105,106,107,108,111,109,110,112,113,114,115,116,117,118,119,121,120,122,123,124,125,126,127,13,14,15,10,23,24,25,27,128,30,64,32,131,129,130,29,132,135,134,133,94,90,91,89,88,87,86,83,81,80,79,78,77,76,75,73,74,72,71,70,69,68,67,63,60,58,59,55,57,56,49,50,53,48,47,46,44,43,33,31,136,137,138)
 	UNION ALL
 	
 	SELECT
@@ -30,7 +29,6 @@ WITH ChildAreaCTE AS (
 		Tbl_Cargo_Area a
 		INNER JOIN ChildAreaCTE c ON a.ParentID = c.AreaID
     WHERE (1=1)
-		AND a.IsShowStock = 0 AND a.HouseID IN (1,3,9,45,65,82,84,93,96,97,98,99,100,101,102,105,106,107,108,111,109,110,112,113,114,115,116,117,118,119,121,120,122,123,124,125,126,127,13,14,15,10,23,24,25,27,128,30,64,32,131,129,130,29,132,135,134,133,94,90,91,89,88,87,86,83,81,80,79,78,77,76,75,73,74,72,71,70,69,68,67,63,60,58,59,55,57,56,49,50,53,48,47,46,44,43,33,31,136,137,138)
 )
 SELECT
 	* INTO #childArea
@@ -41,9 +39,16 @@ CREATE UNIQUE INDEX IX_#childArea
 ON #childArea (HouseID,AreaID)
 INCLUDE(RootArea);
 
-DELETE Tbl_Cargo_DailySaleStatic WHERE SalesDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
+DECLARE @YesterdayDate DATE = CAST(DATEADD(DAY, -7, GETDATE()) AS DATE) 
 
-PRINT('------------ 获取产品每日销量 ------------')
+--SELECT * FROM Tbl_Cargo_DailySaleStatic WHERE SalesDate > @YesterdayDate
+PRINT('------------ 昨日是否有数据 ------------')
+SELECT TOP 1 1 FROM Tbl_Cargo_DailySaleStatic WHERE CAST(SalesDate AS DATE) = @YesterdayDate 
+
+PRINT('------------ 删除昨日数据 ------------')
+DELETE Tbl_Cargo_DailySaleStatic WHERE SalesDate = @YesterdayDate
+
+PRINT('------------ 静态化保存产品昨日总销量 ------------')
 INSERT INTO Tbl_Cargo_DailySaleStatic
 (
     SalesDate,
@@ -68,11 +73,14 @@ FROM Tbl_Cargo_OrderGoods AS b
 INNER JOIN Tbl_Cargo_Order AS a ON a.OrderNo = b.OrderNo
 INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
 INNER JOIN #childArea ca ON b.HouseID = ca.HouseID AND b.AreaID = ca.AreaID
-WHERE a.ThrowGood != 25
-    AND a.OrderModel = 0 
-    AND ISNULL(c.ProductCode, '') <> ''
-    AND c.SpecsType != 5 
-	AND CAST(a.CreateDate AS DATE) = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
+WHERE a.ThrowGood != 25 --非退仓单
+    AND a.OrderModel = 0  --订单类型为客户单，非退货单
+    AND c.SpecsType != 5  --非次日达
+    AND ISNULL(c.ProductCode, '') <> '' 
+	AND CAST(a.CreateDate AS DATE) =  CAST(DATEADD(DAY, -5, GETDATE()) AS DATE) 
 GROUP BY CAST(a.CreateDate AS DATE), c.ProductCode, c.TypeID, c.HouseID, ca.RootArea
 ORDER BY CAST(a.CreateDate AS DATE), c.ProductCode, c.TypeID, c.HouseID, ca.RootArea
+
+
+PRINT('------------ 数据插入完毕 ------------')
 

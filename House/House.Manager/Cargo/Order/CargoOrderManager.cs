@@ -1025,6 +1025,11 @@ namespace House.Manager.Cargo
                 {
                     strSQL += " and a.ThrowGood ='" + entity.ThrowGood + "'";
                 }
+                //第三方订单类型
+                if (!string.IsNullOrEmpty(entity.OpenOrderSource))
+                {
+                    strSQL += " and a.OpenOrderSource ='" + entity.OpenOrderSource + "'";
+                }
                 //   if (!string.IsNullOrEmpty(entity.ThrowGood)) { strSQL += " and a.ThrowGood ='" + entity.ThrowGood + "'"; }
                 //件数
                 if (!entity.Piece.Equals(0)) { strSQL += " and a.Piece=" + entity.Piece + ""; }
@@ -1239,6 +1244,11 @@ namespace House.Manager.Cargo
                 if (!string.IsNullOrEmpty(entity.ThrowGood))
                 {
                     strCount += " and ThrowGood ='" + entity.ThrowGood + "'";
+                }
+                //第三方订单类型
+                if (!string.IsNullOrEmpty(entity.OpenOrderSource))
+                {
+                    strSQL += " and a.OpenOrderSource ='" + entity.OpenOrderSource + "'";
                 }
                 //件数
                 if (!entity.Piece.Equals(0)) { strCount += " and Piece=" + entity.Piece + ""; }
@@ -10069,6 +10079,7 @@ SELECT @newNo AS NewRplNo;
         //自动决定创建补货单
         public void AutoGeneralRplOrder(RplOrderAutoGeneratParam entity)
         {
+            SqlHelper conn = new SqlHelper();
             var goodslist = entity.GoodsList;
             if (!goodslist.Any())
             {
@@ -10076,106 +10087,123 @@ SELECT @newNo AS NewRplNo;
             }
             string createPrdctTempSql = @"
 CREATE TABLE 
-	#productTemp(
+	##productTemp(
 		ProductID BIGINT,
 		AreaID INT
 	);
 ";
             string insertPrdctTempSql = @"
-INSERT #productTemp(ProductID, ProductCode, HouseID, AreaID)
+INSERT ##productTemp(ProductID, AreaID)
 VALUES @{productValues};
 ";
-            List<CargoRplOrderDtlDto> toAddEntities = new List<CargoRplOrderDtlDto>();
-            using (DbCommand command = conn.GetSqlStringCommond(createPrdctTempSql))
-            {
-                //创建临时表
-                conn.ExecuteNonQuery(command);
+            string queryOutofStockSql = @"
 
-                int index = 1;
-                List<string> productValues = new List<string>();
-                List<SqlParameter> sqlParameters = new List<SqlParameter>();
-                foreach (var goods in goodslist)
-                {
-                    productValues.Add($"(@ProductID{index}, @ProductCode{index}, @HouseID{index}, @AreaID{index})");
-                    sqlParameters.AddRange(new List<SqlParameter>
-                    {
-                        new SqlParameter($"@ProductID{index}", goods.ProductID),
-                        new SqlParameter($"@AreaID{index}", goods.AreaID),
+PRINT('------------ 区域仓库 ------------');
+WITH ChildAreaCTE AS (
+	SELECT
+		HouseID,
+		AreaID AS RootArea,
+		ParentID AS ParentArea,
+		AreaID AS AreaID,
+		Name AS RootName,
+		CAST('' AS varchar(50)) AS ParentName,
+		Name AS AreaName,
+		1 AS Level
+	FROM
+		Tbl_Cargo_Area a
+	WHERE (1=1)
+		AND ParentID = 0
+	UNION ALL
+	
+	SELECT
+		c.HouseID,
+		c.RootArea,
+		a.ParentID AS ParentArea,
+		a.AreaID,
+		c.RootName,
+		c.AreaName,
+		a.Name AS AreaName,
+		c.Level + 1
+	FROM
+		Tbl_Cargo_Area a
+		INNER JOIN ChildAreaCTE c ON a.ParentID = c.AreaID
+    WHERE (1=1)
+)
+SELECT
+	* INTO #childArea
+FROM
+	ChildAreaCTE 
+OPTION (MAXRECURSION 2); --只查到2级子仓库，如有3级子仓库就报错，防止无限递归。业务逻辑也只允许最大2级子仓（注：根仓库是0级）
+CREATE UNIQUE INDEX IX_#childArea
+ON #childArea (HouseID,AreaID)
+INCLUDE(RootArea);
 
-                    });
-                }
-                if (productValues.Any())
-                {
-                    insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", string.Join("," + Environment.NewLine, productValues));
-                }
-                else
-                {
-                    insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", "");
-                }
-
-                //插入数据
-                command.CommandText = insertPrdctTempSql;
-                command.Parameters.AddRange(sqlParameters.ToArray());
-                conn.ExecuteNonQuery(command);
-                command.Parameters.Clear(); //使用后清除参数
-
-                string queryOutofStockSql = @"
 -- 产品&品牌
-WITH pCTE as (
+WITH prdctGrp AS (
 SELECT 
+	MAX(p.ProductID) ProductID,
+	p.ProductCode,
+	ca.RootArea AreaID,
+	SUM(cg.Piece) Piece
+FROM
+	Tbl_Cargo_Product p
+	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+	INNER JOIN Tbl_Cargo_ContainerGoods cg ON p.ProductID = cg.ProductID
+	INNER JOIN ##productTemp pTemp ON p.ProductID = pTemp.ProductID
+	INNER JOIN #childArea ca ON ca.AreaID = pTemp.AreaID
+WHERE
+	ISNULL(p.ProductCode, '') <> ''
+GROUP BY
+	p.ProductCode, ca.RootArea
+),
+pCTE as (
+SELECT 
+	DISTINCT
 	p.ProductID,
 	p.ProductName,
 	p.ProductCode,
 	p.GoodsCode,
+	p.Specs,
+	p.Figure,
+	P.LoadIndex,
+	p.SpeedLevel,
 	pt.TypeID,
 	pt.TypeName,
 	pt.ParentID,
-	pTemp.AreaID,
     h.HouseID,
 	h.Name HouseName,
 	h.ParentID HouseParentID,
-	h.ParentName HouseParentName
+	h.ParentName HouseParentName,
+	pg.AreaID,
+	pg.Piece InPiece
 FROM
 	Tbl_Cargo_Product p
+	INNER JOIN prdctGrp pg ON p.ProductID = pg.ProductID
 	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-	INNER JOIN #productTemp pTemp ON p.ProductID = pTemp.ProductID
 	LEFT JOIN Tbl_Cargo_House h ON p.HouseID = h.HouseID
-),
+WHERE
+	ISNULL(p.ProductCode, '') <> ''
+)
+,
 --在途
 iti AS (
-	
 	SELECT
 		fo.ProductCode,
 		fo.HouseID,
 		SUM(ReplyNumber - fo.InPiece) Piece
 	FROM
 		Tbl_Cargo_FactoryOrder fo
-		INNER JOIN #productTemp ptemp ON fo.ProductID = ptemp.ProductID
+		INNER JOIN ##productTemp ptemp ON fo.ProductID = ptemp.ProductID
 	WHERE
 		(1 = 1)
-		AND fo.InCargoStatus = 0
-		OR fo.InCargoStatus = 2
+		AND fo.InCargoStatus IN (0,2)
 	GROUP BY
 		fo.ProductCode,
 		fo.HouseID
-),
---在库
-isi AS (
-	
-	SELECT
-		p.ProductCode,
-		p.HouseID,
-		p.AreaID,
-		SUM(cg.Piece) Piece
-	FROM
-		Tbl_Cargo_ContainerGoods cg
-		INNER JOIN Tbl_Cargo_Container c ON cg.ContainerID = c.ContainerID
-		INNER JOIN pCTE p ON p.ProductID = p.ProductID
-	GROUP BY
-		p.ProductCode,
-		p.HouseID,
-		c.AreaID
-),
+)
+--select * from iti
+,
+
 --在补货
 ro as (
 SELECT
@@ -10187,8 +10215,10 @@ FROM
 	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
 WHERE
 	ro.Status IN (0,1,2)
-GROUP BY rog.ProductCode, ro.HouseID
+GROUP BY 
+	rog.ProductCode, ro.HouseID
 )
+
 
 --安全库存配置
 SELECT
@@ -10196,94 +10226,136 @@ SELECT
 	ss.AreaID,
 	ss.MinStock,
 	ss.MaxStock,
-	mss.WeightedMonthSale,
-	isi.Piece InPiece,
-	iti.Piece InTransitPiece,
-	ro.Piece RestockingPiece,
-	ss.MaxStock - (isi.Piece + iti.Piece - ro.Piece) Piece,
+	ISNULL(mss.WeightedMonthSale, 0) WeightedMonthSale,
+	ISNULL(iti.Piece, 0) InTransitPiece,
+	ISNULL(ro.Piece, 0) RestockingPiece,
+	(ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) RealPiece,
+	ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) Piece,
 	p.*
 FROM
 	Tbl_Cargo_SafeStock ss
 	INNER JOIN pCTE p ON p.ProductCode = ss.ProductCode AND p.AreaID = ss.AreaID
 	LEFT JOIN iti ON iti.ProductCode = p.ProductCode AND iti.HouseID = p.HouseID
-	LEFT JOIN isi ON isi.ProductCode = p.ProductCode AND isi.AreaID = p.AreaID
-	LEFT JOIN Tbl_Cargo_MonthSaleStatic mss ON mss.ProductCode = p.ProductCode AND mss.AreaID = p.AreaID
+	LEFT JOIN Tbl_Cargo_MonthSaleStatic mss ON mss.ProductCode = p.ProductCode AND mss.AreaID = p.AreaID AND mss.YearMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) -1 ,0)
 	LEFT JOIN ro ON ro.ProductCode = p.ProductCode AND ro.HouseID = p.HouseID
 WHERE 
 	ss.MinStock > 0 AND MaxStock > 0
-	AND (isi.Piece + iti.Piece - ro.Piece) < ss.MinStock 
-	AND ss.MaxStock - (isi.Piece + iti.Piece - ro.Piece) > 0
+	AND (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) < ss.MinStock 
+	AND ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) > 0
+ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) DESC
 ";
-                //获取库存低于安全库存的产品
-                command.CommandText = queryOutofStockSql;
-
-                List<CargoRplOrderGoodsDto> toAddRows = new List<CargoRplOrderGoodsDto>();
-                using (var dt = conn.ExecuteDataTable(command))
+            using (Trans trans = new Trans())
+            {
+                try
                 {
-                    if (dt.Rows.Count == 0) return;
-                    foreach (DataRow dr in dt.Rows)
+                    int index = 1;
+                    List<string> productValues = new List<string>();
+                    List<SqlParameter> sqlParameters = new List<SqlParameter>();
+                    foreach (var goods in goodslist)
                     {
-                        toAddRows.Add(new CargoRplOrderGoodsDto()
-                        {
-                            ProductID = dr.Field<long>("ProductID"),
-                            ProductName = dr.Field<string>("ProductName"),
-                            ProductCode = dr.Field<string>("ProductCode"),
-                            GoodsCode = dr.Field<string>("GoodsCode"),
-                            TypeCate = dr.Field<int>("ParentID"),
-                            TypeID = dr.Field<int>("TypeID"),
-                            TypeName = dr.Field<string>("TypeName"),
-                            Specs = dr.Field<string>("Specs"),
-                            Figure = dr.Field<string>("Figure"),
-                            LoadIndex = dr.Field<string>("LoadIndex"),
-                            SpeedLevel = dr.Field<string>("SpeedLevel"),
-                            Piece = dr.Field<int>("Piece"),
-                            SysPiece = dr.Field<int>("Piece"),
-                            HouseID = dr.Field<int>("HouseID"),
-                            AreaID = dr.Field<int>("AreaID"),
-                            HouseName = dr.Field<string>("HouseName"),
-                            HouseParentID = dr.Field<int>("HouseParentID"),
-                            HouseParentName = dr.Field<string>("HouseParentName"),
+                        productValues.Add($"(@ProductID{index}, @AreaID{index})");
+                        sqlParameters.AddRange(new List<SqlParameter>
+                {
+                    new SqlParameter($"@ProductID{index}", goods.ProductID),
+                    new SqlParameter($"@AreaID{index}", goods.AreaID),
 
-                            MinStock = dr.Field<int>("MinStock"),
-                            MaxStock = dr.Field<int>("MaxStock"),
-                            SrcPiece = dr.Field<int>("InPiece"),
-                            InTransitQty = dr.Field<int>("InTransitPiece"),
-                            RestockingQty = dr.Field<int>("RestockingPiece"),
-                            AvgSalSUM = dr.Field<int>("WeightedMonthSale")
-                        });
+                });
+                        index++;
+                    }
+                    if (productValues.Any())
+                    {
+                        insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", string.Join("," + Environment.NewLine, productValues));
+                    }
+                    else
+                    {
+                        insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", "");
+                    }
+
+                    List<CargoRplOrderGoodsDto> toAddRows = new List<CargoRplOrderGoodsDto>();
+                    List<CargoRplOrderDtlDto> toAddEntities = new List<CargoRplOrderDtlDto>();
+                    //插入临时表数据
+                    using (DbCommand command = conn.GetSqlStringCommond(createPrdctTempSql + insertPrdctTempSql))
+                    {
+                        command.Parameters.AddRange(sqlParameters.ToArray());
+                        conn.ExecuteNonQuery(command, trans);
+
+                        command.CommandText = queryOutofStockSql;
+                        //获取库存低于安全库存的产品
+                        using (var dt = conn.ExecuteDataTable(command, trans))
+                        {
+                            if (dt.Rows.Count == 0) return;
+                            foreach (DataRow dr in dt.Rows)
+                            {
+                                toAddRows.Add(new CargoRplOrderGoodsDto()
+                                {
+                                    ProductID = dr.Field<long>("ProductID"),
+                                    ProductName = dr.Field<string>("ProductName"),
+                                    ProductCode = dr.Field<string>("ProductCode"),
+                                    GoodsCode = dr.Field<string>("GoodsCode"),
+                                    TypeCate = dr.Field<int>("ParentID"),
+                                    TypeID = dr.Field<int>("TypeID"),
+                                    TypeName = dr.Field<string>("TypeName"),
+                                    Specs = dr.Field<string>("Specs"),
+                                    Figure = dr.Field<string>("Figure"),
+                                    LoadIndex = dr.Field<string>("LoadIndex"),
+                                    SpeedLevel = dr.Field<string>("SpeedLevel"),
+                                    Piece = dr.Field<int>("Piece"),
+                                    SysPiece = dr.Field<int>("Piece"),
+                                    HouseID = dr.Field<int>("HouseID"),
+                                    AreaID = dr.Field<int>("AreaID"),
+                                    HouseName = dr.Field<string>("HouseName"),
+                                    HouseParentID = dr.Field<int?>("HouseParentID"),
+                                    HouseParentName = dr.Field<string>("HouseParentName"),
+
+                                    MinStock = dr.Field<int>("MinStock"),
+                                    MaxStock = dr.Field<int>("MaxStock"),
+                                    SrcPiece = dr.Field<int>("InPiece"),
+                                    InTransitQty = dr.Field<int>("InTransitPiece"),
+                                    RestockingQty = dr.Field<int>("RestockingPiece"),
+                                    AvgSalSUM = dr.Field<int>("WeightedMonthSale")
+                                });
+                            }
+                        }
+                        //按照大仓分组
+                        foreach (var item in toAddRows.GroupBy(x => x.HouseID))
+                        {
+                            //寻找上级仓库
+                            int HouseID = item.Key.Value;
+                            var firstData = item.FirstOrDefault();
+                            int totalReplPiece = item.Select(x => x.Piece).OfType<int>().Sum();
+                            CargoRplOrderDtlDto toAddEntity = new CargoRplOrderDtlDto()
+                            {
+                                HouseID = HouseID,
+                                HouseName = firstData.HouseName,
+                                FromHouse = firstData.HouseParentID,
+                                FromHouseName = firstData.HouseParentName,
+                                ReqBy = entity.ReqBy,
+                                ReqByName = entity.ReqByName,
+                                ScrType = entity.SrcType,
+                                SrcCode = entity.SrcCode,
+                                SrcID = entity.SrcID,
+                                Piece = totalReplPiece,
+                                Reason = "",
+                                Remark = "",
+                                Rows = item.ToList()
+                            };
+                            toAddEntities.Add(toAddEntity);
+                        }
+
+                    }
+                    trans.Commit();
+
+                    //将分组后的数据创建补货单
+                    foreach (var toAddEntity in toAddEntities)
+                    {
+                        AddRplOrder(toAddEntity);
                     }
                 }
-                //按照大仓分组
-                foreach (var item in toAddRows.GroupBy(x => x.HouseID))
+                catch (Exception)
                 {
-                    //寻找上级仓库
-                    int HouseID = item.Key.Value;
-                    var firstData = item.FirstOrDefault();
-                    int totalReplPiece = item.Select(x => x.Piece).OfType<int>().Sum();
-                    CargoRplOrderDtlDto toAddEntity = new CargoRplOrderDtlDto()
-                    {
-                        HouseID = HouseID,
-                        HouseName = firstData.HouseName,
-                        FromHouse = firstData.HouseParentID,
-                        FromHouseName = firstData.HouseParentName,
-                        ReqBy = entity.ReqBy,
-                        ReqByName = entity.ReqByName,
-                        ScrType = entity.SrcType,
-                        SrcCode = entity.SrcCode,
-                        SrcID = entity.SrcID,
-                        Piece = totalReplPiece,
-                        Reason = "",
-                        Remark = "",
-                        Rows = item.ToList()
-                    };
-                    toAddEntities.Add(toAddEntity);
+                    trans.RollBack();
+                    throw;
                 }
-            }
-
-
-            foreach (var toAddEntity in toAddEntities)
-            {
-                AddRplOrder(toAddEntity);
             }
 
             return;
@@ -10572,6 +10644,7 @@ ORDER BY RowNumber ASC
         }
         public CargoRplOrderDtlDto AddRplOrder(CargoRplOrderDtlDto entity)
         {
+            SqlHelper conn = new SqlHelper();
             CargoRplOrderDtlDto result = new CargoRplOrderDtlDto();
             CargoRplOrderDtlDto headData = entity;
             List<CargoRplOrderGoodsDto> rowsData = entity.Rows;
@@ -10605,7 +10678,7 @@ ORDER BY RowNumber ASC
                     if (!isExistHouse) throw new ApplicationException($"来源仓库ID({FromHouse.Value})不存在");
                     FromHouseName = fromhouseData.Name;
                     //验证请求人ID是否有效
-                    if (!string.IsNullOrEmpty(ReqBy?.Trim()))
+                    if (string.IsNullOrWhiteSpace(ReqBy))
                     {
                         throw new ApplicationException("请传入请求人ID");
                     }
@@ -10793,6 +10866,7 @@ VALUES
                     {
                         long? ProductID = row.ProductID;
                         int? TypeID = row.TypeID;
+                        int? TypeCate = row.TypeCate;
                         int? typeCate = null;
                         int sysPiece = 0;
 
@@ -10813,9 +10887,10 @@ VALUES
                         if (!isExistProduct) throw new ApplicationException($"产品ID({ProductID.Value})不存在");
                         //验证品牌是否存在
                         if (!TypeID.HasValue) throw new ApplicationException("请传入产品ID");
-                        var typeData = prdctMan.QueryProductType(new CargoProductTypeEntity() { TypeID = TypeID.Value })?.FirstOrDefault();
+                        if (!TypeCate.HasValue) throw new ApplicationException("请传入产品品类ID");
+                        var typeData = prdctMan.QueryProductType(new CargoProductTypeEntity() { TypeID = TypeID.Value, ParentID = TypeCate.Value })?.FirstOrDefault();
                         bool isExistType = (typeData?.TypeID ?? 0) > 0;
-                        if (!isExistType) throw new ApplicationException($"产品品牌ID({TypeID.Value})不存在");
+                        if (!isExistType) throw new ApplicationException($"产品品牌不存在。相关数据：TypeID({TypeID.Value})，TypeCate({typeCate.Value})");
 
                         typeCate = typeData.ParentID;
 
@@ -10914,6 +10989,7 @@ VALUES
 
                         trns.Commit();
                     }
+
                     return rtData;
                 }
                 catch (ApplicationException ex)
@@ -13625,17 +13701,115 @@ group by TypeID,HouseID,TotalCharge,throwgood,OrderModel,Year,Month,Day,opid,Day
         public int GenerateDailySalesSnapshot()
         {
             int effectedRows = 0;
-            //判断是否已经生成过
-            string isGeneratedSql = @"
-SELECT TOP 1 1 FROM Tbl_Cargo_DailySaleStatic WHERE CAST(LastUpdateTime AS DATE) =  CAST(GETDATE() AS DATE)
+            //检查过去7天是否已经生成过静态数据
+            string isGeneratedSqlTemp = @"
+SELECT TOP 1 1 FROM Tbl_Cargo_DailySaleStatic WHERE CAST(SalesDate AS DATE) = CAST(DATEADD(DAY, @{dayfactor}, GETDATE()) AS DATE) --检查今日是否执行过
 ";
-            bool isGenerated = false;
-            using (var comm = conn.GetSqlStringCommond(isGeneratedSql))
+            string generateSqlTemp = @"
+PRINT('------------ 区域仓库 ------------');
+WITH ChildAreaCTE AS (
+	SELECT
+		HouseID,
+		AreaID AS RootArea,
+		ParentID AS ParentArea,
+		AreaID AS AreaID,
+		Name AS RootName,
+		CAST('' AS varchar(50)) AS ParentName,
+		Name AS AreaName,
+		1 AS Level
+	FROM
+		Tbl_Cargo_Area a
+	WHERE (1=1)
+		AND ParentID = 0
+	UNION ALL
+	
+	SELECT
+		c.HouseID,
+		c.RootArea,
+		a.ParentID AS ParentArea,
+		a.AreaID,
+		c.RootName,
+		c.AreaName,
+		a.Name AS AreaName,
+		c.Level + 1
+	FROM
+		Tbl_Cargo_Area a
+		INNER JOIN ChildAreaCTE c ON a.ParentID = c.AreaID
+)
+SELECT
+	* INTO #childArea
+FROM
+	ChildAreaCTE 
+OPTION (MAXRECURSION 2); --只查到2级子仓库，如有3级子仓库就报错，防止无限递归。业务逻辑也只允许最大2级子仓（注：根仓库是0级）
+CREATE UNIQUE INDEX IX_#childArea
+ON #childArea (HouseID,AreaID)
+INCLUDE(RootArea);
+    
+DECLARE @YesterdayDate DATE = CAST(DATEADD(DAY, @{dayfactor}, GETDATE()) AS DATE)
+PRINT('------------ 删除昨日数据 ------------')
+DELETE Tbl_Cargo_DailySaleStatic WHERE SalesDate = @YesterdayDate
+
+PRINT('------------ 静态化保存产品昨日总销量 ------------')
+INSERT INTO Tbl_Cargo_DailySaleStatic
+(
+    SalesDate,
+    ProductCode,
+    TypeID,
+    HouseID,
+    AreaID,
+    Piece,
+    WXPiece,
+    LastUpdateTime
+)
+SELECT
+	CAST(a.CreateDate AS DATE) SalesDate,
+    c.ProductCode,
+    c.TypeID,
+    c.HouseID,
+	ca.RootArea AreaID,
+    SUM(b.Piece) AS Piece,
+    SUM(CASE WHEN a.OrderType = 4 THEN b.Piece ELSE 0 END) AS WXPiece,
+	GETDATE() LastUpdateTime
+FROM Tbl_Cargo_OrderGoods AS b
+INNER JOIN Tbl_Cargo_Order AS a ON a.OrderNo = b.OrderNo
+INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
+INNER JOIN #childArea ca ON b.HouseID = ca.HouseID AND b.AreaID = ca.AreaID
+WHERE a.ThrowGood != 25 --非退仓单
+    AND a.OrderModel = 0  --订单类型为客户单，非退货单
+    AND c.SpecsType != 5  --非次日达
+    AND ISNULL(c.ProductCode, '') <> '' 
+	AND CAST(a.CreateDate AS DATE) = @YesterdayDate
+GROUP BY CAST(a.CreateDate AS DATE), c.ProductCode, c.TypeID, c.HouseID, ca.RootArea
+ORDER BY CAST(a.CreateDate AS DATE), c.ProductCode, c.TypeID, c.HouseID, ca.RootArea
+
+PRINT('------------ 数据插入完毕 ------------')
+";
+
+            for (int i = 0; i < 7; i++)
             {
-                isGenerated = conn.ExecuteScalar(comm) != null;
-                if (!isGenerated)
+                bool isGenerated = false;
+                int dayFactor = (i + 1) * -1; //生成过去7天的静态数据
+                string isGeneratedSql = isGeneratedSqlTemp.Replace("@{dayfactor}", dayFactor.ToString());
+                string generateSql = generateSqlTemp.Replace("@{dayfactor}", dayFactor.ToString());
+
+                using (var comm = conn.GetSqlStringCommond(isGeneratedSql))
                 {
-                    string generateSql = @"
+                    isGenerated = conn.ExecuteScalar(comm) != null;
+                    if (!isGenerated)
+                    {
+                        comm.CommandText = generateSql;
+                        effectedRows = conn.ExecuteNonQuery(comm);
+                    }
+                }
+            }
+            return effectedRows;
+        }
+        public int GenerateMonthlySalesSnapshot()
+        {
+            int effectedRows = 0;
+            string isGeneratedSql = @"SELECT TOP 1 1 FROM Tbl_Cargo_MonthSaleStatic WHERE DATEADD(MONTH, DATEDIFF(MONTH, 0, YearMonth), 0) =  DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) - 1, 0)";
+            string generateSql = @"
+
 PRINT('------------ 区域仓库 ------------');
 WITH ChildAreaCTE AS (
 	SELECT
@@ -13678,64 +13852,8 @@ CREATE UNIQUE INDEX IX_#childArea
 ON #childArea (HouseID,AreaID)
 INCLUDE(RootArea);
 
-PRINT('------------ 删除昨日数据 ------------')
-DELETE Tbl_Cargo_DailySaleStatic WHERE SalesDate = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
 
-PRINT('------------ 获取产品昨日销量 ------------')
-INSERT INTO Tbl_Cargo_DailySaleStatic
-(
-    SalesDate,
-    ProductCode,
-    TypeID,
-    HouseID,
-    AreaID,
-    Piece,
-    WXPiece,
-    LastUpdateTime
-)
-SELECT
-	CAST(a.CreateDate AS DATE) SalesDate,
-    c.ProductCode,
-    c.TypeID,
-    c.HouseID,
-	ca.RootArea AreaID,
-    SUM(b.Piece) AS Piece,
-    SUM(CASE WHEN a.OrderType = 4 THEN b.Piece ELSE 0 END) AS WXPiece,
-	GETDATE() LastUpdateTime
-FROM Tbl_Cargo_OrderGoods AS b
-INNER JOIN Tbl_Cargo_Order AS a ON a.OrderNo = b.OrderNo
-INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
-INNER JOIN #childArea ca ON b.HouseID = ca.HouseID AND b.AreaID = ca.AreaID
-WHERE a.ThrowGood != 25
-    AND a.OrderModel = 0 
-    AND ISNULL(c.ProductCode, '') <> ''
-    AND c.SpecsType != 5 
-	AND CAST(a.CreateDate AS DATE) = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE)
-GROUP BY CAST(a.CreateDate AS DATE), c.ProductCode, c.TypeID, c.HouseID, ca.RootArea
-ORDER BY CAST(a.CreateDate AS DATE), c.ProductCode, c.TypeID, c.HouseID, ca.RootArea
-
-PRINT('------------ 数据插入完毕 ------------')
-";
-                    comm.CommandText = generateSql;
-                    effectedRows = conn.ExecuteNonQuery(comm);
-                }
-            }
-            return effectedRows;
-        }
-        public int GenerateMonthlySalesSnapshot()
-        {
-            int effectedRows = 0;
-            string isGeneratedSql = @"
-SELECT TOP 1 1 FROM Tbl_Cargo_MonthSaleStatic WHERE DATEADD(MONTH, DATEDIFF(MONTH, 0, LastUpdateTime), 0) =  DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0)
-";
-            bool isGenerated = false;
-            using (var comm = conn.GetSqlStringCommond(isGeneratedSql))
-            {
-                isGenerated = conn.ExecuteScalar(comm) != null;
-                if (!isGenerated)
-                {
-                    string generateSql = @"PRINT('------------ 删除上月数据 ------------');
-
+PRINT('------------ 删除上月数据 ------------');
 DECLARE @LastMonth DATE = DATEADD(MONTH, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0));
 DELETE FROM Tbl_Cargo_MonthSaleStatic
 WHERE YearMonth = @LastMonth;
@@ -13764,16 +13882,16 @@ DateRange AS (
         p.ProductCode,
         p.TypeID,
         p.HouseID,
-        og.AreaID,
+        ca.RootArea AreaID,
         DATEADD(MONTH, DATEDIFF(MONTH, 0, og.OP_DATE), 0) YearMonth,
         SUM(ISNULL(og.Piece,0)) AS Piece
     FROM Tbl_Cargo_Product AS p
-    INNER JOIN Tbl_Cargo_OrderGoods AS og
-        ON og.ProductID = p.ProductID
+        INNER JOIN Tbl_Cargo_OrderGoods AS og ON og.ProductID = p.ProductID
+        INNER JOIN #childArea ca ON ca.AreaID = og.AreaID
     WHERE ISNULL(p.ProductCode, '') <> ''
         AND DATEADD(MONTH, DATEDIFF(MONTH, 0, og.OP_DATE), 0) BETWEEN DATEADD(MONTH, -2, @LastMonth) AND @LastMonth
     GROUP BY 
-        p.ProductCode, p.TypeID, p.HouseID, og.AreaID, DATEADD(MONTH, DATEDIFF(MONTH, 0, og.OP_DATE), 0)
+        p.ProductCode, p.TypeID, p.HouseID, ca.RootArea, DATEADD(MONTH, DATEDIFF(MONTH, 0, og.OP_DATE), 0)
 )
 
 ,MonthlySalesOrg AS (
@@ -13786,7 +13904,6 @@ DateRange AS (
             CROSS JOIN MonthDim d
         ) p
         LEFT JOIN MonthlySalesGroup m ON m.ProductCode = p.ProductCode AND m.TypeID = p.TypeID AND m.HouseID = p.HouseID AND m.AreaID = p.AreaID AND m.YearMonth = p.YearMonth
-   
 )
 
 SELECT * 
@@ -13878,6 +13995,12 @@ ORDER BY YearMonth,ProductCode, HouseID, AreaID;
 PRINT('------------ 完成上月销量入库 ------------');
 
 ";
+            bool isGenerated = false;
+            using (var comm = conn.GetSqlStringCommond(isGeneratedSql))
+            {
+                isGenerated = conn.ExecuteScalar(comm) != null;
+                if (!isGenerated)
+                {
                     comm.CommandText = generateSql;
                     effectedRows = conn.ExecuteNonQuery(comm);
                 }
@@ -13931,6 +14054,7 @@ order by TypeID
                             UserID = Convert.ToInt32(idr["UserID"]),
                             UserName = Convert.ToString(idr["UserName"]),
                             LoginName = Convert.ToString(idr["LoginName"]),
+                            CellPhone = Convert.ToString(idr["CellPhone"]),
                             //PickPlanGoodsList = OrderPickPlanGoodsList
                         });
                         #endregion

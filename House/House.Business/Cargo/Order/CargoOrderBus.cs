@@ -1,4 +1,5 @@
-﻿using House.Entity;
+﻿using House.Business.Log;
+using House.Entity;
 using House.Entity.Cargo;
 using House.Entity.Cargo.Order;
 using House.Entity.Dto;
@@ -14,6 +15,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
+using System.Data;
+using System.Data.Common;
 using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
@@ -562,6 +565,8 @@ namespace House.Business.Cargo
                 };
                 TryGeneralRplOrder(rplParam);
             }
+
+
         }
         /// <summary>
         /// 新增订单数据
@@ -3901,19 +3906,18 @@ namespace House.Business.Cargo
             log.NvgPage = "尝试生成补货单";
             log.UserID = entity.ReqBy;
             log.Operate = "A";
-            LogWrite<CargoOrderEntity> lw = new LogWrite<CargoOrderEntity>();
+            LogBus lw = new LogBus();
             try
             {
                 man.AutoGeneralRplOrder(entity);
                 log.Memo = JsonConvert.SerializeObject(entity);
-                lw.WriteLog(log);
+                lw.InsertLog(log);
             }
             catch (Exception ex)
             {
                 log.Status = "1";
-                log.Memo = ex.Message + " " + ex.StackTrace;
-                lw.WriteLog(log);
-                return;
+                log.Memo = ex.FormatErr();
+                lw.InsertLog(log);
             }
         }
         public CargoRplOrderListDto QueryRplOrder(CargoRplOrderListDto entity)
