@@ -33,16 +33,6 @@ namespace House.Business.Cargo
     public class CargoOrderBus
     {
         private CargoOrderManager man = new CargoOrderManager();
-        private string _userid = string.Empty;
-        private string _username = string.Empty;
-        private string _ipaddress = string.Empty;
-        public CargoOrderBus() { }
-        public CargoOrderBus(string UserID, string UserName, string IPAddress)
-        {
-            _userid = UserID;
-            _username = UserName;
-            _ipaddress = IPAddress;
-        }
         #region 订单明细操作方法集合
         /// <summary>
         /// 分页查询订单明细
@@ -574,6 +564,7 @@ namespace House.Business.Cargo
             //        }).ToList()
             //    };
             //    TryGeneralRplOrder(rplParam);
+
             //}
 
 
@@ -3914,23 +3905,13 @@ namespace House.Business.Cargo
             log.Moudle = "补货单";
             log.Status = "0";
             log.NvgPage = "尝试生成补货单";
-            log.UserID = entity.ReqBy ?? _userid;
+            log.UserID = entity.ReqBy;
             log.Operate = "A";
-            log.IPAddress = _ipaddress;
             LogBus lw = new LogBus();
             try
             {
-                var addedList = man.AutoGeneralRplOrder(entity);
-                var dataParamsJson = JsonConvert.SerializeObject(entity); 
-                if (addedList.Any())
-                {
-                    var addedListJson = JsonConvert.SerializeObject(addedList);
-                    log.Memo = $"已生成{addedList.Count}个补货单；创建数据参数：{dataParamsJson}；生成返回数据：{addedListJson}";
-                }
-                else
-                {
-                    log.Memo = $"未生成补货单；创建数据参数：{dataParamsJson}";
-                }
+                man.AutoGeneralRplOrder(entity);
+                log.Memo = JsonConvert.SerializeObject(entity);
                 lw.InsertLog(log);
             }
             catch (Exception ex)
@@ -3940,10 +3921,10 @@ namespace House.Business.Cargo
                 lw.InsertLog(log);
             }
         }
-        public CargoRplOrderListDto QueryRplOrder(CargoRplOrderParams queryParams)
+        public CargoRplOrderListDto QueryRplOrder(CargoRplOrderListDto entity)
         {
             CargoRplOrderListDto rtData = new CargoRplOrderListDto();
-            rtData = man.QueryRplOrder(queryParams);
+            rtData = man.QueryRplOrder(entity);
             return rtData;
         }
         public CargoRplOrderGoodsListDto QueryRplOrderGoods(CargoRplOrderGoodsListDto entity)
@@ -3955,33 +3936,6 @@ namespace House.Business.Cargo
         {
             var rtData = man.AddRplOrder(entity);
             return rtData;
-        }
-        public bool DelRplOrder(int[] RplIDs)
-        {
-            if(RplIDs == null || !RplIDs.Any())
-            {
-                return true;
-            }
-            LogEntity log = new LogEntity();
-            log.Moudle = "补货单";
-            log.Status = "0";
-            log.NvgPage = "删除补货单";
-            log.UserID = _userid;
-            log.IPAddress = _ipaddress;
-            log.Operate = "D";
-            LogBus lw = new LogBus();
-            try
-            {
-                man.DelRplOrder(RplIDs);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                log.Status = "1";
-                log.Memo = ex.FormatErr();
-                lw.InsertLog(log);
-                return false;
-            }
         }
         #endregion
         #region 来货单

@@ -20263,26 +20263,11 @@ namespace Cargo.Order
                     var YearArr = itt.ItemDescription.Split(' ');
                     if (YearArr.Length > 1)
                     {
-                        var Year = ExtractYear(YearArr[YearArr.Length - 1]);
+                        var Year = (YearArr[YearArr.Length - 1]).Substring(0, 4);
                         //判断Year是不是数值
                         if (IsNumber(Year))
                         {
-                            if (Year.Length==4)
-                            {
-                                BatchYear = Convert.ToInt32(Year.Substring(Year.Length - 2));
-                            }
-                            else if(Year.Length == 2)
-                            {
-                                BatchYear = Convert.ToInt32(Year);
-                            }
-                            else
-                            {
-                                msg.Result = false; msg.Message = $@"【订单名称】批次获取失败:【{YearArr[YearArr.Length - 1]}】"; goto ERROR;
-                            }
-                        }
-                        else
-                        {
-                            msg.Result = false; msg.Message = $@"【订单名称】批次获取失败:【{YearArr[YearArr.Length - 1]}】"; goto ERROR;
+                            BatchYear = Convert.ToInt32(Year.Substring(Year.Length - 2));
                         }
                     }
 
@@ -20620,21 +20605,6 @@ namespace Cargo.Order
         ERROR:
             //返回处理结果
             return msg;
-        }
-
-        public static string ExtractYear(string str)
-        {
-            if (string.IsNullOrWhiteSpace(str))
-                return null;
-
-            // 匹配连续的2位或4位年份数字，通常在字符串末尾
-            var match = Regex.Match(str, @"(\d{2,4})\s*(年|上半年|下半年|年上半年|年下半年)?$");
-            if (match.Success)
-            {
-                return match.Groups[1].Value;
-            }
-
-            return null;
         }
 
         #endregion

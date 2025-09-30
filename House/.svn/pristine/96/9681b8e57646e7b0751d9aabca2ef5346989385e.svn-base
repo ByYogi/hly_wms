@@ -17174,7 +17174,7 @@ namespace Cargo.Order
         #region 补货单方法合集
         public void QueryRplOrder()
         {
-            var queryParam = new CargoRplOrderParams
+            var queryEntity = new CargoRplOrderDto
             {
                 StartDate = Request.GetDateTime("StartDate"),
                 EndDate = Request.GetDateTime("EndDate"),
@@ -17191,10 +17191,11 @@ namespace Cargo.Order
             //分页
             int? pageIndex = Request.GetInt("page");
             int? pageSize = Request.GetInt("rows");
-
-            queryParam.SetPage(pageIndex, pageSize);
+            CargoRplOrderListDto filter = new CargoRplOrderListDto();
+            filter.SetPage(pageIndex, pageSize);
+            filter.QueryEntity = queryEntity;
             CargoOrderBus bus = new CargoOrderBus();
-            var result = bus.QueryRplOrder(queryParam);
+            var result = bus.QueryRplOrder(filter);
 
             string resultjson = result.ToJSON();
             Response.Clear();
@@ -17239,33 +17240,13 @@ namespace Cargo.Order
             filter.QueryEntity = queryEntity;
             CargoOrderBus bus = new CargoOrderBus();
             var result = bus.AddRplOrder(entity);
+
             string resultjson = JSON.Encode(result);
             Response.Clear();
             Response.Write(resultjson);
             Response.Flush();
         }
-        public void DelRplOrder()
-        {
-            int[] RplIDs = Array.Empty<int>();
 
-            RplIDs = Request.GetDataByJson<int[]>("RplIDs");
-            if(RplIDs == null || !RplIDs.Any())
-            {
-                Response.Clear();
-                Response.Write("未传入数据");
-                Response.Flush();
-            }
-
-            var userid = UserInfor?.LoginName?.Trim();
-            var username = UserInfor?.UserName;
-            var ipaddress = Common.GetUserIP(Request);
-            CargoOrderBus bus = new CargoOrderBus(userid, username, ipaddress);
-            bool isSucc = bus.DelRplOrder(RplIDs);
-
-            Response.Clear();
-            Response.Write(isSucc ? "删除成功" : "删除失败");
-            Response.Flush();
-        }
         public void UpdateRplOrder()
         {
 

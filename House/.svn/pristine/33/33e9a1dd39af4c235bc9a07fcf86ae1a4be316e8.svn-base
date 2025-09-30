@@ -10078,14 +10078,13 @@ SELECT @newNo AS NewRplNo;
         }
 
         //自动决定创建补货单
-        public List<CargoRplOrderDtlDto> AutoGeneralRplOrder(RplOrderAutoGeneratParam entity)
+        public void AutoGeneralRplOrder(RplOrderAutoGeneratParam entity)
         {
             SqlHelper conn = new SqlHelper();
             var goodslist = entity.GoodsList;
-            List<CargoRplOrderDtlDto> result = new List<CargoRplOrderDtlDto>();
             if (!goodslist.Any())
             {
-                return result;
+                return;
             }
             string createPrdctTempSql = @"
 CREATE TABLE 
@@ -10099,95 +10098,30 @@ INSERT ##productTemp(ProductID, AreaID)
 VALUES @{productValues};
 ";
             string queryOutofStockSql = @"
-PRINT('------------ 区域仓库 ------------');
-WITH ChildAreaCTE AS (
-	SELECT
-		HouseID,
-		AreaID AS RootArea,
-		ParentID AS ParentArea,
-		AreaID AS AreaID,
-		Name AS RootName,
-		CAST('' AS varchar(50)) AS ParentName,
-		Name AS AreaName,
-		1 AS Level
-	FROM
-		Tbl_Cargo_Area a
-	WHERE (1=1)
-		AND ParentID = 0
-	UNION ALL
-	
-	SELECT
-		c.HouseID,
-		c.RootArea,
-		a.ParentID AS ParentArea,
-		a.AreaID,
-		c.RootName,
-		c.AreaName,
-		a.Name AS AreaName,
-		c.Level + 1
-	FROM
-		Tbl_Cargo_Area a
-		INNER JOIN ChildAreaCTE c ON a.ParentID = c.AreaID
-    WHERE (1=1)
-)
-SELECT
-	* INTO #childArea
-FROM
-	ChildAreaCTE 
-OPTION (MAXRECURSION 2); --只查到2级子仓库，如有3级子仓库就报错，防止无限递归。业务逻辑也只允许最大2级子仓（注：根仓库是0级）
-CREATE UNIQUE INDEX IX_#childArea
-ON #childArea (HouseID,AreaID)
-INCLUDE(RootArea);
-
 -- 产品&品牌
-WITH prdctGrp AS (
+WITH pCTE as (
 SELECT 
-	MAX(p.ProductID) ProductID,
-	p.ProductCode,
-	ca.RootArea AreaID,
-	SUM(cg.Piece) Piece
-FROM
-	Tbl_Cargo_Product p
-	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-	INNER JOIN Tbl_Cargo_ContainerGoods cg ON p.ProductID = cg.ProductID
-	INNER JOIN ##productTemp pTemp ON p.ProductID = pTemp.ProductID
-	INNER JOIN #childArea ca ON ca.AreaID = pTemp.AreaID
-WHERE
-	ISNULL(p.ProductCode, '') <> ''
-GROUP BY
-	p.ProductCode, ca.RootArea
-),
-pCTE as (
-SELECT 
-	DISTINCT
 	p.ProductID,
 	p.ProductName,
 	p.ProductCode,
 	p.GoodsCode,
-	p.Specs,
-	p.Figure,
-	P.LoadIndex,
-	p.SpeedLevel,
 	pt.TypeID,
 	pt.TypeName,
 	pt.ParentID,
+	pTemp.AreaID,
     h.HouseID,
 	h.Name HouseName,
 	h.ParentID HouseParentID,
-	h.ParentName HouseParentName,
-	pg.AreaID,
-	pg.Piece InPiece
+	h.ParentName HouseParentName
 FROM
 	Tbl_Cargo_Product p
-	INNER JOIN prdctGrp pg ON p.ProductID = pg.ProductID
 	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+	INNER JOIN ##productTemp pTemp ON p.ProductID = pTemp.ProductID
 	LEFT JOIN Tbl_Cargo_House h ON p.HouseID = h.HouseID
-WHERE
-	ISNULL(p.ProductCode, '') <> ''
-)
-,
+),
 --在途
 iti AS (
+	
 	SELECT
 		fo.ProductCode,
 		fo.HouseID,
@@ -10197,14 +10131,29 @@ iti AS (
 		INNER JOIN ##productTemp ptemp ON fo.ProductID = ptemp.ProductID
 	WHERE
 		(1 = 1)
-		AND fo.InCargoStatus IN (0,2)
+		AND fo.InCargoStatus = 0
+		OR fo.InCargoStatus = 2
 	GROUP BY
 		fo.ProductCode,
 		fo.HouseID
-)
---select * from iti
-,
-
+),
+--在库
+isi AS (
+	
+	SELECT
+		p.ProductCode,
+		p.HouseID,
+		p.AreaID,
+		SUM(cg.Piece) Piece
+	FROM
+		Tbl_Cargo_ContainerGoods cg
+		INNER JOIN Tbl_Cargo_Container c ON cg.ContainerID = c.ContainerID
+		INNER JOIN pCTE p ON p.ProductID = p.ProductID
+	GROUP BY
+		p.ProductCode,
+		p.HouseID,
+		p.AreaID
+),
 --在补货
 ro as (
 SELECT
@@ -10216,10 +10165,8 @@ FROM
 	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
 WHERE
 	ro.Status IN (0,1,2)
-GROUP BY 
-	rog.ProductCode, ro.HouseID
+GROUP BY rog.ProductCode, ro.HouseID
 )
-
 
 --安全库存配置
 SELECT
@@ -10227,24 +10174,23 @@ SELECT
 	ss.AreaID,
 	ss.MinStock,
 	ss.MaxStock,
-	ISNULL(mss.WeightedMonthSale, 0) WeightedMonthSale,
-	ISNULL(iti.Piece, 0) InTransitPiece,
-	ISNULL(ro.Piece, 0) RestockingPiece,
-	(ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) RealPiece,
-	ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) Piece,
+	mss.WeightedMonthSale,
+	isi.Piece InPiece,
+	iti.Piece InTransitPiece,
+	ro.Piece RestockingPiece,
+	ss.MaxStock - (isi.Piece + iti.Piece - ro.Piece) Piece,
 	p.*
 FROM
 	Tbl_Cargo_SafeStock ss
 	INNER JOIN pCTE p ON p.ProductCode = ss.ProductCode AND p.AreaID = ss.AreaID
 	LEFT JOIN iti ON iti.ProductCode = p.ProductCode AND iti.HouseID = p.HouseID
-	LEFT JOIN Tbl_Cargo_MonthSaleStatic mss ON mss.ProductCode = p.ProductCode AND mss.AreaID = p.AreaID AND mss.YearMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) -1 ,0)
+	LEFT JOIN isi ON isi.ProductCode = p.ProductCode AND isi.AreaID = p.AreaID
+	LEFT JOIN Tbl_Cargo_MonthSaleStatic mss ON mss.ProductCode = p.ProductCode AND mss.AreaID = p.AreaID
 	LEFT JOIN ro ON ro.ProductCode = p.ProductCode AND ro.HouseID = p.HouseID
 WHERE 
 	ss.MinStock > 0 AND MaxStock > 0
-	AND (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) < ss.MinStock 
-	AND ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) > 0
-ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) DESC
-
+	AND (isi.Piece + iti.Piece - ro.Piece) < ss.MinStock 
+	AND ss.MaxStock - (isi.Piece + iti.Piece - ro.Piece) > 0
 ";
             using (Trans trans = new Trans())
             {
@@ -10257,11 +10203,11 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
                     {
                         productValues.Add($"(@ProductID{index}, @AreaID{index})");
                         sqlParameters.AddRange(new List<SqlParameter>
-                        {
-                            new SqlParameter($"@ProductID{index}", goods.ProductID),
-                            new SqlParameter($"@AreaID{index}", goods.AreaID),
+                {
+                    new SqlParameter($"@ProductID{index}", goods.ProductID),
+                    new SqlParameter($"@AreaID{index}", goods.AreaID),
 
-                        });
+                });
                         index++;
                     }
                     if (productValues.Any())
@@ -10273,19 +10219,26 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
                         insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", "");
                     }
 
-                    List<CargoRplOrderGoodsDto> toAddRows = new List<CargoRplOrderGoodsDto>();
-                    List<CargoRplOrderDtlDto> toAddEntities = new List<CargoRplOrderDtlDto>();
                     //插入临时表数据
                     using (DbCommand command = conn.GetSqlStringCommond(createPrdctTempSql + insertPrdctTempSql))
                     {
                         command.Parameters.AddRange(sqlParameters.ToArray());
                         conn.ExecuteNonQuery(command, trans);
-
-                        command.CommandText = queryOutofStockSql;
-                        //获取库存低于安全库存的产品
+                    }
+                    
+                    List<CargoRplOrderGoodsDto> toAddRows = new List<CargoRplOrderGoodsDto>();
+                    List<CargoRplOrderDtlDto> toAddEntities = new List<CargoRplOrderDtlDto>();
+                    //获取库存低于安全库存的产品
+                    using (DbCommand command = conn.GetSqlStringCommond(queryOutofStockSql))
+                    {
+                        string strSQL = @"SELECT * FROM ##productTemp1";
+                        using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                        {
+                            conn.ExecuteNonQuery(cmd);
+                        }
                         using (var dt = conn.ExecuteDataTable(command, trans))
                         {
-                            if (dt.Rows.Count == 0) return result;
+                            if (dt.Rows.Count == 0) return;
                             foreach (DataRow dr in dt.Rows)
                             {
                                 toAddRows.Add(new CargoRplOrderGoodsDto()
@@ -10306,7 +10259,7 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
                                     HouseID = dr.Field<int>("HouseID"),
                                     AreaID = dr.Field<int>("AreaID"),
                                     HouseName = dr.Field<string>("HouseName"),
-                                    HouseParentID = dr.Field<int?>("HouseParentID"),
+                                    HouseParentID = dr.Field<int>("HouseParentID"),
                                     HouseParentName = dr.Field<string>("HouseParentName"),
 
                                     MinStock = dr.Field<int>("MinStock"),
@@ -10314,8 +10267,7 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
                                     SrcPiece = dr.Field<int>("InPiece"),
                                     InTransitQty = dr.Field<int>("InTransitPiece"),
                                     RestockingQty = dr.Field<int>("RestockingPiece"),
-                                    AvgSalSUM = dr.Field<int>("WeightedMonthSale"),
-                                    SID = dr.Field<long>("SID")
+                                    AvgSalSUM = dr.Field<int>("WeightedMonthSale")
                                 });
                             }
                         }
@@ -10344,15 +10296,12 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
                             };
                             toAddEntities.Add(toAddEntity);
                         }
-
                     }
                     trans.Commit();
 
-                    //将分组后的数据创建补货单
                     foreach (var toAddEntity in toAddEntities)
                     {
-                        var resultAddedData = AddRplOrder(toAddEntity);
-                        result.Add(resultAddedData);
+                        AddRplOrder(toAddEntity);
                     }
                 }
                 catch (Exception)
@@ -10362,18 +10311,15 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
                 }
             }
 
-            return result;
+            return;
         }
-        public CargoRplOrderDto QueryRplOrderFirst(CargoRplOrderParams queryParams)
-        {
-            var listData = QueryRplOrder(queryParams)?.Data ?? new List<CargoRplOrderDto>();
-            return listData.FirstOrDefault();
-        }
-        public CargoRplOrderListDto QueryRplOrder(CargoRplOrderParams queryParams)
+        public CargoRplOrderListDto QueryRplOrder(CargoRplOrderListDto entity)
         {
             CargoRplOrderListDto result = new CargoRplOrderListDto();
+            var queryentity = entity.QueryEntity;
             try
             {
+                //entity.EnSafe();
                 #region 组装查询SQL语句
                 StringBuilder strbld = new StringBuilder();
                 List<string> conditions = new List<string>();
@@ -10390,28 +10336,30 @@ WHERE (1=1) @{conditions}
 GROUP BY RplID
 )
 "); 
-                if (queryParams.TypeID.HasValue)
+                if (queryentity.TypeID.HasValue)
                 {
                     conditions.Add("TypeID = @TypeID");
-                    parameters.Add(new SqlParameter("@TypeID", SqlDbType.Int) { Value = queryParams.TypeID.Value });
+                    parameters.Add(new SqlParameter("@TypeID", SqlDbType.Int) { Value = queryentity.TypeID.Value });
                 }
-                if (queryParams.TypeCate.HasValue)
+
+                if (queryentity.TypeCate.HasValue)
                 {
                     conditions.Add("TypeCate = @TypeCate");
-                    parameters.Add(new SqlParameter("@TypeCate", SqlDbType.Int) { Value = queryParams.TypeCate.Value });
+                    parameters.Add(new SqlParameter("@TypeCate", SqlDbType.Int) { Value = queryentity.TypeCate.Value });
                 }
                 if (conditions.Count > 0)
                 {
-                    strbld = strbld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
+                    strbld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
                 }
                 else
                 {
-                    strbld = strbld.Replace("@{conditions}", "");
+                    strbld.Replace("@{conditions}", "");
                 }
+
 
                 strbld.AppendLine(@"
 SELECT 
-	@{pagesize}
+	TOP @{pagesize}
 	* ,
     COUNT(1) OVER() AS TotalCount
 FROM (
@@ -10448,52 +10396,44 @@ WHERE RowNumber > @{startindex}
 ORDER BY RowNumber ASC
 ");
                 conditions = new List<string>();
-                strbld.Replace("@{pagesize}", queryParams.PageSize <= 0 ? "" : "TOP " + queryParams.PageSize.ToString());
-                strbld.Replace("@{startindex}", queryParams.StartIndex.ToString());
+                strbld.Replace("@{pagesize}", entity.PageSize.ToString());
+                strbld.Replace("@{startindex}", entity.StartIndex.ToString());
 
-                if (queryParams.RplIDs.Any())
-                {
-                    conditions.Add($"ro.RplID IN ({string.Join(",", queryParams.RplIDs)})");
-                }
-                else if (queryParams.RplID.HasValue)
-                {
-                    conditions.Add("ro.RplID = @RplID");
-                    parameters.Add(new SqlParameter("@RplID", SqlDbType.Int) { Value = queryParams.RplID });
-                }
-                if (!string.IsNullOrEmpty(queryParams.RplNo))
+
+                if (!string.IsNullOrEmpty(queryentity.RplNo))
                 {
                     conditions.Add("ro.RplNO LIKE @RplNO");
-                    parameters.Add(new SqlParameter("@RplNO", SqlDbType.NVarChar, 50) { Value = '%' + queryParams.RplNo + '%' });
+                    parameters.Add(new SqlParameter("@RplNO", SqlDbType.NVarChar, 50) { Value = '%' + queryentity.RplNo + '%' });
                 }
-                if (queryParams.Status.HasValue)
+                if (queryentity.Status.HasValue)
                 {
                     conditions.Add("ro.Status = @Status");
-                    parameters.Add(new SqlParameter("@Status", SqlDbType.TinyInt) { Value = queryParams.Status.Value });
+                    parameters.Add(new SqlParameter("@Status", SqlDbType.TinyInt) { Value = queryentity.Status.Value });
                 }
-                if (queryParams.HouseID.HasValue)
+                if (queryentity.HouseID.HasValue)
                 {
                     conditions.Add("ro.HouseID = @HouseID");
-                    parameters.Add(new SqlParameter("@HouseID", SqlDbType.Int) { Value = queryParams.HouseID.Value });
+                    parameters.Add(new SqlParameter("@HouseID", SqlDbType.Int) { Value = queryentity.HouseID.Value });
                 }
-                if (queryParams.FromHouse.HasValue)
+                if (queryentity.FromHouse.HasValue)
                 {
                     conditions.Add("ro.FromHouse = @FromHouse");
-                    parameters.Add(new SqlParameter("@FromHouse", SqlDbType.Int) { Value = queryParams.FromHouse.Value });
+                    parameters.Add(new SqlParameter("@FromHouse", SqlDbType.Int) { Value = queryentity.FromHouse.Value });
                 }
-                if (queryParams.ReqByName != null)
+                if (queryentity.ReqByName != null)
                 {
                     conditions.Add("ro.ReqByName LIKE N'%'+@ReqByName+'%'");
-                    parameters.Add(new SqlParameter("@ReqByName", SqlDbType.NVarChar, 50) { Value = queryParams.ReqByName });
+                    parameters.Add(new SqlParameter("@ReqByName", SqlDbType.NVarChar, 50) { Value = queryentity.ReqByName });
                 }
-                if (queryParams.StartDate.HasValue)
+                if (queryentity.StartDate.HasValue)
                 {
                     conditions.Add("ro.CreateDate >= @StartDate");
-                    parameters.Add(new SqlParameter("@StartDate", SqlDbType.DateTime) { Value = queryParams.StartDate.Value.Date });
+                    parameters.Add(new SqlParameter("@StartDate", SqlDbType.DateTime) { Value = queryentity.StartDate.Value.Date });
                 }
-                if (queryParams.EndDate.HasValue)
+                if (queryentity.EndDate.HasValue)
                 {
                     conditions.Add("ro.CreateDate < @EndDate");
-                    parameters.Add(new SqlParameter("@EndDate", SqlDbType.DateTime) { Value = queryParams.EndDate.Value.Date.AddDays(1) });
+                    parameters.Add(new SqlParameter("@EndDate", SqlDbType.DateTime) { Value = queryentity.EndDate.Value.Date.AddDays(1) });
                 }
 
                 if (conditions.Count > 0)
@@ -10530,7 +10470,6 @@ ORDER BY RowNumber ASC
                                 FromHouse = idr.Field<int?>("FromHouse"),
                                 HouseID = idr.Field<int?>("HouseID"),
                                 HouseName = idr.Field<string>("HouseName"),
-                                AreaID = idr.Field<int>("AreaID"),
                                 FromHouseName = idr.Field<string>("FromHouseName"),
                                 ReqBy = idr.Field<string>("ReqBy"),
                                 ReqByName = idr.Field<string>("ReqByName"),
@@ -10671,7 +10610,6 @@ ORDER BY RowNumber ASC
                     byte CreateMethod = headData.CreateMethod ?? 0;
 
                     int? HouseID = headData.HouseID;
-                    int? AreaID = headData.AreaID;
                     int? FromHouse = headData.FromHouse;
                     int? ParentRplID = headData.ParentRplID;
                     string ReqBy = headData.ReqBy;
@@ -10679,7 +10617,6 @@ ORDER BY RowNumber ASC
                     string HouseName = "";
                     string FromHouseName = "";
                     string ReqByName = "";
-                    string AreaName = "";
                     CargoHouseManager houseMan = new CargoHouseManager();
                     //验证目标仓库是否有效
                     if (!HouseID.HasValue) throw new ApplicationException("请传入目标仓库ID");
@@ -10693,14 +10630,8 @@ ORDER BY RowNumber ASC
                     isExistHouse = (fromhouseData?.HouseID ?? 0) > 0;
                     if (!isExistHouse) throw new ApplicationException($"来源仓库ID({FromHouse.Value})不存在");
                     FromHouseName = fromhouseData.Name;
-                    //验证来源区域仓库是否有效
-                    //if (!AreaID.HasValue) throw new ApplicationException("请传入来源区域仓库ID");
-                    //var areaData = houseMan.QueryAreaByAreaID(new CargoAreaEntity() { AreaID = AreaID.Value});
-                    //bool isExistArea = (areaData?.AreaID ?? 0) > 0;
-                    //if (!isExistArea) throw new ApplicationException($"来源区域仓库ID({AreaID.Value})不存在");
-                    //AreaName = areaData.Name;
                     //验证请求人ID是否有效
-                    if (string.IsNullOrWhiteSpace(ReqBy))
+                    if (!string.IsNullOrEmpty(ReqBy?.Trim()))
                     {
                         throw new ApplicationException("请传入请求人ID");
                     }
@@ -10782,13 +10713,10 @@ SELECT
                             new SqlParameter("@HouseName", SqlDbType.NVarChar, 50) { Value = HouseName},
                             new SqlParameter("@FromHouse", SqlDbType.Int) { Value = FromHouse },
                             new SqlParameter("@FromHouseName", SqlDbType.NVarChar, 50) { Value = FromHouseName },
-                            //new SqlParameter("@AreaID", SqlDbType.Int) { Value = AreaID },
-                            //new SqlParameter("@AreaName", SqlDbType.NVarChar, 50) { Value = AreaName },
                             new SqlParameter("@ReqBy", SqlDbType.VarChar, 10) { Value = headData.ReqBy },
                             new SqlParameter("@ReqByName", SqlDbType.NVarChar, 50) { Value = ReqByName },
 
                             //传值
-                            new SqlParameter("@AreaName", SqlDbType.NVarChar, 50) { Value = HouseName},
                             new SqlParameter("@ParentRplID", SqlDbType.Int) { Value = (object)ParentRplID ?? DBNull.Value },
                             new SqlParameter("@ScrType", SqlDbType.TinyInt) { Value = (object)headData.ScrType ?? DBNull.Value },
                             new SqlParameter("@SrcCode", SqlDbType.NVarChar, 50) { Value = (object)headData.SrcCode ?? DBNull.Value },
@@ -10859,7 +10787,6 @@ INSERT INTO
 	Tbl_Cargo_RplOrderGoods (
 		RplID,
 		ProductID,
-        SID,
 		ProductName,
 		ProductCode,
 		GoodsCode,
@@ -10892,7 +10819,6 @@ VALUES
                     {
                         long? ProductID = row.ProductID;
                         int? TypeID = row.TypeID;
-                        int? TypeCate = row.TypeCate;
                         int? typeCate = null;
                         int sysPiece = 0;
 
@@ -10913,16 +10839,14 @@ VALUES
                         if (!isExistProduct) throw new ApplicationException($"产品ID({ProductID.Value})不存在");
                         //验证品牌是否存在
                         if (!TypeID.HasValue) throw new ApplicationException("请传入产品ID");
-                        if (!TypeCate.HasValue) throw new ApplicationException("请传入产品品类ID");
-                        var typeData = prdctMan.QueryProductType(new CargoProductTypeEntity() { TypeID = TypeID.Value, ParentID = TypeCate.Value })?.FirstOrDefault();
+                        var typeData = prdctMan.QueryProductType(new CargoProductTypeEntity() { TypeID = TypeID.Value })?.FirstOrDefault();
                         bool isExistType = (typeData?.TypeID ?? 0) > 0;
-                        if (!isExistType) throw new ApplicationException($"产品品牌不存在。相关数据：TypeID({TypeID.Value})，TypeCate({typeCate.Value})");
+                        if (!isExistType) throw new ApplicationException($"产品品牌ID({TypeID.Value})不存在");
 
                         typeCate = typeData.ParentID;
 
                         string rplIDParam = "@RplID" + rowIndex;
                         string productIDParam = "@ProductID" + rowIndex;
-                        string sidParam = "@SID" + rowIndex;
                         string productNameParam = "@ProductName" + rowIndex;
                         string productCodeParam = "@ProductCode" + rowIndex;
                         string goodsCodeParam = "@GoodsCode" + rowIndex;
@@ -10941,8 +10865,8 @@ VALUES
                         string createDateParam = "@CreateDate" + rowIndex;
                         string updateDateParam = "@UpdateDate" + rowIndex;
 
-                        sqlvaluesStrList.Add($"({rplIDParam}, {productIDParam}, {sidParam}, {productNameParam}, {productCodeParam}, {goodsCodeParam}, {typeCateParam}, {typeIDParam}, {typeNameParam}, {pieceParam}," +
-                            $"{sysPieceParam}, {donePieceParam}, {minstockParam}, {maxstockParam}, {srcPieceParam}, {restockingqtyParam}, {intransiQtyParam}, {avgSalsum}, {createDateParam}, {updateDateParam})");
+                        sqlvaluesStrList.Add($"({rplIDParam}, {productIDParam}, {productNameParam}, {productCodeParam}, {goodsCodeParam}, {typeCateParam}, {typeIDParam}, {typeNameParam}, {pieceParam}," +
+                            $"{sysPieceParam}, {donePieceParam}, {minstock}, {maxstock}, {sysPiece}, {restockingqty}, {intransiQtyParam}, {avgSalsum}, {createDateParam}, {updateDateParam})");
 
                         rowssqlParameters.AddRange(new List<SqlParameter>()
                         {
@@ -10958,7 +10882,6 @@ VALUES
                             new SqlParameter(sysPieceParam, SqlDbType.Int) { Value = sysPiece },
 
                             //传值
-                            new SqlParameter(sidParam, SqlDbType.BigInt) { Value = row.SID },
                             new SqlParameter(pieceParam, SqlDbType.Int) { Value = row.Piece },
                             new SqlParameter(minstockParam, SqlDbType.Int) { Value = minstock },
                             new SqlParameter(maxstockParam, SqlDbType.Int) { Value = maxstock },
@@ -10976,7 +10899,7 @@ VALUES
                         rowIndex++;
                     }
 
-                    insertRowsSQL = insertRowsSQL.Replace("@{sqlvalues}", string.Join(("," + Environment.NewLine), sqlvaluesStrList));
+                    insertRowsSQL.Replace("@{sqlvalues}", string.Join(("," + Environment.NewLine), sqlvaluesStrList));
                     using (DbCommand command = conn.GetSqlStringCommond(insertRowsSQL))
                     {
                         command.Parameters.AddRange(rowssqlParameters.ToArray());
@@ -10991,10 +10914,9 @@ VALUES
                                     {
                                         ID = dr.Field<int>("ID"),
                                         RplID = dr.Field<int>("RplID"),
-                                        ProductID = dr.Field<long>("ProductID"),
-                                        SID = dr.Field<long>("SID"),
-                                        ProductCode = dr.Field<string>("ProductCode"),
+                                        ProductID = dr.Field<int>("ProductID"),
                                         ProductName = dr.Field<string>("ProductName"),
+                                        ProductCode = dr.Field<string>("ProductCode"),
                                         GoodsCode = dr.Field<string>("GoodsCode"),
                                         TypeCate = dr.Field<int>("TypeCate"),
                                         TypeID = dr.Field<int>("TypeID"),
@@ -11028,47 +10950,7 @@ VALUES
                 }
             }
         }
-        public void DelRplOrder(int[] RplIDs)
-        {
-            SqlHelper conn = new SqlHelper();
-            if (RplIDs.Any())
-            {
-                var rplListData = QueryRplOrder(new CargoRplOrderParams { RplIDs = new List<int>(RplIDs) })?.Data;
-                if(rplListData == null || !rplListData.Any())
-                {
-                    throw new ApplicationException($"未找到对应的补货单数据。参数：RplIDs:{string.Join(",", RplIDs)}");
-                }
-                foreach (var RplID in RplIDs)
-                {
-                    var matchedRpl = rplListData.FirstOrDefault(c => c.RplID == RplID);
-                    if(matchedRpl == null)
-                    {
-                        throw new ApplicationException($"未找到对应的补货单数据。参数：RplID:{RplID}");
-                    }
-                    //检查补货单为 待处理|已取消 状态
-                    if(!new byte[] {0, 4 }.Contains(matchedRpl.Status.GetValueOrDefault()))
-                    {
-                        throw new ApplicationException($"补货单({matchedRpl.RplNo})已处理，不能删除");
-                    }
-                    //检查已完成补货数为0
-                    var anyDonePiece = matchedRpl.DonePiece.GetValueOrDefault() > 0;
-                    if(anyDonePiece)
-                    {
-                        throw new ApplicationException($"补货单({matchedRpl.RplNo})已经开始补货，不能删除");
-                    }
-                }
-
-                string delDataSqlStr = @"
-DELETE Tbl_Cargo_RplOrderGoods WHERE RplID IN @{RplIDs};
-DELETE Tbl_Cargo_RplOrder WHERE RplID IN @{RplIDs};
-";
-                delDataSqlStr = delDataSqlStr.Replace("@{RplIDs}", "(" + string.Join(",", RplIDs) + ")");
-                using (var comm = conn.GetSqlStringCommond(delDataSqlStr))
-                {
-                    conn.ExecuteNonQuery(comm);
-                }
-            }
-        }
+        
         #endregion
         #region 来货单 
         public void AddPurchaseOrderInfo(CargoOrderEntity entity, List<CargoProductEntity> productList)

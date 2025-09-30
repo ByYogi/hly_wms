@@ -1,4 +1,43 @@
 
+PRINT('------------ 区域仓库 ------------');
+--WITH ChildAreaCTE AS (
+--	SELECT
+--		HouseID,
+--		AreaID AS RootArea,
+--		ParentID AS ParentArea,
+--		AreaID AS AreaID,
+--		Name AS RootName,
+--		CAST('' AS varchar(50)) AS ParentName,
+--		Name AS AreaName,
+--		1 AS Level
+--	FROM
+--		Tbl_Cargo_Area a
+--	WHERE (1=1)
+--		AND ParentID = 0
+--	UNION ALL
+	
+--	SELECT
+--		c.HouseID,
+--		c.RootArea,
+--		a.ParentID AS ParentArea,
+--		a.AreaID,
+--		c.RootName,
+--		c.AreaName,
+--		a.Name AS AreaName,
+--		c.Level + 1
+--	FROM
+--		Tbl_Cargo_Area a
+--		INNER JOIN ChildAreaCTE c ON a.ParentID = c.AreaID
+--    WHERE (1=1)
+--)
+--SELECT
+--	* INTO #childArea
+--FROM
+--	ChildAreaCTE 
+--OPTION (MAXRECURSION 2); --只查到2级子仓库，如有3级子仓库就报错，防止无限递归。业务逻辑也只允许最大2级子仓（注：根仓库是0级）
+--CREATE UNIQUE INDEX IX_#childArea
+--ON #childArea (HouseID,AreaID)
+--INCLUDE(RootArea);
 
 -- 产品&品牌
 WITH prdctGrp AS (
@@ -85,14 +124,13 @@ GROUP BY
 --安全库存配置
 SELECT
 	ss.SID,
-	ss.AreaID,
 	ss.MinStock,
 	ss.MaxStock,
 	ISNULL(mss.WeightedMonthSale, 0) WeightedMonthSale,
 	ISNULL(iti.Piece, 0) InTransitPiece,
 	ISNULL(ro.Piece, 0) RestockingPiece,
-	(ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) RealPiece,
-	ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) Piece,
+	(ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) RealPiece,
+	ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) Piece,
 	p.*
 FROM
 	Tbl_Cargo_SafeStock ss
@@ -103,9 +141,8 @@ FROM
 WHERE 
 	ss.MinStock > 0 AND MaxStock > 0
 	AND (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) < ss.MinStock 
-	AND ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) > 0
-ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) DESC
+	AND ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) > 0
+	AND p.HouseID = 93 -- 查询东平的
+ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) DESC
 
-	--select COUNT(*) FROM Tbl_Cargo_SafeStock
-
-	select * from Tbl_Cargo_ProductType where TypeID = 648
+--SELECT * FROM Tbl_Cargo_Product WHERE ProductID = 938921
