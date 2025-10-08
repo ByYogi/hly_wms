@@ -10077,7 +10077,7 @@ SELECT @newNo AS NewRplNo;
             }
         }
 
-        //自动决定创建补货单
+        //更新缺货清单
         public List<CargoRplOrderDtlDto> AutoGeneralRplOrder(RplOrderAutoGeneratParam entity)
         {
             SqlHelper conn = new SqlHelper();
@@ -11105,7 +11105,7 @@ VALUES
                     //获取新补货单号
                     RplNo = GetNewRplNo();
 
-                    //------------ 插入头数据 ------------
+                    //------------ 插入审计头数据 ------------
                     string insertHeadSQL = @"
 INSERT INTO
 	Tbl_Cargo_RplOrder (
@@ -11282,7 +11282,7 @@ SELECT
                     }
 
 
-                    //------------ 插入行数据 ------------
+                    //------------ 插入审计行数据 ------------
                     string insertRowsSQL = @"
 INSERT INTO
 	Tbl_Cargo_OutOfStockLogGoods (
@@ -11472,33 +11472,91 @@ VALUES
 
                     //------------ 插入缺货数据 ------------
                     string insertOutOfStock = @"
-INSERT INTO
-	Tbl_Cargo_OutOfStock (
-		OOSLogID,
+PRINT('Merge语法实现插入或更新自动判断，语法建议来自GPT');
+MERGE INTO Tbl_Cargo_OutOfStock AS target
+USING (
+    VALUES
+    @{sqlvalues}
+) AS source (
+    OOSLogID,
+    OOSLogRowID,
+    ProductID,
+    SID,
+    ProductName,
+    ProductCode,
+    GoodsCode,
+    HouseID,
+    HouseName,
+    ParentHouse,
+    ParentHouseName,
+    AreaID,
+    AreaName,
+    TypeCate,
+    TypeCateName,
+    TypeID,
+    TypeName,
+    Piece,
+    CreateDate,
+    UpdateDate
+)
+ON target.AreaID = source.AreaID AND target.ProductCode = source.ProductCode
+
+WHEN MATCHED THEN
+    UPDATE SET
+        target.OldPiece = target.Piece,
+        target.Piece = source.Piece,
+        target.OOSLogID = source.OOSLogID,
+        target.OOSLogRowID = source.OOSLogRowID,
+        target.UpdateDate = GETDATE()
+
+WHEN NOT MATCHED THEN
+    INSERT (
+        OOSLogID,
         OOSLogRowID,
-		ProductID,
+        ProductID,
         SID,
-		ProductName,
-		ProductCode,
-		GoodsCode,
+        ProductName,
+        ProductCode,
+        GoodsCode,
         HouseID,
         HouseName,
         ParentHouse,
         ParentHouseName,
         AreaID,
         AreaName,
-		TypeCate,
+        TypeCate,
         TypeCateName,
-		TypeID,
-		TypeName,
-		Piece,
-		CreateDate,
+        TypeID,
+        TypeName,
+        Piece,
+        CreateDate,
         UpdateDate
-	)
+    )
+    VALUES (
+        source.OOSLogID,
+        source.OOSLogRowID,
+        source.ProductID,
+        source.SID,
+        source.ProductName,
+        source.ProductCode,
+        source.GoodsCode,
+        source.HouseID,
+        source.HouseName,
+        source.ParentHouse,
+        source.ParentHouseName,
+        source.AreaID,
+        source.AreaName,
+        source.TypeCate,
+        source.TypeCateName,
+        source.TypeID,
+        source.TypeName,
+        source.Piece,
+        source.CreateDate,
+        source.UpdateDate
+    )
+
 OUTPUT 
-    INSERTED.*
-VALUES
-@{sqlvalues}
+    inserted.*;
 ";
                     rowIndex = 0;
                     sqlvaluesStrList.Clear();
