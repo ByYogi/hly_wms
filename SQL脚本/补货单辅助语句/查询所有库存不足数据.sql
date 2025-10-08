@@ -72,6 +72,7 @@ SELECT
 	pt.TypeID,
 	pt.TypeName,
 	pt.ParentID,
+	pt2.TypeName ParentName,
     h.HouseID,
 	h.Name HouseName,
 	h.ParentID HouseParentID,
@@ -82,6 +83,7 @@ FROM
 	Tbl_Cargo_Product p
 	INNER JOIN prdctGrp pg ON p.ProductID = pg.ProductID
 	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+	LEFT JOIN Tbl_Cargo_ProductType pt2 ON pt.ParentID = pt2.TypeID
 	LEFT JOIN Tbl_Cargo_House h ON p.HouseID = h.HouseID
 WHERE
 	ISNULL(p.ProductCode, '') <> ''
@@ -95,7 +97,6 @@ iti AS (
 		SUM(ReplyNumber - fo.InPiece) Piece
 	FROM
 		Tbl_Cargo_FactoryOrder fo
-		--INNER JOIN ##productTemp ptemp ON fo.ProductID = ptemp.ProductID
 	WHERE
 		(1 = 1)
 		AND fo.InCargoStatus IN (0,2)

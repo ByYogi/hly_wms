@@ -12,8 +12,6 @@ namespace House.Entity.Cargo.Order
         public string RplNo { get; set; }      // 编号
         public int HouseID { get; set; }        // 缺货仓库
         public int FromHouse { get; set; }      // 补货仓库
-        public int? AreaID { get; set; }             // 补货仓库区域
-        public string AreaName { get; set; }             // 补货仓库区域
         public string HouseName { get; set; }       // 缺货仓库名称
         public string FromHouseName { get; set; }       // 补货仓库名称
         public string ReqBy { get; set; }       // 请求人

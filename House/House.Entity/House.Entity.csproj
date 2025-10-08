@@ -141,6 +141,7 @@
     <Compile Include="Cargo\Order\CargoOrderPushEntity.cs" />
     <Compile Include="Cargo\Order\CargoOrderReturnOrderEntity.cs" />
     <Compile Include="Cargo\Order\CargoOrderStatusEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOutOfStock.cs" />
     <Compile Include="Cargo\Order\CargoPurchaseOrderEntity.cs" />
     <Compile Include="Cargo\Order\CargoPurchaseOrderGoodsEntity.cs" />
     <Compile Include="Cargo\Order\CargoRplOrder.cs" />

@@ -15,7 +15,12 @@ namespace House.Entity.Cargo.Order
         public string ProductName { get; set; }      // 产品名称
         public string ProductCode { get; set; }      // 产品代码
         public string GoodsCode { get; set; }        // 货品代码
+        public int HouseID { get; set; }
+        public string HouseName { get; set; }
+        public int AreaID { get; set; }       
+        public string AreaName { get; set; }        
         public int TypeCate { get; set; } // 品类ID
+        public string TypeCateName { get; set; } // 品类名称
         public int TypeID { get; set; }              // 品牌ID
         public string TypeName { get; set; }         // 品牌名称
         public int Piece { get; set; }               // 补货数量

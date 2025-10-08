@@ -79,7 +79,7 @@ namespace House.DataAccess.Properties {
         }
         
         /// <summary>
-        ///   查找类似 Server=120.24.85.90;  uid=odkskeid7633; pwd=Xlcneway65428373*jkl_djs; Database=WareHouse;min pool size=4;max pool size=500;connection timeout=60 的本地化字符串。
+        ///   查找类似 Server=14.23.159.115,9892;uid=dlt;pwd=Dlt@0927;  Database=WareHouse;min pool size=4;max pool size=500;connection timeout=60 的本地化字符串。
         /// </summary>
         internal static string LiveDB {
             get {

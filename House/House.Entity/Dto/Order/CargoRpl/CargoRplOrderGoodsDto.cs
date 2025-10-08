@@ -15,7 +15,12 @@ namespace House.Entity.Dto.Order
         public string ProductName { get; set; }      // 产品名称
         public string ProductCode { get; set; }      // 产品代码
         public string GoodsCode { get; set; }        // 货品代码
+        public int? HouseID { get; set; }
+        public string HouseName { get; set; }
+        public int? AreaID { get; set; }
+        public string AreaName { get; set; }
         public int? TypeCate { get; set; } // 品类ID
+        public string TypeCateName { get; set; } // 品类ID
         public int? TypeID { get; set; }              // 品牌ID
         public string TypeName { get; set; }         // 品牌名称
         public string Specs { get; set; } //规格
@@ -36,11 +41,8 @@ namespace House.Entity.Dto.Order
         public DateTime? UpdateDate { get; set; }
 
         //工具字段
-        public int? HouseID { get; set; }
-        public string HouseName { get; set; }
-        public int? HouseParentID { get; set; }
-        public string HouseParentName { get; set; }
-        public int? AreaID { get; set; }
+        public int? ParentHouseID { get; set; }
+        public string ParentHouseName { get; set; }
 
         //计算字段
         public string LISS { get => LoadIndex + SpeedLevel; } //LoadIndex SpeedSymbol 载重指数 + 速度级别

@@ -416,6 +416,7 @@ namespace Cargo
                 ReqBy = "3345",
                 ReqByName = "胡忠俊",
                 SrcType = 1, //销售单标记
+                SrcID = 1371432,
                 SrcCode = "YJ250929082",
                 GoodsList = new List<RplOrderAutoGeneratParam_Goods>()
                 {

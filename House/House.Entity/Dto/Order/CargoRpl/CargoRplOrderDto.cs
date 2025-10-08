@@ -17,8 +17,6 @@ namespace House.Entity.Dto.Order
         public string RplNo { get; set; }           // 编号
         public int? HouseID { get; set; }             // 补货仓库
         public string HouseName { get; set; }             // 补货仓库
-        public int? AreaID { get; set; }             // 补货仓库区域
-        public string AreaName { get; set; }             // 补货仓库区域
         public int? FromHouse { get; set; }           // 来源仓库
         public string FromHouseName { get; set; }           // 来源仓库
         public string ReqBy { get; set; }            // 触发人
