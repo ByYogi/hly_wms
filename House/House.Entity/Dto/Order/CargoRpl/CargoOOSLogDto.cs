@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace House.Entity.Dto.Order
 {
-    public class CargoRplOrderDto
+    public class CargoOOSLogDto
     {
         //展示相关字段
         public int? RplID { get; set; }               // 主键
@@ -45,11 +45,11 @@ namespace House.Entity.Dto.Order
         public int? TypeCate { get; set; }
     }
     
-    public class CargoRplOrderListDto : ListResponsBase<CargoRplOrderDto>
+    public class CargoOOSLogListDto : ListResponsBase<CargoRplOrderDto>
     {
     }
 
-    public class CargoRplOrderParams: PaginationBase
+    public class CargoOOSLogParams : PaginationBase
     {
         //筛选相关字段
         public int? RplID { get; set; }               // 主键

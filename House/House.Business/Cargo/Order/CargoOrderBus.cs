@@ -3908,28 +3908,28 @@ namespace House.Business.Cargo
         }
         #endregion
         #region 补货单方法集合
-        public void TryGeneralRplOrder(RplOrderAutoGeneratParam entity)
+        public void TryUpdateOutOfStock(RplOrderAutoGeneratParam entity)
         {
             LogEntity log = new LogEntity();
             log.Moudle = "补货单";
             log.Status = "0";
-            log.NvgPage = "尝试生成补货单";
+            log.NvgPage = "尝试更新缺货清单";
             log.UserID = entity.ReqBy ?? _userid;
             log.Operate = "A";
             log.IPAddress = _ipaddress;
             LogBus lw = new LogBus();
             try
             {
-                var addedList = man.AutoGeneralRplOrder(entity);
+                var addedList = man.UpdateOutOfStock(entity);
                 var dataParamsJson = JsonConvert.SerializeObject(entity); 
                 if (addedList.Any())
                 {
                     var addedListJson = JsonConvert.SerializeObject(addedList);
-                    log.Memo = $"已生成{addedList.Count}个补货单；创建数据参数：{dataParamsJson}；生成返回数据：{addedListJson}";
+                    log.Memo = $"已更新缺货清单；创建数据参数：{dataParamsJson}；生成返回数据：{addedListJson}";
                 }
                 else
                 {
-                    log.Memo = $"未生成补货单；创建数据参数：{dataParamsJson}";
+                    log.Memo = $"未更新缺货清单；创建数据参数：{dataParamsJson}";
                 }
                 lw.InsertLog(log);
             }
@@ -3953,6 +3953,8 @@ namespace House.Business.Cargo
         }
         public CargoRplOrderDtlDto AddRplOrder(CargoRplOrderDtlDto entity)
         {
+            entity.UserID = _userid;
+            entity.UserName = _username;
             var rtData = man.AddRplOrder(entity);
             return rtData;
         }
@@ -3982,6 +3984,13 @@ namespace House.Business.Cargo
                 lw.InsertLog(log);
                 return false;
             }
+        }
+
+
+        public CargoOutOfStockListDto QueryOutOfStocks(CargoOutOfStockParams queryParams)
+        {
+            var rtData = man.QueryOutOfStocks(queryParams);
+            return rtData;
         }
         #endregion
         #region 来货单

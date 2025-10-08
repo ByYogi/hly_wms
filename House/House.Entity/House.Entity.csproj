@@ -228,11 +228,15 @@
     <Compile Include="Cargo\WX\WXUserEntity.cs" />
     <Compile Include="Cargo\WX\WXUserPointEntity.cs" />
     <Compile Include="Dto\Base\ListResponsBase.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoOutOfStockDto.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoOOSLogDtlDto.cs" />
     <Compile Include="Dto\Order\CargoRpl\CargoRplOrderDtlDto.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoOOSLogDto.cs" />
     <Compile Include="Dto\Order\CargoRpl\CargoRplOrderDto.cs" />
     <Compile Include="Dto\CassMallDTO.cs" />
     <Compile Include="Dto\ContainerGoodsInsertDto.cs" />
     <Compile Include="Dto\ExportPurchaseOrderDto.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoOOSLogGoodsDto.cs" />
     <Compile Include="Dto\Order\CargoRpl\CargoRplOrderGoodsDto.cs" />
     <Compile Include="Dto\Base\PaginationBase.cs" />
     <Compile Include="Dto\Order\CargoRpl\RplOrderGenerationParam.cs" />

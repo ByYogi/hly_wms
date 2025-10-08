@@ -202,12 +202,12 @@
                 <td style="text-align: right;">目标仓库:
                 </td>
                 <td>
-                    <input id="HouseID" class="easyui-combobox" style="width: 120px;" panelheight="auto" />
+                    <input id="HouseID" class="easyui-combobox" style="width: 120px;"  />
                 </td>
                 <td style="text-align: right;">来源仓库:
                 </td>
                 <td>
-                    <input id="FromHouse" class="easyui-combobox" style="width: 120px;" panelheight="auto" />
+                    <input id="FromHouse" class="easyui-combobox" style="width: 120px;"  />
                 </td>
                 <td style="text-align: right;">开单时间:
                 </td>
@@ -220,7 +220,7 @@
                 <td style="text-align: right;">移库状态:
                 </td>
                 <td>
-                    <select class="easyui-combobox" id="Status" style="width: 120px;" panelheight="auto">
+                    <select class="easyui-combobox" id="Status" style="width: 120px;" >
                         <option value="">全部</option>
                         <option value="0">待处理</option>
                         <option value="1">处理中</option>
@@ -230,7 +230,7 @@
                 <td style="text-align: right;">一级产品:
                 </td>
                 <td>
-                    <input id="TypeCate" class="easyui-combobox" style="width: 120px;" panelheight="auto" />
+                    <input id="TypeCate" class="easyui-combobox" style="width: 120px;"  />
                 </td>
                 <td style="text-align: right;">二级产品:
                 </td>
@@ -299,7 +299,7 @@
                     </td>
                     <td>
                         <select class="easyui-combobox" name="BelongHouse" id="eBelongHouse" editable="false" style="width: 250px;"
-                            panelheight="auto" required="true">
+                             required="true">
                             <option value="0">迪乐泰</option>
                             <option value="1">好来运</option>
                             <option value="2">富添盛</option>
@@ -355,7 +355,7 @@
                     </td>
                     <td>
                         <select class="easyui-combobox" id="DelFlag" name="DelFlag" style="width: 250px;"
-                            panelheight="auto" required="true">
+                             required="true">
                             <option value="0">启用</option>
                             <option value="1">停用</option>
                         </select>

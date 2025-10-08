@@ -20,6 +20,7 @@ using NPOI.POIFS.Storage;
 using Senparc.Weixin.Helpers;
 using Senparc.Weixin.MP.AdvancedAPIs.MerChant;
 using Senparc.Weixin.MP.AdvancedAPIs.TemplateMessage;
+using Senparc.Weixin.MP.TenPayLibV3;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -17183,7 +17184,7 @@ namespace Cargo.Order
                 FromHouse = Request.GetInt("FromHouse"),
                 HouseID = Request.GetInt("HouseID"),
                 Status = Request.GetByte("Status"),
-                ReqByName = Request.GetTrimmedString("ReqByName"),
+                UserName = Request.GetTrimmedString("ReqByName"),
                 TypeID = Request.GetInt("TypeID"),
                 TypeCate = Request.GetInt("TypeCate")
             };
@@ -17225,20 +17226,17 @@ namespace Cargo.Order
 
         public void AddRplOrder()
         {
-            var queryEntity = new CargoRplOrderGoodsDto
+            var head = new CargoRplOrderDtlDto
             {
-                RplID = Request.GetInt("RplID"),
+                HouseID = Request.GetInt("HouseID"),
             };
-            CargoRplOrderDtlDto entity = JsonConvert.DeserializeObject<CargoRplOrderDtlDto>(Request.GetString("data"));
-
-            //分页
-            int? pageIndex = Request.GetInt("page");
-            int? pageSize = Request.GetInt("rows");
-            CargoRplOrderGoodsListDto filter = new CargoRplOrderGoodsListDto();
-            filter.SetPage(pageIndex, pageSize);
-            filter.QueryEntity = queryEntity;
-            CargoOrderBus bus = new CargoOrderBus();
-            var result = bus.AddRplOrder(entity);
+            var rows = Request.GetDataByJson<List<CargoRplOrderGoodsDto>>("Rows");
+            head.Rows = rows;
+            var userid = UserInfor?.LoginName?.Trim();
+            var username = UserInfor?.UserName;
+            var ipaddress = Common.GetUserIP(Request);
+            CargoOrderBus bus = new CargoOrderBus(userid, username, ipaddress);
+            var result = bus.AddRplOrder(head);
             string resultjson = JSON.Encode(result);
             Response.Clear();
             Response.Write(resultjson);
@@ -17266,9 +17264,28 @@ namespace Cargo.Order
             Response.Write(isSucc ? "删除成功" : "删除失败");
             Response.Flush();
         }
-        public void UpdateRplOrder()
+        public void QueryOutOfStocks()
         {
+            var userid = UserInfor?.LoginName?.Trim();
+            var username = UserInfor?.UserName;
+            var ipaddress = Common.GetUserIP(Request);
+            CargoOrderBus bus = new CargoOrderBus(userid, username, ipaddress);
 
+            CargoOutOfStockParams oosParams = new CargoOutOfStockParams()
+            {
+                TypeID = Request.GetInt("TypeID"),
+                TypeCate = Request.GetInt("TypeCate"),
+                HouseID = Request.GetInt("HouseID"),
+                AreaID = Request.GetInt("AreaID"),
+                ParentHouse = Request.GetInt("ParentHouse"),
+                Specs = Request.GetString("Specs"),
+                Figure = Request.GetString("Figure"),
+            };
+            var result =  bus.QueryOutOfStocks(oosParams);
+            string resultjson = result.ToJSON();
+            Response.Clear();
+            Response.Write(resultjson);
+            Response.Flush();
         }
         #endregion
 

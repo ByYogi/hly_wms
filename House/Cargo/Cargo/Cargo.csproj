@@ -626,6 +626,7 @@
     <Content Include="NoticeShow.aspx" />
     <Content Include="Order\AddArrivalReturnOrder.aspx" />
     <Content Include="Order\AddFactoryPurchaseOrder.aspx" />
+    <Content Include="Order\AddRplOrder.aspx" />
     <Content Include="Order\addSaleOrder.aspx" />
     <Content Include="Order\AddArrivalOrder.aspx" />
     <Content Include="Order\ArrivalOrderManager.aspx" />
@@ -2874,6 +2875,13 @@
     </Compile>
     <Compile Include="Order\AddFactoryPurchaseOrder.aspx.designer.cs">
       <DependentUpon>AddFactoryPurchaseOrder.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Order\AddRplOrder.aspx.cs">
+      <DependentUpon>AddRplOrder.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Order\AddRplOrder.aspx.designer.cs">
+      <DependentUpon>AddRplOrder.aspx</DependentUpon>
     </Compile>
     <Compile Include="Order\addSaleOrder.aspx.cs">
       <DependentUpon>addSaleOrder.aspx</DependentUpon>

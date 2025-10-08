@@ -427,7 +427,7 @@ namespace Cargo
                     },
                 }
             };
-            ordrBus.TryGeneralRplOrder(rplParam);
+            ordrBus.TryUpdateOutOfStock(rplParam);
             return;
 
             ordrBus.GenerateDailySalesSnapshot();
