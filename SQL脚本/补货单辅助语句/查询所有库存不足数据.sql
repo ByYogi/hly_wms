@@ -42,7 +42,6 @@ PRINT('------------ 区域仓库 ------------');
 -- 产品&品牌
 WITH prdctGrp AS (
 SELECT 
-	MAX(p.ProductID) ProductID,
 	p.ProductCode,
 	ca.RootArea AreaID,
 	SUM(cg.Piece) Piece
@@ -52,9 +51,8 @@ FROM
 	INNER JOIN Tbl_Cargo_ContainerGoods cg ON p.ProductID = cg.ProductID
 	INNER JOIN Tbl_Cargo_Container c ON cg.ContainerID = c.ContainerID
 	INNER JOIN #childArea ca ON ca.AreaID = c.AreaID
-	--INNER JOIN ##productTemp pTemp ON p.ProductID = pTemp.ProductID
 WHERE
-	ISNULL(p.ProductCode, '') <> ''
+	ISNULL(p.ProductCode, '') <> '' 
 GROUP BY
 	p.ProductCode, ca.RootArea
 ),
@@ -81,7 +79,8 @@ SELECT
 	pg.AreaID
 FROM
 	Tbl_Cargo_Product p
-	INNER JOIN prdctGrp pg ON p.ProductID = pg.ProductID
+	INNER JOIN prdctGrp pg ON p.ProductCode = pg.ProductCode
+	--INNER JOIN ##productTemp pTemp ON p.ProductID = pTemp.ProductID
 	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
 	LEFT JOIN Tbl_Cargo_ProductType pt2 ON pt.ParentID = pt2.TypeID
 	LEFT JOIN Tbl_Cargo_House h ON p.HouseID = h.HouseID
@@ -111,15 +110,15 @@ iti AS (
 ro as (
 SELECT
 	rog.ProductCode, 
-	ro.HouseID,
+	ro.FromHouse HouseID,
 	SUM(rog.Piece - rog.DonePiece) Piece
 FROM
 	Tbl_Cargo_RplOrderGoods rog 
 	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
 WHERE
-	ro.Status IN (0,1,2)
+	ro.Status NOT IN (2,3)
 GROUP BY 
-	rog.ProductCode, ro.HouseID
+	rog.ProductCode, ro.FromHouse
 )
 
 --安全库存配置
@@ -139,10 +138,11 @@ FROM
 	LEFT JOIN iti ON iti.ProductCode = p.ProductCode AND iti.HouseID = p.HouseID
 	LEFT JOIN Tbl_Cargo_MonthSaleStatic mss ON mss.ProductCode = p.ProductCode AND mss.AreaID = p.AreaID AND mss.YearMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) -1 ,0)
 	LEFT JOIN ro ON ro.ProductCode = p.ProductCode AND ro.HouseID = p.HouseID
+	LEFT JOIN Tbl_Cargo_OutOfStock oos ON oos.ProductCode = ss.ProductCode AND oos.HouseID = ss.HouseID
 WHERE 
 	ss.MinStock > 0 AND MaxStock > 0
 	AND (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) - ISNULL(ro.Piece, 0)) < ss.MinStock 
-	AND ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) > 0
+	AND ISNULL(oos.Piece, 0) <> ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0))
 	AND p.HouseID = 93 -- 查询东平的
 ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) DESC
 

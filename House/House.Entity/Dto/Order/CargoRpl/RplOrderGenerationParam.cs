@@ -6,16 +6,17 @@ using System.Threading.Tasks;
 
 namespace House.Entity.Dto.Order.CargoRpl
 {
-    public class RplOrderAutoGeneratParam
+    public class UpdateOOSParam
     {
-        public string ReqBy { get; set; }
-        public string ReqByName { get; set; }
-        public byte SrcType { get; set; }
+        public string UserID { get; set; }
+        public string UserName { get; set; }
+        public byte SrcType { get; set; } // 触发单类型 (1:销售单;2:移库单;3:补货单)
+        public string ReasonTag { get; set; }
         public int? SrcID { get; set; }
         public string SrcCode { get; set; }
-        public List<RplOrderAutoGeneratParam_Goods> GoodsList { get; set; }
+        public List<UpdateOOSGoodsParam> GoodsList { get; set; }
     }
-    public class RplOrderAutoGeneratParam_Goods
+    public class UpdateOOSGoodsParam
     {
         public long ProductID { get; set; }
         public int AreaID { get; set; }

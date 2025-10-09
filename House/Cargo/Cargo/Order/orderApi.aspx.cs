@@ -17238,6 +17238,7 @@ namespace Cargo.Order
             CargoOrderBus bus = new CargoOrderBus(userid, username, ipaddress);
             var result = bus.AddRplOrder(head);
             string resultjson = JSON.Encode(result);
+
             Response.Clear();
             Response.Write(resultjson);
             Response.Flush();
@@ -17287,6 +17288,7 @@ namespace Cargo.Order
             Response.Write(resultjson);
             Response.Flush();
         }
+
         #endregion
 
         #region 

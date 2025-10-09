@@ -20,7 +20,8 @@ namespace House.Entity.Dto.Order.CargoRpl
         public string ReqByName { get; set; }       // 请求人名称
         public string AppByName { get; set; }       // 处理人名称
         public int? ParentRplID { get; set; }       // 父级补货单
-        public byte? ScrType { get; set; }      // 触发单类型 (1:销售单;2:移库单)
+        public byte? SrcType { get; set; }      // 触发单类型 (1:销售单;2:移库单;3:补货单)
+        public string ReasonTag { get; set; }
         public string SrcCode { get; set; }     // 触发单代码
         public int? SrcID { get; set; }     // 触发单ID
         public byte? CreateMethod { get; set; }      // 创建方式 (0:自动;1:手动)

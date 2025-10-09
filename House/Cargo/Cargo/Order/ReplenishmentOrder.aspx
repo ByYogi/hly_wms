@@ -89,7 +89,7 @@
                         }
                     },
                     {
-                        title: '开单人', field: 'ReqByName', width: '100px', formatter: function (value) {
+                        title: '开单人', field: 'UserName', width: '100px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
@@ -107,15 +107,10 @@
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
-                    {
-                        title: '补货原因', field: 'Reason', width: '200px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    },
                     { title: '备注', field: 'Remark', width: '200px'},
                     { title: '开单时间', field: 'CreateDate', width: '130px', formatter: DateTimeFormatter },
-                    { title: '完成时间', field: 'CompletedDate', width: '130px', formatter: DateTimeFormatter },
-                    { title: '花费天数', field: 'SpendDays', width: '130px'}
+                    // { title: '完成时间', field: 'CompletedDate', width: '130px', formatter: DateTimeFormatter },
+                    // { title: '花费天数', field: 'SpendDays', width: '130px'}
                 ]],
                 onClickRow: function (index, row) {
                     $('#dg').datagrid('clearSelections');
@@ -176,6 +171,7 @@
                 TypeCate: $('#TypeCate').datebox('getValue'),
                 TypeID: $('#TypeID').datebox('getValue') 
             });
+            console.log(gridOpts.url);
         }
     </script>
 </asp:Content>
@@ -248,7 +244,7 @@
         </span>
         <span class="space">
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnAdd" iconcls="icon-add" plain="false" >新增</a> -->
-        <a href="#" class="easyui-linkbutton tblBtn" id="btnEdit" iconcls="icon-edit" plain="false" >修改</a>
+        <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnEdit" iconcls="icon-edit" plain="false" >修改</a> -->
         <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >删除</a>
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >合并补货单</a>
         <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >转为移库单</a> -->
@@ -267,102 +263,7 @@
 
 
     <div id="dlgOrder" class="easyui-dialog"  buttons="#dlgOrder-buttons" closable="true">
-        <%-- <form id="fm" class="easyui-form" method="post">
-            <input type="hidden" name="HouseID" />
-            <table>
-                <tr>
-                    <td style="text-align: right;">仓库名称:
-                    </td>
-                    <td>
-                        <input name="Name" class="easyui-textbox" data-options="prompt:'请输入仓库名称',required:true"
-                            style="width: 250px;">
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">仓库代码:
-                    </td>
-                    <td>
-                        <input name="HouseCode" class="easyui-textbox" data-options="prompt:'请输入仓库代码',required:true"
-                            style="width: 250px;">
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">仓库负责人:
-                    </td>
-                    <td>
-                        <input name="Person" class="easyui-textbox" data-options="prompt:'请输入仓库负责人',required:true"
-                            style="width: 250px;">
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">仓库类型:
-                    </td>
-                    <td>
-                        <select class="easyui-combobox" name="BelongHouse" id="eBelongHouse" editable="false" style="width: 250px;"
-                             required="true">
-                            <option value="0">迪乐泰</option>
-                            <option value="1">好来运</option>
-                            <option value="2">富添盛</option>
-                        </select>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">仓库部门:
-                    </td>
-                    <td>
-                        <input name="CargoDepart" id="eCargoDepart" class="easyui-textbox" data-options="prompt:'请输入仓库部门',required:true"
-                            style="width: 250px;">
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">负责人手机:
-                    </td>
-                    <td>
-                        <input name="Cellphone" class="easyui-textbox" style="width: 250px;">
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">发货单表头:
-                    </td>
-                    <td>
-                        <input name="SendTitle" class="easyui-textbox" style="width: 250px;">
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">拣货单表头:
-                    </td>
-                    <td>
-                        <input name="PickTitle" class="easyui-textbox" style="width: 250px;">
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">配送区域:
-                    </td>
-                    <td>
-                        <input name="DeliveryArea" class="easyui-combobox" style="width: 250px;"
-                            data-options="url:'../House/houseApi.aspx?method=QueryCityData',valueField:'City',textField:'City',multiple:true" />
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">备注:
-                    </td>
-                    <td>
-                        <textarea id="Remark" rows="4" name="Remark" style="width: 250px;"></textarea>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">状态标识:
-                    </td>
-                    <td>
-                        <select class="easyui-combobox" id="DelFlag" name="DelFlag" style="width: 250px;"
-                             required="true">
-                            <option value="0">启用</option>
-                            <option value="1">停用</option>
-                        </select>
-                    </td>
-                </tr>
-            </table>
-        </form>  --%>
+       
         <table>
             <tr>
                 <td>
@@ -402,27 +303,26 @@
                 modal: true,
                 title: '补货单详情',
                 width: 900,
-                height: 640,
                 closed: true
             });
 
             const columns = [{
-                    title: '产品代码', field: 'ProductCode', width: '60px', formatter: function (value) {
+                    title: '产品代码', field: 'ProductCode', width: '120px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '产品名称', field: 'GoodsName', width: '100px', formatter: function (value) {
+                        title: '产品名称', field: 'ProductName', width: '120px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '货品代码', field: 'GoodsCode', width: '90px', formatter: function (value) {
+                        title: '货品代码', field: 'GoodsCode', width: '100px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '品牌', field: 'TypeName', width: '80px', formatter: function (value) {
+                        title: '品牌', field: 'TypeName', width: '120px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
@@ -468,23 +368,17 @@
                 onClickCell: onClickCell,
                 columns: [columns],
                 rowStyler: function (index, row) {
-                    if (row.Piece != row.NewPiece) { return "background-color:#f7d9d9"; };
+                    // if (row.Piece != row.NewPiece) { return "background-color:#f7d9d9"; };
                 }
             });
         })
         //统一事件绑定
         $(function() {
-            $('#btnAdd').on('click', addHandle);
-            $('#btnEdit').on('click', editHandle);
             $('#btnDel').on('click', delHandle);
             $('#btnExport').on('click', AwbExport);
             $('#btnSearch').on('click', dosearch)
         });
-        function addHandle() {
-            $('#dlgOrder').dialog("center");
-            $('#dlgOrder').dialog('open').dialog('setTitle', '添加移库单');
-     
-        }
+        
         function editHandle() {
             <%-- 
             onMove: function(left, top) {
@@ -618,12 +512,13 @@
             var row = $("#dg").datagrid('getData').rows[Did];
             $("#HiddenMoveStatus").val(row.MoveStatus);
             if (row) {
-                $('#dlgOrder').dialog('open').dialog('setTitle', row.MoveNo + '补货明细');
+                $('#dlgOrder').dialog('open').dialog('setTitle', ' 补货明细 ' + row.RplNo);
                 
                 
 
                 var gridOpts = $('#dgSave').datagrid('options');
                 gridOpts.url = 'orderApi.aspx?method=QueryRplOrderGoods&RplID=' + row.RplID;
+                $('#dgSave').datagrid('load');
             }
         }
 

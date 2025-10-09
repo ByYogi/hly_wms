@@ -410,24 +410,25 @@ namespace Cargo
             CargoOrderBus ordrBus = new CargoOrderBus();
 
             //销售单创建后库存变少，检查是否需要创建补货单
-            List<RplOrderAutoGeneratParam_Goods> rplGoodsList = new List<RplOrderAutoGeneratParam_Goods>();
-            RplOrderAutoGeneratParam rplParam = new RplOrderAutoGeneratParam()
+            List<UpdateOOSGoodsParam> rplGoodsList = new List<UpdateOOSGoodsParam>();
+            UpdateOOSParam oosParams = new UpdateOOSParam()
             {
-                ReqBy = "3345",
-                ReqByName = "胡忠俊",
-                SrcType = 1, //销售单标记
+                UserID = "3345",
+                UserName = "胡忠俊",
+                ReasonTag = "SO", //销售单标记
+                SrcType = 1,
                 SrcID = 1371432,
                 SrcCode = "YJ250929082",
-                GoodsList = new List<RplOrderAutoGeneratParam_Goods>()
+                GoodsList = new List<UpdateOOSGoodsParam>()
                 {
-                    new RplOrderAutoGeneratParam_Goods()
+                    new UpdateOOSGoodsParam()
                     {
                         ProductID = 938921,
                         AreaID = 3677
                     },
                 }
             };
-            ordrBus.TryUpdateOutOfStock(rplParam);
+            ordrBus.TryUpdateOutOfStock(oosParams);
             return;
 
             ordrBus.GenerateDailySalesSnapshot();

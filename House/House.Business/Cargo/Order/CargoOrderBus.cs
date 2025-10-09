@@ -3,6 +3,7 @@ using House.Entity;
 using House.Entity.Cargo;
 using House.Entity.Cargo.Order;
 using House.Entity.Dto;
+using House.Entity.Dto.Base;
 using House.Entity.Dto.Order;
 using House.Entity.Dto.Order.CargoRpl;
 using House.Entity.House;
@@ -3908,19 +3909,19 @@ namespace House.Business.Cargo
         }
         #endregion
         #region 补货单方法集合
-        public void TryUpdateOutOfStock(RplOrderAutoGeneratParam entity)
+        public void TryUpdateOutOfStock(UpdateOOSParam entity)
         {
             LogEntity log = new LogEntity();
             log.Moudle = "补货单";
             log.Status = "0";
             log.NvgPage = "尝试更新缺货清单";
-            log.UserID = entity.ReqBy ?? _userid;
-            log.Operate = "A";
+            log.UserID = entity.UserID ?? _userid;
+            log.Operate = "U";
             log.IPAddress = _ipaddress;
             LogBus lw = new LogBus();
             try
             {
-                var addedList = man.UpdateOutOfStock(entity);
+                var addedList = man.UpdtOutOfStock(entity);
                 var dataParamsJson = JsonConvert.SerializeObject(entity); 
                 if (addedList.Any())
                 {
@@ -3951,11 +3952,66 @@ namespace House.Business.Cargo
             var rtData = man.QueryRplOrderGoods(entity);
             return rtData;
         }
-        public CargoRplOrderDtlDto AddRplOrder(CargoRplOrderDtlDto entity)
+        public DataRespsBase<CargoRplOrderDtlDto> AddRplOrder(CargoRplOrderDtlDto entity)
         {
-            entity.UserID = _userid;
-            entity.UserName = _username;
-            var rtData = man.AddRplOrder(entity);
+            LogEntity log = new LogEntity();
+            log.Moudle = "补货单";
+            log.Status = "0";
+            log.NvgPage = "新增补货单";
+            log.Operate = "A";
+            log.IPAddress = _ipaddress;
+            log.UserID = _userid;
+            DataRespsBase<CargoRplOrderDtlDto> rtData = new DataRespsBase<CargoRplOrderDtlDto>();
+            LogBus lw = new LogBus();
+            try
+            {
+                entity.UserID = _userid;
+                entity.UserName = _username;
+                entity.Piece = entity.Rows.Sum(c => c.Piece.HasValue ? c.Piece.Value : 0);
+                
+                rtData.Data = man.AddRplOrder(entity);
+                var dataParamsJson = JsonConvert.SerializeObject(entity);
+                if (rtData?.Data != null)
+                {
+                    var rtDataJson = JsonConvert.SerializeObject(rtData);
+                    rtData.Message = "创建补货单成功";
+                    log.Memo = $"创建补货单成功；数据参数：{dataParamsJson}；返回数据：{rtDataJson}";
+
+                    //更新缺货数据
+
+                    UpdateOOSParam oosParams = new UpdateOOSParam()
+                    {
+                        UserID = _userid,
+                        UserName = _username,
+                        SrcType = 3,
+                        ReasonTag = "RO",
+                        SrcID = rtData.Data.RplID,
+                        SrcCode = rtData.Data.RplNo,
+                        GoodsList = rtData.Data.Rows.Select(r => new UpdateOOSGoodsParam
+                        {
+                            ProductID = r.ProductID.Value,
+                            AreaID = r.AreaID.Value
+                        }).ToList()
+                    };
+
+                    TryUpdateOutOfStock(oosParams);
+                }
+                else
+                {
+                    rtData.Message = "创建补货单失败";
+                    log.Memo = $"创建补货单失败；数据参数：{dataParamsJson}";
+                }
+                lw.InsertLog(log);
+            }
+            catch (Exception ex)
+            {
+                log.Status = "1";
+                log.Memo = ex.FormatErr();
+                rtData.Success = false;
+                rtData.Message = "创建补货单失败，失败信息：" + ex.Message;
+                lw.InsertLog(log);
+                return null;
+            }
             return rtData;
         }
         public bool DelRplOrder(int[] RplIDs)

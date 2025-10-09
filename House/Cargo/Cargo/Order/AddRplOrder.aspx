@@ -315,13 +315,13 @@
                     <td style="text-align: right;">一级产品:
                     </td>
                     <td>
-                        <input id="APID" class="easyui-combobox" style="width: 100px;" panelheight="auto" />
+                        <input id="APID" class="easyui-combobox" style="width: 100px;"  />
                     </td>
                     <td style="text-align: right;">区域大仓:
                     </td>
                     <td>
                         <input id="AHouseID" class="easyui-combobox" style="width: 100px;" data-options="required:true"
-                            panelheight="auto" />
+                             />
                     </td>
                 </tr>
                 <tr>
@@ -342,7 +342,7 @@
                     </td>
                     <td>
                         <input id="HAID" class="easyui-combobox" style="width: 100px;"
-                            data-options="valueField:'AreaID',textField:'Name',required:true" panelheight="auto" />
+                            data-options="valueField:'AreaID',textField:'Name',required:true"  />
                     </td>
 
                 </tr>
@@ -382,8 +382,6 @@
             <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
                 onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
         </div>
-        <input type="hidden" id="DisplayNum" />
-        <input type="hidden" id="DisplayPiece" />
         <!--End 出库操作-->
         <form id="fmDep" class="easyui-form" method="post">
             <div id="saPanel">
@@ -393,7 +391,7 @@
                         </td>
                         <td >
                         <input id="ReqHouseOpts" class="easyui-combobox" style="width: 100px;" data-options="required:true"
-                            panelheight="auto" />
+                            />
                         </td>
                         <td style="text-align: center;"><a href="#" id="btnPreSave"
                                 class="easyui-linkbutton" iconcls="icon-compress" plain="false"
@@ -402,9 +400,6 @@
                 </table>
             </div>
         </form>
-        <object id="LODOP_OB" title="dd" classid="clsid:2105C259-1E0C-4534-8141-A753534CB4CA" width="0px" height="0px">
-            <embed id="LODOP_EM" type="application/x-print-lodop" width="0px" height="0px"></embed>
-        </object>
         <script type="text/javascript">
 
             //保存
@@ -425,32 +420,27 @@
                         param.Rows = RowsJson;
                         return;
                     },
-                    success: function (msg) {
+                    success: function (resps) {
                         $.messager.progress("close");
                         $('#btnSave').linkbutton('enable');
-                        var result = eval('(' + msg + ')');
-                        if (result.Result) {
-                            var dd = result.Message.split('/');
-                            //$('#ONum').val(dd[0]);
-                            //$('#OutNum').val(dd[1]);
-                            prePrint(dd[0]); //直接打印发货单
-                            //LODOP.PRINT_DESIGN();
-                            LODOP.PREVIEW();//预览
-                            location.reload();
+                        resps = JSON.parse(resps);
+                        console.log(resps)
+                        if (resps.Success) {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功', 'warning');
+                            reset();
                         } else {
-                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
-                            //$('#SaleManID').combobox('disable');
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + resps.Message, 'warning');
                         }
                     }
                 })
             }
             function reset() {
                 $('#outDg').datagrid('loadData', { total: 0, rows: [] });
-                $('#DisplayNum').val(0);
-                $('#DisplayPiece').val(0);
-                $('#ADep').textbox('setValue', '<%= UserInfor.DepCity%>');
+                $('#ReqHouseOpts').combobox('setValue', '');
+                $('#RplQty').numberbox('setValue',0);
                 var title = "";
                 $('#outDg').datagrid("getPanel").panel("setTitle", title);
+                dosearch();
             }
             //业务员选择方法
             function onSaleManIDChanged(item) {
