@@ -424,7 +424,17 @@ namespace Cargo
                     new UpdateOOSGoodsParam()
                     {
                         ProductID = 938921,
-                        AreaID = 3677
+                        AreaID = 3677,
+                    },
+                    new UpdateOOSGoodsParam()
+                    {
+                        ProductID = 941319,
+                        AreaID = 3677,
+                    },
+                    new UpdateOOSGoodsParam()
+                    {
+                        ProductID = 943204,
+                        AreaID = 3677,
                     },
                 }
             };

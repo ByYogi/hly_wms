@@ -74,12 +74,12 @@
                         }
                     },
                     {
-                        title: '来源仓库', field: 'FromHouseName', width: '100px', formatter: function (value) {
+                        title: '缺货仓库', field: 'FromHouseName', width: '100px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '目标仓库', field: 'HouseName', width: '100px', formatter: function (value) {
+                        title: '补货仓库', field: 'HouseName', width: '100px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
@@ -96,7 +96,7 @@
                     {
                         title: '补货单状态', field: 'Status', width: '100px',
                         formatter: function (val, row, index) {
-                            if (val == "0") { return "<span title='待处理'>待处理</span>"; }
+                            if (val == "0") { return "<span title='待处理'>已开单</span>"; }
                             else if (val == "1") { return "<span title='补货中'>补货中</span>"; }
                             else if (val == "2") { return "<span title='已完成'>已完成</span>"; }
                             else { return ""; }
@@ -195,12 +195,12 @@
                 <%-- <td>
                     <input id="Specs" class="easyui-textbox" data-options="prompt:'请输入规格'" style="width: 120px">
                 </td> --%>
-                <td style="text-align: right;">目标仓库:
+                <td style="text-align: right;">补货仓库:
                 </td>
                 <td>
                     <input id="HouseID" class="easyui-combobox" style="width: 120px;"  />
                 </td>
-                <td style="text-align: right;">来源仓库:
+                <td style="text-align: right;">缺货仓库:
                 </td>
                 <td>
                     <input id="FromHouse" class="easyui-combobox" style="width: 120px;"  />
@@ -213,12 +213,12 @@
                 </td>
             </tr>
             <tr>
-                <td style="text-align: right;">移库状态:
+                <td style="text-align: right;">补货单状态:
                 </td>
                 <td>
                     <select class="easyui-combobox" id="Status" style="width: 120px;" >
                         <option value="">全部</option>
-                        <option value="0">待处理</option>
+                        <option value="0">已开单</option>
                         <option value="1">处理中</option>
                         <option value="2">已完成</option>
                     </select>
@@ -301,7 +301,7 @@
         $(function(){
             $('#dlgOrder').dialog({
                 modal: true,
-                title: '补货单详情',
+                title: '补货单明细',
                 width: 900,
                 closed: true
             });
@@ -512,7 +512,7 @@
             var row = $("#dg").datagrid('getData').rows[Did];
             $("#HiddenMoveStatus").val(row.MoveStatus);
             if (row) {
-                $('#dlgOrder').dialog('open').dialog('setTitle', ' 补货明细 ' + row.RplNo);
+                $('#dlgOrder').dialog('open').dialog('setTitle', ' 补货明细 ' + row.RplNo).dialog('center');
                 
                 
 

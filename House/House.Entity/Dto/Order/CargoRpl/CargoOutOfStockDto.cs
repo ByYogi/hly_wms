@@ -34,6 +34,7 @@ namespace House.Entity.Dto.Order.CargoRpl
         //额外查询字段
         public int? InTransitStock { get; set; }
         public int? CurStock { get; set; }
+        public int? RestockingPiece { get; set; }
         public string Model { get; set; }
         public string Specs { get; set; }
         public string Figure { get; set; }

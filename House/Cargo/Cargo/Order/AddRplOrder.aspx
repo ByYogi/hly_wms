@@ -122,6 +122,16 @@
                     }
                 });
                 columns.push({
+                    title: '最小库存数', field: 'MinStock', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '最大库存数', field: 'MaxStock', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
                     title: '在库数量', field: 'CurStock', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
@@ -132,17 +142,12 @@
                     }
                 });
                 columns.push({
+                    title: '补货中数量', field: 'RestockingPiece', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
                     title: '缺货数量', field: 'Piece', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
-                        return "<span title='" + value + "'>" + value + "</span>";
-                    }
-                });
-                columns.push({
-                    title: '最小库存数', field: 'MinStock', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
-                        return "<span title='" + value + "'>" + value + "</span>";
-                    }
-                });
-                columns.push({
-                    title: '最大库存数', field: 'MaxStock', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
@@ -512,7 +517,7 @@
                 $('#btnSave').linkbutton('disable');
 
                 var ReqHouseID = $('#ReqHouseOpts').combobox('getValue');
-                var Remark = $('#RemarkTxt').textbox('getValue');
+                var Remark = $('#RemarkTxt').textbox('getValue'); 
                 var RowsJson = JSON.stringify(rows);
                 $('#fmDep').form('submit', {
                     url: 'orderApi.aspx?method=AddRplOrder',
@@ -541,6 +546,7 @@
                 $('#outDg').datagrid('loadData', { total: 0, rows: [] });
                 $('#ReqHouseOpts').combobox('setValue', '');
                 $('#RplQty').numberbox('setValue',0);
+                $('#RplQty').textbox('setValue', '')
                 var title = "";
                 $('#outDg').datagrid("getPanel").panel("setTitle", title);
                 dosearch();
@@ -568,7 +574,7 @@
                     $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '补货数量必须大于0！', 'warning');
                     return;
                 }
-                var index = $('#outDg').datagrid('getRowIndex', row.ID);
+                var index = $('#outDg').datagrid('getRowIndex', row.OOSID);
                 if (index < 0) {
                     const newPiece = $('#RplQty').numberbox('getValue');
                     $('#outDg').datagrid('appendRow',  {...row, Piece: newPiece} );

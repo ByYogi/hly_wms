@@ -10680,7 +10680,7 @@ WHERE Piece > 0 AND OOSID IN (@{OOSIDs})
                                 bool isFirst = true;
                                 foreach (DataRow dr in dt.Rows)
                                 {
-                                    int oosID = dt.Rows[0].Field<int>("OOSID");
+                                    int oosID = dr.Field<int>("OOSID");
                                     var matchedPassRow = passRowsData.FirstOrDefault(c => c.OOSID == oosID);
                                     if (isFirst)
                                     {
@@ -11553,6 +11553,7 @@ OUTPUT
                             new SqlParameter(createDateParam, SqlDbType.DateTime) { Value = DateTime.Now },
                             new SqlParameter(updateDateParam, SqlDbType.DateTime) { Value = DateTime.Now  },
                         });
+                        rowIndex++;
                     }
 
                     insertOutOfStock = insertOutOfStock.Replace("@{sqlvalues}", string.Join(("," + Environment.NewLine), sqlvaluesStrList));
@@ -11638,6 +11639,8 @@ VALUES
                             //默认值
                             new SqlParameter(createDateParam, SqlDbType.DateTime) { Value = DateTime.Now },
                         });
+
+                        rowIndex++;
                     }
 
                     insertOOSChange = insertOOSChange.Replace("@{sqlvalues}", string.Join(("," + Environment.NewLine), sqlvaluesStrList));
@@ -11743,11 +11746,25 @@ WHERE
 GROUP BY
 	p.ProductCode, p.HouseID
 )
+,ro as (
+SELECT
+	rog.ProductCode, 
+	ro.FromHouse HouseID,
+	SUM(rog.Piece - rog.DonePiece) Piece
+FROM
+	Tbl_Cargo_RplOrderGoods rog 
+	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
+WHERE
+	ro.Status NOT IN (2,3)
+GROUP BY 
+	rog.ProductCode, ro.FromHouse
+)
 
 SELECT
 	oos.*,
-    iti.Piece InTransitStock,
-    cs.Piece CurStock,
+    ISNULL(iti.Piece, 0) InTransitStock,
+    ISNULL(cs.Piece, 0) CurStock,
+	ISNULL(ro.Piece, 0) RestockingPiece,
     p.Model,
     p.Specs,
     p.Figure,
@@ -11761,6 +11778,7 @@ LEFT JOIN  iti ON oos.ProductCode = iti.ProductCode AND oos.HouseID = iti.HouseI
 LEFT JOIN prdctGrp cs ON oos.ProductCode = cs.ProductCode AND oos.HouseID = cs.HouseID
 LEFT JOIN Tbl_Cargo_Product p ON oos.ProductID = p.ProductID
 LEFT JOIN Tbl_Cargo_OutOfStockLogGoods oosLg ON oos.OOSLogRowID = oosLg.ID 
+LEFT JOIN ro ON ro.ProductCode = p.ProductCode AND ro.HouseID = p.HouseID
 WHERE (1=1) AND oos.Piece > 0
 @{conditions}
 ");
@@ -11837,6 +11855,7 @@ WHERE (1=1) AND oos.Piece > 0
 
                                 InTransitStock = dr.Field<int?>("InTransitStock"),
                                 CurStock = dr.Field<int?>("CurStock"),
+                                RestockingPiece = dr.Field<int?>("RestockingPiece"),
                                 Model = dr.Field<string>("Model"),
                                 Specs = dr.Field<string>("Specs"),
                                 Figure = dr.Field<string>("Figure"),

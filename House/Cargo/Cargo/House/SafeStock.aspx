@@ -1,6 +1,14 @@
 ﻿<%@ Page Title="安全库存" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="SafeStock.aspx.cs" Inherits="Cargo.House.SafeSnap" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <style type="text/css">
+        .tdLabel{
+            width: 80px;
+        }
+        .tdContent{
+            width: 150px;
+        }
+    </style>
     <script type="text/javascript">
         //页面加载时执行
         window.onload = function () {
@@ -241,8 +249,9 @@
                     $('#dgAcceptAddress').datagrid('selectRow', index);
                 },
                 onDblClickRow: function (index, row) {
+                    var productName = row.TypeName + " " + row.Specs + " " + row.Figure + " " + row.LoadIndex + row.SpeedLevel;
                     $("#ProductCode").textbox('setValue', row.ProductCode);
-                    $("#ProductName").textbox('setValue', row.TypeName + " " + row.Specs + " " + row.Figure + " " + row.LoadIndex + row.SpeedLevel);
+                    $("#ProductName").textbox('setValue', productName);
                     $('#TypeName').val(row.TypeName)
                     $('#TypeID').val(row.TypeID)
                     $('#eSpecs').val(row.Specs)
@@ -427,7 +436,7 @@
     <%--此div用于显示按钮操作--%>
 
     <%--此div用于新增/编辑数据--%>
-    <div id="dlgedit" class="easyui-dialog" style="width: 800px; height: 400px; padding: 0px"
+    <div id="dlgedit" class="easyui-dialog" style="width: 1100px; height: 360px; padding: 0px"
         closed="true" buttons="#dlg-buttons">
         <form id="fm" class="easyui-form" method="post">
             <input type="hidden" name="SID" />
@@ -439,19 +448,59 @@
             <input type="hidden" name="LoadIndex" id="eLoadIndex" />
             <input type="hidden" name="SpeedLevel" id="eSpeedLevel" />
 
-
             <div id="saPanel">
                 <table>
                     <tr>
-                        <td style="text-align: right;">区域大仓:
+                        <td style="text-align: right;" >区域大仓:
                         </td>
                         <td>
-                            <input id="eHouseID" name="HouseID" class="easyui-combobox" style="width: 250px;" data-options="valueField:'HouseID',textField:'HouseName',editable:false,required:true" />
+                            <input id="eHouseID" name="HouseID" class="easyui-combobox" class="tdContent" data-options="valueField:'HouseID',textField:'HouseName',editable:false,required:true" />
                         </td>
+
+                        <td style="text-align: right;">在库数量:
+                        </td>
+                        <td>
+                            <input id="CurNum_ipt" name="CurNum" readonly class="easyui-numberbox" class="tdContent" />
+                        </td>
+
+                        <td style="text-align: right;">最小库存天数:
+                        </td>
+                        <td>
+                            <input name="MinStockDay" id="MinStockDay_ipt" class="easyui-numberbox" class="tdContent" validtype="length[0,5]" />
+                        </td>
+                        
+                        <td style="text-align: right;">OE安全库存数:
+                        </td>
+                        <td>
+                            <input name="OEStock" class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]" />
+                        </td>
+                    </tr>
+
+                    <tr>
+                        
                         <td style="text-align: right;">所属仓库:
                         </td>
                         <td>
-                            <input id="eAreaID" name="AreaID" class="easyui-combobox" style="width: 250px;" data-options="valueField:'AreaID',textField:'Name',editable:false,required:true" />
+                            <input id="eAreaID" name="AreaID" class="easyui-combobox" class="tdContent" data-options="valueField:'AreaID',textField:'Name',editable:false,required:true" />
+                        </td>
+
+                        
+                        <td style="text-align: right;">在途数量:
+                        </td>
+                        <td>
+                            <input id="MoveNum_ipt" name="MoveNum" readonly class="easyui-numberbox" class="tdContent" />
+                        </td>
+                        
+                        <td style="text-align: right;"><span title="最小库存数=(月均销量/30)*最小库存天数" class="easyui-tooltip" >最小库存数:<span>
+                        </td>
+                        <td>
+                            <input name="MinStock" readonly class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]" />
+                        </td>
+
+                        <td style="text-align: right;">YC安全库存数:
+                        </td>
+                        <td>
+                            <input name="HCYCStock" class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]" />
                         </td>
                     </tr>
 
@@ -459,7 +508,7 @@
                         <td style="text-align: right;">产品编码:
                         </td>
                         <td>
-                            <input id="ProductCode" name="ProductCode" class="easyui-textbox" style="width: 250px;" data-options="
+                            <input id="ProductCode" name="ProductCode" class="easyui-textbox" class="tdContent" data-options="
                   required:true,prompt:'点击右侧图标查询产品信息',iconWidth: 22,
                     icons: [{
                         iconCls:'icon-search',
@@ -468,105 +517,85 @@
                         }
                     }]
                     " />
-<td style="text-align: right;">产品名称:
+
+                        <td style="text-align: right;"><span title="月均销量=(n-1)*0.5+(n-2)*0.3+(n-3)*0.2; n:当月总销量,n-1:上月总销量" class="easyui-tooltip">月均销量:<span>
                         </td>
                         <td>
-                            <input id="ProductName" name="ProductName" class="easyui-textbox" data-options="" style="width: 250px;" />
+                            <input id="AvgSaleNum_ipt" name="AvgSaleNum" readonly class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]" />
                         </td>
+                        
+                        <td style="text-align: right;">最大库存天数:
+                        </td>
+                        <td>
+                            <input name="MaxStockDay" id="MaxStockDay_ipt" class="easyui-numberbox" class="tdContent" validtype="length[0,5]" />
+                        </td>
+                        
+                        <td style="text-align: right;">隔离库存数:
+                        </td>
+                        <td>
+                            <input name="IsolatedStock" id="eStockNum" class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]" />
+                        </td>
+                        
+                        <!-- <td style="text-align: right;">RE安全库存数:
+                        </td>
+                        <td>
+                            <input name="REStock" class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]" />
+                        </td> -->
+                        <!-- <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td>
+                        <td>&nbsp;</td> -->
                     </tr>
 
-                    <tr>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                    </tr>
-
-                    <tr>
+                    <!-- <tr>
                         <td style="text-align: right;">安全库存数:
                         </td>
                         <td>
-                            <input name="StockNum" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]"  />
+                            <input name="StockNum" class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]"  />
                         </td>
 
                         <td style="text-align: right;">
                         </td>
                         <td>
                         </td>
-                        
-                    </tr>
+                    </tr> -->
                     <tr>
-                        <td style="text-align: right;">OE安全库存数:
+                        <td style="text-align: right;">产品名称:
                         </td>
                         <td>
-                            <input name="OEStock" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
+                            <input id="ProductName" name="ProductName" class="easyui-textbox" data-options="editable: false" class="tdContent" />
                         </td>
 
-                        <td style="text-align: right;">云仓安全库存数:
-                        </td>
-                        <td>
-                            <input name="HCYCStock" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
-                        </td>
-                        
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">隔离库存数:
-                        </td>
-                        <td>
-                            <input name="IsolatedStock" id="eStockNum" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
-                        </td>
-                        <td style="text-align: right;">品控库存数:
-                        </td>
-                        <td>
-                            <input name="ControlStock" class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]"  />
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td style="text-align: right;">最小库存天数:
-                        </td>
-                        <td>
-                            <input name="MinStockDay" id="MinStockDay_ipt" class="easyui-numberbox" style="width: 250px;" validtype="length[0,5]" />
-                        </td>
-
-                        <td style="text-align: right;">最大库存天数:
-                        </td>
-                        <td>
-                            <input name="MaxStockDay" id="MaxStockDay_ipt" class="easyui-numberbox" style="width: 250px;" validtype="length[0,5]" />
-                        </td>
-                    </tr>
-
-                    
-                    <tr>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                        <td>&nbsp;</td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;"><span title="最小库存数=月均销量/30/最小库存天数" class="easyui-tooltip" >最小库存数:<span>
-                        </td>
-                        <td>
-                            <input name="MinStock" readonly class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
-                        </td>
-                        <td style="text-align: right;"><span title="最大库存数=(月均销量/30)/最大库存天数" class="easyui-tooltip">最大库存数:<span>
-                        </td>
-                        <td>
-                            <input name="MaxStock" readonly class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;"><span title="月均销量=(n-1)*0.5+(n-2)*0.3+(n-3)*0.2; n:当月总销量,n-1:上月总销量" class="easyui-tooltip">月均销量:<span>
-                        </td>
-                        <td>
-                            <input id="AvgSaleNum_ipt" name="AvgSaleNum" readonly class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
-                        </td>
                         <td style="text-align: right;"><span title="库存度天数=(在库数量+在途数量) / (月均销量/30)" class="easyui-tooltip">库存度天数:</span>
                         </td>
                         <td>
-                            <input id="DOI_ipt" name="DOI" readonly class="easyui-numberbox" data-options="min:0,precision:0" style="width: 250px;" validtype="length[0,5]" />
+                            <input id="DOI_ipt" name="DOI" readonly class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]" />
+                        </td>
+
+                        <td style="text-align: right;"><span title="最大库存数=(月均销量/30)*最大库存天数" class="easyui-tooltip">最大库存数:<span>
+                        </td>
+                        <td>
+                            <input name="MaxStock" readonly class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]" />
+                        </td>
+
+                        <td style="text-align: right;">品控库存数:
+                        </td>
+                        <td>
+                            <input name="ControlStock" class="easyui-numberbox" data-options="min:0,precision:0" class="tdContent" validtype="length[0,5]"  />
                         </td>
                     </tr>
+                    <!-- <tr>
+                        <td></td>
+                        <td></td>
+                        
+                        <td></td>
+                        <td></td>
+                        
+                        <td></td>
+                        <td></td>
+
+                    </tr> -->
+
                   
                 </table>
             </div>
@@ -862,15 +891,17 @@
             var row = rows[0];
             if (row) {
                 console.log("加载值",{row});
-                $('#dlgedit').dialog('open').dialog('setTitle', '修改仓库安全库存');
+                var productName = row.TypeName + " " + row.Specs + " " + row.Figure + " " + row.LoadIndex + row.SpeedLevel;
+                $('#ProductName').textbox('setValue', productName);
+                $('#dlgedit').dialog('open').dialog('setTitle', '修改安全库存配置');
 
                 $('#eAreaID').combobox('clear');
                 var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + row.HouseID;
                 $('#eAreaID').combobox('reload', url);
 
-                    loadingFormData = true;
-                $('#fm').form('load', row);
-                    loadingFormData = false;
+                loadingFormData = true;
+                $('#fm').form('load', {...row, ProductName: productName});
+                loadingFormData = false;
             }
         }
 
