@@ -3987,7 +3987,7 @@ namespace House.Business.Cargo
                         ReasonTag = "RO",
                         SrcID = rtData.Data.RplID,
                         SrcCode = rtData.Data.RplNo,
-                        GoodsList = rtData.Data.Rows.Select(r => new UpdateOOSGoodsParam
+                        Rows = rtData.Data.Rows.Select(r => new UpdateOOSGoodsParam
                         {
                             ProductID = r.ProductID.Value,
                             AreaID = r.AreaID.Value
@@ -4046,6 +4046,46 @@ namespace House.Business.Cargo
         public CargoOutOfStockListDto QueryOutOfStocks(CargoOutOfStockParams queryParams)
         {
             var rtData = man.QueryOutOfStocks(queryParams);
+            return rtData;
+        }
+
+        public DataRespsBase<UpdateOOSParam> UpdtOOSByHouse(int? HouseID)
+        {
+            LogEntity log = new LogEntity();
+            log.Moudle = "补货单";
+            log.Status = "0";
+            log.NvgPage = "更新缺货数据";
+            log.Operate = "U";
+            log.IPAddress = _ipaddress;
+            log.UserID = _userid;
+            DataRespsBase<UpdateOOSParam> rtData = new DataRespsBase<UpdateOOSParam>();
+            LogBus lw = new LogBus();
+            try
+            {
+                rtData.Data = man.UpdtOOSByHouse(HouseID, _userid, _username);
+                var dataParamsJson = JsonConvert.SerializeObject(new { HouseID });
+                if (rtData?.Data != null)
+                {
+                    var rtDataJson = JsonConvert.SerializeObject(rtData);
+                    rtData.Message = "更新缺货数据成功";
+                    log.Memo = $"更新缺货数据成功；数据参数：{dataParamsJson}；返回数据：{rtDataJson}";
+                }
+                else
+                {
+                    rtData.Message = "更新缺货数据失败";
+                    log.Memo = $"更新缺货数据失败；数据参数：{dataParamsJson}";
+                }
+                lw.InsertLog(log);
+            }
+            catch (Exception ex)
+            {
+                log.Status = "1";
+                log.Memo = ex.FormatErr();
+                rtData.Success = false;
+                rtData.Message = "更新缺货数据失败，失败信息：" + ex.Message;
+                lw.InsertLog(log);
+                return null;
+            }
             return rtData;
         }
         #endregion

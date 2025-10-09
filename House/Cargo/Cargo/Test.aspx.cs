@@ -419,7 +419,7 @@ namespace Cargo
                 SrcType = 1,
                 SrcID = 1371432,
                 SrcCode = "YJ250929082",
-                GoodsList = new List<UpdateOOSGoodsParam>()
+                Rows = new List<UpdateOOSGoodsParam>()
                 {
                     new UpdateOOSGoodsParam()
                     {

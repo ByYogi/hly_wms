@@ -238,14 +238,14 @@
     </div>
     <table id="dg" class="easyui-datagrid"></table>
     <div id="toolbar">
-    <div class="space-lg">
+    <div class="space">
         <span class="space">
         <a href="#" class="easyui-linkbutton tblBtn" id="btnSearch" iconcls="icon-search" plain="false">查询</a>
         </span>
         <span class="space">
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnAdd" iconcls="icon-add" plain="false" >新增</a> -->
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnEdit" iconcls="icon-edit" plain="false" >修改</a> -->
-        <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >删除</a>
+        <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-remove" plain="false" >删除</a>
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >合并补货单</a>
         <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >转为移库单</a> -->
         </span>

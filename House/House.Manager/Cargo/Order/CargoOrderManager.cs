@@ -4,6 +4,7 @@ using House.Entity.Cargo;
 using House.Entity.Cargo.Order;
 using House.Entity.Cargo.Product;
 using House.Entity.Dto;
+using House.Entity.Dto.Base;
 using House.Entity.Dto.Order;
 using House.Entity.Dto.Order.CargoRpl;
 using House.Entity.House;
@@ -10081,7 +10082,7 @@ SELECT @newNo AS NewRplNo;
         public List<CargoOOSLogDtlDto> UpdtOutOfStock(UpdateOOSParam entity)
         {
             SqlHelper conn = new SqlHelper();
-            var goodslist = entity.GoodsList;
+            var goodslist = entity.Rows;
             List<CargoOOSLogDtlDto> result = new List<CargoOOSLogDtlDto>();
             if (!goodslist.Any())
             {
@@ -11852,6 +11853,67 @@ WHERE (1=1) AND oos.Piece > 0
             }
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
             return result;
+        }
+
+        /// <summary>
+        /// 更新缺货数据
+        /// </summary>
+        /// <param name="HouseID">更新范围</param>
+        /// <returns>返回受影响行数</returns>
+        public UpdateOOSParam UpdtOOSByHouse(int? HouseID, string UserID, string UserName)
+        {
+            //验证仓库是否有效
+            if (!HouseID.HasValue) throw new ApplicationException("请传入仓库ID");
+            if(HouseID > 0)
+            {
+                CargoHouseManager houseMan = new CargoHouseManager();
+                var houseData = houseMan.QueryCargoHouseByID(HouseID.Value);
+                bool isExistHouse = (houseData?.HouseID ?? 0) > 0;
+                if (!isExistHouse) throw new ApplicationException($"仓库ID({HouseID.Value})不存在");
+            }
+
+            UpdateOOSParam oosParams = new UpdateOOSParam()
+            {
+                UserID = UserID,
+                UserName = UserName,
+                ReasonTag = "RF" //刷新标记
+            };
+            var conn = new SqlHelper();
+            //获取仓库缺货数据
+            var oosRows = new List<UpdateOOSGoodsParam>();
+            
+            string queryOOSDataStr = @"
+SELECT ProductID, AreaID FROM Tbl_Cargo_OutOfStock WHERE (1=1) @{conditions}
+";
+            if (HouseID == -1)
+            {
+                queryOOSDataStr = queryOOSDataStr.Replace("@{conditions}", "");
+            }
+            else
+            {
+                queryOOSDataStr = queryOOSDataStr.Replace("@{conditions}", "AND HouseID=" + HouseID);
+            }
+            using (DbCommand command = conn.GetSqlStringCommond(queryOOSDataStr))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow dr in dt.Rows)
+                    {
+                        oosRows.Add(new UpdateOOSGoodsParam()
+                        {
+                            ProductID = dr.Field<long>("ProductID"),
+                            AreaID = dr.Field<int>("AreaID"),
+                        });
+                    }
+                    oosParams.Rows = oosRows;
+                }
+            }
+            
+            if(oosParams.Rows.Count > 0)
+            {
+                UpdtOutOfStock(oosParams);
+            }
+            return oosParams;
         }
         #endregion
         #region 来货单 

@@ -14,7 +14,7 @@ namespace House.Entity.Dto.Order.CargoRpl
         public string ReasonTag { get; set; }
         public int? SrcID { get; set; }
         public string SrcCode { get; set; }
-        public List<UpdateOOSGoodsParam> GoodsList { get; set; }
+        public List<UpdateOOSGoodsParam> Rows { get; set; }
     }
     public class UpdateOOSGoodsParam
     {

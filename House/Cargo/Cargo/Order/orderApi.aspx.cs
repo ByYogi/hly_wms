@@ -17229,6 +17229,7 @@ namespace Cargo.Order
             var head = new CargoRplOrderDtlDto
             {
                 HouseID = Request.GetInt("HouseID"),
+                Remark = Request.GetString("Remark")
             };
             var rows = Request.GetDataByJson<List<CargoRplOrderGoodsDto>>("Rows");
             head.Rows = rows;
@@ -17288,7 +17289,22 @@ namespace Cargo.Order
             Response.Write(resultjson);
             Response.Flush();
         }
+        public void UpdtOOSByHouse()
+        {
+            int? HouseID = HouseID = Request.GetInt("HouseID");
 
+
+            var userid = UserInfor?.LoginName?.Trim();
+            var username = UserInfor?.UserName;
+            var ipaddress = Common.GetUserIP(Request);
+            CargoOrderBus bus = new CargoOrderBus(userid, username, ipaddress);
+            var result = bus.UpdtOOSByHouse(HouseID);
+            string resultjson = JSON.Encode(result);
+
+            Response.Clear();
+            Response.Write(resultjson);
+            Response.Flush();
+        }
         #endregion
 
         #region 

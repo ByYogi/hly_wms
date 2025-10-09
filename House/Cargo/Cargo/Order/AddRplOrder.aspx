@@ -2,6 +2,25 @@
     CodeBehind="AddRplOrder.aspx.cs" Inherits="Cargo.Order.addSaleOrder" %>
 
     <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+        
+    <style type="text/css">
+        .tblBtn{
+            letter-spacing: 4px; /* 字间距可调 */
+            padding: 0 2px;
+        }
+        .space{
+            display: inline-flex;       /* 横向排列 */
+            gap: 8px;           /* 按钮间距统一由 gap 控制 */
+            align-items: center;  /* 垂直居中 */
+            vertical-align: middle; /* 与其他行内元素对齐，消除多余上间距 */
+        }
+        .space-lg{
+            display: inline-flex;       /* 横向排列 */
+            gap: 22px;           /* 按钮间距统一由 gap 控制 */
+            align-items: center;  /* 垂直居中 */
+            vertical-align: middle; /* 与其他行内元素对齐，消除多余上间距 */
+        }
+    </style>
         <script type="text/javascript">
             //页面加载显示遮罩层
             var pc;
@@ -33,9 +52,34 @@
                 $('#dg').datagrid("resize",{ height: height - 60 });
                 $('#outDg').datagrid("resize", { height: (Number($(window).height()) - 90) - height });
             }
+            let houseOptionsOrg = null; // 保存大仓列表的请求结果
             $(document).ready(function () {
                 var userID = "<%=Ln%>";
                 var columns = [];
+                $.get("../House/houseApi.aspx?method=CargoPermisionHouse", function(response) {
+                    houseOptionsOrg = JSON.parse(response); // 将返回的数据保存到变量中
+                    
+                    $('#ReqHouseOpts').combobox({
+                        data: houseOptionsOrg,
+                        valueField: 'HouseID', textField: 'Name',
+                    });
+
+                    $('#updtOOSHouseOpts').combobox({
+                        data: [{HouseID: -1, Name: '全部'}, ...houseOptionsOrg],
+                        valueField: 'HouseID', textField: 'Name',
+                    }).combobox('setValue', -1);
+                    
+                    //所在仓库
+                    $('#AHouseID').combobox({
+                        data: houseOptionsOrg,
+                        valueField: 'HouseID', textField: 'Name',
+                        onSelect: function (rec) {
+                            $('#HAID').combobox('clear');
+                            var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                            $('#HAID').combobox('reload', url);
+                        }
+                    }).combobox('setValue', '<%=UserInfor.HouseID%>');
+                });
                 columns.push({ title: '', field: 'OOSID', checkbox: true, width: '10%' });
                 columns.push({
                     title: '产品代码', field: 'ProductCode', width: '8%', formatter: function (value) {
@@ -213,21 +257,6 @@
                 });
                 
                 
-                $('#ReqHouseOpts').combobox({
-                    url: '../House/houseApi.aspx?method=CargoPermisionHouse',
-                    valueField: 'HouseID', textField: 'Name',
-                });
-                //所在仓库
-                $('#AHouseID').combobox({
-                    url: '../House/houseApi.aspx?method=CargoPermisionHouse',
-                    valueField: 'HouseID', textField: 'Name',
-                    onSelect: function (rec) {
-                        $('#HAID').combobox('clear');
-                        var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
-                        $('#HAID').combobox('reload', url);
-                    }
-                });
-                $('#AHouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
                 $('#HAID').combobox('clear');
                 var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=<%=UserInfor.HouseID%>';
                 //$('#HAID').combobox('reload', url);
@@ -292,6 +321,10 @@
                     HouseID: $("#AHouseID").combobox('getValue')//仓库ID
                 });
             }
+            //更新缺货数据
+            function UpdateOutOfStocks() {
+                 var url = '../Order/orderApi.aspx?method=UpdtAllOutOfStocks';
+            }
         </script>
     </asp:Content>
     <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
@@ -353,12 +386,17 @@
         </table>
         <table id="outDg" class="easyui-datagrid">
         </table>
-        <div id="toolbar">
-            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false"
-                onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>
+        <div id="toolbar" class="space">
+        <span class="space">
+            <a href="#" class="easyui-linkbutton tblBtn" iconcls="icon-search" plain="false"
+                onclick="dosearch()">查询</a>
+                </span>
+        <span class="space">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false"
+                onclick="openUpdteOOSDlg()">更新缺货数据</a>
+                </span>
         </div>
-        <!--Begin 出库操作-->
-
+        
         <div id="dlg" class="easyui-dialog" style="width: 350px; height: 230px; padding: 0px" closed="true"
             buttons="#dlg-buttons">
             <form id="fm" class="easyui-form" method="post">
@@ -382,26 +420,89 @@
             <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
                 onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
         </div>
-        <!--End 出库操作-->
+        
+        <div id="updteOOSDlg" class="easyui-dialog" style="width: 350px; height: 230px; padding: 0px" closed="true"
+            buttons="#updateOOSDlg-buttons" title="更新仓库缺货数据">
+            <form id="fm" class="easyui-form" method="post">
+                <input type="hidden" id="InPiece" />
+                <input type="hidden" id="InIndex" />
+                <table>
+                    <tr>
+                        <td style="text-align: right;">仓库：
+                        </td>
+                        <td>
+                        <input id="updtOOSHouseOpts" class="easyui-combobox"  style="width: 200px;" data-options="required:true"
+                            />
+                        </td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+        <div id="updateOOSDlg-buttons">
+            <a href="#" class="easyui-linkbutton tblBtn" iconcls="icon-ok"
+                onclick="updtOOS_ok()">更新</a>&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton tblBtn" iconcls="icon-cancel"
+                onclick="javascript:$('#updteOOSDlg').dialog('close')">取消</a>
+        </div>
+
         <form id="fmDep" class="easyui-form" method="post">
             <div id="saPanel">
                 <table style="width: 100%">
                     <tr>
-                        <td style="text-align: right;">请求仓库:
+                        
+                        <td style="text-align: right; width: 100px;">请求仓库:
                         </td>
-                        <td >
-                        <input id="ReqHouseOpts" class="easyui-combobox" style="width: 100px;" data-options="required:true"
+                        <td style="width: 300px;">
+                        <input id="ReqHouseOpts" class="easyui-combobox"  style="width: 200px;" data-options="required:true"
                             />
                         </td>
-                        <td style="text-align: center;"><a href="#" id="btnPreSave"
-                                class="easyui-linkbutton" iconcls="icon-compress" plain="false"
+                        
+                        <td style="text-align: right; width: 100px;">备注:
+                        </td>
+                        <td >
+                        <input id="RemarkTxt" class="easyui-textbox" style="width:200px;height:60px"  style="width: 100px;" data-options="multiline:true"
+                            />
+                        </td>   
+                        <td >
+
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="4" style="text-align: right; "><a href="#" id="btnPreSave"
+                                class="easyui-linkbutton" iconcls="icon-compress" plain="false" style="margin: 12px;"
                                 onclick="saveData()">保&nbsp;存&nbsp;补&nbsp;货&nbsp;单</a></td>
+                                
+                        <td style="width: 30px;">
+
+                        </td>
+                    </tr>
+                    <tr style="height: 30px;">
+
                     </tr>
                 </table>
             </div>
         </form>
         <script type="text/javascript">
-
+            function openUpdteOOSDlg(){
+                $('#updteOOSDlg').dialog('open');
+            }
+            function updtOOS_ok(){
+                var houseID = $('#updtOOSHouseOpts').combobox('getValue');
+                console.log("house id", houseID);
+                $.ajax({
+                    type: "GET",
+                    url: "orderApi.aspx?method=UpdtOOSByHouse",
+                    data: { HouseID: houseID },
+                    success: function (rsps) {
+                        var rsps  = JSON.parse(rsps);
+                        if (rsps.Success) {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '更新成功！', 'info');
+                            reset();
+                            $('#updteOOSDlg').dialog('close');
+                        }
+                    }
+                })
+            }
             //保存
             function saveData() {
                 var rows = $('#outDg').datagrid('getRows');
@@ -411,12 +512,14 @@
                 $('#btnSave').linkbutton('disable');
 
                 var ReqHouseID = $('#ReqHouseOpts').combobox('getValue');
+                var Remark = $('#RemarkTxt').textbox('getValue');
                 var RowsJson = JSON.stringify(rows);
                 $('#fmDep').form('submit', {
                     url: 'orderApi.aspx?method=AddRplOrder',
                     contentType: "application/json;charset=utf-8", dataType: "json",
                     onSubmit: function (param) {
                         param.HouseID = ReqHouseID;
+                        param.Remark = Remark;
                         param.Rows = RowsJson;
                         return;
                     },
