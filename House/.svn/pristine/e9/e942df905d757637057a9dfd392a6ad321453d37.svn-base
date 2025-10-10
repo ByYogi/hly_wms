@@ -1,0 +1,1406 @@
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="main.aspx.cs" Inherits="Cargo.main" %>
+
+    <!DOCTYPE html
+        PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    <html xmlns="http://www.w3.org/1999/xhtml">
+
+    <head id="Head1" runat="server">
+        <title>
+            <%= Cargo.Common.GetSystemNameAndVersion()%>
+        </title>
+        <link rel="shortcut icon" type="image/x-icon" href="CSS/image/dlqf.ico" media="screen" />
+        <link href="JS/easy/css/default/easyui.css" rel="stylesheet" type="text/css" />
+        <link href="JS/easy/css/icon.css" rel="stylesheet" type="text/css" />
+        <link href="CSS/default.css" rel="stylesheet" type="text/css" />
+        <style type="text/css">
+            /* #region 值班面板样式 */
+            .time-box {
+                display: inline-block;
+                vertical-align: top;
+            }
+
+            .duty-list-box {
+                display: inline-block;
+                width: 450px;
+            }
+
+            .duty-list-box * {
+
+                font-size: 18px;
+            }
+
+            #currentWeek {
+                font-size: 18px;
+                color: rgb(36, 36, 36);
+                line-height: 0px;
+            }
+
+            #currentDay {
+                font-size: 32px;
+                line-height: 0px;
+                color: rgb(36, 36, 36);
+            }
+
+            #currentDateTime {
+                color: rgb(129, 129, 129);
+                line-height: 0px;
+                font-size: 16px;
+            }
+
+            #duty-box ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            #duty-box .panel-title {
+                font-size: 15px;
+            }
+
+            #duty-box ul ul {
+
+                padding-left: 2em;
+            }
+
+            #duty-box table {
+                padding: none;
+                margin: none;
+                border-collapse: collapse;
+            }
+
+            .accordion .accordion-header-selected {
+                background: #E0ECFF;
+            }
+
+
+            .duty-tb-hightlight {
+                color: #1677ff
+            }
+
+            .duty-tb-normal {
+                color: rgb(36, 36, 36)
+            }
+
+            /* #endregion */
+
+            .header {
+                background: linear-gradient(to bottom, #eff5ff 0px, #e0ecff 100%) repeat-x scroll 0 0 rgba(0, 0, 0, 0);
+            }
+
+            .messager-body {
+                background-color: #ffffffc9;
+                /* 弹框背景颜色 */
+            }
+
+            .spanTit {
+                font-size: 13px;
+                color: #626262;
+                padding-bottom: 5px;
+                width: 70px;
+            }
+
+            .spanMem {
+                font-size: 15px;
+                font-weight: bold;
+                color: #2196f3;
+            }
+        </style>
+
+        <script src="JS/easy/js/jquery.min.js" type="text/javascript"></script>
+
+        <script src="JS/easy/js/jquery.easyui.min.js" type="text/javascript"></script>
+
+        <script type="text/javascript">
+            var _menus = {};
+            $(document).ready(function () {
+                _menus = <%=res %>;
+
+                //设置定时器，每隔5秒弹出提醒框
+                setInterval(function () {
+                    showReminder();
+                }, 5000);
+                //showReminder();
+                //onNewOrder();
+
+
+
+                // 弹出公告框
+                //var dialogWidth = 580;		// dialog的宽度
+                //var dialogHeight = 250;		// dialog的高度
+                //var topPosition = $(window).height() - dialogHeight;
+                //var leftPosition = $(window).width() - dialogWidth;
+                //$('#noticeDialog').dialog({
+                //    width: dialogWidth,
+                //    height: dialogHeight,
+                //    top: topPosition,
+                //    left: leftPosition,
+                //    title: '公告'
+                //}).dialog('open');
+
+            });
+
+            function showReminder() {
+                //查询缓存数据，是否有新的订单
+                $.ajax({
+                    url: 'FormService.aspx?method=NewOrderNotice',
+                    type: 'post', dataType: 'json', data: {},
+                    success: function (msg) {
+                        console.log(msg);
+                        //var result = eval('(' + msg + ')');
+                        if (msg != "") {
+                            //语音播报
+                            onNewOrder();
+                            //窗口提醒
+                            $.messager.show({
+                                width: '300px',
+                                height: '300px',
+                                title: '<img src="JS/easy/css/icons/bell.png" alt="Icon" style="margin-right:5px;"/><span style="color:red;font-size:15px;font-weight:bold;margin-left:5px;">您有新的云仓订单！！</span><img src="JS/easy/css/icons/celebrate.png" alt="Icon"/><img src="JS/easy/css/icons/celebrate.png" alt="Icon" style="margin-right:5px;"/>',
+                                msg: '<table><tr><td class="spanTit">出库仓库：</td><td class="spanMem">' + msg.HouseName + '</td></tr><tr><td class="spanTit">订单号码：</td><td class="spanMem">' + msg.OrderNo + '</td></tr><tr><td class="spanTit">商品名称：</td><td class="spanMem">' + msg.ProductInfo + '</td></tr><tr><td class="spanTit">订单数量：</td><td class="spanMem">' + msg.OrderNum + ' 条  ' + msg.DeliveryName + '</td></tr><tr><td class="spanTit">客户信息：</td><td class="spanMem">' + msg.ClientInfo + '</td></tr><tr><td colspan="2" style="text-align:center;font-size: 16px;color: red;font-weight: bold;padding-top: 10px; ">请及时出库发货！<img src="JS/easy/css/icons/clench.png" /><img src="JS/easy/css/icons/clench.png" /></td></tr></table>',
+                                timeout: 10000, // 显示3秒后消失
+                                showType: 'slide', // 滑动方式显示
+                            });
+                        }
+                    }
+                });
+            }
+
+            function onNewOrder() {
+                var audio = new Audio('../upload/audio/newOrder.mp3');
+                audio.volume = 1;
+                audio.play();
+            }
+
+        </script>
+
+        <script src="JS/easy/js/easyui-lang-zh_CN.js" type="text/javascript"></script>
+
+        <script src="JS/lefttree.js" type="text/javascript"></script>
+
+        <script src="JS/Date/ComJs.js" type="text/javascript"></script>
+
+
+        <link href="../JS/KindEditer/themes/default/default.css" rel="stylesheet" />
+        <link href="../JS/KindEditer/plugins/code/prettify.css" rel="stylesheet" />
+        <script type="text/javascript" src="../JS/KindEditer/kindeditor-all.js"></script>
+        <script type="text/javascript" src="../JS/KindEditer/lang/zh-CN.js"></script>
+        <script src="../JS/KindEditer/plugins/code/prettify.js" type="text/javascript"></script>
+        <script type="text/javascript">
+            var editor;
+            var editorC;
+            $(function () {
+                KindEditor.ready(function (K) {
+                    editor = K.create('#Memo', {
+                        cssPath: '../JS/KindEditer/plugins/code/prettify.css',
+                        uploadJson: '../Product/upload.ashx',
+                        fileManagerJson: '../asp.net/file_manager_json.ashx',
+                        allowFileManager: true,
+                        afterCreate: function () { }
+                    });
+                    prettyPrint();
+                });
+                KindEditor.ready(function (K) {
+                    editorC = K.create('#Content', {
+                        cssPath: '../JS/KindEditer/plugins/code/prettify.css',
+                        uploadJson: '../Product/upload.ashx',
+                        fileManagerJson: '../asp.net/file_manager_json.ashx',
+                        allowFileManager: true,
+                        afterCreate: function () { }
+                    });
+                    prettyPrint();
+                });
+            });
+        </script>
+
+        <script type="text/javascript">
+            $(document).ready(function () {
+                $('#dgWarnStock').datagrid({
+                    width: '1000px',
+                    height: '500px',
+                    title: '<span style=color:red;font-size:15px;>库存报警</span>',
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: true, //行高是否自动
+                    collapsible: true, //是否可折叠
+                    pagination: false, //分页是否显示
+                    fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: true, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'SID',
+                    url: null,
+                    showFooter: true,
+                    toolbar: '#saPanel',
+                    columns: [[
+                        { title: '区域大仓', field: 'HouseName', width: '60px' },
+                        { title: '所属仓库', field: 'AreaName', width: '60px' },
+                        { title: '产品编码', field: 'ProductCode', width: '100px' },
+                        { title: '品牌', field: 'TypeName', width: '50px' },
+                        { title: '货品代码', field: 'GoodsCode', width: '80px' },
+                        { title: '规格', field: 'Specs', width: '70px' },
+                        { title: '花纹', field: 'Figure', width: '70px' },
+                        { title: '载重', field: 'LoadIndex', width: '40px' },
+                        { title: '速级', field: 'SpeedLevel', width: '40px' },
+                        { title: '最后销售时间', field: 'LastSalDate',  formatter: DateTimeFormatter },
+                        { title: '告警库存', field: 'StockNum', width: '60px', align: 'right' },
+                        { title: '当前库存', field: 'CurNum', width: '60px', align: 'right' },
+                        { title: '在途库存', field: 'MoveNum', width: '60px', align: 'right' },
+                        { title: '相差数量', field: 'LessNum', width: '60px', align: 'right' }
+                    ]]
+                });
+
+                //一级产品
+                $('#APID').combobox({
+                    url: 'Product/productApi.aspx?method=QueryALLOneProductType', valueField: 'TypeID', textField: 'TypeName',
+                    onSelect: function (rec) {
+                        $('#ASID').combobox('clear');
+                        var url = 'Product/productApi.aspx?method=QueryALLOneProductType&PID=' + rec.TypeID;
+                        $('#ASID').combobox('reload', url);
+                    }
+                });
+                //所在仓库
+                $('#AHouseID').combobox({
+                    url: 'House/houseApi.aspx?method=CargoPermisionHouse',
+                    valueField: 'HouseID', textField: 'Name',
+                    onSelect: function (rec) {
+                        var hids = $("#AHouseID").combobox('getValues').toString()//仓库ID
+                        $('#HAID').combobox('clear');
+                        var url = 'House/houseApi.aspx?method=QueryALLAreaV2&pid=0&hid=' + hids;
+                        $('#HAID').combobox('reload', url);
+                    }
+                });
+                var IHH = "<%=UserInfor.IsHeadHouse%>";
+
+                if (IHH != "1") {
+                    $('#AHouseID').combobox('textbox').bind('focus', function () { $('#AHouseID').combobox('showPanel'); });
+                }
+                $('#AHouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
+
+                $('#HAID').combobox('clear');
+                var url = 'House/houseApi.aspx?method=QueryALLArea&pid=0&hid=<%=UserInfor.HouseID%>';
+                $('#HAID').combobox('reload', url);
+
+                if (IHH == "1") {
+                    $('#HAID').combobox('setText', '<%=UserInfor.HeadHouseName%>');
+                    $('#HAID').combobox('setValue', '<%=UserInfor.HeadHouseID%>');
+                    $("#HAID").combobox("readonly", true);
+                    $("#AHouseID").combobox("readonly", true);
+                }
+
+                $('#APID').combobox('textbox').bind('focus', function () { $('#APID').combobox('showPanel'); });
+                $('#ASID').combobox('textbox').bind('focus', function () { $('#ASID').combobox('showPanel'); });
+
+                if ("<%=UserInfor.HouseID%>" == "82") {
+                    $('#dgs1').hide();
+                }
+
+                //公告消息
+                $('#dgNoticeView').datagrid({
+                    width: '700px',
+                    height: '500px',
+                    title: '公告消息',
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: true, //行高是否自动
+                    collapsible: true, //是否可折叠
+                    pagination: false, //分页是否显示
+                    fitColumns: true, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: true, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'ID',
+                    url: null,
+                    showFooter: true,
+                    toolbar: '#saPanelNotice',
+                    columns: [[
+                        { title: '', field: 'ID', checkbox: true, width: '30px' },
+                        {
+                            title: '所属仓库', field: 'HouseName', width: '70px', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        {
+                            title: '公告标题', field: 'Title', width: '250px', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        {
+                            title: '公告类型', field: 'NoticeType', width: '70px',
+                            formatter: function (value) {
+                                if (value == "0") { return "<span title='商城公告'>商城公告</span>"; }
+                                else if (value == "1") { return "<span title='到货通知'>到货通知</span>"; }
+                                else if (value == "2") { return "<span title='小程序公告'>小程序公告</span>"; }
+                                else if (value == "3") { return "<span title='公司通知'>公司通知</span>"; }
+                                else if (value == "4") { return "<span title='销售政策'>销售政策</span>"; }
+                                else if (value == "5") { return "<span title='行业情报'>行业情报</span>"; }
+                            }
+                        },
+                        {
+                            title: '公告状态', field: 'DelFlag', width: '70px',
+                            formatter: function (value) {
+                                if (value == "0") { return "<span title='有效'>有效</span>"; }
+                                else if (value == "1") { return "<span title='失效'>失效</span>"; }
+                            }
+                        },
+                        {
+                            title: '已读状态', field: 'ReadStatus', width: '70px',
+                            formatter: function (value) {
+                                if (value == "0") { return "<span title='未读'>未读</span>"; }
+                                else if (value == "1") { return "<span title='已读'>已读</span>"; }
+                            }
+                        },
+                        //{
+                        //    title: '操作人', field: 'OPName', width: '10%', formatter: function (value) {
+                        //        return "<span title='" + value + "'>" + value + "</span>";
+                        //    }
+                        //},
+                        { title: '操作时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter }
+                    ]],
+                    rowStyler: function (index, row) { },
+                    onDblClickRow: function (index, row) { editItemNoticeByID(index); }
+                });
+
+                $('#NHouseID').combobox({
+                    url: 'House/houseApi.aspx?method=CargoPermisionHouse',
+                    valueField: 'HouseID', textField: 'Name'
+                });
+                $('#ANHouseID').combobox({ url: '../House/houseApi.aspx?method=CargoPermisionHouse', valueField: 'HouseID', textField: 'Name', });
+                $('#NHouseID').combobox('setValue', '<%=UserInfor.HouseID%>');
+
+                //是否显示未读信息提示
+                ////////QueryIsNoticeView();
+
+                ////////var gridOpts = $('#dgNoticeView').datagrid('options');
+                ////////gridOpts.url = 'systempage/sysService.aspx?method=QueryCargoNoticeUser&ReadStatus=1&HouseID=<%=UserInfor.HouseID%>';
+
+                $('#dgDailyReports').datagrid({
+                    width: '700px',
+                    height: '500px',
+                    title: '可批复的日报',
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: true, //行高是否自动
+                    collapsible: true, //是否可折叠
+                    pagination: false, //分页是否显示
+                    fitColumns: true, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: true, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'ID',
+                    url: null,
+                    showFooter: true,
+                    toolbar: '#saDailyReports',
+                    columns: [[
+                        { title: '', field: 'ID', checkbox: true, width: '10%' },
+                        {
+                            title: '日报标题', field: 'Title', width: '30%', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        {
+                            title: '报告人', field: 'UserName', width: '10%', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        {
+                            title: '可批复人员', field: 'UserReportName', width: '20%', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
+                        { title: '操作时间', field: 'OP_DATE', width: '10%', formatter: DateTimeFormatter }
+                    ]],
+                    onLoadSuccess: function (data) { },
+                    onDblClickRow: function (index, row) { editItemReportID(index); }
+                });
+
+            });
+            //查询告警库存
+            function QueryWarnStock() {
+                var hid = $("#AHouseID").combobox('getValues').toString()//仓库ID
+                console.log(hid)
+                if (hid == undefined || hid == "") {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择区域大仓！', 'warning');
+                    return;
+                }
+                var aid = $("#HAID").combobox('getValues').toString()//
+                if ((aid == undefined || aid == "") && hid != "9") {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择所属仓库！', 'warning');
+                    return;
+                }
+                $('#dgWarnStock').datagrid('clearSelections');
+                var gridOpts = $('#dgWarnStock').datagrid('options');
+                gridOpts.url = 'House/houseApi.aspx?method=QueryWarnStockDataBatch';
+                $('#dgWarnStock').datagrid('load', {
+                    //HouseID: $('#AHouseID').combobox('getValue'),
+                    HouseID: $("#AHouseID").combobox('getValues').toString(),//仓库ID
+                    //AreaID: $('#HAID').combobox('getValue'),
+                    AreaID: $("#HAID").combobox('getValues').toString(),//
+                    PID: $("#APID").combobox('getValue'),//一级产品
+                    SID: $("#ASID").combobox('getValue')
+                });
+            }
+            //查询公告消息
+            function QueryNoticeView() {
+                $('#dgNoticeView').datagrid('clearSelections');
+                var gridOpts = $('#dgNoticeView').datagrid('options');
+                gridOpts.url = 'systempage/sysService.aspx?method=QueryCargoNoticeUser&ReadStatus=1';
+                $('#dgNoticeView').datagrid('load', {
+                    //Title: $('#ATitle').val(),
+                    NoticeType: $("#ANoticeType").combobox('getValue'),
+                    //DelFlag: $("#ADelFlag").combobox('getValue'),
+                    HouseID: $("#NHouseID").combobox('getValue')
+                });
+            }
+            //查询我的日报
+            function QueryDailyReports() {
+                $('#dgDailyReports').datagrid('clearSelections');
+                var gridOpts = $('#dgDailyReports').datagrid('options');
+                gridOpts.url = 'systempage/sysService.aspx?method=QueryCanDailyReports&IsReply=1';
+                $('#dgDailyReports').datagrid('load', {
+                    //StartDate: $('#StartDate').datebox('getValue'),
+                    //EndDate: $('#EndDate').datebox('getValue'),
+                    //Title: $('#ATitle').val(),
+                });
+            }
+            //是否显示未读信息提示
+            function QueryIsNoticeView() {
+                $.ajax({
+                    url: 'systempage/sysService.aspx?method=QueryUnreadMessage',
+                    type: 'post',
+                    dataType: 'json',
+                    success: function (text) {
+                        if (text.Result == true) {
+                            $('#isNoticeView').show();
+                        }
+                        else {
+                            $('#isNoticeView').hide();
+                        }
+                    }
+                });
+            }
+
+        </script>
+    </head>
+
+    <body class="easyui-layout">
+        <div data-options="region:'north',border:false" class="header"
+            style="height: 40px; display: flex; flex-wrap: wrap; justify-content: space-between;">
+            <div
+                style="display: inline; padding-left: 10px; font-size: 25px; font-weight: bolder; font-family: 微软雅黑,黑体,宋体;">
+                <%= Cargo.Common.GetSystemNameAndVersion()%>
+            </div>
+            <div
+                style="display: inline; padding-top: 10px; text-align: right; padding-right: 10px; font-size: 14px; display: flex;">
+                <div style="display: flex; justify-content: space-around; padding-top: 4px;">
+                    <asp:Literal ID="welcome" runat="server"></asp:Literal>
+                </div>
+                <div
+                    style="width: 30px; height: 25px; display: flex; justify-content: space-around; position: relative;">
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-email" plain="true" style="line-height: 24px;"
+                        onclick="notice()" title="消息通知"></a>
+                    <div id="isNoticeView"
+                        style="position: absolute; top: 3px; right: 1px; width: 10px; height: 10px; background-color: brown; border-radius: 50%;">
+                    </div>
+                </div>
+                <a href="#" class="easyui-linkbutton" iconcls="icon-eye" plain="true"
+                    onclick="modifyPwd()">&nbsp;修改密码&nbsp;</a>&nbsp;&nbsp;
+                <a href="#" class="easyui-linkbutton" iconcls="icon-bell" plain="true"
+                    onclick="voiceBroadHouse()">&nbsp;语音订阅&nbsp;</a>&nbsp;&nbsp;
+                <%--<a href="#" class="easyui-linkbutton" iconcls="icon-house" plain="true"
+                    onclick="sTab()">&nbsp;首&nbsp;页&nbsp;</a>&nbsp;&nbsp;--%>
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-shield" plain="true"
+                        onclick="Quit()">&nbsp;退&nbsp;出&nbsp;</a>
+
+            </div>
+
+        </div>
+        <div data-options="region:'west',split:true" style="width: 150px;">
+            <div id="wnav" class="easyui-accordion" fit="true" border="false">
+            </div>
+        </div>
+
+
+        <div data-options="region:'center'" style="width: 100%; height: 100%">
+            <div id="tt" class="easyui-tabs" data-options="fit:true">
+                <div title="首页">
+                    <%-- <div id="saPanel" class="easyui-panel"
+                        title="<span style=font-size: 15px;>下载最新打印控件：<a href=CLodop_Setup_for_Win32NT.exe target=_self>执行升级</a></span>"
+                        data-options="collapsible:true,fit:true">
+                </div>--%>
+                <div id="saPanel">
+                    <table>
+                        <tr>
+                            <td style="text-align: right;">区域大仓:
+                            </td>
+                            <td>
+                                <input id="AHouseID" class="easyui-combobox" data-options="multiple:true"
+                                    style="width: 100px;" />
+                            </td>
+                            <td style="text-align: right;">所属仓库:
+                            </td>
+                            <td>
+                                <input id="HAID" class="easyui-combobox" style="width: 100px;"
+                                    data-options="multiple:true,valueField:'AreaID',textField:'Name'"
+                                    panelheight="auto" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="text-align: right;">一级产品:
+                            </td>
+                            <td>
+                                <input id="APID" class="easyui-combobox" style="width: 100px;" panelheight="auto" />
+                            </td>
+                            <td style="text-align: right;">二级产品:
+                            </td>
+                            <td>
+                                <input id="ASID" class="easyui-combobox" style="width: 100px;"
+                                    data-options="valueField:'TypeID',textField:'TypeName'" />
+                            </td>
+                            <td><a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false"
+                                    onclick="QueryWarnStock()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;<a href="#"
+                                    class="easyui-linkbutton" iconcls="icon-application_put" plain="false"
+                                    onclick="AwbExport()" id="btnExport">&nbsp;导&nbsp;出&nbsp;</a>
+                                <form runat="server" id="fm1">
+                                    <asp:ScriptManager ID="ScriptManager1" runat="server" EnablePageMethods="true" />
+                                    <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出"
+                                        OnClick="btnDerived_Click" />
+                                </form>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div id="saPanelNotice">
+                    <table>
+                        <tr>
+                            <td style="text-align: right;">区域大仓:
+                            </td>
+                            <td>
+                                <input id="NHouseID" class="easyui-combobox" style="width: 100px;" />
+                            </td>
+                            <td style="text-align: right;">公告类型:
+                            </td>
+                            <td style="width: 10%">
+                                <select class="easyui-combobox" id="ANoticeType" style="width: 100px;"
+                                    panelheight="auto">
+                                    <option value="-1">全部</option>
+                                    <option value="0">商城公告</option>
+                                    <option value="1">到货通知</option>
+                                    <option value="2">小程序公告</option>
+                                    <option value="3">公司通知</option>
+                                    <option value="4">销售政策</option>
+                                    <option value="5">行业情报</option>
+                                </select>
+                            </td>
+                            <td><a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false"
+                                    onclick="QueryNoticeView()">&nbsp;查&nbsp;询&nbsp;</a></td>
+                        </tr>
+
+                    </table>
+                </div>
+                <div id="saDailyReports">
+                    <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false"
+                        onclick="QueryDailyReports()">&nbsp;查&nbsp;询&nbsp;</a>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; align-items: flex-start;">
+                    <div id="dgs1">
+                        <table id="dgWarnStock" class="easyui-datagrid"></table>
+                    </div>
+                    <div id="dgs2" style="display: none;">
+                        <table id="dgNoticeView" class="easyui-datagrid"></table>
+                    </div>
+                    <div id="dgs3" style="display: none;">
+                        <table id="dgDailyReports" class="easyui-datagrid"></table>
+                    </div>
+
+
+                    <!-- #region 值班面板 -->
+                    <div class="easyui-accordion" style="width: 630px; margin-left: auto;" id="duty-box">
+                        <div title="IT部门本周值班人员" style="overflow:auto; padding:10px;" id="duty-panel">
+                            <div class="duty-list-box">
+                                <!-- <h3>本周值班人员</h3> -->
+                                <div id="currentWeekNo" style="color: rgb(36, 36, 36); margin-bottom: 12px;">
+                                </div>
+                                <div style="display: inline-block;">
+                                    <ul>
+                                        <li>
+                                            <span style="color: rgb(36, 36, 36); font-weight: 550;">星期六</span>
+                                        </li>
+                                        <li>
+                                            <table id="duty-person-tb-saturday" class="duty-tb-normal">
+                                                <colgroup>
+                                                    <col style="width: 74px;">
+                                                    <col style="width: auto;">
+                                                </colgroup>
+                                                <tbody id="duty-person-tb-saturday-body">
+                                                </tbody>
+                                            </table>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div style="display: inline-block; margin-left: 30px;">
+                                    <ul>
+                                        <li>
+                                            <span style="color: rgb(36, 36, 36);font-weight: 550;">星期日</span>
+                                        </li>
+                                        <li>
+                                            <table id="duty-person-tb-sunday" class="duty-tb-normal">
+                                                <colgroup>
+                                                    <col style="width: 74px;">
+                                                    <col style="width: auto;">
+                                                </colgroup>
+                                                <tbody id="duty-person-tb-sunday-body">
+                                                </tbody>
+                                            </table>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            <div class="time-box">
+                                <p id="currentWeek"></p>
+                                <p id="currentDay"></p>
+                                <p id="currentDateTime"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="dutyRoster-dlg" class="easyui-dialog" title="修改本周值班信息" data-options="iconCls:'icon-save'"
+                        closed="true" style="width:600px;padding:10px">
+                        <div class="day-section" id="saturday-section">
+                            <h4 style="line-height: 0;">周六值班人</h4>
+                            <table class="form-table" id="saturday-table"></table>
+                            <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-add'"
+                                onclick="addDutyRow('Saturday')">增加值班人</a>
+                        </div>
+
+                        <div class="day-section" id="sunday-section">
+                            <h4 style="line-height: 0;">周日值班人</h4>
+
+                            <table class="form-table" id="sunday-table"></table>
+                            <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-add'"
+                                onclick="addDutyRow('Sunday')">增加值班人</a>
+                        </div>
+                    </div>
+                    <!-- #endregion -->
+                </div>
+
+
+                <%--<div style="float: left;" id="dgs1">
+                    <table id="dgWarnStock" class="easyui-datagrid"></table>
+            </div>
+            <div style="float: right;" id="dgs2">
+                <table id="dgNoticeView" class="easyui-datagrid"></table>
+            </div>--%>
+        </div>
+        </div>
+        </div>
+
+        <div id="dlg" class="easyui-dialog" style="width: 330px; height: 230px; padding: 5px 5px" closed="true"
+            buttons="#dlg-buttons">
+            <table>
+                <tr>
+                    <td style="text-align: right;">切换仓库:
+                    </td>
+                    <td>
+                        <input id="HouseID" name="HouseID" class="easyui-combobox" style="width: 150px;" />
+                    </td>
+                </tr>
+            </table>
+
+        </div>
+        <div id="dlg-buttons">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItem()">&nbsp;确&nbsp;定&nbsp;</a>
+            <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+                onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+        </div>
+
+        <div id="voicedlg" class="easyui-dialog" style="width: 550px; height: 400px; padding: 2px" closed="true"
+            buttons="#voicedlg-buttons">
+
+            <table id="checkboxContainer">
+                <!-- 动态生成的复选框将放在这里 -->
+            </table>
+        </div>
+        <div id="voicedlg-buttons">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveBroadItem()">&nbsp;确&nbsp;定&nbsp;</a>
+            <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+                onclick="javascript:$('#voicedlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+        </div>
+
+
+        <div id="dlgNotice" class="easyui-dialog" style="width: 900px; height: 600px; padding: 0px" closed="true"
+            buttons="#dlg-buttonsNotice">
+            <div id="saPanel">
+                <form id="fmNotice" class="easyui-form" method="post">
+                    <input type="hidden" name="ID" />
+                    <table>
+                        <tr>
+                            <td style="text-align: right;">所属仓库:
+                            </td>
+                            <td>
+                                <input id="ANHouseID" name="HouseID" class="easyui-combobox" style="width: 100px;" />
+                            </td>
+
+                            <td style="text-align: right;">公告标题:
+                            </td>
+                            <td>
+                                <input name="Title" class="easyui-textbox" data-options="prompt:'请输入公告标题',required:true"
+                                    style="width: 400px;" />
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="text-align: right;">公告类型:
+                            </td>
+                            <td>
+                                <select class="easyui-combobox" name="NoticeType" id="NoticeType" style="width: 100px;"
+                                    panelheight="auto" required="true">
+                                    <option value="0">商城公告</option>
+                                    <option value="1">到货通知</option>
+                                    <option value="2">小程序公告</option>
+                                    <option value="3">公司通知</option>
+                                    <option value="4">销售政策</option>
+                                    <option value="5">行业情报</option>
+                                </select>
+                            </td>
+                            <td style="text-align: right;">公告状态:
+                            </td>
+                            <td>
+                                <select class="easyui-combobox" id="DelFlag" name="DelFlag" style="width: 100px;"
+                                    panelheight="auto" required="true">
+                                    <option value="0">有效</option>
+                                    <option value="1">失效</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="text-align: right;">公告内容:
+                            </td>
+                            <td colspan="3">
+                                <textarea id="Memo" name="Memo" cols="100" rows="8"
+                                    style="width: 800px; height: 400px; visibility: hidden;"></textarea>
+                            </td>
+                        </tr>
+                    </table>
+                </form>
+            </div>
+        </div>
+        <div id="dlg-buttonsNotice">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+                onclick="javascript:$('#dlgNotice').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+        </div>
+
+
+        <div id="dlgReport" class="easyui-dialog" style="width: 800px; height: 600px; padding: 0px;" closed="true"
+            buttons="#dlgReport-buttons">
+            <div id="saPanel">
+                <form id="fm" class="easyui-form" method="post">
+                    <input type="hidden" id="ID" name="ID" />
+                    <input type="hidden" id="UserReportName" name="UserReportName" />
+                    <table id="satable">
+                        <tr>
+
+                            <td style="text-align: right;">日报标题:
+                            </td>
+                            <td>
+                                <input name="Title" id="Title" class="easyui-textbox"
+                                    data-options="prompt:'请输入公告标题',required:true" style="width: 400px;">
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="text-align: right;">日报内容:
+                            </td>
+                            <td colspan="3">
+                                <textarea id="Content" name="Content" cols="100" rows="8"
+                                    style="width: 680px; height: 330px; visibility: hidden;"></textarea>
+                            </td>
+                        </tr>
+                        <tr>
+
+                            <td style="text-align: right;">可批复人员:
+                            </td>
+                            <td>
+                                <input name="LoginReportName" id="LoginReportName" class="easyui-textbox"
+                                    data-options="prompt:'请输入选择可复批人员'" style="width: 400px;">
+                            </td>
+                        </tr>
+                    </table>
+
+                </form>
+            </div>
+        </div>
+        <div id="dlgReport-buttons">
+            <div id="isReportContent"
+                style="width: 100%; background: #fafafa; display: flex; justify-content: space-between; padding: 10px 0px;">
+                <div style="width: 68px;">批复:</div>
+                <div>
+                    <textarea name="ReportContent" id="ReportContent" rows="3" placeholder="请输入日报批复内容"
+                        style="width: 600px; resize: none"></textarea>
+                </div>
+                <div><a href="#" class="easyui-linkbutton" iconcls="icon-ok"
+                        onclick="saveReportContent()">&nbsp;提&nbsp;交&nbsp;</a></div>
+            </div>
+        </div>
+
+
+        <script type="text/javascript">
+            //导出数据
+            function AwbExport() {
+                var row = $("#dgWarnStock").datagrid('getData').rows[0];
+                if (row == null) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '没有数据可以进行导出，请重新查询！', 'warning'); return; }
+                var obj = document.getElementById("<%=btnDerived.ClientID %>");
+                obj.click();
+            }
+            //订阅仓库
+            function saveBroadItem() {
+                var selectedValues = [];
+                $('#checkboxContainer input[type="checkbox"]:checked').each(function () {
+                    selectedValues.push($(this).val());
+                });
+                console.log(selectedValues, "选中的复选框的值"); // 打印出所有选中的复选框的值
+                if (selectedValues.length == 0) {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要订阅的仓库', 'warning');
+                    return;
+                }
+                $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定更改订阅仓库？', function (r) {
+                    if (r) {
+                        $.ajax({
+                            url: 'House/houseApi.aspx?method=UpdateVoiceBroadHouse',
+                            type: 'post', dataType: 'json', data: { HouseID: selectedValues.toString() },
+                            success: function (text) {
+                                //var result = eval('(' + msg + ')');
+                                if (text.Result == true) {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '更改成功!', 'info');
+                                    $('#voicedlg').dialog('close');
+                                }
+                                else {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                }
+                            }
+                        });
+                    }
+                });
+
+            }
+            function saveItem() {
+                var hid = $('#HouseID').combobox('getValue');
+                var hname = $('#HouseID').combobox('getText');
+                if (hid == undefined || hid == '') {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要切换的仓库', 'warning');
+                    return;
+                }
+                $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定切换仓库？', function (r) {
+                    if (r) {
+                        $.ajax({
+                            url: 'systempage/sysService.aspx?method=ChangeHouse',
+                            type: 'post', dataType: 'json', data: { hid: hid, hname: hname },
+                            success: function (text) {
+                                //var result = eval('(' + msg + ')');
+                                if (text.Result == true) {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '切换成功!', 'info');
+                                    window.location.reload();
+                                }
+                                else {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+            function Quit() { window.location = "Default.aspx"; }
+            function modifyPwd() { addTab("修改密码", "systempage/UpdatePassword.aspx", "icon-eye"); }
+            function notice() { addTab("消息通知", "systempage/NoticeUserView.aspx", "icon-email"); }
+            function sTab() { selectTab("首页"); }
+            function changeHouse() {
+                $('#dlg').dialog('open').dialog('setTitle', '切换仓库');
+                $('#fm').form('clear');
+                //所在仓库
+                $('#HouseID').combobox({
+                    url: 'House/houseApi.aspx?method=CargoPermisionHouse',
+                    valueField: 'HouseID', textField: 'Name'
+                });
+            }
+            function voiceBroadHouse() {
+                $('#voicedlg').dialog('open').dialog('setTitle', '订阅仓库');
+                $('#fm').form('clear');
+                //获取订阅仓库
+                var VoiceHouseList = [];
+                $.ajax({
+                    async: false, cache: false, dataType: "json",
+                    url: "House/houseApi.aspx?method=CargoVoiceBroadHouse",
+                    success: function (text) {
+                        // 清空HouseList数组
+                        VoiceHouseList.length = 0;
+                        // 将text数组的元素添加到HouseList数组中
+                        Array.prototype.push.apply(VoiceHouseList, text);
+                    }
+                });
+                console.log(VoiceHouseList, "订阅仓库");
+
+                // 定义获取数据的 URL
+                var url = 'House/houseApi.aspx?method=CargoPermisionHouse';
+
+                // 清空 checkboxContainer 容器
+                $('#checkboxContainer').empty();
+
+                // 使用 jQuery 的 getJSON 方法从 URL 获取 JSON 数据
+                $.getJSON(url, function (data) {
+                    // 初始化一个计数器，用于跟踪当前行的复选框数量
+                    var counter = 0;
+
+                    // 遍历返回的数据
+                    $.each(data, function (index, item) {
+                        // 如果计数器为0，创建一个新的行元素
+                        if (counter === 0) {
+                            var row = $('<tr class="row"></tr>');
+                            $('#checkboxContainer').append(row);
+                        }
+
+                        // 创建复选框元素
+                        var checkbox = $('<input type="checkbox" id="checkbox' + item.HouseID + '" name="HouseID" value="' + item.HouseID + '" />');
+                        // 创建标签元素
+                        var label = $('<label for="checkbox' + item.HouseID + '" style="margin-right: 12px;">' + item.Name + '</label>');
+
+                        // 检查匹配数组中是否包含当前的ID
+                        var isChecked = VoiceHouseList.some(function (house) {
+                            return house.HouseID === item.HouseID;
+                        });
+
+                        // 设置复选框的选中状态
+                        checkbox.prop('checked', isChecked);
+
+                        // 将复选框和标签添加到当前行中
+                        $('.row').last().append($('<td>').append(checkbox).append(label));
+
+                        // 增加计数器
+                        counter++;
+
+                        // 如果计数器达到4，重置计数器
+                        if (counter === 5) {
+                            counter = 0;
+                        }
+                    });
+                });
+
+            }
+            //修改公告信息
+            function editItemNoticeByID(Did) {
+                var row = $("#dgNoticeView").datagrid('getData').rows[Did];
+                if (row) {
+                    $('#dlgNotice').dialog('open').dialog('setTitle', '查看公告信息');
+                    $('#fmNotice').form('clear');
+                    $('#fmNotice').form('load', row);
+                    $('#ANHouseID').combobox('disable');
+                    $.ajax({
+                        async: false, cache: false, dataType: "json",
+                        url: "systempage/sysService.aspx?method=QueryNoticeByID&ID=" + row.ID,
+                        success: function (text) {
+                            editor.html(text.Memo);
+                        }
+                    });
+                    //新增已读信息
+                    $.ajax({
+                        async: false, cache: false, dataType: "json",
+                        url: "systempage/sysService.aspx?method=SaveCargoNoticeUserView&ID=" + row.ID + "&update=" + 0 + "&ReadStatus=" + 1 + "&MessageType=" + 0 + "&Title=" + row.Title,
+                        success: function (text) {
+                            if (text.Result == true) {
+                                $('#dgNoticeView').datagrid('reload');
+                                QueryIsNoticeView();
+                            }
+                        }
+                    });
+                }
+            }
+
+            //批复信息
+            function editItemReportID(Did) {
+                var row = $("#dgDailyReports").datagrid('getData').rows[Did];
+                if (row) {
+                    $('#dlgReport').dialog('open').dialog('setTitle', '修改日报信息');
+                    $('#fm').form('clear');
+                    $('#fm').form('load', row);
+
+                    //console.log()
+                    $('#LoginReportName').combobox({
+                        url: 'systempage/sysService.aspx?method=QueryUserReportComments', valueField: 'LoginName', textField: 'UserName', multiple: true
+                    });
+
+                    $("#LoginReportName").combobox('clear');
+                    if (row.LoginReportName.length != 0) {
+                        var arr = row.LoginReportName.split(',');
+                        var valueArr = new Array();
+                        for (var i = 0; i < arr.length; i++) {
+                            valueArr.push(arr[i]);
+                        }
+                        $("#LoginReportName").combobox("setValues", valueArr);
+
+                    }
+
+                    //日报内容
+                    $.ajax({
+                        async: false, cache: false, dataType: "json",
+                        url: "systempage/sysService.aspx?method=QueryDailyReportsByID&ID=" + row.ID,
+                        success: function (text) {
+                            editorC.html(text.Content);
+                        }
+                    });
+
+                    //批复列表
+                    ReportComment(row.ID);
+                }
+            }
+            //获取批复信息
+            function ReportComment(Did) {
+                $.ajax({
+                    url: "systempage/sysService.aspx?method=QueryReportComments&ID=" + Did,
+                    success: function (jsonString) {
+
+                        // 获取表格元素
+                        let table = document.getElementById('satable');
+
+                        // 清空具有特定类名的行
+                        let rowsToRemove = table.querySelectorAll('.dynamic-row');
+                        rowsToRemove.forEach(function (row) {
+                            row.parentNode.removeChild(row);
+                        });
+                        if (jsonString.length != 0) {
+                            let text = JSON.parse(jsonString);
+                            for (var i = 0; i < text.length; i++) {
+
+                                // 创建新行
+                                let newRow = document.createElement('tr');
+                                newRow.classList.add('dynamic-row'); // 添加类名以标识这是动态添加的行
+
+                                // 创建第一个单元格（<td>）
+                                let newCell1 = document.createElement('td');
+                                newCell1.style.textAlign = "right";
+                                newCell1.textContent = "批复内容: ";
+                                newRow.appendChild(newCell1);
+
+                                // 创建第二个单元格（<td>）
+                                let newCell2 = document.createElement('td');
+                                newCell2.innerHTML = `
+<div style="color: #9C9C9C; font-size: 12px">${text[i].UserName} ${new Date(text[i].OP_DATE).toLocaleString('zh-CN', { hour12: false })}  <a onclick='DelCargoReportCommentsByReportId(${text[i].ID})'">删除</a> </div>
+<text>${text[i].Content}<text>
+`;
+
+                                newRow.appendChild(newCell2);
+
+                                // 将新行添加到表格
+                                table.appendChild(newRow);
+                                // 动态绑定点击事件
+                                console.log(text[i], "1111111111111")
+
+                                //document.getElementById('deleteLink' + text[i].ID).addEventListener('click', function () {
+                                //    DelCargoReportCommentsByReportId(text[i].ID); // 假设 text[i].ReportId 是您需要传递给函数的参数
+                                //});
+                            }
+                        }
+                    }
+                });
+            }
+
+            //删除批复信息
+            function DelCargoReportCommentsByReportId(RDid) {
+                let Did = $('#ID').val();
+                $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                    if (r) {
+                        $.ajax({
+                            url: 'systempage/sysService.aspx?method=DelCargoReportCommentsByReportId&ID=' + RDid + '&Report_id=' + Did,
+                            success: function (msg) {
+                                var result = eval('(' + msg + ')');
+                                if (result.Result == true) {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                    //批复列表
+                                    ReportComment(Did)
+                                }
+                                else {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', result.Message, 'warning');
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+            //提交批复
+            function saveReportContent() {
+                let reportContent = $('#ReportContent').val();
+                let Did = $('#ID').val();
+                $.ajax({
+                    url: "systempage/sysService.aspx?method=AddReportComments&ID=" + Did + "&ReportContent=" + reportContent,
+                    success: function (msg) {
+                        var result = eval('(' + msg + ')');
+                        if (result.Result) {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                            $('#ReportContent').val('');
+                            //批复列表
+                            ReportComment(Did)
+                        } else {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                        }
+                    }
+                });
+            }
+        </script>
+        <script type="text/javascript" description="这个是值班面板的js合集">
+            var weekTextCache = '';
+            var dayTextCache = '';
+            var weekNoTextCache = '';
+            var isWeekendCache = false;
+            var DutyRoster = "";
+            $(function () {
+                function updateTimeAndHighlight() {
+                    var now = new Date();
+
+                    // 更新时间显示
+                    var hours = now.getHours();
+                    var minutes = now.getMinutes();
+                    var seconds = now.getSeconds();
+                    var nowDay = now.getDay();
+                    var formattedTime = hours + ":" + (minutes < 10 ? '0' : '') + minutes + ":" + (seconds < 10 ? '0' : '') + seconds;
+
+                    // 星期
+                    var weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+                    var weekDay = weekDays[nowDay];
+
+                    // 年份 + 周次
+                    function getWeekNumber(d) {
+                        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                        var dayNum = d.getUTCDay() || 7;
+                        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+                        var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+                        var weekNum = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+                        return weekNum;
+                    }
+                    function getWeekStartAndEnd(date) {
+                        const d = new Date(date); // 复制日期，避免修改原日期
+                        const day = d.getDay();   // 0=周日, 1=周一 ... 6=周六
+
+                        // ISO 周从周一开始，周日当作 7
+                        const diffToMonday = day === 0 ? -6 : 1 - day;
+                        const monday = new Date(d);
+                        monday.setDate(d.getDate() + diffToMonday);
+
+                        const sunday = new Date(monday);
+                        sunday.setDate(monday.getDate() + 6);
+
+                        return { monday, sunday };
+                    }
+                    function formatMMDD(date) {
+                        const month = (date.getMonth() + 1).toString().padStart(2, '0'); // 月份从0开始
+                        const day = date.getDate().toString().padStart(2, '0');
+                        return `${month}月${day}日`;
+                    }
+
+                    weekText = '星期' + weekDay;
+                    dayText = ' ' + (now.getMonth() + 1) + '月' + now.getDate() + '日';
+                    const { monday, sunday } = getWeekStartAndEnd(now);
+                    weekNoText = `${now.getFullYear()}第${getWeekNumber(now)}周（${formatMMDD(monday)} ~ ${formatMMDD(sunday)}）`;
+                    $('#currentDateTime').text(formattedTime);
+                    if (weekTextCache != weekText) {
+                        $('#currentWeek').text(weekText);
+                        weekTextCache = weekText;
+                    }
+
+                    if (dayTextCache != dayText) {
+                        $('#currentDay').text(dayText);
+                        dayTextCache = dayText;
+                    }
+
+                    if (weekNoTextCache != weekNoText) {
+                        $("#currentWeekNo").text(weekNoText);
+                        weekNoTextCache = weekNoText;
+                    }
+
+                    const isWeekend = nowDay == 0 || nowDay == 6;
+                    if (isWeekend) {
+                        $("#duty-person-tb-saturday, #duty-person-tb-sunday")
+                            .removeClass("duty-tb-hightlight")
+                            .addClass("duty-tb-normal");
+                        switch (nowDay) {
+                            case 0:
+                                $("#duty-person-tb-sunday").removeClass("duty-tb-normal").addClass("duty-tb-hightlight");
+                                break;
+                            case 6:
+                                $("#duty-person-tb-saturday").removeClass("duty-tb-normal").addClass("duty-tb-hightlight");
+                            default:
+                                break;
+                        }
+                    }
+                }
+                async function GetDutyRosterData() {
+                    const data = await new Promise((resolve) => {
+                        const dutyRosterJson = <%= dutyRosterJson %>;
+                        console.log({ dutyRosterJson: dutyRosterJson })
+                        resolve(JSON.stringify(dutyRosterJson));
+                    })
+                    return JSON.parse(data);
+                    $.ajax({
+                        type: "GET",
+                        url: "XXXApi.aspx/duty/roster/get",
+                        success: function (resps) {
+
+                        }
+                    });
+                }
+                async function renderDutyRoster() {
+                    const $dutyRosterSaturday = $("#duty-person-tb-saturday-body");
+                    const $dutyRosterSunday = $("#duty-person-tb-sunday-body");
+
+                    $dutyRosterSaturday.empty().text("加载中...");
+                    $dutyRosterSunday.empty().text("加载中...");
+
+                    const data = await GetDutyRosterData();
+                    $dutyRosterSaturday.empty();
+                    $dutyRosterSunday.empty();
+                    DutyRoster = data.DutyRoster;
+                    const dutyRosterSaturdayData = data.DutyRoster.Saturday;
+                    const dutyRosterSundayData = data.DutyRoster.Sunday;
+
+                    if (dutyRosterSaturdayData) {
+                        dutyRosterSaturdayData.forEach(function (item, index) {
+                            const $tr = $("<tr></tr>");
+                            $tr.append($("<td>" + item.Name + "</td>"));
+                            $tr.append($("<td>" + item.Phone + "</td>"));
+                            $dutyRosterSaturday.append($tr);
+                        });
+                    }
+                    if (dutyRosterSundayData) {
+                        dutyRosterSundayData.forEach(function (item, index) {
+                            const $tr = $("<tr></tr>");
+                            $tr.append($("<td>" + item.Name + "</td>"));
+                            $tr.append($("<td>" + item.Phone + "</td>"));
+                            $dutyRosterSunday.append($tr);
+                        });
+                    }
+                }
+                // 每秒刷新时间和高亮
+                updateTimeAndHighlight();
+                setInterval(updateTimeAndHighlight, 1000);
+
+                // 初始获取值班表数据
+                async function initRequest() {
+                    await renderDutyRoster();
+
+                    renderDutyTable("Saturday");
+                    renderDutyTable("Sunday");
+                }
+                initRequest();
+
+                // 值班面板初始化
+                $('#duty-box').accordion();
+
+                if (<%= UserInfor.LoginName %> == '3345' ||<%= UserInfor.LoginName %> == '3316') {
+                $('#duty-panel').panel({
+                    tools: [{
+                        iconCls: 'icon-edit',
+                        handler: function () {
+                            openDutyRosterDlg();
+                        }
+                    }]
+                });
+            }
+            // 值班配置弹窗初始化
+            $("#dutyRoster-dlg").dialog({
+                close: true,
+                buttons: [{
+                    text: '保 存',
+                    iconCls: 'icon-ok',
+                    handler: function () {
+                        submitForm();
+                    }
+                }, {
+                    text: '取 消',
+                    iconCls: 'icon-cancel',
+                    handler: function () {
+                        renderDutyTable("Saturday");
+                        renderDutyTable("Sunday");
+                        $("#dutyRoster-dlg").dialog('close');
+                    }
+                }]
+            })
+            });
+
+            async function openDutyRosterDlg() {
+                $('#dutyRoster-dlg').dialog('open')
+            }
+
+            // 渲染表格
+            function renderDutyTable(day) {
+                if (!DutyRoster) return;
+                var tableId = day.toLowerCase() + "-table";
+                var table = $("#" + tableId);
+                table.empty();
+
+                var data = DutyRoster[day];
+                for (var i = 0; i < data.length; i++) {
+                    addDutyRow(day, data[i]);
+                }
+            }
+
+            // 添加一行
+            function addDutyRow(day, rowData) {
+                var tableId = day.toLowerCase() + "-table";
+                var table = $("#" + tableId);
+                var name = rowData ? rowData.Name : "";
+                var phone = rowData ? rowData.Phone : "";
+                var tr = $("<tr></tr>");
+                tr.append('<td><input class="easyui-textbox" style="width:100px" name="Name" value="' + name + '"></td>');
+                tr.append('<td><input class="easyui-textbox" style="width:100px" name="Phone" value="' + phone + '"></td>');
+                tr.append('<td><a href="javascript:void(0)" class="easyui-linkbutton" data-options="iconCls:\'icon-remove\'" onclick="deleteDutyRow(this)">Remove</a></td>');
+                table.append(tr);
+                // 重新初始化 easyui textbox
+                $.parser.parse(tr);
+            }
+
+            function deleteDutyRow(link) {
+                $(link).closest("tr").remove();
+            }
+
+            function submitForm() {
+                var result = {};
+                ["Saturday", "Sunday"].forEach(function (day) {
+                    var dayData = [];
+                    $("#" + day.toLowerCase() + "-table tr").each(function () {
+                        var name = $(this).find("input[name='Name']").val();
+                        var phone = $(this).find("input[name='Phone']").val();
+                        if (name || phone) { // 只添加有内容的行
+                            dayData.push({ Name: name, Phone: phone });
+                        }
+                    });
+                    result[day] = dayData;
+                });
+                result["CurrWeeks"] = getWeekNumber(); 
+                var jsonResult = JSON.stringify({ DutyRoster: result });
+                console.log(jsonResult);
+
+                var win = $.messager.progress({
+                    title: '请稍候',
+                    msg: '保存数据中...'
+                });
+
+                PageMethods.SaveDutyRoster(jsonResult, function (result) {
+                    if (result?.success) {
+                        $.messager.progress('close');
+                        $('#dutyRoster-dlg').dialog('close');
+                        $.messager.alert('成功', '数据保存成功！');
+                    }
+                });
+            }
+
+            function getWeekNumber(date = new Date()) {
+                // 拷贝日期，避免修改原对象
+                const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+
+                // ISO 规定：周一是第一天
+                const dayNum = d.getUTCDay() || 7;
+                // 把日期调整到本周的周四（保证在同一周内）
+                d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+
+                // 获取这一年的第一天
+                const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+
+                // 计算第几周
+                const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+                return weekNo;
+            }
+
+        </script>
+    </body>
+
+    </html>

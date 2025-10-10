@@ -3546,8 +3546,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                                 FirstAreaID = Convert.ToInt32(idr["FirstAreaID"]),
                                 OrderCode = Convert.ToString(idr["OrderCode"]),
                                 OrderDep = Convert.ToString(idr["OrderDep"]),
-                                NextDayPrice=  string.IsNullOrEmpty(Convert.ToString(idr["NextDayPrice"])) ? 0 : Convert.ToDecimal(idr["NextDayPrice"]),
-                                WholesalePrice = string.IsNullOrEmpty(Convert.ToString(idr["WholesalePrice"])) ? 0 : Convert.ToDecimal(idr["WholesalePrice"]),
+                                NextDayPrice = Convert.ToDecimal(idr["NextDayPrice"]),
                                 ParentAreaID = Convert.ToInt32(idr["ParentAreaID"]),
                                 ParentAreaName = Convert.ToString(idr["ParentAreaName"]),
                                 HouseID = Convert.ToInt32(idr["HouseID"]),
@@ -3848,7 +3847,6 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                                 SalePrice = Convert.ToDecimal(idr["SalePrice"]),
                                 InHousePrice = Convert.ToDecimal(idr["InHousePrice"]),
                                 NextDayPrice = Convert.ToDecimal(idr["NextDayPrice"]),
-                                WholesalePrice =string.IsNullOrEmpty(Convert.ToString(idr["WholesalePrice"])) ?0: Convert.ToDecimal(idr["WholesalePrice"]),
                                 //SalePriceClient = goods.ActSalePrice,//上一销售价
                                 //OrderNo = goods.OrderNo,
                                 //PayClientName = goods.PayClientName,
@@ -4175,7 +4173,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                             NextDayLogisFee = Convert.ToDecimal(idr["NextDayLogisFee"]),
                             ProductName = Convert.ToString(idr["ProductName"]),
                             TypeParentID = Convert.ToInt32(idr["TypeParentID"]),
-                            NextDayPrice = Convert.ToDecimal(idr["NextDayPrice"]),//云仓二批客户次日达价
+                            NextDayPrice = Convert.ToDecimal(idr["NextDayPrice"]),//云仓二批客户批发价
                         });
                     }
                 }

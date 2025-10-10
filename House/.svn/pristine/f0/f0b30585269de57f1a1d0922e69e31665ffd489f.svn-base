@@ -4848,7 +4848,8 @@ INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
 INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
 INNER JOIN Tbl_Cargo_ProductType c ON a.TypeID = c.TypeID
 INNER JOIN #tempChildArea ca ON d.AreaID = ca.AreaID AND b.HouseID = ca.HouseID
-WHERE b.SpecsType != 5 @{conditions}
+WHERE a.Piece > 0
+    AND b.SpecsType != 5 @{conditions}
 GROUP BY b.TypeID, b.HouseID, b.ProductCode, ca.RootArea;
 
 CREATE UNIQUE INDEX IX_#tempCurStock
@@ -5028,31 +5029,12 @@ INCLUDE(Piece);
             #region Tbl_Cargo_MoveOrderGood 在途库存
             strBld.Append(@"
 PRINT('------------ 在途库存 ------------');
-SELECT * INTO #tempITI FROM (
--- 移库单
 SELECT
-    'InTransitOrder' AS Src,
-    p.ProductCode,
-    p.TypeID,
-    mo2.NewHouseID AS HouseID,
-    SUM(mo.Piece - mo.NewPiece) AS Piece
-FROM Tbl_Cargo_MoveOrderGood AS mo
-INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
-INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
-INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-INNER JOIN #tempChildArea ca ON mo2.NewAreaID = ca.AreaID AND mo2.NewHouseID = ca.HouseID
-WHERE mo2.MoveStatus <> 2
-    AND ISNULL(p.ProductCode, '') <> ''
-    AND mo.Piece - mo.NewPiece > 0
-GROUP BY p.ProductCode, p.TypeID, mo2.NewHouseID
-UNION ALL
-
-SELECT
-    'PurchaseOrderAndReturn' AS Src,
     p.ProductCode,
     p.TypeID,
     p.HouseID,
 	SUM(ReplyNumber - fo.InPiece) Piece
+INTO #tempITI 
 FROM
 	Tbl_Cargo_FactoryOrder fo
     INNER JOIN (SELECT DISTINCT ProductCode, TypeID, HouseID FROM Tbl_Cargo_Product) AS p ON fo.ProductCode = p.ProductCode AND fo.HouseID = p.HouseID --无法使用ProductID匹配，用ProductID匹配会匹配不到数据；产品表有异常重复数据，需要去重
@@ -5060,26 +5042,24 @@ FROM
 WHERE
 	(1 = 1)
 	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
-    AND ISNULL(p.ProductCode, '') <> '' 
-GROUP BY p.ProductCode, p.TypeID, p.HouseID
-) a 
-WHERE (1=1) @{conditions};
+    AND ISNULL(p.ProductCode, '') <> '' @{conditions}
+GROUP BY p.ProductCode, p.TypeID, p.HouseID;
 ");
             conditions = new List<string>();
 
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
             {
-                conditions.Add($"HouseID IN ({entity.HouseID})");
+                conditions.Add($"p.HouseID IN ({entity.HouseID})");
             }
             if (entity.TypeID != 0)
             {
-                conditions.Add($"TypeID = {entity.TypeID}");
+                conditions.Add($"pt.TypeID = {entity.TypeID}");
             }
-            //if (entity.ParentID != 0)
-            //{
-            //    conditions.Add($"pt.ParentID = {entity.ParentID}");
-            //}
+            if (entity.ParentID != 0)
+            {
+                conditions.Add($"pt.ParentID = {entity.ParentID}");
+            }
 
             // 拼接动态 WHERE 条件
             if (conditions.Count > 0)
@@ -5612,14 +5592,14 @@ INCLUDE(RootArea);
                 strBld.Replace("@{conditions}", "");
             }
             #endregion
-            #region Tbl_Cargo_ContainerGoods 当前库存
+            #region Tbl_Cargo_ContainerGoods 当前仓库在库数量
             strBld.Append(@"
-PRINT('------------ 当前库存 ------------');
+-- 当前库存
 SELECT
     b.TypeID,
     b.HouseID,
-    ca.RootArea AreaID,
     b.ProductCode,
+    b.GoodsCode,
     SUM(a.Piece) AS Piece
     INTO #tempCurStock
 FROM Tbl_Cargo_ContainerGoods AS a
@@ -5627,11 +5607,11 @@ INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
 INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
 INNER JOIN Tbl_Cargo_ProductType c ON a.TypeID = c.TypeID
 INNER JOIN #tempChildArea ca ON d.AreaID = ca.AreaID AND b.HouseID = ca.HouseID
-WHERE b.SpecsType != 5 @{conditions}
-GROUP BY b.TypeID, b.HouseID, b.ProductCode, ca.RootArea;
-
+WHERE a.Piece > 0
+    AND b.SpecsType != 5 @{conditions}
+GROUP BY b.TypeID, b.HouseID, b.ProductCode, b.GoodsCode;
 CREATE UNIQUE INDEX IX_#tempCurStock
-ON #tempCurStock(ProductCode,TypeID,HouseID,AreaID)
+ON #tempCurStock(ProductCode,TypeID,GoodsCode,HouseID)
 INCLUDE(Piece);
 ");
 
@@ -5661,7 +5641,9 @@ SELECT
     c.TypeID,
     c.HouseID,
     c.ProductCode,
-    MAX(a.CreateDate) CreateDate
+    c.GoodsCode,
+    MAX(a.CreateDate) CreateDate,
+    SUM(b.Piece) AS SaleNum
 INTO #tempOrderStats
 FROM Tbl_Cargo_Order AS a
 INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
@@ -5672,9 +5654,10 @@ WHERE a.ThrowGood != 25
     AND a.OrderModel = 0 
     AND c.SpecsType != 5
     AND CAST(a.CreateDate AS DATE) >= DATEADD(MONTH,-2,GETDATE()) @{conditions}
-GROUP BY c.TypeID, c.HouseID, c.ProductCode;
+GROUP BY c.TypeID, c.HouseID, c.ProductCode, c.GoodsCode;
 CREATE UNIQUE INDEX IX_#tempOrderStats
-ON #tempOrderStats(ProductCode,TypeID,HouseID)
+ON #tempOrderStats(ProductCode,TypeID,GoodsCode,HouseID)
+INCLUDE(SaleNum);
 ");
             conditions = new List<string>();
 
@@ -5701,54 +5684,39 @@ ON #tempOrderStats(ProductCode,TypeID,HouseID)
             #region Tbl_Cargo_MoveOrderGood 在途库存
             strBld.Append(@"
 PRINT('------------ 在途库存 ------------');
-SELECT * INTO #tempITI FROM (
--- 移库单
 SELECT
-    'InTransitOrder' AS Src,
     p.ProductCode,
     p.TypeID,
-    mo2.NewHouseID AS HouseID,
-    SUM(mo.Piece - mo.NewPiece) AS Piece
-FROM Tbl_Cargo_MoveOrderGood AS mo
-INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
-INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
-INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-INNER JOIN #tempChildArea ca ON mo2.NewAreaID = ca.AreaID AND mo2.NewHouseID = ca.HouseID
-WHERE mo2.MoveStatus <> 2
-    AND ISNULL(p.ProductCode, '') <> ''
-    AND mo.Piece - mo.NewPiece > 0
-GROUP BY p.ProductCode, p.TypeID, mo2.NewHouseID
-UNION ALL
-
-SELECT
-    'PurchaseOrderAndReturn' AS Src,
-    p.ProductCode,
-    p.TypeID,
+    p.GoodsCode,
     p.HouseID,
 	SUM(ReplyNumber - fo.InPiece) Piece
+INTO #tempITI 
 FROM
 	Tbl_Cargo_FactoryOrder fo
-    INNER JOIN (SELECT DISTINCT ProductCode, TypeID, HouseID FROM Tbl_Cargo_Product) AS p ON fo.ProductCode = p.ProductCode AND fo.HouseID = p.HouseID --无法使用ProductID匹配，用ProductID匹配会匹配不到数据；产品表有异常重复数据，需要去重
+    INNER JOIN (SELECT DISTINCT ProductCode, TypeID, GoodsCode, HouseID FROM Tbl_Cargo_Product) AS p ON fo.ProductCode = p.ProductCode AND fo.HouseID = p.HouseID --无法使用ProductID匹配，用ProductID匹配会匹配不到数据；产品表有异常重复数据，需要去重
     INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
 WHERE
 	(1 = 1)
 	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
-    AND ISNULL(p.ProductCode, '') <> '' 
-GROUP BY p.ProductCode, p.TypeID, p.HouseID
-) a 
-WHERE (1=1) @{conditions};
+    AND ISNULL(p.ProductCode, '') <> '' @{conditions}
+GROUP BY p.ProductCode, p.TypeID, p.GoodsCode, p.HouseID;
 ");
             conditions = new List<string>();
 
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
             {
-                conditions.Add($"HouseID IN ({entity.HouseID})");
+                conditions.Add($"p.HouseID IN ({entity.HouseID})");
             }
             if (entity.TypeID != 0)
             {
-                conditions.Add($"TypeID = {entity.TypeID}");
+                conditions.Add($"pt.TypeID = {entity.TypeID}");
             }
+            if (entity.ParentID != 0)
+            {
+                conditions.Add($"pt.ParentID = {entity.ParentID}");
+            }
+
             // 拼接动态 WHERE 条件
             if (conditions.Count > 0)
             {
@@ -5758,7 +5726,6 @@ WHERE (1=1) @{conditions};
             {
                 strBld.Replace("@{conditions}", "");
             }
-
 
             #endregion
 
@@ -5788,14 +5755,17 @@ FROM
    ON  f.HouseID = cs.HouseID --当前库数
    AND f.TypeID = cs.TypeID
    AND f.ProductCode = cs.ProductCode
+   AND f.GoodsCode = cs.GoodsCode
   INNER JOIN #tempOrderStats AS os 
    ON  f.HouseID = os.HouseID -- 销量
    AND f.TypeID = os.TypeID
    AND f.ProductCode = os.ProductCode
+   AND f.GoodsCode = os.GoodsCode
   LEFT JOIN #tempITI AS ms 
    ON  f.HouseID = ms.HouseID  -- 在途数量
    AND f.TypeID = ms.TypeID
    AND f.ProductCode = ms.ProductCode
+   AND f.GoodsCode = ms.GoodsCode
   LEFT JOIN Tbl_Cargo_House AS g ON f.HouseID = g.HouseID
   LEFT JOIN Tbl_Cargo_Area AS h ON f.AreaID = h.AreaID
   LEFT JOIN Tbl_Cargo_ProductType AS j ON f.TypeID = j.TypeID
@@ -5803,6 +5773,15 @@ WHERE
   (1 = 1)
   AND cs.Piece + COALESCE(ms.Piece, 0) - f.StockNum < 0
 ");
+
+            //string strSQL = "select g.Name as HouseName,h.Name as AreaName,j.TypeName,f.HouseID,f.AreaID,a.TypeID,a.GoodsCode,f.Specs,f.Figure,f.ProductCode,f.LoadIndex,f.SpeedLevel,f.StockNum,SUM(b.Piece) as CurNum,SUM(b.Piece)-f.StockNum as LessNum From Tbl_Cargo_Product as a inner join Tbl_Cargo_ContainerGoods as b on a.ProductID=b.ProductID inner join Tbl_Cargo_Container as c on b.ContainerID=c.ContainerID left join Tbl_Cargo_Area as d on c.AreaID=d.AreaID left join Tbl_Cargo_Area as e on d.ParentID=e.AreaID right join Tbl_Cargo_SafeStock as f on f.HouseID=a.HouseID ";
+            //if (!entity.HouseID.Equals("9")) { strSQL += " and f.AreaID=e.ParentID"; }
+            //strSQL += " and f.GoodsCode=a.GoodsCode left join Tbl_Cargo_House as g on f.HouseID=g.HouseID left join Tbl_Cargo_Area as h on f.AreaID=h.AreaID left join Tbl_Cargo_ProductType as j on a.TypeID=j.TypeID where (1=1)";
+
+            //if (!string.IsNullOrEmpty(entity.HouseID)) { strSQL += " and a.HouseID  in (" + entity.HouseID + ")"; }
+            //if (!entity.TypeID.Equals(0)) { strSQL += " and a.TypeID=" + entity.TypeID; }
+            //if (!string.IsNullOrEmpty(entity.ParamAreaID)) { strSQL += " and e.ParentID in(" + entity.ParamAreaID + ")"; }
+            //else if (!entity.AreaID.Equals(0) && !entity.HouseID.Equals("9")) { strSQL += " and e.ParentID in(" + entity.AreaID + ")"; }
             conditions = new List<string>();
 
             // 仓库 ID
@@ -5820,6 +5799,8 @@ WHERE
                 strBld.Append(string.Join(" AND ", conditions));
             }
 
+            //strSQL += @" group by a.GoodsCode,f.HouseID,f.StockNum,f.AreaID,f.Specs,f.Figure,f.ProductCode,f.LoadIndex,f.SpeedLevel,a.TypeID,g.Name,h.Name,j.TypeName 
+            //    order by HouseID,  SUM(b.Piece)-f.StockNum asc";
 
             string strSQL = strBld.ToString();
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))

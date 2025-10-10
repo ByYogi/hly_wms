@@ -370,7 +370,11 @@
             onMove: function(left, top) {
         var parentWidth = $(window).width();
         var parentHeight = $(window).height();
-        var dialogWidth = $(this).dialog('options').width;
+        var dialogWidth = $(this).d
+        
+        
+        
+        ialog('options').width;
         var dialogHeight = $(this).dialog('options').height;
 
         // 限制水平位置
