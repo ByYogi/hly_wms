@@ -3921,6 +3921,24 @@ namespace House.Business.Cargo
             LogBus lw = new LogBus();
             try
             {
+                //添加默认更改说明
+                if (string.IsNullOrWhiteSpace(entity.Reason))
+                {
+                    string reasonTag = entity.ReasonTag;
+                    switch (reasonTag)
+                    {
+                        case "SO":
+                            entity.Reason = "销售单触发更新";
+                            break;
+                        case "RO":
+                            entity.Reason = "补货单触发更新";
+                            break;
+                        case "RF":
+                            entity.Reason = "手动更新";
+                            break;
+                    }
+                }
+
                 var addedList = man.UpdtOutOfStock(entity);
                 var dataParamsJson = JsonConvert.SerializeObject(entity); 
                 if (addedList.Any())

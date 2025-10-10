@@ -17197,7 +17197,19 @@ namespace Cargo.Order
             CargoOrderBus bus = new CargoOrderBus();
             var result = bus.QueryRplOrder(queryParam);
 
-            string resultjson = result.ToJSON();
+
+            List<CargoRplOrderDto> footlist = new List<CargoRplOrderDto>(){new CargoRplOrderDto
+            {
+                RplNo = "汇总：",
+                Piece = result.Data.Sum(c => c.Piece)
+            } 
+            };
+            Hashtable resHT = new Hashtable();
+            resHT["rows"] = result.Data;
+            resHT["total"] = result.DataTotal;
+            resHT["footer"] = footlist;
+
+            string resultjson = JSON.Encode(resHT);//result.ToJSON();
             Response.Clear();
             Response.Write(resultjson);
             Response.Flush();

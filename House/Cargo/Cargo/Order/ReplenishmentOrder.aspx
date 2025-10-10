@@ -58,6 +58,7 @@
                 autoRowHeight: false, //行高是否自动
                 collapsible: true, //是否可折叠
                 pagination: true, //分页是否显示
+                showFooter: true,
                 pageSize: 28, //每页多少条
                 pageList: [28, 50, 500, 1000, 10000, 100000],
                 fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
@@ -69,29 +70,19 @@
                 columns: [[
                     { title: '', field: 'RplID', checkbox: true, width: '30px' },
                     {
-                        title: '补货单号', field: 'RplNo', width: '130px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
+                        title: '补货单号', field: 'RplNo', width: '130px'
                     },
                     {
-                        title: '缺货仓库', field: 'FromHouseName', width: '100px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
+                        title: '缺货仓库', field: 'FromHouseName', width: '100px'
                     },
                     {
-                        title: '补货仓库', field: 'HouseName', width: '100px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
+                        title: '补货仓库', field: 'HouseName', width: '100px'
                     },
                     {
-                        title: '补货数量', field: 'Piece', width: '100px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
+                        title: '补货数量', field: 'Piece', width: '100px'
                     },
                     {
-                        title: '开单人', field: 'UserName', width: '100px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
+                        title: '开单人', field: 'UserName', width: '100px'
                     },
                     {
                         title: '补货单状态', field: 'Status', width: '100px',
@@ -103,9 +94,7 @@
                         }
                     },
                     {
-                        title: '补货品牌', field: 'TypeNames', width: '200px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
+                        title: '补货品牌', field: 'TypeNames', width: '200px'
                     },
                     { title: '备注', field: 'Remark', width: '200px'},
                     { title: '开单时间', field: 'CreateDate', width: '130px', formatter: DateTimeFormatter },
@@ -245,7 +234,7 @@
         <span class="space">
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnAdd" iconcls="icon-add" plain="false" >新增</a> -->
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnEdit" iconcls="icon-edit" plain="false" >修改</a> -->
-        <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-remove" plain="false" >删除</a>
+        <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-remove" plain="false" >删除</a> -->
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >合并补货单</a>
         <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >转为移库单</a> -->
         </span>
