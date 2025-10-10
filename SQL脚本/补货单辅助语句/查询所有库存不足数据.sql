@@ -40,22 +40,7 @@ PRINT('------------ 区域仓库 ------------');
 --INCLUDE(RootArea);
 
 -- 产品&品牌
-WITH prdctGrp AS (
-SELECT 
-	p.ProductCode,
-	ca.RootArea AreaID,
-	SUM(cg.Piece) Piece
-FROM
-	Tbl_Cargo_Product p
-	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-	INNER JOIN Tbl_Cargo_ContainerGoods cg ON p.ProductID = cg.ProductID
-	INNER JOIN Tbl_Cargo_Container c ON cg.ContainerID = c.ContainerID
-	INNER JOIN #childArea ca ON ca.AreaID = c.AreaID
-WHERE
-	ISNULL(p.ProductCode, '') <> '' 
-GROUP BY
-	p.ProductCode, ca.RootArea
-),
+WITH 
 pCTE as (
 SELECT 
 	DISTINCT
@@ -75,17 +60,17 @@ SELECT
 	h.Name HouseName,
 	h.ParentID HouseParentID,
 	h.ParentName HouseParentName,
-	pg.Piece InPiece,
-	pg.AreaID
+	cg.Piece InPiece,
+	ca.RootArea AreaID
 FROM
 	Tbl_Cargo_Product p
-	INNER JOIN prdctGrp pg ON p.ProductCode = pg.ProductCode
-	--INNER JOIN ##productTemp pTemp ON p.ProductID = pTemp.ProductID
 	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+	INNER JOIN Tbl_Cargo_ContainerGoods cg ON p.ProductID = cg.ProductID
+	INNER JOIN #childArea ca ON ca.AreaID = 3677
 	LEFT JOIN Tbl_Cargo_ProductType pt2 ON pt.ParentID = pt2.TypeID
 	LEFT JOIN Tbl_Cargo_House h ON p.HouseID = h.HouseID
 WHERE
-	ISNULL(p.ProductCode, '') <> ''
+	ISNULL(p.ProductCode, '') <> '' AND p.ProductID IN (938921, 941319, 943204)
 )
 ,
 --在途
@@ -147,3 +132,15 @@ WHERE
 ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0)) DESC
 
 --SELECT * FROM Tbl_Cargo_Product WHERE ProductID = 938921
+
+
+
+
+
+
+
+
+
+
+
+
