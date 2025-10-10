@@ -6,6 +6,7 @@ using House.Entity.Cargo;
 using House.Entity.Cargo.Order;
 using House.Entity.Cargo.Product;
 using House.Entity.Dto;
+using House.Entity.Dto.Base;
 using House.Entity.Dto.Order;
 using House.Entity.Dto.Order.CargoRpl;
 using House.Entity.House;
@@ -61,6 +62,10 @@ namespace Cargo.Order
                 log.UserID = UserInfor == null ? "" : UserInfor.LoginName.Trim();
                 log.Memo = methodName + " " + ex.Message + " " + ex.StackTrace;
                 bus.InsertLog(log);
+            }
+            finally
+            {
+                HttpContext.Current.Response.End();
             }
 
         }
@@ -17235,6 +17240,109 @@ namespace Cargo.Order
             Response.Write(resultjson);
             Response.Flush();
         }
+        public void GetRplOrderExcel()
+        {
+            var queryParam = new CargoRplOrderParams
+            {
+                StartDate = Request.GetDateTime("StartDate"),
+                EndDate = Request.GetDateTime("EndDate"),
+                RplNo = Request.GetTrimmedString("RplNo"),
+                Specs = Request.GetTrimmedString("Specs"),
+                FromHouse = Request.GetInt("FromHouse"),
+                HouseID = Request.GetInt("HouseID"),
+                Status = Request.GetByte("Status"),
+                UserName = Request.GetTrimmedString("ReqByName"),
+                TypeID = Request.GetInt("TypeID"),
+                TypeCate = Request.GetInt("TypeCate")
+            };
+
+            //分页
+            int? pageIndex = Request.GetInt("page");
+            int? pageSize = Request.GetInt("rows");
+
+            queryParam.SetPage(pageIndex, pageSize);
+            CargoOrderBus bus = new CargoOrderBus();
+            var excelData = bus.GetRplOrderExcel(queryParam);
+
+
+
+            if (excelData.Count <= 0) { return; }
+
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.AddRange(new DataColumn[]
+            {
+                new DataColumn ("序号", typeof(int)),
+                new DataColumn("补货单号", typeof(string)),
+                new DataColumn("缺货仓库", typeof(string)),
+                new DataColumn("补货仓库", typeof(string)),
+
+                new DataColumn("产品代码", typeof(string)),
+                new DataColumn("产品名称", typeof(string)),
+                new DataColumn("货品代码", typeof(string)),
+                new DataColumn("品牌", typeof(string)),
+                new DataColumn("规格", typeof(string)),
+                new DataColumn("花纹", typeof(string)),
+                new DataColumn("载速", typeof(string)),
+                new DataColumn("缺货数量", typeof(int)),
+                new DataColumn("完成数量", typeof(int)),
+
+                new DataColumn("总单缺货数量", typeof(int)),
+                new DataColumn("总单补货数量", typeof(int)),
+                new DataColumn("开单人", typeof(string)),
+                new DataColumn("补货单状态", typeof(string)),
+                new DataColumn("备注", typeof(string)),
+                new DataColumn("开单时间", typeof(string))
+            });
+
+
+            int i = 0;
+            foreach (var it in excelData)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+
+                newRows["序号"] = i;
+                newRows["补货单号"] = it.RplNo;
+                newRows["缺货仓库"] = it.FromHouseName;
+                newRows["补货仓库"] = it.HouseName;
+                newRows["产品代码"] = it.ProductCode;
+                newRows["产品名称"] = it.ProductName;
+                newRows["货品代码"] = it.Figure;
+                newRows["品牌"] = it.TypeName;
+                newRows["规格"] = it.Specs;
+                newRows["花纹"] = it.Figure;
+                newRows["载速"] = it.LISS;
+                newRows["缺货数量"] = it.Piece;
+                newRows["完成数量"] = it.DonePiece;
+
+                newRows["总单缺货数量"] = it.TotalPiece;
+                newRows["总单补货数量"] = it.TotalDonePiece;
+                newRows["开单人"] = it.UserName;
+                newRows["备注"] = it.Remark;
+                newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd");
+
+
+                switch (it.Status)
+                {
+                    case 0:
+                        newRows["补货单状态"] = "已开单";
+                        break;
+                    case 1:
+                        newRows["补货单状态"] = "补货中";
+                        break;
+                    case 2:
+                        newRows["补货单状态"] = "已完成";
+                        break;
+                    default:
+                        newRows["补货单状态"] = "";
+                        break;
+                }
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "补货单数据表"+DateTime.Now.ToString("yyMMddHHmmss"));
+
+        }
 
         public void AddRplOrder()
         {
@@ -17256,7 +17364,7 @@ namespace Cargo.Order
             Response.Write(resultjson);
             Response.Flush();
         }
-        public void DelRplOrder()
+        public void CancelRplOrder()
         {
             int[] RplIDs = Array.Empty<int>();
 
@@ -17272,10 +17380,14 @@ namespace Cargo.Order
             var username = UserInfor?.UserName;
             var ipaddress = Common.GetUserIP(Request);
             CargoOrderBus bus = new CargoOrderBus(userid, username, ipaddress);
-            bool isSucc = bus.DelRplOrder(RplIDs);
-
+            bool isSucc = bus.CancelRplOrder(RplIDs);
+            DataRespsBase<int[]> resps = new DataRespsBase<int[]>();
+            resps.Success = isSucc;
+            resps.Data = RplIDs;
+            resps.Message = isSucc ? "作废成功" : "作废失败";
+            var rsltJson = JSON.Encode(resps);
             Response.Clear();
-            Response.Write(isSucc ? "删除成功" : "删除失败");
+            Response.Write(rsltJson);
             Response.Flush();
         }
         public void QueryOutOfStocks()

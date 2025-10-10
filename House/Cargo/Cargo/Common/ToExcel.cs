@@ -190,7 +190,7 @@ namespace Cargo
             curContext.Response.AppendHeader("Content-Disposition",
                 "attachment;filename=" + HttpUtility.UrlEncode(fileName + ".xls", Encoding.UTF8));
             curContext.Response.BinaryWrite(fileMenory.GetBuffer());
-            curContext.Response.End();
+            curContext.Response.Flush();
             //  curContext.Response.Close();
         }
 

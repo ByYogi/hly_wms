@@ -3970,6 +3970,11 @@ namespace House.Business.Cargo
             var rtData = man.QueryRplOrderGoods(entity);
             return rtData;
         }
+        public List<CargoRplOrderExcelModel> GetRplOrderExcel(CargoRplOrderParams queryParams)
+        {
+            var rtData = man.GetRplOrderExcel(queryParams);
+            return rtData;
+        }
         public DataRespsBase<CargoRplOrderDtlDto> AddRplOrder(CargoRplOrderDtlDto entity)
         {
             LogEntity log = new LogEntity();
@@ -4032,7 +4037,7 @@ namespace House.Business.Cargo
             }
             return rtData;
         }
-        public bool DelRplOrder(int[] RplIDs)
+        public bool CancelRplOrder(int[] RplIDs)
         {
             if(RplIDs == null || !RplIDs.Any())
             {
@@ -4041,14 +4046,14 @@ namespace House.Business.Cargo
             LogEntity log = new LogEntity();
             log.Moudle = "补货单";
             log.Status = "0";
-            log.NvgPage = "删除补货单";
+            log.NvgPage = "作废补货单";
             log.UserID = _userid;
             log.IPAddress = _ipaddress;
-            log.Operate = "D";
+            log.Operate = "U";
             LogBus lw = new LogBus();
             try
             {
-                man.DelRplOrder(RplIDs);
+                man.CancelRplOrder(RplIDs, _userid, _username);
                 return true;
             }
             catch (Exception ex)

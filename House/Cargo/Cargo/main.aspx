@@ -15,7 +15,6 @@
         <style type="text/css">
             /* #region 值班面板样式 */
             .time-box {
-                padding-inline: 15px;
                 display: inline-block;
                 vertical-align: top;
             }

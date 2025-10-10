@@ -10433,7 +10433,7 @@ FROM (
 			    Tbl_Cargo_RplOrder ro
 	    ) ro2 ON ro2.RplID = ro.RplID
 		INNER JOIN rog ON rog.RplID = ro.RplID
-    WHERE 1 = 1 AND rog.RplID IS NOT NULL @{conditions}
+    WHERE 1 = 1 AND rog.RplID IS NOT NULL AND ro.Status <> 3 @{conditions}
 ) a
 WHERE RowNumber > @{startindex}
 ORDER BY RowNumber ASC
@@ -10648,6 +10648,147 @@ ORDER BY RowNumber ASC
                 }
             }
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        public List<CargoRplOrderExcelModel> GetRplOrderExcel(CargoRplOrderParams queryParams)
+        {
+            List<CargoRplOrderExcelModel> result = new List<CargoRplOrderExcelModel>();
+            try
+            {
+                #region 组装查询SQL语句
+                StringBuilder strbld = new StringBuilder();
+                List<string> conditions = new List<string>();
+                List<SqlParameter> parameters = new List<SqlParameter>();
+                var roData = QueryRplOrder(queryParams);
+                var rplIDs = roData.Data.Select(c => c.RplID).OfType<int>().ToList();
+                string createRplIDsTempTblSql = @"
+CREATE TABLE 
+	##rplIDsTemp(
+		RplID INT
+	);
+
+
+INSERT INTO ##rplIDsTemp (RplID)
+Values @{tempTblVals}
+";
+                string queryRODataStr = @"
+SELECT 
+       ro.[RplID]
+      ,ro.[RplNo]
+      ,ro.[HouseID]
+      ,ro.[HouseName]
+      ,ro.[FromHouse]
+      ,ro.[FromHouseName]
+      ,ro.[UserID]
+      ,ro.[UserName]
+      ,ro.[Piece] TotalPiece
+      ,ro.[DonePiece] TotalDonePiece
+      ,ro.[Status]
+      ,ro.[ProcessingDate]
+      ,ro.[CompletedDate]
+      ,ro.[CancelledDate]
+      ,ro.[Remark]
+
+      ,rog.[ID]
+      ,rog.[ProductID]
+      ,rog.[ProductName]
+      ,rog.[ProductCode]
+      ,rog.[GoodsCode]
+      ,rog.[AreaID]
+      ,rog.[AreaName]
+      ,rog.[TypeCate]
+      ,rog.[TypeCateName]
+      ,rog.[TypeID]
+      ,rog.[TypeName]
+      ,rog.[Piece]
+      ,rog.[SysPiece]
+      ,rog.[DonePiece]
+      ,rog.[CreateDate]
+      ,rog.[UpdateDate]
+      ,p.Specs
+      ,p.Figure
+      ,p.LoadIndex
+      ,p.SpeedLevel
+FROM Tbl_Cargo_RplOrder ro
+LEFT JOIN Tbl_Cargo_RplOrderGoods rog ON ro.RplID = rog.RplID
+INNER JOIN ##rplIDsTemp rit ON rit.RplID = ro.RplID
+INNER JOIN Tbl_Cargo_Product p ON rog.ProductID = p.ProductID
+";
+
+                int index = 1;
+                List<string> tempTblVals = new List<string>();
+                List<SqlParameter> sqlParameters = new List<SqlParameter>();
+                foreach (var rplID in rplIDs)
+                {
+                    tempTblVals.Add($"(@RplID{index})");
+                    sqlParameters.AddRange(new List<SqlParameter>
+                        {
+                            new SqlParameter($"@RplID{index}", rplID)
+                        });
+                    index++;
+                }
+
+                if (rplIDs.Any())
+                {
+                    createRplIDsTempTblSql = createRplIDsTempTblSql.Replace("@{tempTblVals}", string.Join("," + Environment.NewLine, tempTblVals));
+                }
+                else
+                {
+                    return result;
+                }
+                #endregion
+                string strSQL = createRplIDsTempTblSql + queryRODataStr;
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    command.Parameters.AddRange(sqlParameters.ToArray());
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        List<CargoRplOrderExcelModel> sqlData = new List<CargoRplOrderExcelModel>();
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            sqlData.Add(new CargoRplOrderExcelModel
+                            {
+                                RplID = idr.Field<int>("RplID"),
+                                RplNo = idr.Field<string>("RplNo"),
+                                FromHouse = idr.Field<int?>("FromHouse"),
+                                HouseID = idr.Field<int?>("HouseID"),
+                                HouseName = idr.Field<string>("HouseName"),
+                                FromHouseName = idr.Field<string>("FromHouseName"),
+                                UserID = idr.Field<string>("UserID"),
+                                UserName = idr.Field<string>("UserName"),
+                                TotalPiece = idr.Field<int>("TotalPiece"),
+                                TotalDonePiece = idr.Field<int?>("TotalDonePiece"),
+                                Status = idr.Field<byte?>("Status"),
+                                Remark = idr.Field<string>("Remark"),
+                                CreateDate = idr.Field<DateTime>("CreateDate"),
+                                UpdateDate = idr.Field<DateTime>("UpdateDate"),
+
+
+                                ID = idr.Field<int>("ID"),
+                                ProductID = idr.Field<long>("ProductID"),
+                                ProductName = idr.Field<string>("ProductName"),
+                                ProductCode = idr.Field<string>("ProductCode"),
+                                GoodsCode = idr.Field<string>("GoodsCode"),
+                                AreaID = idr.Field<int?>("AreaID"),
+                                AreaName = idr.Field<string>("AreaName"),
+                                TypeCate = idr.Field<int?>("TypeCate"),
+                                TypeCateName = idr.Field<string>("TypeCateName"),
+                                TypeID = idr.Field<int?>("TypeID"),
+                                TypeName = idr.Field<string>("TypeName"),
+                                Piece = idr.Field<int>("Piece"),
+                                DonePiece = idr.Field<int?>("DonePiece"),
+                                Specs = idr.Field<string>("Specs"),
+                                Figure = idr.Field<string>("Figure"),
+                                LoadIndex = idr.Field<string>("LoadIndex"),
+                                SpeedLevel = idr.Field<string>("SpeedLevel")
+                            });
+                        }
+                        result = sqlData;
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            
             return result;
         }
         public CargoRplOrderDtlDto AddRplOrder(CargoRplOrderDtlDto entity)
@@ -11662,44 +11803,78 @@ VALUES
                 }
             }
         }
-        public void DelRplOrder(int[] RplIDs)
+        public void CancelRplOrder(int[] RplIDs, string UserID, string UserName)
         {
             SqlHelper conn = new SqlHelper();
             if (RplIDs.Any())
             {
                 var rplListData = QueryRplOrder(new CargoRplOrderParams { RplIDs = new List<int>(RplIDs) })?.Data;
-                if(rplListData == null || !rplListData.Any())
+                if (rplListData == null || !rplListData.Any())
                 {
                     throw new ApplicationException($"未找到对应的补货单数据。参数：RplIDs:{string.Join(",", RplIDs)}");
                 }
                 foreach (var RplID in RplIDs)
                 {
                     var matchedRpl = rplListData.FirstOrDefault(c => c.RplID == RplID);
-                    if(matchedRpl == null)
+                    if (matchedRpl == null)
                     {
                         throw new ApplicationException($"未找到对应的补货单数据。参数：RplID:{RplID}");
                     }
                     //检查补货单为 待处理|已取消 状态
-                    if(!new byte[] {0, 4 }.Contains(matchedRpl.Status.GetValueOrDefault()))
+                    if (!new byte[] { 0, 4 }.Contains(matchedRpl.Status.GetValueOrDefault()))
                     {
-                        throw new ApplicationException($"补货单({matchedRpl.RplNo})已处理，不能删除");
+                        throw new ApplicationException($"补货单({matchedRpl.RplNo})已经开始补货，不能作废");
                     }
                     //检查已完成补货数为0
                     var anyDonePiece = matchedRpl.DonePiece.GetValueOrDefault() > 0;
-                    if(anyDonePiece)
+                    if (anyDonePiece)
                     {
-                        throw new ApplicationException($"补货单({matchedRpl.RplNo})已经开始补货，不能删除");
+                        throw new ApplicationException($"补货单({matchedRpl.RplNo})已经有过收货数量，不能作废");
                     }
                 }
 
-                string delDataSqlStr = @"
-DELETE Tbl_Cargo_RplOrderGoods WHERE RplID IN @{RplIDs};
-DELETE Tbl_Cargo_RplOrder WHERE RplID IN @{RplIDs};
+                string cancelRplSqlStr = @"
+UPDATE Tbl_Cargo_RplOrder SET Status = 3 WHERE RplID IN @{RplIDs};
 ";
-                delDataSqlStr = delDataSqlStr.Replace("@{RplIDs}", "(" + string.Join(",", RplIDs) + ")");
-                using (var comm = conn.GetSqlStringCommond(delDataSqlStr))
+                cancelRplSqlStr = cancelRplSqlStr.Replace("@{RplIDs}", "(" + string.Join(",", RplIDs) + ")");
+                using (var comm = conn.GetSqlStringCommond(cancelRplSqlStr))
                 {
                     conn.ExecuteNonQuery(comm);
+                }
+
+
+                //刷新缺货数据
+                UpdateOOSParam oosParams = new UpdateOOSParam()
+                {
+                    UserID = UserID,
+                    UserName = UserName,
+                    ReasonTag = "RO", //补货单标记
+                    Reason = "作废补货单"
+                };
+                var oosRows = new List<UpdateOOSGoodsParam>();
+                string queryOOSDataStr = @"
+SELECT ProductID, AreaID FROM Tbl_Cargo_RplOrderGoods WHERE RplID IN @{RplIDs}
+";
+                queryOOSDataStr = queryOOSDataStr.Replace("@{RplIDs}", "(" + string.Join(",", RplIDs) + ")");
+                using (DbCommand command = conn.GetSqlStringCommond(queryOOSDataStr))
+                {
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow dr in dt.Rows)
+                        {
+                            oosRows.Add(new UpdateOOSGoodsParam()
+                            {
+                                ProductID = dr.Field<long>("ProductID"),
+                                AreaID = dr.Field<int>("AreaID"),
+                            });
+                        }
+                        oosParams.Rows = oosRows;
+                    }
+                }
+
+                if (oosParams.Rows.Count > 0)
+                {
+                    UpdtOutOfStock(oosParams);
                 }
             }
         }

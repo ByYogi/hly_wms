@@ -79,7 +79,7 @@
                         title: '补货仓库', field: 'HouseName', width: '100px'
                     },
                     {
-                        title: '补货数量', field: 'Piece', width: '100px'
+                        title: '缺货数量', field: 'Piece', width: '100px'
                     },
                     {
                         title: '开单人', field: 'UserName', width: '100px'
@@ -227,25 +227,22 @@
     </div>
     <table id="dg" class="easyui-datagrid"></table>
     <div id="toolbar">
-    <div class="space">
+    <div class="space-lg">
         <span class="space">
-        <a href="#" class="easyui-linkbutton tblBtn" id="btnSearch" iconcls="icon-search" plain="false">查询</a>
+            <a href="#" class="easyui-linkbutton tblBtn" id="btnSearch" iconcls="icon-search" plain="false">查询</a>
         </span>
         <span class="space">
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnAdd" iconcls="icon-add" plain="false" >新增</a> -->
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnEdit" iconcls="icon-edit" plain="false" >修改</a> -->
-        <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-remove" plain="false" >删除</a> -->
+        <a href="#" class="easyui-linkbutton tblBtn" id="btnCancel" iconcls="icon-cut" plain="false" >作废</a>
         <!-- <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >合并补货单</a>
         <a href="#" class="easyui-linkbutton tblBtn" id="btnDel" iconcls="icon-cut" plain="false" >转为移库单</a> -->
-        </span>
-        <span class="space">
         <a href="#" class="easyui-linkbutton tblBtn" id="btnExport" iconcls="icon-application_put" plain="false">导出</a>
         </span>
-        </div>
+    </div>
    
         <form runat="server" id="fm1">
             <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived_Click" />
-            <asp:Button ID="btnMoveCode" runat="server" Style="display: none;" Text="导出" OnClick="btnMoveCode_Click" />
         </form>
     </div>
 
@@ -331,7 +328,7 @@
                         }
                     },
                     {
-                        title: '补货数量', field: 'Piece', width: '80px', formatter: function (value) {
+                        title: '缺货数量', field: 'Piece', width: '80px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
@@ -363,8 +360,8 @@
         })
         //统一事件绑定
         $(function() {
-            $('#btnDel').on('click', delHandle);
-            $('#btnExport').on('click', AwbExport);
+            $('#btnCancel').on('click', cancelHandle);
+            $('#btnExport').on('click', dataExport);
             $('#btnSearch').on('click', dosearch)
         });
         
@@ -387,114 +384,67 @@
         $(this).dialog('move', left, top);
     } --%>
         }
-        function delHandle(){
-
-        }
-
-        //查询产品标签数据列表 
-        function queryTag() {
-            var row = $('#dg').datagrid('getSelected');
-            if (row == null || row == "") {
-                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查询标签的数据！', 'warning');
-                return;
-            }
-            if (row) {
-                $('#productTag').dialog('open').dialog('setTitle', '查询移库单：' + row.MoveNo + '标签列表');
-                showTagGrid();
-                $('#dgTag').datagrid('clearSelections');
-                var gridOpts = $('#dgTag').datagrid('options');
-                gridOpts.url = 'orderApi.aspx?method=QueryMoveScanTagByMoveNo&MoveNo=' + row.MoveNo;
-            }
-        }
-        //标签数据列表
-        function showTagGrid() {
-            $('#dgTag').datagrid({
-                width: '100%',
-                height: '440px',
-                title: '', //标题内容
-                rownumbers: true,
-                loadMsg: '数据加载中请稍候...',
-                autoRowHeight: false, //行高是否自动
-                collapsible: false, //是否可折叠
-                pagination: false, //分页是否显示
-                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
-                singleSelect: false, //设置为 true，则只允许选中一行。
-                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
-                idField: 'TagCode',
-                url: null,
-                columns: [[
-                    { title: '', field: '', checkbox: true, width: '30px' },
-                    { title: '移库单号', field: 'MoveOrderNo', width: '80px' },
-                    { title: '产品ID', field: 'ProductID', width: '70px' },
-                    { title: '标签编码', field: 'TagCode', width: '100px' },
-                    { title: '轮胎码', field: 'TyreCode', width: '80px' },
-                    //{ title: '出库时间', field: 'OutCargoTime', width: '120px', formatter: DateTimeFormatter },
-                    //{ title: '出库人', field: 'OutCargoOperID', width: '60px' },
-                    //{ title: '产品ID', field: 'ProductID', width: '50px' },
-                    //{ title: '产品名称', field: 'ProductName', width: '100px' },
-                    { title: '规格', field: 'Specs', width: '80px' },
-                    { title: '花纹', field: 'Figure', width: '100px' },
-                    { title: '批次', field: 'Batch', width: '50px' },
-                    { title: '型号', field: 'Model', width: '60px' },
-                    { title: '货品代码', field: 'GoodsCode', width: '80px' },
-                    { title: '载重指数', field: 'LoadIndex', width: '60px' },
-                    { title: '速度级别', field: 'SpeedLevel', width: '60px' },
-                    { title: '入库时间', field: 'InCargoTime', width: '120px', formatter: DateTimeFormatter },
-                    //{ title: '货位代码', field: 'ContainerCode', width: '80px' }
-                    //{ title: '一级区域', field: 'ParentAreaName', width: '60px' },
-                    //{ title: '二级区域', field: 'AreaName', width: '60px' }
-                ]],
-                onClickRow: function (index, row) {
-                    $('#dgTag').datagrid('clearSelections');
-                    $('#dgTag').datagrid('selectRow', index);
-                },
-                rowStyler: function (index, row) {
-                    if (row.MoveStatus == "1") { return "background-color: #24d3fb82; "; }
-                }
-            });
-        }
-        //根据公司部门ID获取部门名称
-        function GetUpClientDepName(value) {
-            var name = '';
-            if (value != "") {
-                for (var i = 0; i < UpClientDep.length; i++) {
-                    if (UpClientDep[i].ID == value) {
-                        name = UpClientDep[i].DepName;
-                        break;
-                    }
-                }
-            }
-            return name;
-        };
-        //导出数据
-        function AwbExport() {
+        function cancelHandle(){
             var rows = $('#dg').datagrid('getSelections');
-            if (rows == null || rows == "") {
-                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要导出的数据！', 'warning');
+            if (rows == null || rows == "" || rows.length == 0) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要作废的数据！', 'warning');
                 return;
             }
-            var MoveNoStr = "";
-            for (var i = 0; i < rows.length; i++) {
-                MoveNoStr += rows[i].MoveNo + ",";
-            }
-            var json = JSON.stringify(MoveNoStr)
-            $.messager.progress({ msg: '请稍后,正在导出中...' });
-            $.ajax({
-                url: 'orderApi.aspx?method=QueryMoveOrderForExport',
-                data: { data: MoveNoStr },
-                success: function (text) {
-                    $.messager.progress("close");
-                    if (text == "OK") { var obj = document.getElementById("<%=btnDerived.ClientID %>"); obj.click(); }
-                    else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
+            var rplIDs = rows.map(x => x.RplID);
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定作废？', function (r) {
+                if (r) {
+                    $.ajax({
+                        url: 'orderApi.aspx?method=CancelRplOrder',
+                        type: 'post', 
+                        dataType: 'json', 
+                        data: { RplIDs: JSON.stringify(rplIDs) },
+                        success: function (resps) {
+                            if (resps.Success) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '作废成功!', 'info');
+                                $('#dg').datagrid('clearSelections');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', resps.Message, 'warning');
+                            }
+                        }
+                    });
                 }
             });
-            <%--$.ajax({
-                url: "orderApi.aspx?method=QueryMoveOrderForExport&MoveNo=" + rows[0].MoveNo,
-                success: function (text) {
-                    if (text == "OK") { var obj = document.getElementById("<%=btnDerived.ClientID %>"); obj.click(); }
-                    else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
-                }
-            });--%>
+        }
+
+        
+        //导出数据
+        function dataExport() {
+            var pager  = $('#dg').datagrid('getPager');
+            var pageData = pager.pagination('options');
+            var pageIndex = pageData.pageNumber;  // 当前页码（从1开始）
+            var pageSize = pageData.pageSize;     // 每页大小
+            var queryParams = {
+                RplNo: $('#RplNo').val(),
+                HouseID: $("#HouseID").combobox('getValue'),
+                FromHouse: $("#FromHouse").combobox('getValue'),
+                Status: $("#Status").combobox('getValue'),
+                StartDate: $('#StartDate').datebox('getValue'),
+                EndDate: $('#EndDate').datebox('getValue'),
+                TypeCate: $('#TypeCate').datebox('getValue'),
+                TypeID: $('#TypeID').datebox('getValue'),
+                page: pageIndex,
+                rows: pageSize
+            }
+
+            console.log({queryParams,pageData});
+            var queryString = Object.keys(queryParams)
+                .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(queryParams[key]))
+                .join('&');
+            var downloadUrl = 'orderApi.aspx?method=GetRplOrderExcel&' + queryString;
+            
+            // 创建隐藏的iframe
+            var iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = downloadUrl;
+            document.body.appendChild(iframe);
+            return
         }
         //双击显示订单详细界面 
         function editByID(Did) {
@@ -661,22 +611,6 @@
             }
         }
 
-
-        //批量导出移库订单信息
-        function MoveExportOrderInfo() {
-            $.messager.progress({ msg: '请稍后,正在导出...' });
-            if ($("#OldHouseID").combobox('getValue') === undefined) {
-                $('#OldHouseID').combobox('setValue', '');
-            }
-            $.ajax({
-                url: 'orderApi.aspx?method=QueryMoveOrderDataExport&MoveNo=' + $('#MoveNo').val() + "&Specs=" + $('#Specs').val() + "&OldHouseID=" + $("#OldHouseID").combobox('getValue') + "&NewHouseID=" + $('#NewHouseID').combobox('getValue') + "&MoveStatus=" + $('#MoveStatus').combobox('getValue') + "&AUserName=" + $('#AUserName').val() + "&StartDate=" + $('#StartDate').datebox('getValue') + "&EndDate=" + $('#EndDate').datebox('getValue') + "&APID=" + $('#APID').combobox('getValue') + "&ASID=" + $('#ASID').combobox('getValue'),
-                success: function (text) {
-                    $.messager.progress("close");
-                    if (text == "OK") { var obj = document.getElementById("<%=btnMoveCode.ClientID %>"); obj.click() }
-                    else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
-                }
-            });
-        }
 
     </script>
 

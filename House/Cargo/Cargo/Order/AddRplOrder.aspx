@@ -205,7 +205,7 @@
                     }
                 });
                 columns.push({
-                    title: '补货数量', field: 'Piece', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    title: '缺货数量', field: 'Piece', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
@@ -455,17 +455,17 @@
                 <table style="width: 100%">
                     <tr>
                         
-                        <td style="text-align: right; width: 100px;">请求仓库:
+                        <td style="text-align: right;">请求仓库:
                         </td>
                         <td style="width: 300px;">
                         <input id="ReqHouseOpts" class="easyui-combobox"  style="width: 200px;" data-options="required:true"
                             />
                         </td>
                         
-                        <td style="text-align: right; width: 100px;">备注:
+                        <td style="text-align: right;">备注:
                         </td>
                         <td >
-                        <input id="RemarkTxt" class="easyui-textbox" style="width:200px;height:60px"  style="width: 100px;" data-options="multiline:true"
+                        <input id="RemarkTxt" class="easyui-textbox" style="width:200px;height:60px"  style="width: 180px;" data-options="multiline:true"
                             />
                         </td>   
                         <td >
@@ -546,7 +546,7 @@
                 $('#outDg').datagrid('loadData', { total: 0, rows: [] });
                 $('#ReqHouseOpts').combobox('setValue', '');
                 $('#RplQty').numberbox('setValue',0);
-                $('#RplQty').textbox('setValue', '')
+                $('#RemarkTxt').textbox('setValue', '')
                 var title = "";
                 $('#outDg').datagrid("getPanel").panel("setTitle", title);
                 dosearch();
