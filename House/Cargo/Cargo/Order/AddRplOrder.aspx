@@ -49,8 +49,9 @@
             function adjustment() {
                 //var height = parseInt((Number($(window).height()) - 100) / 2);
                 var height = parseInt((Number($(window).height()) - Number($("div[name='SelectDiv1']").outerHeight(true))) / 2);
-                $('#dg').datagrid("resize",{ height: height - 60 });
-                $('#outDg').datagrid("resize", { height: (Number($(window).height()) - 90) - height });
+                $('#dg').datagrid("resize",{ height: height });
+                $('#outDg').datagrid("resize", { height: height - 10});
+                $('#outDg2').datagrid("resize", { height: height - 10 });
             }
             let houseOptionsOrg = null; // 保存大仓列表的请求结果
             $(document).ready(function () {
@@ -82,87 +83,120 @@
                 });
                 columns.push({ title: '', field: 'OOSID', checkbox: true, width: '10%' });
                 columns.push({
-                    title: '产品代码', field: 'ProductCode', width: '8%', formatter: function (value) {
+                    title: '产品代码', field: 'ProductCode', width: '6%', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '产品名称', field: 'ProductName', width: '8%', formatter: function (value) {
+                    title: '产品名称', field: 'ProductName', width: '6%', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '产品品牌', field: 'TypeName', width: '6%', formatter: function (value) {
+                    title: '产品品牌', field: 'TypeName', width: '4%', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '规格', field: 'Specs', width: '7%', formatter: function (value) {
+                    title: '规格', field: 'Specs', width: '4%', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '型号', field: 'Model', width: '7%', formatter: function (value) {
+                    title: '型号', field: 'Model', width: '4%', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '花纹', field: 'Figure', width: '3%', formatter: function (value) {
+                    title: '花纹', field: 'Figure', width: '2%', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '载速', field: 'LoadIndex', width: '3%', align: 'right', formatter: function (value, row) {
+                    title: '载速', field: 'LoadIndex', width: '2%', align: 'right', formatter: function (value, row) {
                         return "<span title='" + value + row.SpeedLevel + "'>" + value + row.SpeedLevel + "</span>";
                     }
                 });
                 columns.push({
-                    title: '批次', field: 'Batch', width: '5%', align: 'right', formatter: function (value) {
+                    title: '批次', field: 'Batch', width: '2%', align: 'right', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '最小库存数', field: 'MinStock', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    title: '月均销量', field: 'CurStock', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '最大库存数', field: 'MaxStock', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    title: '日均销量', field: 'CurStock', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '在库数量', field: 'CurStock', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    title: '库存度天数', field: 'CurStock', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '在途数量', field: 'InTransitStock', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    title: '最小库存数', field: 'MinStock', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '补货中数量', field: 'RestockingPiece', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    title: '最大库存数', field: 'MaxStock', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '缺货数量', field: 'Piece', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    title: '在库数量', field: 'CurStock', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '所在仓库', field: 'HouseName', width: '8%', formatter: function (value) {
+                    title: '在途数量', field: 'InTransitStock', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '上级仓库', field: 'ParentHouseName', width: '8%', formatter: function (value) {
+                    title: '补货中数量', field: 'RestockingPiece', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '更新时间', field: 'UpdateDate', width: '8%', formatter: DateTimeFormatter,
+                    title: '推荐补货数', field: 'Piece', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '确认补货数', field: 'Piece', width: '4%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '备注', field: 'ProductName', width: '10%', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '所在仓库', field: 'HouseName', width: '4%', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '补货状态', field: 'HouseName', width: '4%', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '上级仓库', field: 'ParentHouseName', width: '4%', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '更新时间', field: 'UpdateDate', width: '6%', formatter: DateTimeFormatter,
+                });
+                columns.push({
+                    title: '补货时间', field: 'RplDate', width: '6%', formatter: DateTimeFormatter,
                 });
                 $('#dg').datagrid({
                     width: '100%',
@@ -190,32 +224,32 @@
                 
                 columns.push({ title: '', field: 'OOSID', checkbox: true, width: '10%' });
                 columns.push({
-                    title: '产品代码', field: 'ProductCode', width: '8%', formatter: function (value) {
+                    title: '产品代码', field: 'ProductCode', width: '60px', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '产品名称', field: 'ProductName', width: '8%', formatter: function (value) {
+                    title: '产品名称', field: 'ProductName', width: '60px', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '产品品牌', field: 'TypeName', width: '6%', formatter: function (value) {
+                    title: '产品品牌', field: 'TypeName', width: '60px', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '缺货数量', field: 'Piece', width: '5%', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
+                    title: '缺货数量', field: 'Piece', width: '60px', align: 'right', styler: function (val, row, index) { return "color:#12bb1f;font-weight:bold;" }, formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '所在仓库', field: 'HouseName', width: '8%', formatter: function (value) {
+                    title: '所在仓库', field: 'HouseName', width: '60px', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
                 columns.push({
-                    title: '上级仓库', field: 'ParentHouseName', width: '8%', formatter: function (value) {
+                    title: '上级仓库', field: 'ParentHouseName', width: '60px', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });
@@ -225,7 +259,6 @@
                     title: '补货产品', //标题内容
                     loadMsg: '数据加载中请稍候...',
                     autoRowHeight: false, //行高是否自动
-                    collapsible: true, //是否可折叠
                     pagination: false, //分页是否显示
                     fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
                     singleSelect: false, //设置为 true，则只允许选中一行。
@@ -234,9 +267,73 @@
                     url: null,
                     toolbar: '',
                     columns: [columns],
-                    onLoadSuccess: function (data) { },
                     onDblClickRow: function (index, row) { dblClickDelCargo(index); }
                 });
+
+                columns = [];
+                
+                columns = [{
+                    title: '产品代码', field: 'ProductCode', width: '120px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '产品名称', field: 'ProductName', width: '120px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '货品代码', field: 'GoodsCode', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '品牌', field: 'TypeName', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '花纹', field: 'Figure', width: '40px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '载速', field: 'LISS', width: '40px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '缺货数量', field: 'Piece', width: '60px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '完成数量', field: 'DonePiece', width: '60px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    }]
+                //补货单详情
+                $('#outDg2').datagrid({
+                    width: '100%',
+                    title: '补货产品', //标题内容
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: false, //行高是否自动
+                    pagination: false, //分页是否显示
+                    fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: false, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'OOSID',
+                    url: null,
+                    toolbar: '',
+                    columns: [columns],
+                });  
+
+
                 //一级产品
                 $('#APID').combobox({
                     url: '../Product/productApi.aspx?method=QueryALLOneProductType', valueField: 'TypeID', textField: 'TypeName',
@@ -341,65 +438,86 @@
                 </h1>
             </div>
         </div>
-        <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'"
-            style="width: 100%">
-            <table>
-                <tr>
-                    <td style="text-align: right;">规格:
-                    </td>
-                    <td>
-                        <input id="ASpecs" class="easyui-textbox" data-options="prompt:'请输入规格'" style="width: 100px" />
-                    </td>
-                    <td style="text-align: right;">一级产品:
-                    </td>
-                    <td>
-                        <input id="APID" class="easyui-combobox" style="width: 100px;"  />
-                    </td>
-                    <td style="text-align: right;">区域大仓:
-                    </td>
-                    <td>
-                        <input id="AHouseID" class="easyui-combobox" style="width: 100px;" data-options="required:true"
-                             />
-                    </td>
-                </tr>
-                <tr>
-                    <td id="AFigureTd" style="text-align: right;">花纹:
-                    </td>
-                    <td>
-                        <input id="AFigure" class="easyui-textbox" data-options="prompt:'请输入花纹'" style="width: 100px" />
-                    </td>
-                    <td style="text-align: right;">二级产品:
-                    </td>
-                    <td>
-                        <input id="ASID" class="easyui-combobox" style="width: 100px;"
-                            data-options="valueField:'TypeID',textField:'TypeName'" />
-                    </td>
+        <table style="width: 99%; ">
+            <tr>
+                <td colspan="2">
+                    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'"
+                        style="width: 100%">
+                        <table>
+                            <tr>
+                                <td style="text-align: right;">规格:
+                                </td>
+                                <td>
+                                    <input id="ASpecs" class="easyui-textbox" data-options="prompt:'请输入规格'" style="width: 100px" />
+                                </td>
+                                <td style="text-align: right;">一级产品:
+                                </td>
+                                <td>
+                                    <input id="APID" class="easyui-combobox" style="width: 100px;"  />
+                                </td>
+                                <td style="text-align: right;">区域大仓:
+                                </td>
+                                <td>
+                                    <input id="AHouseID" class="easyui-combobox" style="width: 100px;" data-options="required:true"
+                                        />
+                                </td>
+                            </tr>
+                            <tr>
+                                <td id="AFigureTd" style="text-align: right;">花纹:
+                                </td>
+                                <td>
+                                    <input id="AFigure" class="easyui-textbox" data-options="prompt:'请输入花纹'" style="width: 100px" />
+                                </td>
+                                <td style="text-align: right;">二级产品:
+                                </td>
+                                <td>
+                                    <input id="ASID" class="easyui-combobox" style="width: 100px;"
+                                        data-options="valueField:'TypeID',textField:'TypeName'" />
+                                </td>
 
 
-                    <td style="text-align: right;">所在仓库:
-                    </td>
-                    <td>
-                        <input id="HAID" class="easyui-combobox" style="width: 100px;"
-                            data-options="valueField:'AreaID',textField:'Name',required:true"  />
-                    </td>
+                                <td style="text-align: right;">所在仓库:
+                                </td>
+                                <td>
+                                    <input id="HAID" class="easyui-combobox" style="width: 100px;"
+                                        data-options="valueField:'AreaID',textField:'Name',required:true"  />
+                                </td>
 
-                </tr>
-                <tr>
-            </table>
-        </div>
-        <table id="dg" class="easyui-datagrid">
+                            </tr>
+                            <tr>
+                        </table>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <table id="dg" class="easyui-datagrid">
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 55%; height: 100%; margin: 0px; padding: 0px;">
+                    <table id="outDg" class="easyui-datagrid">
+                    </table>
+                </td>
+                <td style="width: 45%; height: 100%; margin: 0px; padding: 0px;">
+                    <table id="outDg2" class="easyui-datagrid">
+                    </table>
+                </td>
+            </tr>
         </table>
-        <table id="outDg" class="easyui-datagrid">
-        </table>
-        <div id="toolbar" class="space">
-        <span class="space">
-            <a href="#" class="easyui-linkbutton tblBtn" iconcls="icon-search" plain="false"
-                onclick="dosearch()">查询</a>
-                </span>
-        <span class="space">
-            <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false"
-                onclick="openUpdteOOSDlg()">更新缺货数据</a>
-                </span>
+        <div id="toolbar" class="space" style="width: 100%;">
+            <span class="space">
+                <a href="#" class="easyui-linkbutton tblBtn" iconcls="icon-search" plain="false"
+                    onclick="dosearch()">查询</a>
+            </span>
+            <span class="space">
+                <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false"
+                    onclick="openUpdteOOSDlg()">更新缺货数据</a>
+                <a href="#" id="btnPreSave"
+                    class="easyui-linkbutton" iconcls="icon-compress" plain="false" style="margin: 12px;"
+                onclick="saveData()">制作补货单</a>
+            </span>
         </div>
         
         <div id="dlg" class="easyui-dialog" style="width: 350px; height: 230px; padding: 0px" closed="true"
@@ -450,7 +568,7 @@
                 onclick="javascript:$('#updteOOSDlg').dialog('close')">取消</a>
         </div>
 
-        <form id="fmDep" class="easyui-form" method="post">
+        <!-- <form id="fmDep" class="easyui-form" method="post">
             <div id="saPanel">
                 <table style="width: 100%">
                     <tr>
@@ -475,8 +593,7 @@
                     <tr>
                         <td colspan="4" style="text-align: right; "><a href="#" id="btnPreSave"
                                 class="easyui-linkbutton" iconcls="icon-compress" plain="false" style="margin: 12px;"
-                                onclick="saveData()">保&nbsp;存&nbsp;补&nbsp;货&nbsp;单</a></td>
-                                
+                                onclick="saveData()">制作补货单</a></td>
                         <td style="width: 30px;">
 
                         </td>
@@ -486,7 +603,7 @@
                     </tr>
                 </table>
             </div>
-        </form>
+        </form> -->
         <script type="text/javascript">
             function openUpdteOOSDlg(){
                 $('#updteOOSDlg').dialog('open');

@@ -5060,7 +5060,6 @@ FROM
 WHERE
 	(1 = 1)
 	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
-    AND fo.OrderType <> 2 --筛除退货单
     AND ISNULL(p.ProductCode, '') <> '' 
 GROUP BY p.ProductCode, p.TypeID, p.HouseID
 ) a 
@@ -5743,7 +5742,6 @@ FROM
 WHERE
 	(1 = 1)
 	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
-    AND fo.OrderType <> 2 --筛除退货单
     AND ISNULL(p.ProductCode, '') <> '' 
 GROUP BY p.ProductCode, p.TypeID, p.HouseID
 ) a 

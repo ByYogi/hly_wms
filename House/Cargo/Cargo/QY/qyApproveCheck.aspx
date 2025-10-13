@@ -78,7 +78,7 @@
                     门店价
                 </div>
                 <div class="weui-cell__hd" style="width: 12%">
-                    次日达价
+                    批发价
                 </div>
                 <div class="weui-cell__bd" style="width: 12%">
                     修改价
