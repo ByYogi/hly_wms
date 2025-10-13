@@ -4208,6 +4208,7 @@ namespace Cargo.Interface
             CargoHouseEntity houseEntity = bus.QueryCargoHouse(new CargoHouseEntity { HouseCode = HouseCode });
             if (houseEntity.HouseID.Equals(0))
             {
+
                 msg.Result = false;
                 msg.Message = "仓库代码不存在";
                 //JSON
