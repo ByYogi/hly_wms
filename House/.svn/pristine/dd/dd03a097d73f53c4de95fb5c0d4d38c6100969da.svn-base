@@ -10,7 +10,7 @@ using System.Web.UI.WebControls;
 
 namespace Cargo.Weixin
 {
-    public partial class wxRefundConfirmation :WXBasePage//System.Web.UI.Page
+    public partial class wxOrderPurchaseSuccess :WXBasePage //System.Web.UI.Page
     {
         public WXUserEntity wxUser = new WXUserEntity();
         public string OrderNo  { get; set; }

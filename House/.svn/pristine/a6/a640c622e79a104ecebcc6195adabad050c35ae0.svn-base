@@ -1,0 +1,465 @@
+﻿<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="wxOrderPurchaseSuccess.aspx.cs" Inherits="Cargo.Weixin.wxOrderPurchaseSuccess" %>
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>下单完成</title>
+    <link href="../JS/easy/css/default/easyui.css" rel="stylesheet" />
+    <link href="../JS/easy/css/icon.css" rel="stylesheet" type="text/css" />
+        <script type="text/javascript" src="../JS/vue.js"></script>
+
+        <script src="../JS/easy/js/jquery.min.js" type="text/javascript"></script>
+
+    <script src="../JS/easy/js/jquery.easyui.min.js" type="text/javascript"></script>
+     <style>
+         * {
+             box-sizing: border-box;
+             margin: 0;
+             padding: 0;
+             font-family: "Helvetica Neue", sans-serif;
+         }
+
+         body {
+             background: #f5f6fa;
+             color: #333;
+         }
+
+         .header {
+             background: linear-gradient(135deg, #00c6ff, #0072ff);
+             color: white;
+             padding: 16px 16px 28px 16px;
+             /*      text-align: center;*/
+             border-radius: 0 0 20px 20px;
+             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+         }
+
+             .header img {
+                 width: 120px;
+                 height: 120px;
+                 border-radius: 12px;
+                 object-fit: cover;
+                 box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+             }
+
+             .header h1 {
+                 font-size: 50px;
+                 margin: 10px 0 5px;
+             }
+
+             .header .price {
+                 font-size: 42px;
+                 font-weight: bold;
+                 color: #ffe066;
+             }
+
+         .cards {
+             margin: 20px 10px 80px;
+             display: flex;
+             flex-direction: column;
+             gap: 14px;
+         }
+
+         .card {
+             background: white;
+             border-radius: 14px;
+             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+             padding: 14px 16px;
+             margin-bottom: 20px;
+         }
+
+             .card h2 {
+                 font-size: 40px;
+                 border-left: 4px solid #0072ff;
+                 padding-left: 8px;
+                 margin-bottom: 10px;
+             }
+
+         .info-grid {
+             display: grid;
+             grid-template-columns: repeat(2, 1fr);
+             gap: 8px 12px;
+         }
+
+         .info-grid2 {
+             display: grid;
+             grid-template-columns: repeat(1, 1fr);
+             gap: 8px 12px;
+         }
+
+         .info-item {
+             background: #f1f3f5;
+             border-radius: 8px;
+             padding: 6px 8px;
+             font-size: 33px;
+         }
+
+         .bottom-bar {
+             position: fixed;
+             bottom: 0;
+             left: 0;
+             width: 100%;
+             background: white;
+             box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+             padding: 10px 16px;
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+         }
+
+             .bottom-bar button {
+                 flex: 1;
+                 margin-left: 8px;
+                 padding: 10px;
+                 background: linear-gradient(135deg, #ff7e5f, #feb47b);
+                 border: none;
+                 color: white;
+                 font-size: 16px;
+                 font-weight: bold;
+                 border-radius: 8px;
+                 cursor: pointer;
+             }
+
+                 .bottom-bar button:active {
+                     transform: scale(0.97);
+                 }
+                 
+     </style>
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部区域 -->
+    <div class="header">
+      <h1>{{ product.name }}</h1>
+      <div style="margin-top:8px;font-size:30px;font-weight:bold;">出库: <div style="color: #ffe066;display:inline-block;font-size:35px;">{{ product.houseName }}</div> </div>
+    </div>
+
+          <!-- 客户信息 -->
+    <div class="cards2" style="margin: 20px 10px 20px;">
+      <div class="card">
+        <h2>信息</h2>
+        <div class="info-grid2">
+          <div class="info-item">
+            总条数：{{ product.count }}
+          </div>
+          <div class="info-item">
+            总金额：{{ product.price }} ￥
+          </div>
+          <div class="info-item">
+            联系电话：{{ product.cellphone }}
+          </div>
+              <div class="info-item">
+    客户名称：{{ product.payClientName }}
+  </div>
+          <div class="info-item">
+            收货地址：{{ product.acceptAddress }}
+          </div>
+        
+        </div>
+      </div>
+    </div>
+    <!-- 卡片区域 -->
+      <div style="    width: 97%;
+    font-size: 40px;
+    font-weight: bold;
+    border-bottom:4px solid #999999;
+    border-radius: 6px;padding-bottom: 5px;
+    margin: 0 auto;">商品详情</div>
+    <div class="cards">
+      <div class="card" v-for="(card, i) in product.details" :key="i">
+        <h2>{{ card.title }}</h2>
+        <div class="info-grid">
+          <div class="info-item" v-for="(item, j) in card.items" :key="j">
+            {{ item.label }}：{{ item.value }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部购买栏 -->
+    <!-- <div class="bottom-bar">
+      <div>总价：<strong style="color:#ff7e5f;">￥{{ product.price }}</strong></div>
+      <button @click="buy">立即购买</button>
+    </div> -->
+  </div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                orderNo: '<%= OrderNo%>',
+                order: {},
+                confirm: {
+                    visible: false,
+                    title: '提示',
+                    content: '确定要执行此操作吗？',
+                    okText: '确定',
+                    cancelText: '取消',
+                    ok: () => { },
+                    cancel: () => { }
+                },
+                message: {
+                    show: false,
+                    content: '',
+                    type: '', // ''(默认), 'success', 'error', 'warning'
+                    timer: null
+                },
+                product: {
+                    name: "",
+                    price: 0,
+                    count: 0,
+                    houseName: '',
+                    payClientName: '',
+                    cellphone: '',
+                    acceptAddress: '',
+                    details: []
+                }
+            },
+            mounted() {
+                this.getData();
+            },
+            methods: {
+                PayStatusStr(str) {
+                    var result = "";
+                    switch (str) {
+                        case "0":
+                            result = '未付款'
+                            break;
+                        case "1": result = '未付款'; break;
+                        case "2": result = '申请退款'; break;
+                        case "3": result = '已退款'; break;
+                        default: break;
+                    }
+                    return result
+                },
+                RefundReasonStr(str) {
+                    var result = "";
+                    switch (str) {
+                        case "1":
+                            result = '商品无货'
+                            break;
+                        case "2": result = '发货时间问题'; break;
+                        case "3": result = '不想要了'; break;
+                        case "4": result = '商品错选/多选'; break;
+                        case "5": result = '地址信息错误'; break;
+                        case "6": result = '商品价格太高'; break;
+                        default: break;
+                    }
+                    return result
+                },
+                formatDate(date) {
+                    const year = date.getFullYear();
+                    const month = this.pad(date.getMonth() + 1);
+                    const day = this.pad(date.getDate());
+                    const hour = this.pad(date.getHours());
+                    const minute = this.pad(date.getMinutes());
+                    const second = this.pad(date.getSeconds());
+                    const weekday = date.getDay() === 0 ? 7 : date.getDay();
+
+                    return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+                },
+                pad(num, length = 2, str = '0') {
+                    return num.toString().padStart(length, str);
+                },
+                getData() {
+                    var that = this;
+                    if (this.orderNo) {
+                        $.ajax({
+                            url: '../WeixinPush/wxApi.aspx?method=QueryOrderDatas',
+                            type: 'post', dataType: 'json', data: { orderNo: that.IsEmpty(that.orderNo) ? '' : that.orderNo },
+                            success: function (text) {
+                                console.log(text)
+                                if (that.IsEmpty(text) == null || text.length == 0) {
+                                    that.showMessage('未获取到订单，请联系管理员！', 'error')
+                                } else {
+                                    var dataF = text[0];
+                                    that.product.name = dataF.OrderNo
+                                    that.product.count = dataF.Piece
+                                    that.product.price = dataF.TotalCharge
+                                    that.product.houseName = dataF.HouseName
+                                    that.product.payClientName = dataF.PayClientName
+                                    that.product.acceptAddress = dataF.AcceptAddress
+                                    that.product.cellphone = dataF.Cellphone
+                                    for (var i = 0; i < dataF.goodsList.length; i++) {
+                                        var goodsData = dataF.goodsList[i];
+                                        var price = parseFloat(goodsData.ActSalePrice) * parseFloat(goodsData.Piece)
+                                        var dd = {
+                                            title: goodsData.ProductName,
+                                            items: [
+                                                { label: "产品编码", value: goodsData.ProductCode },
+                                                { label: "品牌", value: goodsData.TypeName },
+                                                { label: "型号", value: goodsData.Model },
+                                                { label: "载重", value: goodsData.LoadIndex + goodsData.SpeedLevel },
+                                                { label: "花纹", value: goodsData.Figure },
+                                                { label: "规格", value: goodsData.Specs },
+                                                { label: "数量", value: goodsData.Piece },
+                                                { label: "金额", value: (price.toFixed(2)) + ' ¥' }
+                                            ]
+                                        }
+                                        that.product.details.push(dd);
+                                    }
+
+                                }
+
+                            }
+                        });
+                    } else {
+                        that.showMessage('未获取到订单号！', 'warning')
+                    }
+                },
+                DateTimeFormatter(val) {
+                    if (val == null || val == '') {
+                        return ''
+                    }
+                    var dt = this.formatDate((new Date(val)));
+                    return dt
+                },
+                handleRefund() {
+                    var that = this;
+
+                    if (this.IsEmpty(this.order.PayStatus) || this.order.PayStatus != '2') {
+                        that.showMessage('付款状态有误，请联系管理员处理！', 'warning')
+                        return
+                    }
+
+                    if (this.IsEmpty(this.order.Trxid)) {
+                        that.showMessage('收银宝平台流水为空，请联系管理员处理！', 'warning')
+                        return
+                    }
+                    if (this.IsEmpty(that.order.TotalCharge)) {
+                        that.showMessage('退款金额异常，请联系管理员处理！', 'warning')
+                        return
+                    }
+
+                    var ActRefMoney = parseFloat(that.order.TotalCharge);
+                    that.order.IsTransitFee = this.IsEmpty(that.order.IsTransitFee) ? '0' : that.order.IsTransitFee
+                    if (that.order.IsTransitFee == '0') {
+                        ActRefMoney = parseFloat(that.order.TotalCharge) - parseFloat(that.order.TransitFee)
+                    }
+
+                    this.showConfirm({
+                        title: '重要操作',
+                        content: '确认执行退款操作吗？',
+                        okText: '确认',
+                        cancelText: '放弃',
+                        ok: () => {
+                            //alert('操作已执行');
+
+                            //console.log(that.order.WXPayOrderNo, ActRefMoney, that.order.IsTransitFee, that.order.TransitFee)
+                            //return;
+                            $.ajax({
+                                url: "../Finance/financeApi.aspx?method=refund&WXPayOrderNo=" + that.order.WXPayOrderNo + "&ActRefMoney=" + ActRefMoney,
+                                success: function (data) {
+                                    if (data == "SUCCESS") {
+                                        that.showMessage('信息提示:退款成功！', 'success')
+                                    }
+                                    else if (data == "FAIL") {
+                                        that.showMessage('信息提示:退款异常！', 'error')
+                                    }
+
+                                    //$('#dlgrefund').dialog('close')
+                                }
+                            })
+
+                            that.confirm.visible = false
+                        },
+                        cancel: () => {
+                            //alert('操作已取消');
+                            that.confirm.visible = false
+                        }
+                    });
+
+
+
+                },
+                IsEmpty(value) {
+                    // 检查 null/undefined
+                    if (value == null) return true;
+
+                    // 检查空字符串/纯空格
+                    if (typeof value === 'string' && value.trim() === '') return true;
+
+                    // 检查空数组
+                    if (Array.isArray(value) && value.length === 0) return true;
+
+                    // 检查空对象
+                    if (value.constructor === Object && Object.keys(value).length === 0) return true;
+
+                    return false;
+
+                },
+                // 显示简单确认框
+                showSimpleConfirm() {
+                    this.showConfirm({
+                        title: '操作确认',
+                        content: '确定要删除这条数据吗？',
+                        ok: () => {
+                            alert('你点击了确定');
+                        },
+                        cancel: () => {
+                            alert('你点击了取消');
+                        }
+                    });
+                },
+
+                // 显示自定义确认框 
+                showCustomConfirm() {
+                    var that = this;
+                    this.showConfirm({
+                        title: '重要操作',
+                        content: '此操作不可撤销，确定要继续吗？',
+                        okText: '确认',
+                        cancelText: '放弃',
+                        ok: () => {
+                            //alert('操作已执行');
+                            that.confirm.visible = false
+                        },
+                        cancel: () => {
+                            //alert('操作已取消');
+                            that.confirm.visible = false
+                        }
+                    });
+                },
+
+                // 通用显示确认框方法
+                showConfirm(options) {
+                    this.confirm = {
+                        ...this.confirm,
+                        ...options,
+                        visible: true
+                    };
+                },
+
+                showMessage(content, type = '') {
+                    // 清除之前的定时器 
+                    if (this.message.timer) {
+                        clearTimeout(this.message.timer);
+                    }
+
+                    // 设置新消息 
+                    this.message = {
+                        show: true,
+                        content: content,
+                        type: type,
+                        timer: null
+                    };
+
+                    // 3秒后自动隐藏 
+                    this.message.timer = setTimeout(() => {
+                        this.hideMessage();
+                    }, 3000);
+                },
+                hideMessage() {
+                    this.message.show = false;
+                    if (this.message.timer) {
+                        clearTimeout(this.message.timer);
+                        this.message.timer = null;
+                    }
+                }
+
+            }
+        });
+    </script>
+</body>
+</html>
