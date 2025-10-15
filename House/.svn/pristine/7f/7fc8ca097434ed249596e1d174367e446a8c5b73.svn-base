@@ -4739,7 +4739,6 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
         }
         #endregion
         #region 安全库存操作方法集合
-
         /// <summary>
         /// 查询安全库存数据
         /// </summary>
@@ -5064,21 +5063,6 @@ WHERE
     AND fo.OrderType <> 2 --筛除退货单
     AND ISNULL(p.ProductCode, '') <> '' 
 GROUP BY p.ProductCode, p.TypeID, p.HouseID
-UNION ALL
-
-SELECT
-    'ReplenishmentOrder' AS Src,
-	rog.ProductCode, 
-	rog.TypeID,
-	ro.FromHouse HouseID,
-	SUM(rog.Piece - rog.DonePiece) Piece
-FROM
-	Tbl_Cargo_RplOrderGoods rog 
-	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
-WHERE
-	ro.Status NOT IN (2,3)
-GROUP BY 
-	rog.ProductCode, rog.TypeID, ro.FromHouse
 ) a 
 WHERE (1=1) @{conditions};
 ");
@@ -5762,21 +5746,6 @@ WHERE
     AND fo.OrderType <> 2 --筛除退货单
     AND ISNULL(p.ProductCode, '') <> '' 
 GROUP BY p.ProductCode, p.TypeID, p.HouseID
-UNION ALL
-
-SELECT
-    'ReplenishmentOrder' AS Src,
-	rog.ProductCode, 
-	rog.TypeID,
-	ro.FromHouse HouseID,
-	SUM(rog.Piece - rog.DonePiece) Piece
-FROM
-	Tbl_Cargo_RplOrderGoods rog 
-	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
-WHERE
-	ro.Status NOT IN (2,3)
-GROUP BY 
-	rog.ProductCode, rog.TypeID, ro.FromHouse
 ) a 
 WHERE (1=1) @{conditions};
 ");

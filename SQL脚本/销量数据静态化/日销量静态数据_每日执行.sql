@@ -39,7 +39,7 @@ CREATE UNIQUE INDEX IX_#childArea
 ON #childArea (HouseID,AreaID)
 INCLUDE(RootArea);
 
-DECLARE @YesterdayDate DATE = CAST(DATEADD(DAY, -7, GETDATE()) AS DATE) 
+DECLARE @YesterdayDate DATE = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) 
 
 --SELECT * FROM Tbl_Cargo_DailySaleStatic WHERE SalesDate > @YesterdayDate
 PRINT('------------ 昨日是否有数据 ------------')
@@ -77,7 +77,7 @@ WHERE a.ThrowGood != 25 --非退仓单
     AND a.OrderModel = 0  --订单类型为客户单，非退货单
     AND c.SpecsType != 5  --非次日达
     AND ISNULL(c.ProductCode, '') <> '' 
-	AND CAST(a.CreateDate AS DATE) =  CAST(DATEADD(DAY, -5, GETDATE()) AS DATE) 
+	AND CAST(a.CreateDate AS DATE) = @YesterdayDate
 GROUP BY CAST(a.CreateDate AS DATE), c.ProductCode, c.TypeID, c.HouseID, ca.RootArea
 ORDER BY CAST(a.CreateDate AS DATE), c.ProductCode, c.TypeID, c.HouseID, ca.RootArea
 
