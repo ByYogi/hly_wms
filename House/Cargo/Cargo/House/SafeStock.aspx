@@ -1057,7 +1057,6 @@
                 $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择一条数据！', 'warning');
                 return;
             }
-            //test
             $("#ProductCode").textbox('setValue', row.ProductCode);
             $("#ProductName").textbox('setValue', row.TypeName + " " + row.Specs + " " + row.Figure + " " + row.LoadIndex + row.SpeedLevel);
             $('#TypeName').val(row.TypeName)
