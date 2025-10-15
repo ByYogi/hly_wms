@@ -41,9 +41,9 @@ INCLUDE(RootArea);
 
 DECLARE @YesterdayDate DATE = CAST(DATEADD(DAY, -1, GETDATE()) AS DATE) 
 
---SELECT * FROM Tbl_Cargo_DailySaleStatic WHERE SalesDate > @YesterdayDate
+--SELECT * FROM Tbl_Cargo_DailySaleStatic WHERE SalesDate = @YesterdayDate
 PRINT('------------ 昨日是否有数据 ------------')
-SELECT TOP 1 1 FROM Tbl_Cargo_DailySaleStatic WHERE CAST(SalesDate AS DATE) = @YesterdayDate 
+--SELECT TOP 1 1 FROM Tbl_Cargo_DailySaleStatic WHERE CAST(SalesDate AS DATE) = @YesterdayDate 
 
 PRINT('------------ 删除昨日数据 ------------')
 DELETE Tbl_Cargo_DailySaleStatic WHERE SalesDate = @YesterdayDate
