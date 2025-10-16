@@ -50,8 +50,11 @@ using static System.Net.WebRequestMethods;
 
 namespace Cargo
 {
+    using Microsoft.Win32;
+
     public partial class Test : System.Web.UI.Page
     {
+
         private string GetContiUrl()
         {
             return ConfigurationSettings.AppSettings["ContiUrl"];
