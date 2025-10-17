@@ -109,6 +109,16 @@
                     }).combobox('setValue', '1');
                 });
 
+                columns.push({ title: '', field: 'OOSID', checkbox: true, width: '10%' });
+                columns.push({
+                    title: '产品代码', field: 'ProductCode', width: '105px'
+                });
+                columns.push({
+                    title: '产品名称', field: 'ProductName', width: '105px'
+                });
+                columns.push({
+                    title: '品牌', field: 'TypeName', width: '65px'
+                });
                 columns.push({
                     title: '规格', field: 'Specs', width: '65px'
                 });
@@ -200,19 +210,6 @@
                     url: null,
                     toolbar: '#oosTblTollbar',
                     columns: [columns],
-                    frozenColumns: [[
-                { title: '', field: 'OOSID', checkbox: true, width: '10%' },
-                {
-                    title: '产品代码', field: 'ProductCode', width: '105px'
-                },
-                {
-                    title: '产品名称', field: 'ProductName', width: '105px'
-                },
-                {
-                    title: '品牌', field: 'TypeName', width: '65px'
-                },
-
-                    ]],
                     onLoadSuccess: function(){
                         // 数据加载完成后，让每一行进入编辑状态
                         var rows = $(this).datagrid('getRows');

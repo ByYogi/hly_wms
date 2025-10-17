@@ -10212,8 +10212,6 @@ GROUP BY
 --安全库存配置
 SELECT
 	ss.SID,
-    ss.MinStockDay,
-    ss.MaxStockDay,
 	ss.MinStock,
 	ss.MaxStock,
 	ISNULL(mss.WeightedMonthSale, 0) WeightedMonthSale,
@@ -10300,8 +10298,6 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
                                     ParentHouseID = dr.Field<int?>("HouseParentID"),
                                     ParentHouseName = dr.Field<string>("HouseParentName"),
 
-                                    MinStockDay = dr.Field<int>("MinStockDay"),
-                                    MaxStockDay = dr.Field<int>("MaxStockDay"),
                                     MinStock = dr.Field<int>("MinStock"),
                                     MaxStock = dr.Field<int>("MaxStock"),
                                     SrcPiece = dr.Field<int>("InPiece"),
@@ -11383,9 +11379,6 @@ INSERT INTO
 		TypeID,
 		TypeName,
 		Piece,
-        MinStockDay,
-        MaxStockDay,
-        DOI,
 		MinStock,
 		MaxStock,
 		SrcPiece,
@@ -11413,9 +11406,7 @@ VALUES
                         int sysPiece = 0;
                         AreaName = "";
 
-                        int minstockday, maxstockday, doi, minstock, maxstock, srcpiece, restockingqty, intransiqty, avgSalsum;
-                        minstockday = row.MinStockDay.GetValueOrDefault();
-                        maxstockday = row.MaxStockDay.GetValueOrDefault();
+                        int minstock, maxstock, srcpiece, restockingqty, intransiqty, avgSalsum;
                         minstock = row.MinStock.GetValueOrDefault();
                         maxstock = row.MaxStock.GetValueOrDefault();
                         srcpiece = row.SrcPiece.GetValueOrDefault();
@@ -11423,21 +11414,8 @@ VALUES
                         intransiqty = row.InTransitQty.GetValueOrDefault();
                         avgSalsum = row.AvgSalSUM.GetValueOrDefault();
 
-
-                        //计算库存度天数
-                        double dayAvgSaleDouble = avgSalsum == 0 ? 0 : Math.Ceiling(avgSalsum / 30d);
-                        int dayAvgSaleNum = Convert.ToInt32(Math.Ceiling(dayAvgSaleDouble)); //日均销量
-
-                        if (srcpiece > 0 && dayAvgSaleNum > 0)
-                        {
-                            doi = Convert.ToInt32(Math.Floor((double)(srcpiece / dayAvgSaleNum)));
-                            doi = Math.Max(1, doi); // 苏老师：0表示该货品未启用状态，所以最少显示1天
-                        }
-                        else
-                        {
-                            doi = 0;
-                        }
                         sysPiece = Math.Max(0, maxstock - row.SrcRealPiece);
+
                         //验证产品是否存在
                         if (!ProductID.HasValue) throw new ApplicationException("请传入产品ID");
                         var productData = prdctMan.QueryProductInfoByProductID(ProductID.Value);
@@ -11475,10 +11453,6 @@ VALUES
                         string typeIDParam = "@TypeID" + rowIndex;
                         string typeNameParam = "@TypeName" + rowIndex;
                         string pieceParam = "@Piece" + rowIndex;
-
-                        string minstockdayParam = "@MinStockDay" + rowIndex;
-                        string maxstockdayParam = "@MaxStockDay" + rowIndex;
-                        string doiParam = "@DOI" + rowIndex;
                         string minstockParam = "@MinStock" + rowIndex;
                         string maxstockParam = "@MaxStock" + rowIndex;
                         string srcPieceParam = "@SrcPiece" + rowIndex;
@@ -11490,7 +11464,7 @@ VALUES
                         sqlvaluesStrList.Add($"({rplIDParam}, {productIDParam}, {sidParam}, {productNameParam}, {productCodeParam}, {goodsCodeParam}, " +
                             $"{houseIDParam}, {houseNameParam}, {areaIDParam}, {areaNameParam}, " +
                             $"{typeCateParam}, {typeCateNameParam}, {typeIDParam}, {typeNameParam}, {pieceParam}," +
-                            $"{minstockdayParam}, {maxstockdayParam}, {doiParam}, {minstockParam}, {maxstockParam}, {srcPieceParam}, " +
+                            $"{minstockParam}, {maxstockParam}, {srcPieceParam}, " +
                             $"{restockingqtyParam}, {intransiQtyParam}, {avgSalsum}, {createDateParam})");
 
                         rowssqlParameters.AddRange(new List<SqlParameter>()
@@ -11513,9 +11487,6 @@ VALUES
                             new SqlParameter(typeCateNameParam, SqlDbType.NVarChar, 50) { Value = row.TypeCateName },
                             new SqlParameter(houseIDParam, SqlDbType.Int) { Value = HouseID},
                             new SqlParameter(houseNameParam, SqlDbType.NVarChar, 50) { Value = HouseName},
-                            new SqlParameter(minstockdayParam, SqlDbType.Int) { Value = minstockday },
-                            new SqlParameter(maxstockdayParam, SqlDbType.Int) { Value = maxstockday },
-                            new SqlParameter(doiParam, SqlDbType.Int) { Value = doi },
                             new SqlParameter(minstockParam, SqlDbType.Int) { Value = minstock },
                             new SqlParameter(maxstockParam, SqlDbType.Int) { Value = maxstock },
                             new SqlParameter(srcPieceParam, SqlDbType.Int) { Value = srcpiece },
@@ -11634,8 +11605,6 @@ WHEN NOT MATCHED THEN
         TypeID,
         TypeName,
         Piece,
-        OldPiece,
-        OOSStatus,
         CreateDate,
         UpdateDate
     )
@@ -11658,8 +11627,6 @@ WHEN NOT MATCHED THEN
         source.TypeID,
         source.TypeName,
         source.Piece,
-        default,
-        default,
         source.CreateDate,
         source.UpdateDate
     )
@@ -11978,10 +11945,6 @@ SELECT
     p.LoadIndex,
     p.SpeedLevel,
     p.Batch,
-    oosLg.AvgSalSUM,
-    oosLg.DOI,
-    oosLg.MinStockDay,
-    oosLg.MaxStockDay,
     oosLg.MinStock,
     oosLg.MaxStock
 FROM Tbl_Cargo_OutOfStock oos
@@ -12018,12 +11981,7 @@ WHERE (1=1) AND oos.Piece > 0
                     conditions.Add("ParentHouse = @ParentHouse");
                     parameters.Add(new SqlParameter("@ParentHouse", SqlDbType.Int) { Value = queryParams.ParentHouse.Value });
                 }
-                if (queryParams.OOSStatus.HasValue && queryParams.OOSStatus >= 0)
-                {
-                    conditions.Add("OOSStatus = @OOSStatus");
-                    parameters.Add(new SqlParameter("@OOSStatus", SqlDbType.Int) { Value = queryParams.OOSStatus.Value });
-                }
-                
+
                 if (conditions.Count > 0)
                 {
                     strbld = strbld.Replace("@{conditions}", "AND " + string.Join(" AND ", conditions));
@@ -12047,7 +12005,6 @@ WHERE (1=1) AND oos.Piece > 0
                             sqlData.Add(new CargoOutOfStockDto
                             {
                                 OOSID = dr.Field<int?>("OOSID"),
-                                OOSStatus = dr.Field<byte?>("OOSStatus"),
                                 OOSLogID = dr.Field<int?>("OOSLogID"),
                                 OOSLogRowID = dr.Field<int?>("OOSLogRowID"),
                                 ProductID = dr.Field<long?>("ProductID"),
@@ -12067,11 +12024,9 @@ WHERE (1=1) AND oos.Piece > 0
                                 TypeName = dr.Field<string>("TypeName"),
                                 OldPiece = dr.Field<int?>("OldPiece"),
                                 Piece = dr.Field<int?>("Piece"),
-                                ConfirmPiece = dr.Field<int?>("Piece"),
                                 CreateDate = dr.Field<DateTime?>("CreateDate"),
                                 UpdateDate = dr.Field<DateTime?>("UpdateDate"),
 
-                                
                                 InTransitStock = dr.Field<int?>("InTransitStock"),
                                 CurStock = dr.Field<int?>("CurStock"),
                                 RestockingPiece = dr.Field<int?>("RestockingPiece"),
@@ -12083,10 +12038,6 @@ WHERE (1=1) AND oos.Piece > 0
                                 Batch = dr.Field<string>("Batch"),
                                 MaxStock = dr.Field<int?>("MaxStock"),
                                 MinStock = dr.Field<int?>("MinStock"),
-                                AvgSaleNum = dr.Field<int?>("AvgSalSUM"),
-                                DOI = dr.Field<int?>("DOI"),
-                                MinStockDay = dr.Field<int?>("MinStockDay"),
-                                MaxStockDay = dr.Field<int?>("MaxStockDay"),
                             });
                         }
                         result.Data = sqlData;
