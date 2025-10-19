@@ -28,7 +28,8 @@ namespace House.Entity.Dto.Order
         public string SpeedLevel { get; set; } //速度级别
         public int? Piece { get; set; }               // 补货数量
         public int? SysPiece { get; set; }               // 建议补货数量
-        public int? DonePiece { get; set; }               
+        public int? DonePiece { get; set; }
+        public string Remark { get; set; }
 
         public DateTime? CreateDate { get; set; }         
         public DateTime? UpdateDate { get; set; }
@@ -36,13 +37,16 @@ namespace House.Entity.Dto.Order
         //工具字段
         public int? ParentHouseID { get; set; }
         public string ParentHouseName { get; set; }
+        public int? ConfirmPiece { get; set; }               // 确认数量
 
         //计算字段
         public string LISS { get => LoadIndex + SpeedLevel; } //LoadIndex SpeedSymbol 载重指数 + 速度级别
 
 
         //其它字段
-        public int OOSID { get; set; }
+        public int? OOSID { get; set; }
+        public int? OOSLogID { get; set; }
+        public int? OOSLogRowID { get; set; }
     }
 
     public class CargoRplOrderGoodsListDto : ListResponsBase<CargoRplOrderGoodsDto>

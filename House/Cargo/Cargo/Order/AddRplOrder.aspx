@@ -346,7 +346,9 @@
                         title: '完成数量', field: 'DonePiece', width: '80px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
-                    }];
+                    },
+                
+                    { title: '备注', field: 'Remark', width: '175px'},];
                 
                 //补货单详情
                 $('#roDg2').datagrid({
@@ -825,42 +827,53 @@
                 console.log("rows", {HouseID:ReqHouseID,
 Remark:Remark,
 Rows:RowsJson,})
-                        $.messager.progress("close");
-                $('#dlg').dialog('close');
-                oosSearch();
-                roSearchh();
-                return;
-                $('#fmDep').form('submit', {
+                // $.messager.progress("close");
+                // $('#dlg').dialog('close');
+                // return;
+                var postData = {
+                    HouseID: ReqHouseID,
+                    Remark: Remark,
+                    Rows: RowsJson
+                };
+
+                $.ajax({
                     url: 'orderApi.aspx?method=AddRplOrder',
-                    contentType: "application/json;charset=utf-8", dataType: "json",
-                    onSubmit: function (param) {
-                        param.HouseID = ReqHouseID;
-                        param.Remark = Remark;
-                        param.Rows = RowsJson;
-                        return;
+                    type: 'POST',
+                    data: postData,
+                    beforeSend: function () {
+                        $.messager.progress({ text: '正在提交，请稍候...' });
+                        $('#btnSave').linkbutton('disable');
                     },
                     success: function (resps) {
+                        $.messager.progress('close');
                         $('#dlg').dialog('close');
                         $('#btnSave').linkbutton('enable');
+
+                        console.log(resps);
                         resps = JSON.parse(resps);
-                        console.log(resps)
                         if (resps.Success) {
-                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功', 'warning');
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion() %>', '保存成功', 'info');
                             reset();
                         } else {
-                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + resps.Message, 'warning');
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion() %>', '保存失败：' + resps.Message, 'warning');
                         }
                     },
-                })
+                    error: function (xhr, status, error) {
+                        $.messager.progress('close');
+                        $('#btnSave').linkbutton('enable');
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion() %>', '保存失败：' + error, 'error');
+                    }
+                });
+
             }
             function reset() {
-                $('#roDg').datagrid('loadData', { total: 0, rows: [] });
+                // $('#roDg').datagrid('loadData', { total: 0, rows: [] });
+                // var title = "";
+                // $('#roDg').datagrid("getPanel").panel("setTitle", title);
                 $('#ReqHouseOpts').combobox('setValue', '');
-                $('#RplQty').numberbox('setValue',0);
                 $('#RplRemark').textbox('setValue', '')
-                var title = "";
-                $('#roDg').datagrid("getPanel").panel("setTitle", title);
                 oosSearch();
+                roSearchh();
             }
             //业务员选择方法
             function onSaleManIDChanged(item) {
