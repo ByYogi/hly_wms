@@ -2,6 +2,7 @@
 using House.Entity.Cargo;
 using House.Entity.Cargo.House;
 using House.Entity.Cargo.Product;
+using House.Entity.Dto.Order.CargoRpl;
 using House.Manager;
 using House.Manager.Cargo;
 using System;
@@ -18,6 +19,10 @@ namespace House.Business.Cargo
     /// </summary>
     public class CargoHouseBus
     {
+        private string _userid = string.Empty;
+        private string _username = string.Empty;
+        private string _ipaddress = string.Empty;
+
         #region 仓库管理操作方法集合
         private CargoHouseManager man = new CargoHouseManager();
         private CargoFactoryOrderManager foman = new CargoFactoryOrderManager();
@@ -709,7 +714,6 @@ namespace House.Business.Cargo
                     log.Memo = "入库操作：产品类型ID：" + entity[0].TypeID.ToString();
                     foreach (var it in entity)
                     {
-                        man.AddContainerGoods(it);
                         ////1.判断目标货位在货位产品表中是否存在 根据目标货位ID，旧货位产品类型ID，产品ID判断
                         //CargoContainerGoodsEntity good = man.IsExistCargoContainerGoods(new CargoContainerGoodsEntity { ContainerID = it.ContainerID, TypeID = it.TypeID, ProductID = it.ProductID });
                         //if (good != null && good.ID != 0)//说明存在 增加进去就OK
@@ -732,6 +736,7 @@ namespace House.Business.Cargo
                         //    //    man.AddContainerGoods(it);
                         //    //}
                         //}
+                        man.AddContainerGoods(it);
                         //保存入库单表
                         man.AddInContainerGoods(it);
                         //修改货位上的产品件数
@@ -745,6 +750,31 @@ namespace House.Business.Cargo
                     }
                     lw.WriteLog(log);
                     scope.Complete();
+
+                    //入库成功后，检查并更新缺货产品数据
+                    var containerIDs = entity.Select(c => c.ContainerID).ToArray();
+                    var containerData = man.QueryAreaByContainer(containerIDs);
+                    if(containerData.Count() > 0)
+                    {
+
+                        List<UpdateOOSGoodsParam> oosGdsParams = entity.Select(i => new UpdateOOSGoodsParam()
+                        {
+                            ProductID = i.ProductID,
+                            AreaID = containerData.FirstOrDefault(c => c.ContainerID == i.ContainerID)?.AreaID ?? 0,
+                        }).Where(c => c.AreaID != 0).ToList();
+                        UpdateOOSParam oosParams = new UpdateOOSParam()
+                        {
+                            UserID = _userid,
+                            UserName = _username,
+                            ReasonTag = "IO",
+                            SrcType = 5,
+                            SrcID = null,
+                            SrcCode = string.Empty,
+                            Rows = oosGdsParams
+                        };
+                        CargoOrderBus ordrBus = new CargoOrderBus();
+                        ordrBus.TryUpdateOutOfStock(oosParams);
+                    }
                 }
                 catch (ApplicationException ex)
                 {
@@ -1028,7 +1058,32 @@ namespace House.Business.Cargo
 
                     log.Memo += " 所在仓库：" + it.HouseName + " 所在区域：" + it.AreaName + " 产品类型：" + it.TypeName + " 产品名称：" + it.ProductName + " 型号：" + it.Model + " 规格：" + it.Specs + " 花纹：" + it.Figure + " 货位ID：" + it.ContainerID.ToString() + " 产品类型ID：" + it.TypeID.ToString() + " 产品ID：" + it.ProductID.ToString() + " 出库件数：" + it.Piece.ToString() + " 业务员销售价：" + it.ActSalePrice.ToString() + " 进仓价:" + it.SupplySalePrice.ToString();
                 }
+
                 lw.WriteLog(log);
+                
+                //出库成功后，检查并更新缺货产品数据
+                var containerIDs = entity.Select(c => c.ContainerID).ToArray();
+                var containerData = man.QueryAreaByContainer(containerIDs);
+                if (containerData.Count() > 0)
+                {
+                    List<UpdateOOSGoodsParam> oosGdsParams = entity.Select(i => new UpdateOOSGoodsParam()
+                    {
+                        ProductID = i.ProductID,
+                        AreaID = containerData.FirstOrDefault(c => c.ContainerID == i.ContainerID)?.AreaID ?? 0,
+                    }).Where(c => c.AreaID != 0).ToList();
+                    UpdateOOSParam oosParams = new UpdateOOSParam()
+                    {
+                        UserID = _userid,
+                        UserName = _username,
+                        ReasonTag = "OO",
+                        SrcType = 6,
+                        SrcID = null,
+                        SrcCode = string.Empty,
+                        Rows = oosGdsParams
+                    };
+                    CargoOrderBus ordrBus = new CargoOrderBus();
+                    ordrBus.TryUpdateOutOfStock(oosParams);
+                }
             }
             catch (ApplicationException ex)
             {

@@ -5927,7 +5927,7 @@ SELECT
   cs.Piece AS CurNum,
   cs.Piece + COALESCE(ms.Piece, 0) - f.StockNum AS LessNum,
   CAST(ISNULL(avs.AvgMonthSale, 0) AS INT) AS WeightedAvgSaleNum,
-  CAST(ISNULL(avs.TotalPiece, 0) / 3  AS INT) AS AvgSaleNum
+  CAST(ISNULL(avs.AvgMonthSale, 0) AS INT) AS AvgSaleNum
 FROM 
     Tbl_Cargo_SafeStock AS f
   INNER JOIN #tempCurStock AS cs 

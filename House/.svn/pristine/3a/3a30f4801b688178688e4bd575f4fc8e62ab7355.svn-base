@@ -1,4 +1,4 @@
-﻿<%@ Page Title="订单管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="OrderManager.aspx.cs" Inherits="Cargo.Order.OrderManager" %>
+﻿<%@ Page Title="订单管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="ReserveOrderManager.aspx.cs" Inherits="Cargo.Order.ReserveOrderManager" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <script src="../JS/Rotate/jQueryRotate.2.2.js" type="text/javascript"></script>
@@ -116,6 +116,7 @@
         //页面加载显示遮罩层
         var pc;
         var LogiName =<%=UserInfor.LoginName%>;
+
         var IsQueryLockStock = null;
         $.ajax({
             url: "../Product/productApi.aspx?method=IsLockWarehouse",
@@ -155,8 +156,8 @@
             $('#saPanel').parent('div').css('width', bodyWidth + 'px');
         }, 100);
 
-
         window.onload = function () {
+            
             adjustment();
             $.ajaxSetup({ async: true });
             $.getJSON("../Client/clientApi.aspx?method=QueryAllUpClientDep", function (data) {
@@ -182,6 +183,7 @@
                     }
                 }
             });
+           
             $("#ARemark").focus(function () {
                 $('#ARemark').val($('#HiddenRemark').val());
             });
@@ -203,11 +205,15 @@
             $("[name='qDep']").hide();
         }
         $(window).resize(function () {
+            console.log(1)
             adjustment();
         });
         function adjustment() {
             var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
-            $('#dg').datagrid({ height: height });
+            $('#dg').datagrid({ height: (height * 0.58) });
+            $('#dg2').datagrid({ height: (height * 0.4) });
+            $('#dg3').datagrid({ height: (height * 0.4) });
+            $('#dg4').datagrid({ height: (height * 0.4) });
         }
         var RoleCName = "<%=UserInfor.RoleCName%>";
         var HouseName = "<%=UserInfor.HouseName%>";
@@ -224,7 +230,6 @@
                 $("td.AcceptPeople").hide();
                 $("td.Dest").hide();
                 $("td.PID").hide();
-                $("td.AOrderType").hide();
                 $("td.AOutCargoType").hide();
                 $("td.AcceptUnit").hide();
                 $("td.ACreateAwb").hide();
@@ -416,11 +421,6 @@
                             }
                         });
                     }
-                    columns.push({
-                        title: '客户名称', field: 'PayClientName', width: '120px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    });
                     columns.push({
                         title: '公司名称', field: 'AcceptUnit', width: '120px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
@@ -779,7 +779,127 @@
                     };
 
                 },
-                onDblClickRow: function (index, row) { editItemByID(index); }
+                onDblClickRow: function (index, row) {}
+            });
+
+            $('#dg2').datagrid({
+                width: '100%',
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'HouseName',
+                url: null,
+                columns: [
+                    [{
+                        title: '仓库', field: 'HouseName', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '件数', field: 'Piece', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '销售价', field: 'ActSalePrice', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '产品编码', field: 'ProductCode', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '品牌', field: 'TypeName', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '型号', field: 'Model', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '货品代码', field: 'GoodsCode', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '花纹', field: 'Figure', width: '100px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    ]
+                ],
+            });
+            $('#dg3').datagrid({
+                width: '100%',
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'HouseName',
+                url: null,
+                columns: [
+                    [{
+                        title: '微信系统支付订单号', field: 'WXPayOrderNo', width: '150px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '支付类型', field: 'PaymentStatus', width: '100px',
+                        formatter: function (val, row, index) {
+                            if (val == "0") { return "未支付"; }
+                            else if (val == "1") { return "定金"; }
+                            else if (val == "2") { return "尾款"; }
+                            else { return "未支付"; }
+                        }
+                    },
+                    {
+                        title: '收银宝平台流水', field: 'Trxid', width: '120px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    ]
+                ],
+            });
+            $('#dg4').datagrid({
+                width: '100%',
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'HouseName',
+                url: null,
+                columns: [
+                    [{
+                        title: '预订单明细ID', field: 'OrderGoodsID', width: '130px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '采购单明细ID', field: 'PurOrderGoodsID', width: '130px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    ]
+                ],
             });
             var datenow = new Date();
             //$('#StartDate').datebox('setValue', getLastDayFormatDate(datenow));
@@ -789,7 +909,6 @@
             $('#EndDate').datebox('textbox').bind('focus', function () { $('#EndDate').datebox('showPanel'); });
             $('#Dep').combobox('textbox').bind('focus', function () { $('#Dep').combobox('showPanel'); });
             $('#Dest').combobox('textbox').bind('focus', function () { $('#Dest').combobox('showPanel'); });
-            $('#AOrderType').combobox('textbox').bind('focus', function () { $('#AOrderType').combobox('showPanel'); });
             //$('#CheckOutType').combobox('textbox').bind('focus', function () { $('#CheckOutType').combobox('showPanel'); });
             //所在仓库
             $('#AHouseID').combobox({
@@ -836,22 +955,6 @@
             var Burl = '../Client/clientApi.aspx?method=QueryBusinessIDDefault';
             $('#BusinessID').combobox('reload', Burl);
 
-            //一级产品
-            //$('#APID').combobox({
-            //    url: '../Product/productApi.aspx?method=QueryALLOneProductType', valueField: 'TypeID', textField: 'TypeName',
-            //    onSelect: function (rec) {
-            //        $('#ASID').combobox('clear');
-            //        $('#ASID').combobox({
-            //            url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + rec.TypeID, valueField: 'TypeID', textField: 'TypeName', AddField: 'PinyinName',
-            //            filter: function (q, row) {
-            //                var opts = $(this).combobox('options');
-            //                return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
-            //            },
-            //        });
-            //    }
-            //});
-            //$('#APID').combobox('textbox').bind('focus', function () { $('#APID').combobox('showPanel'); });
-            //$('#ASID').combobox('textbox').bind('focus', function () { $('#ASID').combobox('showPanel'); });
             $('#ThrowGood').combobox('textbox').bind('focus', function () { $('#ThrowGood').combobox('showPanel'); });
             $('#ASaleManID').combobox('textbox').bind('focus', function () { $('#ASaleManID').combobox('showPanel'); });
             var value2 = 0
@@ -931,19 +1034,6 @@
                 $("#ACreateAwb").textbox("readonly", true);
             }
             else if (RoleCName.indexOf("安泰路斯") >= 0) {
-                //$('#APID').combobox('setValue', '1');
-                //$("#APID").combobox("readonly", true);
-                //$('#APID').combobox('textbox').unbind('focus');
-                //$('#APID').combobox('textbox').css('background-color', '#e8e8e8');
-                //一级产品
-                //$('#ASID').combobox('clear');
-                //$('#ASID').combobox({
-                //    url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=1', valueField: 'TypeID', textField: 'TypeName', AddField: 'PinyinName',
-                //    filter: function (q, row) {
-                //        var opts = $(this).combobox('options');
-                //        return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
-                //    },
-                //});
 
                 $('#ASID').combobox('setValue', '258');
                 $("#ASID").combobox("readonly", true);
@@ -963,9 +1053,6 @@
                 $("#ThrowGood").combobox("readonly", true);
                 $('#ThrowGood').combobox('textbox').unbind('focus');
                 $('#ThrowGood').combobox('textbox').css('background-color', '#e8e8e8');
-                $("#AOrderType").combobox("readonly", true);
-                $('#AOrderType').combobox('textbox').unbind('focus');
-                $('#AOrderType').combobox('textbox').css('background-color', '#e8e8e8');
                 $("#AOutCargoType").combobox("readonly", true);
                 $('#AOutCargoType').combobox('textbox').unbind('focus');
                 $('#AOutCargoType').combobox('textbox').css('background-color', '#e8e8e8');
@@ -992,9 +1079,6 @@
                 $("#ThrowGood").combobox("readonly", true);
                 $('#ThrowGood').combobox('textbox').unbind('focus');
                 $('#ThrowGood').combobox('textbox').css('background-color', '#e8e8e8');
-                $("#AOrderType").combobox("readonly", true);
-                $('#AOrderType').combobox('textbox').unbind('focus');
-                $('#AOrderType').combobox('textbox').css('background-color', '#e8e8e8');
                 $("#AOutCargoType").combobox("readonly", true);
                 $('#AOutCargoType').combobox('textbox').unbind('focus');
                 $('#AOutCargoType').combobox('textbox').css('background-color', '#e8e8e8');
@@ -1005,7 +1089,7 @@
         function dosearch() {
             $('#dg').datagrid('clearSelections');
             var gridOpts = $('#dg').datagrid('options');
-            gridOpts.url = 'orderApi.aspx?method=QueryOrderInfo';
+            gridOpts.url = 'orderApi.aspx?method=QueryReserveOrder';
             $('#dg').datagrid('load', {
                 OrderNo: $('#AOrderNo').val(),
                 LogisAwbNo: $('#LogisAwbNo').val(),
@@ -1016,7 +1100,6 @@
                 FinanceSecondCheck: '-1',
                 CheckOutType: '',
                 ThrowGood: $("#ThrowGood").combobox('getValue'),
-                OrderType: $("#AOrderType").combobox('getValue'),
                 OpenOrderSource: $("#OpenOrderSource").combobox('getValue'),
                 AwbStatus: $("#AAwbStatus").combobox('getValue'),
                 Dep: $("#Dep").combobox('getText'),
@@ -1028,7 +1111,6 @@
                 OutHouseName: $("#PID").combobox('getText'),
                 AcceptUnit: $('#AcceptUnit').val(),
                 OrderModel: "0",//订单类型
-                LineID: $("#ALineID").combobox('getValue'),
                 HAwbNo: $('#AHAwbNo').val(),
                 OutCargoType: $("#AOutCargoType").combobox('getValue'),
                 PostponeShip: $("#PostponeShip").combobox('getValue'),
@@ -1139,20 +1221,6 @@
                     <input id="LogisAwbNo" class="easyui-textbox" data-options="prompt:'请输入物流单号'" style="width: 100px" />
                 </td>
 
-
-                <td class="AOrderType" style="text-align: right;">下单方式:
-                </td>
-                <td class="AOrderType">
-                    <select class="easyui-combobox" id="AOrderType" style="width: 100px;" panelheight="auto" editable="false">
-                        <option value="-1">全部</option>
-                        <option value="0">电脑单</option>
-                        <option value="1">企业微信单</option>
-                        <option value="2">商城下单</option>
-                        <option value="3">APP下单</option>
-                        <option value="4">小程序单</option>
-                    </select>
-                </td>
-
                 <td class="ATrafficType" style="text-align: right;">订单模式:
                 </td>
                 <td class="ATrafficType">
@@ -1163,13 +1231,18 @@
                         <option value="2">采购订单</option>
                     </select>
                 </td>
-
+                                <td class="ACreateAwb" style="text-align: right;">开单员:
+</td>
+<td class="ACreateAwb">
+    <input id="ACreateAwb" class="easyui-textbox" data-options="prompt:'请输入开单员'" style="width: 210px" />
+</td>
                 <td style="text-align: right;">业务名称:
                 </td>
                 <td>
-                    <input id="BusinessID" class="easyui-combobox" style="width: 120px;"
+                    <input id="BusinessID" class="easyui-combobox" style="width: 100px;"
                         data-options="valueField: 'ID',textField: 'DepName'" />
                 </td>
+               
             </tr>
             <tr>
                 <td class="AcceptUnit" style="text-align: right;">客户名称:
@@ -1182,20 +1255,11 @@
                 <td>
                     <input id="shopCode" class="easyui-textbox" data-options="prompt:'请输入店代码'" style="width: 100px" />
                 </td>
-                <td class="ACreateAwb" style="text-align: right;">开单员:
-                </td>
-                <td class="ACreateAwb">
-                    <input id="ACreateAwb" class="easyui-textbox" data-options="prompt:'请输入开单员'" style="width: 100px" />
-                </td>
+              
                 <td class="AHAwbNo" style="text-align: right;">副单号码:
                 </td>
                 <td class="AHAwbNo">
                     <input id="AHAwbNo" class="easyui-textbox" data-options="prompt:'请输入副单号码(发票号)'" style="width: 100px" />
-                </td>
-                <td class="LogisLine" style="text-align: right;">运输线路:
-                </td>
-                <td class="LogisLine">
-                    <input id="ALineID" class="easyui-combobox" style="width: 100px;" data-options="valueField:'LineID',textField:'LineName'" />
                 </td>
 
                 <td class="APID" style="text-align: right;">一级产品:
@@ -1239,22 +1303,36 @@
         </table>
     </div>
     <input type="hidden" id="HiddenHouseID" />
-    <table id="dg" class="easyui-datagrid">
+
+
+    <table style="width: 100%">
+        <tr>
+            <td colspan="3" style="width: 50%; height: 400px; margin: 0px; padding: 0px;">
+                <table id="dg" class="easyui-datagrid">
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td style="width: 33%; height: 200px; margin: 0px; padding: 0px;">
+                <table id="dg2" class="easyui-datagrid">
+                </table>
+            </td>
+            <td style="width: 33%; height: 200px; margin: 0px; padding: 0px;">
+                <table id="dg3" class="easyui-datagrid">
+                </table>
+            </td>
+            <td style="width: 31%; height: 200px; margin: 0px; padding: 0px;">
+                <table id="dg4" class="easyui-datagrid">
+                </table>
+            </td>
+        </tr>
     </table>
+
+
+
     <div id="dgtoolbar">
         <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
-        <a href="#" id="btnLogisNo" class="easyui-linkbutton" iconcls="icon-lorry_add" plain="false" onclick="addLogisNo()">&nbsp;物流信息&nbsp;</a>&nbsp;&nbsp;
-         <a href="#" id="btnDeliveryDriver" class="easyui-linkbutton" iconcls="icon-lorry_add" plain="false" onclick="addDeliveryDriver()">&nbsp;提货信息&nbsp;</a>&nbsp;&nbsp;
-        <a href="#" id="btnOrderStatus" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="updateOrderStatus()">&nbsp;订单跟踪&nbsp;</a>&nbsp;&nbsp;
-        <a href="#" class="easyui-linkbutton" id="MassPrint" iconcls="icon-printer" onclick="massPrintOrder()">&nbsp;打印拣货单&nbsp;</a>&nbsp;&nbsp;   <a href="#" id="btnExportOrder" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="BatchExportOrderInfo()">&nbsp;导出订单列表&nbsp;</a>&nbsp;&nbsp;
         <a href="#" class="easyui-linkbutton" iconcls="icon-cut" id="delete" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
-        <a href="#" class="easyui-linkbutton" id="barCode" iconcls="icon-printer" onclick="preBarCode()">&nbsp;打印标签&nbsp;</a>&nbsp;&nbsp;
-        <a href="#" id="btnMass" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="massExportOrder()">&nbsp;导出拣货单&nbsp;</a>&nbsp;&nbsp;
-       <%-- <a href="#" id="btnPick" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="CreateOrderPickPlan()">&nbsp;生成拣货计划&nbsp;</a>&nbsp;&nbsp;--%>
-        <a href="#" id="btnTag" class="easyui-linkbutton" iconcls="icon-tag_blue" plain="false" onclick="queryTag()">&nbsp;出库标签&nbsp;</a>&nbsp;&nbsp;
-        <a href="#" id="btnApprove" class="easyui-linkbutton" iconcls="icon-sitemap_color" plain="false" onclick="QuerydlgApproval()">&nbsp;审批流程图&nbsp;</a>&nbsp;&nbsp;
-        <a href="#" id="btnTryeCode" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="BatchExportTyreCode()">&nbsp;导出轮胎码&nbsp;</a>&nbsp;&nbsp;     
-        <a href="#" id="postpone" class="easyui-linkbutton" iconcls="icon-basket_put" plain="false" onclick="PostponeShip()">&nbsp;发货推送&nbsp;</a>&nbsp;&nbsp;
         <form runat="server" id="fm1">
             <asp:Button ID="btnTagCode" runat="server" Style="display: none;" Text="导出" OnClick="btnTagCode_Click" />
             <asp:Button ID="btnPicekPiece" runat="server" Style="display: none;" Text="导出" OnClick="btnPicekPiece_Click" />
@@ -1611,270 +1689,6 @@
         </table>
     </div>
 
-    <!--Begin 出库操作-->
-
-    <div id="dlgOutCargo" class="easyui-dialog" style="width: 350px; height: 200px; padding: 5px 5px"
-        closed="true" buttons="#dlgOutCargo-buttons">
-        <form id="fm" class="easyui-form" method="post">
-            <input type="hidden" id="InPiece" />
-            <input type="hidden" id="InIndex" />
-            <table>
-                <tr>
-                    <td style="text-align: right;">拉上订单数量:
-                    </td>
-                    <td>
-                        <input name="Numbers" id="Numbers" class="easyui-numberbox" data-options="min:0,precision:0"
-                            style="width: 200px;">
-                    </td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">业务员价格：</td>
-                    <td>
-                        <input type="hidden" id="RuleType" />
-                        <input type="hidden" id="RuleID" />
-                        <input type="hidden" id="RuleTitle" />
-                        <input name="ActSalePrice" id="ActSalePrice" class="easyui-numberbox" data-options="min:0,precision:2"
-                            style="width: 200px;">
-                    </td>
-                </tr>
-            </table>
-            <div id="lblRule" style="display: none;"></div>
-        </form>
-    </div>
-    <div id="dlgOutCargo-buttons">
-        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="outOK()">&nbsp;确&nbsp;定&nbsp;</a>
-        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgOutCargo').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
-    </div>
-    <!--End 出库操作-->
-
-    <!--Begin 输入物流单号操作-->
-    <div id="dlg" class="easyui-dialog" style="width: 400px; height: 400px; padding: 0px"
-        closed="true" buttons="#dlg-buttons">
-        <form id="fmLogic" class="easyui-form" method="post">
-            <input type="hidden" name="OrderID" id="BOrderID" />
-            <input type="hidden" name="OrderNo" id="BOrderNo" />
-            <input type="hidden" name="BSaleManName" id="BSaleManName" />
-            <input type="hidden" name="BSaleCellPhone" id="BSaleCellPhone" />
-            <div id="saPanel">
-                <table>
-                    <tr>
-                        <td style="text-align: right;">物流公司:
-                        </td>
-                        <td>
-                            <input name="LogisID" id="BLogisID" class="easyui-combobox" data-options="panelHeight:'200px',valueField:'ID',textField:'LogisticName',url:'../systempage/sysService.aspx?method=QueryAllLogistic',required:true"
-                                panelheight="auto" style="width: 150px;" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">物流单号:
-                        </td>
-                        <td>
-                            <input name="LogisAwbNo" id="BLogisAwbNo" class="easyui-textbox" style="width: 150px;" />
-                        </td>
-                    </tr>
-                    <tr>
-
-                        <td style="text-align: right;">物流费用:
-                        </td>
-                        <td>
-                            <input name="BTransitFee" id="BTransitFee" data-options="min:0,precision:2" style="width: 150px;" class="easyui-numberbox" />
-                        </td>
-                    </tr>
-                    <tr>
-
-                        <td style="text-align: right;">物流结算:
-                        </td>
-                        <td>
-                            <select class="easyui-combobox" id="BDeliverySettlement" name="BDeliverySettlement" style="width: 150px;" panelheight="auto" editable="false">
-                                <option value="-1">&nbsp;</option>
-                                <option value="0">现付</option>
-                                <option value="1">到付</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">到达站:
-                        </td>
-                        <td>
-                            <input name="Dest" id="BDest" class="easyui-textbox" style="width: 150px;" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">业务员:</td>
-                        <td>
-                            <input name="SaleManID" id="BSaleManID" class="easyui-combobox" style="width: 150px;"
-                                data-options="url: 'orderApi.aspx?method=QueryUserByDepCode',valueField: 'LoginName',textField: 'UserName', onSelect: onBSaleManIDChanged," />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">副单号:
-                        </td>
-                        <td>
-                            <input name="HAwbNo" id="HAwbNo" class="easyui-textbox" style="width: 150px;" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">快递公司:
-                        </td>
-                        <td>
-                            <select class="easyui-combobox" id="OpenExpressName" name="OpenExpressName" style="width: 150px;" panelheight="auto" editable="false">
-                                <option value="">&nbsp;</option>
-                                <option value="京东快递">京东快递</option>
-                                <option value="德邦快递">德邦快递</option>
-                                <option value="达达快递">达达快递</option>
-                                <option value="跨越速运">跨越速运</option>
-                            </select>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">快递单号:
-                        </td>
-                        <td>
-                            <input name="OpenExpressNum" id="OpenExpressNum" class="easyui-textbox" style="width: 150px;" />
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </form>
-    </div>
-    <div id="dlg-buttons">
-        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItem()">&nbsp;&nbsp;保&nbsp;存&nbsp;&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;&nbsp;取&nbsp;消&nbsp;&nbsp;</a>
-    </div>
-    <!--End 输入物流单号操作-->
-
-
-    <!--Begin 输入提货信息操作-->
-    <div id="dlgDeliveryDriver" class="easyui-dialog" style="width: 500px; height: 400px; padding: 0px" closed="true" buttons="#dlgDeliveryDriver-buttons">
-        <form id="fmdlgDeliveryDriver" class="easyui-form" method="post" enctype="multipart/form-data">
-            <input type="hidden" name="OrderID" id="DOrderID" />
-            <input type="hidden" name="OrderNo" id="DOrderNo" />
-            <div id="saPanel">
-                <table>
-                    <tr>
-                        <td style="text-align: right;">提货司机姓名:
-                        </td>
-                        <td>
-                            <input name="DeliveryDriverName" id="DeliveryDriverName" class="easyui-textbox" style="width: 250px;" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">司机车牌号码:
-                        </td>
-                        <td>
-                            <input name="DriverCarNum" id="DriverCarNum" class="easyui-textbox" style="width: 250px;" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">司机手机号码:
-                        </td>
-                        <td>
-                            <input name="DriverCellphone" id="DriverCellphone" data-options="min:0,precision:0" style="width: 250px;" class="easyui-numberbox" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right;">司机身份证号:
-                        </td>
-                        <td>
-                            <input name="DriverIDNum" id="DriverIDNum" class="easyui-textbox" style="width: 250px;" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="2">
-                            <input style="width: 400px; height: 30px;" id="DeliveryPic" name="DeliveryPic" class="easyui-filebox" data-options="prompt:'选择多个照片...',multiple:true,buttonText:'点击选择'" />
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </form>
-        <table id="dgInsurcePicture" class="easyui-datagrid">
-        </table>
-    </div>
-    <div id="dlgDeliveryDriver-buttons">
-        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="savedlgDeliveryDriver()">&nbsp;&nbsp;保&nbsp;存&nbsp;&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
-        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgDeliveryDriver').dialog('close')">&nbsp;&nbsp;取&nbsp;消&nbsp;&nbsp;</a>
-    </div>
-    <!--End 输入物流单号操作-->
-
-
-    <!--订单状态跟踪-->
-    <div id="dlgStatus" class="easyui-dialog" style="width: 900px; height: 700px; padding: 0px"
-        closed="true" closable="false" buttons="#dlgStatus-buttons">
-        <form id="fmStatus" class="easyui-form" method="post">
-            <input type="hidden" name="OrderID" id="SOrderID" />
-            <input type="hidden" name="OrderNo" id="SOrderNo" />
-            <input type="hidden" name="WXOrderNo" id="SWXOrderNo" />
-            <div id="saPanel">
-                <table class="mini-toolbar" style="width: 100%;">
-                    <tr>
-                        <td rowspan="3" style="border-right: 1px solid #909aa6;">订<br />
-                            单<br />
-                            在<br />
-                            途<br />
-                            跟<br />
-                            踪
-                        </td>
-                        <td class="OrderStatusTd" align="left">&nbsp;&nbsp;状态：
-                        </td>
-                        <td align="left" class="OrderStatusTd">
-                            <input name="OrderStatus" id="AOrderStatus5" type="radio" value="6"><label for="AOrderStatus5" style="font-size: 14px;">已拣货</label>
-                            <input name="OrderStatus" id="AOrderStatus1" type="radio" value="2"><label for="AOrderStatus1" style="font-size: 14px;" id="AOrderStatus1Show">已出库</label>
-                            <input name="OrderStatus" id="AOrderStatus2" type="radio" value="3"><label for="AOrderStatus2" style="font-size: 14px;">已装车</label>
-                            <%-- <input name="OrderStatus" id="AOrderStatus3" type="radio" value="4"><label for="AOrderStatus3" style="font-size: 14px;">已到达</label>--%>
-                            <input name="OrderStatus" id="AOrderStatus4" type="radio" value="5"><label for="AOrderStatus4" style="font-size: 14px;" id="AOrderStatus4Show">已签收</label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td align="left" colspan="2" class="OrderStatusTd">
-                            <textarea name="DetailInfo" id="DetailInfo" cols="60" style="height: 20px; width: 95%; resize: none" class="mini-textarea"></textarea>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="2">
-                            <div id="tbDepmanifest" class="easyui-tabs" data-options="fit:true" style="height: 250px; width: 860px">
-                                <div title="订单跟踪" id="lblTrack" data-options="iconCls:'icon-page_add'"></div>
-                                <div title="好来运跟踪" id="lblTrack2" data-options="iconCls:'icon-page_add'"></div>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </form>
-        <div id="map" style="width: 100%; height: 63%">
-        </div>
-    </div>
-    <div id="dlgStatus-buttons">
-        <a href="#" class="easyui-linkbutton OrderStatusTd" id="saveStatus" iconcls="icon-ok" onclick="saveStatus()">&nbsp;保&nbsp;存&nbsp;</a> <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
-            onclick="closeDlgStatus()">&nbsp;关&nbsp;闭&nbsp;</a>
-    </div>
-    <!--订单状态跟踪-->
-    <div id="dgViewImg" class="easyui-dialog" closed="true" style="width: 1000px; height: 600px; overflow: hidden; display: flex; justify-content: center; align-items: center;">
-        <img id="simg" style="max-width: 100%; max-height: 170%;" />
-    </div>
-    <!--Begin 查询产品标签列表-->
-    <div id="productTag" class="easyui-dialog" style="width: 1000px; height: 520px; padding: 2px 2px"
-        closed="true" buttons="#productTag-buttons">
-        <table id="dgTag" class="easyui-datagrid">
-        </table>
-        <div id="productTag-buttons">
-            <input type="hidden" name="OrderID" id="HOrderID" />
-            <a href="#" class="easyui-linkbutton" iconcls="icon-redo" plain="false" onclick="RebackOutTag()" id="RebackOutTag">&nbsp;撤回出库标签&nbsp;</a>&nbsp;&nbsp;
-            <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="ExportTyreCode()" id="ExportTyreCode">&nbsp;导出轮胎码&nbsp;</a>&nbsp;&nbsp;
-            <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#productTag').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
-        </div>
-    </div>
-
-    <!--订单审批流程图-->
-    <div id="dlgApproval" class="easyui-dialog" style="width: 900px; height: 500px; padding: 1px 1px"
-        closed="true" closable="false" buttons="#dlgApproval-buttons">
-        <div id="lblApproval">
-        </div>
-    </div>
-    <div id="dlgApproval-buttons">
-        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
-            onclick="javascript:$('#dlgApproval').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
-    </div>
-    <!--订单审批流程图-->
     <object id="LODOP_OB" title="dd" classid="clsid:2105C259-1E0C-4534-8141-A753534CB4CA"
         width="0px" height="0px">
         <embed id="LODOP_EM" type="application/x-print-lodop" width="0px" height="0px"></embed>
@@ -2192,7 +2006,7 @@
         //批量导出出库轮胎码
         function BatchExportTyreCode() {
             $.ajax({
-                url: "orderApi.aspx?method=QueryOrderTyreCodeForExport&OrderNo=" + $('#AOrderNo').val() + "&LogisAwbNo=" + $('#LogisAwbNo').val() + "&AcceptPeople=" + $("#AcceptPeople").val() + "&Piece=&StartDate=" + $('#StartDate').datebox('getValue') + "&EndDate=" + $('#EndDate').datebox('getValue') + "&FinanceSecondCheck=-1&CheckOutType=''&ThrowGood=" + $("#ThrowGood").combobox('getValue') + "&OrderType=" + $("#AOrderType").combobox('getValue') + "&AwbStatus=" + $("#AAwbStatus").combobox('getValue') + "&Dep=" + $("#Dep").combobox('getText') + "&Dest=" + $("#Dest").combobox('getText') + "&HouseID=" + $("#AHouseID").combobox('getValue') + "&SaleManID=" + $('#ASaleManID').combobox('getValue') + "&CreateAwb=" + $('#ACreateAwb').textbox('getValue') + "&OutHouseName=" + $("#PID").combobox('getText') + "&AcceptUnit=" + encodeURIComponent($('#AcceptUnit').val()) + "&OrderModel=0&BelongHouse=" + $('#BelongHouse').combobox('getValue') + "&OutCargoType=" + $('#AOutCargoType').combobox('getValue') + "&PostponeShip=" + $("#PostponeShip").combobox('getValue'),
+                url: "orderApi.aspx?method=QueryOrderTyreCodeForExport&OrderNo=" + $('#AOrderNo').val() + "&LogisAwbNo=" + $('#LogisAwbNo').val() + "&AcceptPeople=" + $("#AcceptPeople").val() + "&Piece=&StartDate=" + $('#StartDate').datebox('getValue') + "&EndDate=" + $('#EndDate').datebox('getValue') + "&FinanceSecondCheck=-1&CheckOutType=''&ThrowGood=" + $("#ThrowGood").combobox('getValue') + "&AwbStatus=" + $("#AAwbStatus").combobox('getValue') + "&Dep=" + $("#Dep").combobox('getText') + "&Dest=" + $("#Dest").combobox('getText') + "&HouseID=" + $("#AHouseID").combobox('getValue') + "&SaleManID=" + $('#ASaleManID').combobox('getValue') + "&CreateAwb=" + $('#ACreateAwb').textbox('getValue') + "&OutHouseName=" + $("#PID").combobox('getText') + "&AcceptUnit=" + encodeURIComponent($('#AcceptUnit').val()) + "&OrderModel=0&BelongHouse=" + $('#BelongHouse').combobox('getValue') + "&OutCargoType=" + $('#AOutCargoType').combobox('getValue') + "&PostponeShip=" + $("#PostponeShip").combobox('getValue'),
                 success: function (text) {
                     if (text == "OK") { var obj = document.getElementById("<%=btnTyreCode.ClientID %>"); obj.click() }
                     else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
@@ -2202,7 +2016,7 @@
         //批量导出订单信息
         function BatchExportOrderInfo() {
             $.ajax({
-                url: "orderApi.aspx?method=QueryOrderInfoExport&OrderNo=" + $('#AOrderNo').val() + "&LogisAwbNo=" + $('#LogisAwbNo').val() + "&AcceptPeople=" + $("#AcceptPeople").val() + "&Piece=&StartDate=" + $('#StartDate').datebox('getValue') + "&EndDate=" + $('#EndDate').datebox('getValue') + "&FinanceSecondCheck=-1&CheckOutType=''&ThrowGood=" + $("#ThrowGood").combobox('getValue') + "&OrderType=" + $("#AOrderType").combobox('getValue') + "&AwbStatus=" + $("#AAwbStatus").combobox('getValue') + "&Dep=" + $("#Dep").combobox('getText') + "&Dest=" + $("#Dest").combobox('getText') + "&HouseID=" + $("#AHouseID").combobox('getValue') + "&SaleManID=" + $('#ASaleManID').combobox('getValue') + "&CreateAwb=" + $('#ACreateAwb').textbox('getValue') + "&OutHouseName=" + $("#PID").combobox('getText') + "&AcceptUnit=" + encodeURIComponent($('#AcceptUnit').val()) + "&OrderModel=0&BelongHouse=" + $('#BelongHouse').combobox('getValue') + "&OutCargoType=" + $('#AOutCargoType').combobox('getValue') + "&PostponeShip=" + $("#PostponeShip").combobox('getValue') + "&LineID=" + $("#ALineID").combobox('getValue') + "&ShopCode=" + $("#shopCode").val(),
+                url: "orderApi.aspx?method=QueryOrderInfoExport&OrderNo=" + $('#AOrderNo').val() + "&LogisAwbNo=" + $('#LogisAwbNo').val() + "&AcceptPeople=" + $("#AcceptPeople").val() + "&Piece=&StartDate=" + $('#StartDate').datebox('getValue') + "&EndDate=" + $('#EndDate').datebox('getValue') + "&FinanceSecondCheck=-1&CheckOutType=''&ThrowGood=" + $("#ThrowGood").combobox('getValue') + "&AwbStatus=" + $("#AAwbStatus").combobox('getValue') + "&Dep=" + $("#Dep").combobox('getText') + "&Dest=" + $("#Dest").combobox('getText') + "&HouseID=" + $("#AHouseID").combobox('getValue') + "&SaleManID=" + $('#ASaleManID').combobox('getValue') + "&CreateAwb=" + $('#ACreateAwb').textbox('getValue') + "&OutHouseName=" + $("#PID").combobox('getText') + "&AcceptUnit=" + encodeURIComponent($('#AcceptUnit').val()) + "&OrderModel=0&BelongHouse=" + $('#BelongHouse').combobox('getValue') + "&OutCargoType=" + $('#AOutCargoType').combobox('getValue') + "&PostponeShip=" + $("#PostponeShip").combobox('getValue') + "&LineID=" + $("#ALineID").combobox('getValue') + "&ShopCode=" + $("#shopCode").val(),
                 success: function (text) {
                     if (text == "OK") { var obj = document.getElementById("<%=btnOrderInfo.ClientID %>"); obj.click() }
                     else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
@@ -4609,8 +4423,7 @@
                 var js = 0, Alltotal = 0, AllPiece = 0; p = 1; pie = 0; total = 0;
                 Alltotal = Number($('#TotalCharge').numberbox('getValue')).toFixed(2);
                 if ($('#OpenOrderNo').val()) {
-                    //Alltotal = Number($('#TransportFee').numberbox('getValue')).toFixed(2);
-                    Alltotal = Number($('#TotalCharge').numberbox('getValue')).toFixed(2);
+                    Alltotal = Number($('#TransportFee').numberbox('getValue')).toFixed(2);
                 }
                 for (var k = 0; k < oldgriddata.length; k++) {
                     AllPiece += Number(oldgriddata[k].Piece);
@@ -4857,13 +4670,12 @@
                     });
                 }
                 if (returnType) { return; }
-                debugger;
+
                 var js = 0, Alltotal = 0, AllPiece = 0; p = 1; pie = 0; total = 0; AllSalePrice = 0;
 
                 Alltotal = Number($('#TotalCharge').numberbox('getValue')).toFixed(2);
                 if ($('#OpenOrderNo').val()) {
-                    Alltotal = Number($('#TotalCharge').numberbox('getValue')).toFixed(2);
-                    //Alltotal = Number($('#TransportFee').numberbox('getValue')).toFixed(2);
+                    Alltotal = Number($('#TransportFee').numberbox('getValue')).toFixed(2);
                 }
                 for (var k = 0; k < griddata.length; k++) {
                     pie = Number(griddata[k].Piece);

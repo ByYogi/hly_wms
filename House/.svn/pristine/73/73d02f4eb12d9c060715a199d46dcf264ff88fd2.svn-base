@@ -384,7 +384,7 @@
                         }
                     },
                     {
-                        title: '补货数量', field: 'Piece', width: '80px', formatter: function (value) {
+                        title: '缺货数量', field: 'Piece', width: '80px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },

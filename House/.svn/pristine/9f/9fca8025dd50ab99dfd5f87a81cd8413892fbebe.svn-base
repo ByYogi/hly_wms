@@ -1,0 +1,663 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+using System.Collections;
+
+namespace Cargo.Order
+{
+    public partial class ReserveOrderManager : BasePage
+    {
+        public string Un = string.Empty;
+        public string Ln = string.Empty;
+        public string HouseName = string.Empty;
+        public string PickTitle = string.Empty;
+        public string SendTitle = string.Empty;
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            Un = UserInfor.UserName.Trim();
+            Ln = UserInfor.LoginName.Trim();
+            HouseName = UserInfor.HouseName.Trim();
+            PickTitle = UserInfor.PickTitle;
+            SendTitle = UserInfor.SendTitle;
+        }
+        /// <summary>
+        /// 导出实体
+        /// </summary>
+        public List<CargoContainerShowEntity> massExportOrder
+        {
+            get
+            {
+                if (Session["massExportOrder"] == null) { Session["massExportOrder"] = new List<CargoContainerShowEntity>(); }
+                return (List<CargoContainerShowEntity>)(Session["massExportOrder"]);
+            }
+            set
+            {
+                Session["massExportOrder"] = value;
+            }
+        }
+        /// <summary>
+        /// 导出类型实体
+        /// </summary>
+        public string massExportOrderType
+        {
+            get
+            {
+                if (Session["massExportOrderType"] == null)
+                {
+                    Session["massExportOrderType"] = "";
+                }
+                return (string)(Session["massExportOrderType"]);
+            }
+            set
+            {
+                Session["massExportOrderType"] = value;
+            }
+        }
+        /// <summary>
+        /// 导出实体
+        /// </summary>
+        public List<CargoContainerShowEntity> tagCodeExport
+        {
+            get
+            {
+                if (Session["tagCodeExport"] == null) { Session["tagCodeExport"] = new List<CargoContainerShowEntity>(); }
+                return (List<CargoContainerShowEntity>)(Session["tagCodeExport"]);
+            }
+            set
+            {
+                Session["tagCodeExport"] = value;
+            }
+        }
+
+        public List<CargoContainerShowEntity> QueryOrderTyreCodeList
+        {
+            get
+            {
+                if (Session["QueryOrderTyreCodeList"] == null)
+                {
+                    Session["QueryOrderTyreCodeList"] = new List<CargoContainerShowEntity>();
+                }
+                return (List<CargoContainerShowEntity>)(Session["QueryOrderTyreCodeList"]);
+            }
+            set
+            {
+                Session["QueryOrderTyreCodeList"] = value;
+            }
+        }
+
+        /// <summary>
+        /// 导出标签码
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnTyreCode_Click(object sender, EventArgs e)
+        {
+            if (QueryOrderTyreCodeList.Count <= 0) { return; }
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("订单号", typeof(string));
+            table.Columns.Add("轮胎码", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("批次", typeof(string));
+            table.Columns.Add("载重指数", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            table.Columns.Add("客户名称", typeof(string));
+            table.Columns.Add("供应商编码", typeof(int));
+            table.Columns.Add("供应商名称", typeof(string));
+            int i = 0;
+            string orderno = string.Empty;
+            foreach (var it in QueryOrderTyreCodeList)
+            {
+                orderno = it.OrderNo;
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["订单号"] = it.OrderNo;
+                newRows["轮胎码"] = it.TyreCode;
+                newRows["规格"] = it.Specs;
+                newRows["花纹"] = it.Figure;
+                newRows["批次"] = it.Batch;
+                newRows["载重指数"] = it.LoadIndex.ToString() + it.SpeedLevel;
+                newRows["货品代码"] = it.GoodsCode;
+                newRows["客户名称"] = it.PayClientName;
+                newRows["供应商编码"] = it.SuppClientNum;
+                newRows["供应商名称"] = it.Supplier;
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "订单出库轮胎码列表");
+        }
+        /// <summary>
+        /// 导出
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnDerived_Click(object sender, EventArgs e)
+        {
+            if (massExportOrder.Count <= 0) { return; }
+            if (string.IsNullOrEmpty(massExportOrderType)) { return; }
+
+            if (massExportOrderType == "47")
+            {
+                string tname = string.Empty;
+                DataTable table = new DataTable();
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("名称", typeof(string));
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("批次", typeof(string));
+                table.Columns.Add("数量", typeof(int));
+                table.Columns.Add("货位代码", typeof(string));
+                table.Columns.Add("所在区域", typeof(string));
+                table.Columns.Add("目的站", typeof(string));
+                table.Columns.Add("收件人", typeof(string));
+                table.Columns.Add("运单号", typeof(string));
+                List<CargoOrderEntity> tot = new List<CargoOrderEntity>();
+                int i = 0;
+                foreach (var it in massExportOrder)
+                {
+                    if (tot.Exists(c => c.SaleManName == (it.AreaName + " " + it.ProductName + " " + it.Specs + " " + it.GoodsCode)))
+                    {
+                        CargoOrderEntity co = tot.Find(c => c.SaleManName == (it.AreaName + " " + it.ProductName + " " + it.Specs + " " + it.GoodsCode));
+                        co.Piece += it.Piece;
+                    }
+                    else
+                    {
+                        tot.Add(new CargoOrderEntity { SaleManName = (it.AreaName + " " + it.ProductName + " " + it.Specs + " " + it.GoodsCode), Piece = it.Piece });
+                    }
+                    i++;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["名称"] = it.ProductName.Trim();
+                    newRows["规格"] = it.Specs.Trim();
+                    newRows["批次"] = it.Batch;
+                    newRows["数量"] = it.Piece;
+                    newRows["货位代码"] = it.ContainerCode.Trim();
+                    newRows["所在区域"] = it.AreaName.Trim();
+                    newRows["目的站"] = it.Dest.Trim();
+                    newRows["收件人"] = it.AcceptPeople.Trim();
+                    newRows["运单号"] = it.LogisAwbNo;
+                    table.Rows.Add(newRows);
+
+                }
+                DataRow cR1 = table.NewRow();
+                table.Rows.Add(cR1);
+                DataRow cR2 = table.NewRow();
+                table.Rows.Add(cR2);
+                foreach (var t in tot)
+                {
+                    DataRow newRows = table.NewRow();
+
+                    newRows["规格"] = t.SaleManName;
+                    newRows["数量"] = t.Piece;
+                    table.Rows.Add(newRows);
+                }
+                DataRow cR3 = table.NewRow();
+                cR3["规格"] = "总计";
+                cR3["数量"] = tot.Sum(c => c.Piece).ToString();
+                table.Rows.Add(cR3);
+                ToExcel.DataTableToExcel(table, "", DateTime.Now.Month.ToString() + "月" + DateTime.Now.Day.ToString() + "日" + massExportOrder[0].ProductName + "仓库拣货单");
+            }
+            else
+            {
+                string tname = string.Empty;
+                DataTable table = new DataTable();
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("型号", typeof(string));
+                table.Columns.Add("花纹", typeof(string));
+                table.Columns.Add("批次", typeof(string));
+                table.Columns.Add("数量", typeof(string));
+                table.Columns.Add("货位代码", typeof(string));
+                table.Columns.Add("所在区域", typeof(string));
+                table.Columns.Add("目的站", typeof(string));
+                table.Columns.Add("收件人", typeof(string));
+                table.Columns.Add("运单号", typeof(string));
+                table.Columns.Add("订单号", typeof(string));
+                List<CargoOrderEntity> tot = new List<CargoOrderEntity>();
+                int i = 0;
+                foreach (var it in massExportOrder)
+                {
+                    if (tot.Exists(c => c.SaleManName == (it.AreaName + " " + it.Specs + " " + it.Model + " " + it.Figure)))
+                    {
+                        CargoOrderEntity co = tot.Find(c => c.SaleManName == (it.AreaName + " " + it.Specs + " " + it.Model + " " + it.Figure));
+                        co.Piece += it.Piece;
+                    }
+                    else
+                    {
+                        tot.Add(new CargoOrderEntity { SaleManName = (it.AreaName + " " + it.Specs + " " + it.Model + " " + it.Figure), Piece = it.Piece });
+                    }
+                    i++;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["规格"] = it.Specs.Trim();
+                    newRows["型号"] = it.Model.Trim();
+                    newRows["花纹"] = it.Figure.Trim();
+                    newRows["批次"] = it.Batch;
+                    string piece = it.Piece.ToString();
+                    if (it.TypeParentID == 10)
+                    {
+                        if (it.PackageNum != 0)
+                        {
+                            string num = ((decimal)it.Piece / it.PackageNum).ToString();
+                            string[] b = num.Split('.');
+                            if (b.Count() > 1)
+                            {
+                                piece = piece + "/" + b[0] + it.Package + (Convert.ToInt32(piece) - Convert.ToInt32(b[0]) * Convert.ToInt32(it.PackageNum));
+                            }
+                            else
+                            {
+                                piece = piece + "/" + b[0] + it.Package;
+                            }
+                        }
+                    }
+                    newRows["数量"] = piece;
+                    newRows["货位代码"] = it.ContainerCode.Trim();
+                    newRows["所在区域"] = it.AreaName.Trim();
+                    newRows["目的站"] = it.Dest.Trim();
+                    newRows["收件人"] = it.AcceptPeople.Trim();
+                    newRows["运单号"] = it.LogisAwbNo;
+                    newRows["订单号"] = it.OrderNo;
+                    table.Rows.Add(newRows);
+
+                }
+                DataRow cR1 = table.NewRow();
+                table.Rows.Add(cR1);
+                DataRow cR2 = table.NewRow();
+                table.Rows.Add(cR2);
+                foreach (var t in tot)
+                {
+                    DataRow newRows = table.NewRow();
+
+                    newRows["花纹"] = t.SaleManName;
+                    newRows["数量"] = t.Piece;
+                    table.Rows.Add(newRows);
+                }
+                DataRow cR3 = table.NewRow();
+                cR3["花纹"] = "总计";
+                cR3["数量"] = tot.Sum(c => c.Piece).ToString();
+                table.Rows.Add(cR3);
+                ToExcel.DataTableToExcel(table, "", DateTime.Now.Month.ToString() + "月" + DateTime.Now.Day.ToString() + "日" + massExportOrder[0].ProductName + "仓库拣货单");
+            }
+        }
+        /// <summary>
+        /// 导出标签码
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnTagCode_Click(object sender, EventArgs e)
+        {
+            if (tagCodeExport.Count <= 0) { return; }
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("订单号", typeof(string));
+            table.Columns.Add("轮胎码", typeof(string));
+            table.Columns.Add("标签码", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("批次", typeof(string));
+            table.Columns.Add("载重指数", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            int i = 0;
+            string orderno = string.Empty;
+            foreach (var it in tagCodeExport)
+            {
+                orderno = it.OrderNo;
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["订单号"] = it.OrderNo;
+                newRows["轮胎码"] = it.TyreCode;
+                newRows["标签码"] = it.TagCode;
+                newRows["规格"] = it.Specs.Trim();
+                newRows["花纹"] = it.Figure.Trim();
+                newRows["批次"] = it.Batch;
+                newRows["载重指数"] = it.LoadIndex.ToString() + it.SpeedLevel;
+                newRows["货品代码"] = it.GoodsCode.Trim();
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "订单号：" + orderno + "出库轮胎码列表");
+        }
+
+        public Hashtable QueryOrderInfoList
+        {
+            get
+            {
+                if (Session["QueryOrderInfoList"] == null)
+                {
+                    Session["QueryOrderInfoList"] = new Hashtable();
+                }
+                return (Hashtable)(Session["QueryOrderInfoList"]);
+            }
+            set
+            {
+                Session["QueryOrderInfoList"] = value;
+            }
+        }
+        /// <summary>
+        /// 导出订单列表
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void btnOrderInfo_Click(object sender, EventArgs e)
+        {
+            var List = QueryOrderInfoList["rows"];
+            IEnumerable<object> list = List as IEnumerable<object>;
+            if (list.Count() <= 0) { return; }
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("出库仓库", typeof(string));
+            table.Columns.Add("订单号", typeof(string));
+            table.Columns.Add("出发站", typeof(string));
+            table.Columns.Add("到达站", typeof(string));
+            table.Columns.Add("数量", typeof(string));
+            table.Columns.Add("收入", typeof(string));
+            if (UserInfor.RoleCName.IndexOf("安泰路斯") < 0)
+            {
+                table.Columns.Add("优惠券", typeof(string));
+            }
+            table.Columns.Add("合计", typeof(string));
+            table.Columns.Add("店代码", typeof(string));
+            table.Columns.Add("客户名称", typeof(string));
+            table.Columns.Add("收货人", typeof(string));
+            table.Columns.Add("联系手机", typeof(string));
+            table.Columns.Add("收货地址", typeof(string));
+            if (UserInfor.RoleCName.IndexOf("安泰路斯") < 0)
+            {
+                table.Columns.Add("业务员", typeof(string));
+            }
+            table.Columns.Add("副单号", typeof(string));
+            table.Columns.Add("订单状态", typeof(string));
+            table.Columns.Add("开单时间", typeof(string));
+            table.Columns.Add("开单员", typeof(string));
+            table.Columns.Add("出库时间", typeof(string));
+            if (UserInfor.RoleCName.IndexOf("安泰路斯") < 0)
+            {
+                table.Columns.Add("延期时长", typeof(string));
+                table.Columns.Add("签收人", typeof(string));
+                table.Columns.Add("签收时间", typeof(string));
+                table.Columns.Add("结算方式", typeof(string));
+            }
+            table.Columns.Add("下单方式", typeof(string));
+            if (UserInfor.RoleCName.IndexOf("安泰路斯") < 0)
+            {
+                table.Columns.Add("商城订单号", typeof(string));
+                table.Columns.Add("付款方式", typeof(string));
+                table.Columns.Add("支付订单号", typeof(string));
+                table.Columns.Add("审核状态", typeof(string));
+                table.Columns.Add("结算状态", typeof(string));
+                table.Columns.Add("结算时间", typeof(string));
+                table.Columns.Add("物流公司单号", typeof(string));
+                table.Columns.Add("物流配送费用", typeof(string));
+                table.Columns.Add("物流公司名称", typeof(string));
+                //table.Columns.Add("订单类型", typeof(string));
+                table.Columns.Add("仓库", typeof(string));
+                table.Columns.Add("订单类型", typeof(string));
+                table.Columns.Add("自有外采", typeof(string));
+                table.Columns.Add("供应商名称", typeof(string));
+            }
+
+            int i = 0;
+            string orderno = string.Empty;
+            foreach (var it in list)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["出库仓库"] = it.GetType().GetProperty("OutHouseName").GetValue(it, null).ToString();
+                newRows["订单号"] = it.GetType().GetProperty("OrderNo").GetValue(it, null).ToString(); ;
+                newRows["出发站"] = it.GetType().GetProperty("Dep").GetValue(it, null).ToString();
+                newRows["到达站"] = it.GetType().GetProperty("Dest").GetValue(it, null).ToString();
+                newRows["数量"] = it.GetType().GetProperty("Piece").GetValue(it, null).ToString(); ;
+                newRows["收入"] = it.GetType().GetProperty("TransportFee").GetValue(it, null).ToString();
+                if (UserInfor.RoleCName.IndexOf("安泰路斯") < 0)
+                {
+                    newRows["优惠券"] = it.GetType().GetProperty("InsuranceFee").GetValue(it, null).ToString();
+                }
+                newRows["合计"] = it.GetType().GetProperty("TotalCharge").GetValue(it, null).ToString();
+                newRows["店代码"] = it.GetType().GetProperty("ShopCode").GetValue(it, null).ToString();
+                newRows["客户名称"] = it.GetType().GetProperty("AcceptUnit").GetValue(it, null).ToString();
+                newRows["收货人"] = it.GetType().GetProperty("AcceptPeople").GetValue(it, null).ToString();
+                newRows["联系手机"] = it.GetType().GetProperty("AcceptCellphone").GetValue(it, null).ToString();
+                newRows["收货地址"] = it.GetType().GetProperty("AcceptAddress").GetValue(it, null).ToString();
+                if (UserInfor.RoleCName.IndexOf("安泰路斯") < 0)
+                {
+                    newRows["业务员"] = it.GetType().GetProperty("SaleManName").GetValue(it, null).ToString();
+                }
+                newRows["副单号"] = it.GetType().GetProperty("HAwbNo").GetValue(it, null).ToString();
+                newRows["订单状态"] = GetText(it.GetType().GetProperty("AwbStatus").GetValue(it, null).ToString(), "AwbStatus");
+                newRows["开单时间"] = it.GetType().GetProperty("CreateDate").GetValue(it, null).ToString();
+                newRows["开单员"] = it.GetType().GetProperty("CreateAwb").GetValue(it, null).ToString();
+                newRows["出库时间"] = it.GetType().GetProperty("OutCargoTime").GetValue(it, null).ToString() != "0001/1/1 0:00:00" ? it.GetType().GetProperty("OutCargoTime").GetValue(it, null).ToString() : "";
+                if (UserInfor.RoleCName.IndexOf("安泰路斯") < 0)
+                {
+                    newRows["延期时长"] = GetDelayTime(it.GetType().GetProperty("CreateDate").GetValue(it, null).ToString(), it.GetType().GetProperty("OutCargoTime").GetValue(it, null).ToString());
+                    newRows["签收人"] = it.GetType().GetProperty("Signer").GetValue(it, null).ToString();
+                    newRows["签收时间"] = it.GetType().GetProperty("SignTime").GetValue(it, null).ToString() != "0001/1/1 0:00:00" ? it.GetType().GetProperty("SignTime").GetValue(it, null).ToString() : "";
+                    newRows["结算方式"] = GetText(it.GetType().GetProperty("CheckOutType").GetValue(it, null).ToString(), "CheckOutType");
+                }
+                newRows["下单方式"] = GetText(it.GetType().GetProperty("OrderType").GetValue(it, null).ToString(), "OrderType");
+                if (UserInfor.RoleCName.IndexOf("安泰路斯") < 0)
+                {
+                    newRows["商城订单号"] = it.GetType().GetProperty("WXOrderNo").GetValue(it, null).ToString();
+                    newRows["付款方式"] = GetText(it.GetType().GetProperty("PayWay").GetValue(it, null).ToString(), "PayWay");
+                    newRows["支付订单号"] = it.GetType().GetProperty("WXPayOrderNo").GetValue(it, null).ToString();
+                    newRows["审核状态"] = GetText(it.GetType().GetProperty("FinanceSecondCheck").GetValue(it, null).ToString(), "FinanceSecondCheck");
+                    newRows["结算状态"] = GetText(it.GetType().GetProperty("CheckStatus").GetValue(it, null).ToString(), "CheckStatus");
+                    newRows["结算时间"] = it.GetType().GetProperty("CheckDate").GetValue(it, null).ToString() != "0001/1/1 0:00:00" ? it.GetType().GetProperty("CheckDate").GetValue(it, null).ToString() : "";
+                    newRows["物流公司单号"] = it.GetType().GetProperty("LogisAwbNo").GetValue(it, null).ToString();
+                    newRows["物流配送费用"] = it.GetType().GetProperty("DeliveryFee").GetValue(it, null).ToString();
+                    newRows["物流公司名称"] = it.GetType().GetProperty("LogisticName").GetValue(it, null).ToString();
+                    newRows["仓库"] = it.GetType().GetProperty("TranHouse").GetValue(it, null).ToString();
+                    newRows["订单类型"] = GetText(it.GetType().GetProperty("ThrowGood").GetValue(it, null).ToString(), "ThrowGood");
+                    newRows["自有外采"] = GetText(it.GetType().GetProperty("TrafficType").GetValue(it, null).ToString(), "TrafficType");
+                    newRows["供应商名称"] = it.GetType().GetProperty("SuppClientName").GetValue(it, null).ToString();
+                }
+                table.Rows.Add(newRows);
+
+            }
+            ToExcel.DataTableToExcel(table, "", "订单列表");
+
+        }
+        private string GetDelayTime(string CreateDate, string OutCargoTime)
+        {
+            string retStr = string.Empty;
+            DateTime dateTime1 = Convert.ToDateTime(CreateDate);
+            DateTime dateTime2 = Convert.ToDateTime(OutCargoTime);
+            if (OutCargoTime != "0001/1/1 0:00:00" && Convert.ToDateTime(Convert.ToDateTime(dateTime2.Year + "-" + dateTime2.Month + "-" + dateTime2.Day)).Subtract(Convert.ToDateTime(Convert.ToDateTime(dateTime1.Year + "-" + dateTime1.Month + "-" + dateTime1.Day))).Days > 0)
+            {
+                retStr = (Math.Round((dateTime2.Subtract(Convert.ToDateTime(dateTime1.Year + "-" + dateTime1.Month + "-" + dateTime1.Day + " 23:59:59")).TotalHours), 1).ToString()) + "小时";
+            }
+            return retStr;
+        }
+        private string GetText(string value, string id)
+        {
+            string retStr = string.Empty;
+            if (id.Contains("ClientType"))
+            {
+                if (value.Trim() == "0")
+                    retStr = "普通客户";
+                else if (value.Trim() == "1")
+                    retStr = "合同客户";
+                else if (value.Trim() == "2")
+                    retStr = "VIP客户";
+            }
+            switch (id)
+            {
+                case "AwbStatus":
+                    if (value.Trim() == "0")
+                        retStr = "已下单";
+                    else if (value.Trim() == "1")
+                        retStr = "出库中";
+                    else if (value.Trim() == "2")
+                        retStr = "已出库";
+                    else if (value.Trim() == "3")
+                        retStr = "运输在途";
+                    //else if (value.Trim() == "4")
+                    //    retStr = "已到达";
+                    else if (value.Trim() == "5")
+                        retStr = "已签收";
+                    else if (value.Trim() == "6")
+                        retStr = "已拣货";
+                    else if (value.Trim() == "7")
+                        retStr = "正在配送";
+                    break;
+                case "CheckOutType":
+                    if (value.Trim() == "0")
+                        retStr = "现付";
+                    else if (value.Trim() == "1")
+                        retStr = "周期";
+                    else if (value.Trim() == "2")
+                        retStr = "月结";
+                    else if (value.Trim() == "3")
+                        retStr = "到付";
+                    else if (value.Trim() == "4")
+                        retStr = "代收";
+                    else if (value.Trim() == "5")
+                        retStr = "微信付款";
+                    else if (value.Trim() == "6")
+                        retStr = "额度付款";
+                    break;
+                case "OrderType":
+                    if (value.Trim() == "0")
+                        retStr = "电脑单";
+                    else if (value.Trim() == "1")
+                        retStr = "企业微信单";
+                    else if (value.Trim() == "2")
+                        retStr = "微信商城单";
+                    else if (value.Trim() == "3")
+                        retStr = "APP单";
+                    else if (value.Trim() == "4")
+                        retStr = "小程序单";
+                    break;
+                case "PayWay":
+                    if (value.Trim() == "0")
+                        retStr = "微信付款";
+                    else if (value.Trim() == "1")
+                        retStr = "额度付款";
+                    else if (value.Trim() == "2")
+                        retStr = "积分兑换";
+                    break;
+                case "FinanceSecondCheck":
+                    if (value.Trim() == "0")
+                        retStr = "未审";
+                    else if (value.Trim() == "1")
+                        retStr = "已审";
+                    break;
+                case "CheckStatus":
+                    if (value.Trim() == "0")
+                        retStr = "未结算";
+                    else if (value.Trim() == "1")
+                        retStr = "已结算";
+                    else if (value.Trim() == "2")
+                        retStr = "未结清";
+                    break;
+                case "TrafficType":
+                    if (value.Trim() == "0")
+                        retStr = "自有";
+                    else if (value.Trim() == "1")
+                        retStr = "外发外采";
+                    else if (value.Trim() == "2")
+                        retStr = "上门提货外采";
+                    break;
+                case "ThrowGood":
+                    if (value.Trim() == "0")
+                        retStr = "客户单";
+                    else if (value.Trim() == "1")
+                        retStr = "抛货单";
+                    else if (value.Trim() == "2")
+                        retStr = "调货单";
+                    else if (value.Trim() == "3")
+                        retStr = "代发单";
+                    else if (value.Trim() == "4")
+                        retStr = "周期胎";
+                    else if (value.Trim() == "5")
+                        retStr = "长和订单";
+                    else if (value.Trim() == "6")
+                        retStr = "商贸订单";
+                    else if (value.Trim() == "7")
+                        retStr = "祺航订单";
+                    else if (value.Trim() == "8")
+                        retStr = "其它订单";
+                    else if (value.Trim() == "9")
+                        retStr = "理赔单";
+                    else if (value.Trim() == "10")
+                        retStr = "移库单";
+                    else if (value.Trim() == "11")
+                        retStr = "展示单";
+                    else if (value.Trim() == "12")
+                        retStr = "OES客户单";
+                    else if (value.Trim() == "13")
+                        retStr = "自有零售店单";
+                    else if (value.Trim() == "14")
+                        retStr = "报量单";
+                    else if (value.Trim() == "15")
+                        retStr = "速配单";
+                    else if (value.Trim() == "16")
+                        retStr = "促销单";
+                    else if (value.Trim() == "17")
+                        retStr = "急送单";
+                    else if (value.Trim() == "18")
+                        retStr = "异地单";
+                    else if (value.Trim() == "19")
+                        retStr = "来货单";
+                    else if (value.Trim() == "20")
+                        retStr = "电商单";
+                    else if (value.Trim() == "21")
+                        retStr = "订货单";
+                    else if (value.Trim() == "22")
+                        retStr = "极速达";
+                    else if (value.Trim() == "23")
+                        retStr = "次日达";
+                    else if (value.Trim() == "24")
+                        retStr = "渠道订单";
+                    else if (value.Trim() == "25")
+                        retStr = "退仓单";
+                    break;
+            }
+            return retStr;
+        }
+
+        public List<CargoOrderGoodsEntity> QueryOrderPicekPieceExportList
+        {
+            get
+            {
+                if (Session["QueryOrderPicekPieceExportList"] == null) { Session["QueryOrderPicekPieceExportList"] = new List<CargoOrderGoodsEntity>(); }
+                return (List<CargoOrderGoodsEntity>)(Session["QueryOrderPicekPieceExportList"]);
+            }
+            set
+            {
+                Session["QueryOrderPicekPieceExportList"] = value;
+            }
+        }
+        protected void btnPicekPiece_Click(object sender, EventArgs e)
+        {
+            if (QueryOrderPicekPieceExportList.Count <= 0) { return; }
+            DataTable table = new DataTable();
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("客户名称", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            table.Columns.Add("订单数量", typeof(string));
+            table.Columns.Add("出库数量", typeof(string));
+            int i = 0;
+            string PayClientName = string.Empty;
+            foreach (var it in QueryOrderPicekPieceExportList)
+            {
+                PayClientName = it.PayClientName;
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["客户名称"] = it.PayClientName;
+                newRows["货品代码"] = it.GoodsCode;
+                newRows["订单数量"] = it.Piece;
+                newRows["出库数量"] = it.ScanPiece;
+                table.Rows.Add(newRows);
+            }
+            ToExcel.DataTableToExcel(table, "", "客户：" + PayClientName + "出库扫描列表");
+        }
+    }
+}
