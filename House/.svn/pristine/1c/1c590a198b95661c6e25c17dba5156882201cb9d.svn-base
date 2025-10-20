@@ -25,7 +25,6 @@ using System.Runtime.Remoting.Metadata.W3cXsd2001;
 using System.Security.Cryptography;
 using System.Security.Policy;
 using System.Text;
-using System.Windows.Input;
 
 namespace House.Manager.Cargo
 {
@@ -10309,8 +10308,7 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
                                     InTransitQty = dr.Field<int>("InTransitPiece"),
                                     RestockingQty = dr.Field<int>("RestockingPiece"),
                                     AvgSalSUM = dr.Field<int>("WeightedMonthSale"),
-                                    SID = dr.Field<long>("SID"),
-                                    
+                                    SID = dr.Field<long>("SID")
                                 });
                             }
                             toAddRows.Where(c => c.Piece < 0).ToList().ForEach(c => c.Piece = 0);
@@ -10360,6 +10358,8 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
 
             return result;
         }
+
+
         public CargoRplOrderDto QueryRplOrderFirst(CargoRplOrderParams queryParams)
         {
             var listData = QueryRplOrder(queryParams)?.Data ?? new List<CargoRplOrderDto>();
@@ -10383,13 +10383,6 @@ SELECT
 	RplID
 FROM Tbl_Cargo_RplOrderGoods
 WHERE (1=1) @{conditions}
-GROUP BY RplID
-),
-rogQty AS (
-SELECT
-	RplID,
-    COUNT(*) RowsQty
-FROM Tbl_Cargo_RplOrderGoods
 GROUP BY RplID
 )
 "); 
@@ -10421,8 +10414,7 @@ FROM (
     SELECT
 	    DISTINCT ROW_NUMBER() OVER (ORDER BY ro.RplID DESC) AS RowNumber,
 	    ro.*,
-	    ro2.TypeNames,
-        rogQty.RowsQty
+	    ro2.TypeNames
     FROM
 	    Tbl_Cargo_RplOrder AS ro
 	    LEFT JOIN (
@@ -10446,7 +10438,6 @@ FROM (
 			    Tbl_Cargo_RplOrder ro
 	    ) ro2 ON ro2.RplID = ro.RplID
 		INNER JOIN rog ON rog.RplID = ro.RplID
-        LEFT JOIN rogQty ON rogQty.RplID = ro.RplID
     WHERE 1 = 1 AND rog.RplID IS NOT NULL AND ro.Status <> 3 @{conditions}
 ) a
 WHERE RowNumber > @{startindex}
@@ -10542,7 +10533,6 @@ ORDER BY RowNumber ASC
                                 DonePiece = idr.Field<int?>("DonePiece"),
                                 Status = idr.Field<byte?>("Status"),
                                 TypeNames = idr.Field<string>("TypeNames"),
-                                RowsQty = idr.Field<int>("RowsQty"),
                                 Remark = idr.Field<string>("Remark"),
                                 CreateDate = idr.Field<DateTime>("CreateDate"),
                                 CompletedDate = idr.Field<DateTime?>("CompletedDate")
@@ -10655,8 +10645,7 @@ ORDER BY RowNumber ASC
                                 Specs = idr.Field<string>("Specs"),
                                 Figure = idr.Field<string>("Figure"),
                                 LoadIndex = idr.Field<string>("LoadIndex"),
-                                SpeedLevel = idr.Field<string>("SpeedLevel"),
-                                Remark = idr.Field<string>("Remark")
+                                SpeedLevel = idr.Field<string>("SpeedLevel")
                             });
                         }
                         result.Data = sqlData;
@@ -10821,23 +10810,12 @@ INNER JOIN Tbl_Cargo_Product p ON rog.ProductID = p.ProductID
                     List<CargoRplOrderGoodsDto> rowsData = new List<CargoRplOrderGoodsDto>();
                     var oosIDs = passRowsData.Select(x => x.OOSID).ToList();
                     //获取原始缺货数据
-                    string queryOOSStr = @"
+                    string queryOOS = @"
 SELECT * FROM Tbl_Cargo_OutOfStock
 WHERE Piece > 0 AND OOSID IN (@{OOSIDs})
 ";
-                    //更新缺货清单状态
-                    string updateOOSStr = @"
-UPDATE Tbl_Cargo_OutOfStock SET OOSStatus = 1
-WHERE OOSID IN (@{OOSIDs})
-";
-                    string updateOOS2Str = @"
-UPDATE Tbl_Cargo_OutOfStock SET OOSStatus = 2
-WHERE OOSID IN (@{OOSIDs})
-";
-                    List<int> oosIDForStatus1 = new List<int>();
-                    List<int> oosIDForStatus2 = new List<int>();
-                    queryOOSStr = queryOOSStr.Replace("@{OOSIDs}", string.Join(", ", oosIDs));
-                    using (DbCommand command = conn.GetSqlStringCommond(queryOOSStr))
+                    queryOOS = queryOOS.Replace("@{OOSIDs}", string.Join(", ", oosIDs));
+                    using (DbCommand command = conn.GetSqlStringCommond(queryOOS))
                     {
                         using (DataTable dt = conn.ExecuteDataTable(command, trns))
                         {
@@ -10867,45 +10845,14 @@ WHERE OOSID IN (@{OOSIDs})
                                         HouseName = dr.Field<string>("HouseName"),
                                         AreaID = dr.Field<int>("AreaID"),
                                         AreaName = dr.Field<string>("AreaName"),
-                                        Piece = matchedPassRow.ConfirmPiece, //手动补货数量
-                                        SysPiece = dr.Field<int?>("Piece"), //系统建议补货数
-                                        OOSID = dr.Field<int>("OOSID"),
-                                        OOSLogID = dr.Field<int>("OOSLogID"),
-                                        OOSLogRowID = dr.Field<int>("OOSLogRowID"),
-                                        Remark = matchedPassRow.Remark
+                                        Piece = matchedPassRow.Piece, //手动补货数量
+                                        SysPiece = dr.Field<int?>("Piece") //系统建议补货数
                                     });
-                                    if(matchedPassRow.ConfirmPiece > 0)
-                                    {
-                                        oosIDForStatus1.Add(matchedPassRow.OOSID.Value);
-                                    }
-                                    else if (matchedPassRow.ConfirmPiece == 0)
-                                    {
-                                        oosIDForStatus2.Add(matchedPassRow.OOSID.Value);
-                                    }
                                 }
                             }
                             else
                             {
                                 throw new ApplicationException("查询缺货单原数据失败");
-                            }
-                        }
-
-                        //更新缺货清单状态 为已采购
-                        if (oosIDForStatus1.Count > 0)
-                        {
-                            updateOOSStr = updateOOSStr.Replace("@{OOSIDs}", string.Join(", ", oosIDForStatus1));
-                            using (DbCommand command2 = conn.GetSqlStringCommond(updateOOSStr))
-                            {
-                                conn.ExecuteNonQuery(command2, trns);
-                            }
-                        }
-                        //更新缺货清单状态 为不采购
-                        if (oosIDForStatus2.Count > 0)
-                        {
-                            updateOOS2Str = updateOOS2Str.Replace("@{OOSIDs}", string.Join(", ", oosIDForStatus2));
-                            using (DbCommand command2 = conn.GetSqlStringCommond(updateOOS2Str))
-                            {
-                                conn.ExecuteNonQuery(command2, trns);
                             }
                         }
                     }
@@ -11070,10 +11017,6 @@ INSERT INTO
 		Piece,
 		SysPiece,
 		DonePiece,
-        OOSID,
-        OOSLogID,
-        OOSLogRowID,
-        Remark,
 		CreateDate,
         UpdateDate
 	)
@@ -11081,14 +11024,7 @@ OUTPUT
     INSERTED.*
 VALUES
 @{sqlvalues}
-;
 ";
-                    string updateOOSRplDateSQL = @"
-UPDATE Tbl_Cargo_OutOfStock SET LatestRplDate = GETDATE()
-WHERE OOSID IN (@{OOSIDs});";
-                    
-                    updateOOSRplDateSQL = updateOOSRplDateSQL.Replace("@{OOSIDs}", string.Join(", ", oosIDs));
-
                     List<string> sqlvaluesStrList = new List<string>();
                     List<SqlParameter> rowssqlParameters = new List<SqlParameter>();
                     int rowIndex = 0;
@@ -11141,18 +11077,13 @@ WHERE OOSID IN (@{OOSIDs});";
                         string sysPieceParam = "@SysPiece" + rowIndex;
                         string pieceParam = "@Piece" + rowIndex;
                         string donePieceParam = "@DonePiece" + rowIndex;
-                        string oosIDParam = "@OOSID" + rowIndex;
-                        string oosLogIDParam = "@OOSLogID" + rowIndex;
-                        string oosLogRowIDParam = "@OOSLogRowID" + rowIndex;
-                        string remarkParam = "@Remark" + rowIndex;
                         string createDateParam = "@CreateDate" + rowIndex;
                         string updateDateParam = "@UpdateDate" + rowIndex;
 
                         sqlvaluesStrList.Add($"({rplIDParam}, {productIDParam}, {productNameParam}, {productCodeParam}, {goodsCodeParam}, " +
                             $"{houseIDParam}, {houseNameParam}, {areaIDParam}, {areaNameParam}, " +
-                            $"{typeCateParam}, {typeCateNameParam}, {typeIDParam}, {typeNameParam}, {pieceParam}, " +
-                            $"{sysPieceParam}, {donePieceParam}, {oosIDParam}, {oosLogIDParam}, {oosLogRowIDParam}, " +
-                            $"{remarkParam}, {createDateParam}, {updateDateParam})");
+                            $"{typeCateParam}, {typeCateNameParam}, {typeIDParam}, {typeNameParam}, {pieceParam}," +
+                            $"{sysPieceParam}, {donePieceParam}, {createDateParam}, {updateDateParam})");
 
                         rowssqlParameters.AddRange(new List<SqlParameter>()
                         {
@@ -11175,10 +11106,6 @@ WHERE OOSID IN (@{OOSIDs});";
                             new SqlParameter(typeCateNameParam, SqlDbType.NVarChar, 50) { Value = row.TypeCateName },
                             new SqlParameter(houseIDParam, SqlDbType.Int) { Value = HouseID},
                             new SqlParameter(houseNameParam, SqlDbType.NVarChar, 50) { Value = HouseName},
-                            new SqlParameter(oosIDParam, SqlDbType.Int) { Value = row.OOSID },
-                            new SqlParameter(oosLogIDParam, SqlDbType.Int) { Value = row.OOSLogID },
-                            new SqlParameter(oosLogRowIDParam, SqlDbType.Int) { Value = row.OOSLogRowID },
-                            new SqlParameter(remarkParam, SqlDbType.NVarChar, 500) { Value = row.Remark },
 
                             //默认值
                             new SqlParameter(createDateParam, SqlDbType.DateTime) { Value = DateTime.Now },
@@ -11189,7 +11116,7 @@ WHERE OOSID IN (@{OOSIDs});";
                     }
 
                     insertRowsSQL = insertRowsSQL.Replace("@{sqlvalues}", string.Join(("," + Environment.NewLine), sqlvaluesStrList));
-                    using (DbCommand command = conn.GetSqlStringCommond(insertRowsSQL + updateOOSRplDateSQL))
+                    using (DbCommand command = conn.GetSqlStringCommond(insertRowsSQL))
                     {
                         command.Parameters.AddRange(rowssqlParameters.ToArray());
                         using (DataTable dt = conn.ExecuteDataTable(command, trns))
@@ -11226,9 +11153,9 @@ WHERE OOSID IN (@{OOSIDs});";
                             rtData.Rows = rtRows;
                         }
 
+                        trns.Commit();
                     }
 
-                    trns.Commit();
                     return rtData;
                 }
                 catch (ApplicationException ex)
@@ -11238,6 +11165,7 @@ WHERE OOSID IN (@{OOSIDs});";
                 }
             }
         }
+
         public CargoOOSLogDtlDto UpdateOutOfStockWithLog(CargoOOSLogDtlDto entity)
         {
             SqlHelper conn = new SqlHelper();
@@ -11647,7 +11575,7 @@ VALUES
                         }
                     }
 
-                    //------------ 插入或更新缺货数据 ------------
+                    //------------ 插入缺货数据 ------------
                     string insertOutOfStock = @"
 PRINT('Merge语法实现插入或更新自动判断，语法建议来自GPT');
 MERGE INTO Tbl_Cargo_OutOfStock AS target
@@ -11731,7 +11659,7 @@ WHEN NOT MATCHED THEN
         source.TypeName,
         source.Piece,
         default,
-        0,
+        default,
         source.CreateDate,
         source.UpdateDate
     )
@@ -11739,17 +11667,6 @@ WHEN NOT MATCHED THEN
 OUTPUT 
     inserted.*;
 ";
-                    string updtOOSStatusSQL = @"
-UPDATE oos
-SET oos.OOSStatus = 0
-FROM Tbl_Cargo_OutOfStock oos
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM Tbl_Cargo_RplOrderGoods rog
-    INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
-    WHERE oos.OOSID = rog.OOSID
-      AND ro.Status IN (0, 1)
-) AND oos.OOSStatus <> 0;";
                     rowIndex = 0;
                     sqlvaluesStrList.Clear();
                     rowssqlParameters.Clear();
@@ -11814,8 +11731,7 @@ WHERE NOT EXISTS (
 
                     insertOutOfStock = insertOutOfStock.Replace("@{sqlvalues}", string.Join(("," + Environment.NewLine), sqlvaluesStrList));
                     var oosList = new List<CargoOutOfStock>();
-
-                    using (DbCommand command = conn.GetSqlStringCommond(insertOutOfStock + updtOOSStatusSQL))
+                    using (DbCommand command = conn.GetSqlStringCommond(insertOutOfStock))
                     {
                         command.Parameters.AddRange(rowssqlParameters.ToArray());
                         using (DataTable dt = conn.ExecuteDataTable(command, trns))
@@ -12053,7 +11969,7 @@ GROUP BY
 
 SELECT
 	oos.*,
-    ISNULL(iti.Piece, 0) + ISNULL(ro.Piece, 0) InTransitStock,
+    ISNULL(iti.Piece, 0) InTransitStock,
     ISNULL(cs.Piece, 0) CurStock,
 	ISNULL(ro.Piece, 0) RestockingPiece,
     p.Model,
@@ -12152,7 +12068,6 @@ WHERE (1=1) AND oos.Piece > 0
                                 OldPiece = dr.Field<int?>("OldPiece"),
                                 Piece = dr.Field<int?>("Piece"),
                                 ConfirmPiece = dr.Field<int?>("Piece"),
-                                LatestRplDate = dr.Field<DateTime?>("LatestRplDate"),
                                 CreateDate = dr.Field<DateTime?>("CreateDate"),
                                 UpdateDate = dr.Field<DateTime?>("UpdateDate"),
 
