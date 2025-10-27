@@ -27,10 +27,12 @@ namespace House.Entity.Dto.Order
         public string LoadIndex { get; set; } //载重
         public string SpeedLevel { get; set; } //速度级别
         public int? Piece { get; set; }               // 补货数量
+        public int? ShippedPiece { get; set; }      // 补货数量
+        public int? ReceivedPiece { get; set; }      // 补货数量
         public int? SysPiece { get; set; }               // 建议补货数量
-        public int? DonePiece { get; set; }
         public string Remark { get; set; }
-
+        public int ContainerID { get; set; }
+        public int ContainerGoodsID { get; set; }
         public DateTime? CreateDate { get; set; }         
         public DateTime? UpdateDate { get; set; }
 

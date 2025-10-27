@@ -21,6 +21,7 @@ using System.Data.Common;
 using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
+using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Transactions;
@@ -360,6 +361,11 @@ namespace House.Business.Cargo
         {
             return man.queryOrderProductForAPP(OrderNo);
         }
+        public List<CargoProductShelvesEntity> queryOrderProductForAPP(string[] OrderNos)
+        {
+            return man.queryOrderProductForAPP(OrderNos);
+        }
+
 
         /// <summary>
         /// 查询订单数据
@@ -500,7 +506,7 @@ namespace House.Business.Cargo
             CargoClientManager client = new CargoClientManager();
             CargoWeiXinManager wxMan = new CargoWeiXinManager();
             CargoInterfaceManager interfaceManager = new CargoInterfaceManager();
-
+            CargoFinanceManager cargoFinanceManager = new CargoFinanceManager();
             //使用事务
             using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
             {
@@ -508,7 +514,7 @@ namespace House.Business.Cargo
                 {
                     man.AddOrderInfo(entity);
                     house.saveOutCargoData(outHouseList, log);
-                    CargoClientEntity clientEnt = client.QueryCargoClient(entity.ClientNum);
+                    CargoClientEntity clientEnt = client.QueryCargoClient(entity.ClientNum, 0);
                     if (!clientEnt.ClientID.Equals(0))
                     {
                         if (clientEnt.ClientType.Equals("1") && entity.CheckOutType.Equals("2"))
@@ -516,6 +522,38 @@ namespace House.Business.Cargo
                             //月结客户，月结订单，则减客户的月结额度
                             wxMan.UpdateClientLimitMoney(entity.TotalCharge, clientEnt.ClientNum, "1");
                         }
+                    }
+                    if (entity.CheckOutType.Equals("10"))
+                    {
+                        //预收款支付 进行扣款 并已支付成功，则修改订单状态为已结算
+                        //保存客户预收款的扣款记录
+                        client.UpdateClientPreRecord(new CargoClientPreRecordEntity
+                        {
+                            ClientID = clientEnt.ClientID,
+                            ExID = entity.OrderNo,
+                            Money = entity.TotalCharge,
+                            IsAdd = false,
+                            RecordType = "1",
+                            OperaType = "0",
+                            OP_ID = entity.OP_ID
+                        });
+                        //保存交易记录
+                        long cardID = 0;
+                        CargoCashierEntity card = new CargoCashierEntity();
+                        card.BasicID = entity.ClientNum;
+                        card.RType = "0";
+                        card.FromTO = "0";
+                        card.AffectAwbNO = entity.OrderNo;
+                        card.AffectCash = entity.TotalCharge;
+                        card.Memo = entity.Remark;
+                        card.OP_ID = entity.OP_ID;
+                        card.OP_DATE = entity.OP_DATE;
+                        card.UserName = entity.OP_Name;
+                        card.TradeType = "1";
+                        cardID = cargoFinanceManager.AddCardInfo(card);
+                        cargoFinanceManager.AddRecordAwbID(cardID, entity.OrderNo);
+                        //修改订单的结算状态
+                        man.UpdateCheckStatusByOrderNo(entity.OrderNo, "1");
                     }
                     //如果有马牌订单号，更新到马牌订单表
                     if (!string.IsNullOrEmpty(entity.OpenOrderNo) && entity.OpenOrderSource == "1")
@@ -557,7 +595,7 @@ namespace House.Business.Cargo
                     throw;
                 }
             }
-            
+
             ////销售单创建后库存变少，检查是否需要创建补货单
             //List<RplOrderAutoGeneratParam_Goods> rplGoodsList = new List<RplOrderAutoGeneratParam_Goods>();
             //if(entity != null && entity.goodsList != null && entity.goodsList.Any())
@@ -2721,6 +2759,72 @@ namespace House.Business.Cargo
         #endregion
         #region 移库订单操作方法集合
         /// <summary>
+        /// 新增移库单。基于AddMoveOrderData，封装核心逻辑。 -- by hzj
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void AddMoveOrder(CargoMoveOrderEntity entity)
+        {
+            CargoHouseManager house = new CargoHouseManager();
+            CargoFactoryOrderManager facMan = new CargoFactoryOrderManager();
+
+            LogEntity log = new LogEntity();
+            log.Moudle = "订单管理";
+            log.Status = "0";
+            log.NvgPage = "移库订单";
+            log.Operate = "A";
+            log.IPAddress = _ipaddress;
+            log.UserID = _userid;
+            DataRespsBase<CargoRplOrderDtlDto> rtData = new DataRespsBase<CargoRplOrderDtlDto>();
+            LogBus lw = new LogBus();
+            try
+            {
+
+                man.AddMoveOrderData(entity);
+                //2.减库存
+                foreach (var it in entity.MoveGoodsList)
+                {
+                    house.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = it.ContainerGoodsID, Piece = it.Piece, IsAdd = false });
+                }
+
+                //添加推送信息
+                CargoHouseEntity houseData = house.QueryCargoHouseByID(entity.NewHouseID);//查询仓库代码
+                InsertCargoOrderPush(new CargoOrderPushEntity
+                {
+                    OrderNo = entity.MoveNo,//订单号
+                    Dep = entity.OldHouseName,//出发站
+                    Dest = entity.NewHouseName,//到达站
+                    Piece = entity.MoveNum,//总件数
+                    TransportFee = 0,//总收入
+                    ClientNum = "",//客户编码
+                    AcceptAddress = houseData.Address,//客户详细地址
+                    AcceptCellphone = houseData.Cellphone,//客户手机
+                    AcceptTelephone = houseData.Cellphone,//客户联系电话
+                    AcceptPeople = houseData.Person,//客户联系人
+                    AcceptUnit = entity.NewHouseName,//客户名称
+                    HouseID = entity.OldHouseID.ToString(),
+                    HouseName = entity.OldHouseName,
+                    OP_ID = entity.UserName,
+                    PushType = "0",
+                    PushStatus = "0",
+                    LogisID = entity.LogisID,
+                    Type = 2
+                }, log);
+
+                lw.InsertLog(log);
+            }
+            catch (Exception ex)
+            {
+                log.Status = "1";
+                log.Memo = ex.FormatErr();
+                rtData.Success = false;
+                rtData.Message = "创建移库单失败，失败信息：" + ex.Message;
+                lw.InsertLog(log);
+                return;
+            }
+            return;
+        }
+        /// <summary>
         /// 移库新增
         /// </summary>
         /// <param name="entity"></param>
@@ -3940,7 +4044,7 @@ namespace House.Business.Cargo
                 }
 
                 var addedList = man.UpdtOutOfStock(entity);
-                var dataParamsJson = JsonConvert.SerializeObject(entity); 
+                var dataParamsJson = JsonConvert.SerializeObject(entity);
                 if (addedList.Any())
                 {
                     var addedListJson = JsonConvert.SerializeObject(addedList);
@@ -3991,7 +4095,7 @@ namespace House.Business.Cargo
                 entity.UserID = _userid;
                 entity.UserName = _username;
                 entity.Piece = entity.Rows.Sum(c => c.ConfirmPiece.HasValue ? c.ConfirmPiece.Value : 0);
-                
+
                 rtData.Data = man.AddRplOrder(entity);
                 var dataParamsJson = JsonConvert.SerializeObject(entity);
                 if (rtData?.Data != null)
@@ -4039,7 +4143,7 @@ namespace House.Business.Cargo
         }
         public bool CancelRplOrder(int[] RplIDs)
         {
-            if(RplIDs == null || !RplIDs.Any())
+            if (RplIDs == null || !RplIDs.Any())
             {
                 return true;
             }

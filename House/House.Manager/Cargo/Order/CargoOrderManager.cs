@@ -957,7 +957,7 @@ namespace House.Manager.Cargo
             {
                 entity.EnSafe();
                 #region 组装查询SQL语句
-                string strSQL = @" SELECT TOP " + pNum + " *  FROM ";
+                string strSQL = @" SELECT " + (pNum > 0 ? $"TOP {pNum}" : "") + " *  FROM ";
                 strSQL += "(SELECT DISTINCT ROW_NUMBER() OVER (ORDER BY a.CreateDate DESC) AS RowNumber,a.*,b.LogisticName,c.WXPayOrderNo,c.PayWay,c.PayStatus ,h.Name AS HouseName,h.Cellphone as HouseCellphone,d.ClientShortName as SuppClientName,c.Trxid from Tbl_Cargo_Order as a left join tbl_cargo_Logistic as b on a.LogisID=b.ID left join Tbl_WX_Order as c on a.WXOrderNo=c.OrderNo inner JOIN Tbl_Cargo_House AS h ON a.HouseID = h.HouseID left join Tbl_Cargo_Client as d on a.SuppClientNum=d.ClientNum  Where (1=1) ";
                 //下单方式
                 if (!string.IsNullOrEmpty(entity.OrderType)) { strSQL += " and a.OrderType = '" + entity.OrderType + "'"; }
@@ -5154,6 +5154,118 @@ AcceptCellphone,HouseID,HouseName,OP_ID,Piece,PushType,PushStatus,LogisID) selec
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
             return result;
         }
+
+        public List<CargoProductShelvesEntity> queryOrderProductForAPP(string[] OrderNos)
+        {
+            CargoPriceManager price = new CargoPriceManager();
+            List<CargoProductShelvesEntity> result = new List<CargoProductShelvesEntity>();
+            try
+            {
+
+                string createIDsTempTblSQL = @"
+CREATE TABLE 
+	#OrderNos(
+		No NVARCHAR(50)
+	);
+";
+            string strSQL = @"select a.OrderNo,a.ProductID,a.Piece,a.ActSalePrice,
+ISNULL(a.SupplySalePrice,0) as originalPrice,b.TypeID,b.ProductName,c.TypeName,b.Model,
+b.GoodsCode,b.Specs,b.Figure,b.LoadIndex,b.SpeedLevel,b.Batch,b.BatchWeek,b.BatchYear,a.HouseID,b.TradePrice,
+b.SalePrice,b.TreadWidth,b.HubDiameter,InHouseTime,InCargoStatus,
+ISNULL(rb.CutEntry, 0) CutEntry, ISNULL(rb.ID, 0) ID
+From Tbl_Cargo_OrderGoods as a 
+INNER JOIN Tbl_Cargo_Product as b on a.ProductID=b.ProductID 
+INNER JOIN Tbl_Cargo_ProductType as c on b.TypeID=c.TypeID 
+INNER JOIN #OrderNos temp ON a.OrderNo = temp.No
+LEFT JOIN Tbl_Cargo_RuleBank RB ON RB.StartDate<=GETDATE() 
+    AND RB.EndDate >= GETDATE()
+    AND RB.HouseID = a.HouseID
+    AND RB.TypeID = b.TypeID
+    AND RB.Specs = b.Specs
+    AND RB.Figure = b.Figure
+    AND RB.DelFlag = 0
+    AND RB.StartBatch = (b.BatchYear + b.BatchWeek)
+    AND RB.RuleType = 6
+ORDER BY a.OrderNo DESC, a.ProductID ASC
+";
+                List<string> tempTblVals = new List<string>();
+                if (OrderNos.Any())
+                {
+                    string insertTempSQL = @"
+INSERT INTO #OrderNos (No)
+Values {0}
+;";
+                    //每1000条数据分一批插入；SQLServer限制一次最多插入1000条
+                    var batches = OrderNos
+                        .Select((id, index) => new { id, index })
+                        .GroupBy(x => x.index / 1000)
+                        .Select(g => g.Select(x => $"('{x.id}')"));
+                    foreach (var batch in batches)
+                    {
+                        string batchValues = string.Join("," + Environment.NewLine, batch);
+                        string batchSQL = string.Format(insertTempSQL, batchValues);
+                        // 执行 batchSQL 或添加到 SQL 列表
+                        createIDsTempTblSQL += batchSQL + Environment.NewLine;
+                    }
+                }
+                else
+                {
+                    return result;
+                }
+
+                strSQL = createIDsTempTblSQL + strSQL;
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(cmd))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            //string batch = Convert.ToString(idr["BatchYear"]) + Convert.ToString(idr["BatchWeek"]);
+                            //List<CargoRuleBankEntity> rule = price.QueryRuleBank(new CargoRuleBankEntity { HouseID = Convert.ToInt32(idr["HouseID"]), TypeID = Convert.ToInt32(idr["TypeID"]), Specs = Convert.ToString(idr["Specs"]), Figure = Convert.ToString(idr["Figure"]), DelFlag = "0", StartBatch = Convert.ToInt32(batch) });
+                            CargoRuleBankEntity rb = new CargoRuleBankEntity();
+                            //if (rule.Count > 0)
+                            //{
+                            //    rb = rule.Find(c => c.RuleType.Equals("6"));
+                            //}
+                            result.Add(new CargoProductShelvesEntity
+                            {
+                                OrderNo = Convert.ToString(idr["OrderNo"]),
+                                OrderNum = Convert.ToInt32(idr["Piece"]),
+                                OrderPrice = Convert.ToDecimal(idr["ActSalePrice"]),
+                                ProductID = Convert.ToInt64(idr["ProductID"]),
+                                Title = Convert.ToString(idr["TypeName"]) + Convert.ToString(idr["Specs"]) + " " + Convert.ToString(idr["Figure"]) + " " + Convert.ToString(idr["LoadIndex"]) + Convert.ToString(idr["SpeedLevel"]),
+                                FileName = "/upload/trye/mapai/CC6.png",
+                                ProductName = Convert.ToString(idr["ProductName"]),
+                                TypeID = Convert.ToInt32(idr["TypeID"]),
+                                TypeName = Convert.ToString(idr["TypeName"]),
+                                Model = Convert.ToString(idr["Model"]),
+                                GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                                Specs = Convert.ToString(idr["Specs"]),
+                                Figure = Convert.ToString(idr["Figure"]),
+                                Batch = Convert.ToString(idr["Batch"]),
+                                TreadWidth = Convert.ToInt32(idr["TreadWidth"]),
+                                HubDiameter = Convert.ToInt32(idr["HubDiameter"]),
+                                LoadIndex = Convert.ToString(idr["LoadIndex"]),
+                                SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
+                                TradePrice = Convert.ToDecimal(idr["TradePrice"]),
+                                originalPrice = Convert.ToDecimal(idr["originalPrice"]),
+                                //CutEntry = rb.CutEntry,
+                                CutEntry = Convert.ToDecimal(idr["CutEntry"]),
+                                IsCut = Convert.ToInt64(idr["ID"]).Equals(0) ? false : true,
+                                RuleID = Convert.ToInt64(idr["ID"]),
+                                SalePrice = Convert.ToDecimal(idr["SalePrice"]),
+                                InHouseTime = Convert.ToDateTime(idr["InHouseTime"]),
+                                InCargoStatus = Convert.ToInt32(idr["InCargoStatus"]),
+                            });
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+
+            return result;
+        }
+
 
         /// <summary>
         /// 修改订单延迟发货状态
@@ -10164,6 +10276,8 @@ SELECT
 	h.ParentID HouseParentID,
 	h.ParentName HouseParentName,
 	cg.Piece InPiece,
+	cg.ContainerID,
+	cg.ID ContainerGoodsID,
 	ca.RootArea AreaID
 FROM
 	Tbl_Cargo_Product p
@@ -10200,7 +10314,7 @@ ro as (
 SELECT
 	rog.ProductCode, 
 	ro.FromHouse HouseID,
-	SUM(rog.Piece - rog.DonePiece) Piece
+	SUM(rog.Piece - rog.ShippedPiece) Piece
 FROM
 	Tbl_Cargo_RplOrderGoods rog 
 	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
@@ -10311,6 +10425,8 @@ ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0) + ISNULL(ro.
                                     AvgSalSUM = dr.Field<int>("WeightedMonthSale"),
                                     SID = dr.Field<long>("SID"),
                                     
+                                    ContainerID = dr.Field<int>("ContainerID"),
+                                    ContainerGoodsID = dr.Field<long>("ContainerGoodsID")
                                 });
                             }
                             toAddRows.Where(c => c.Piece < 0).ToList().ForEach(c => c.Piece = 0);
@@ -10539,7 +10655,8 @@ ORDER BY RowNumber ASC
                                 UserID = idr.Field<string>("UserID"),
                                 UserName = idr.Field<string>("UserName"),
                                 Piece = idr.Field<int?>("Piece"),
-                                DonePiece = idr.Field<int?>("DonePiece"),
+                                ShippedPiece = idr.Field<int?>("ShippedPiece"),
+                                ReceivedPiece = idr.Field<int?>("ReceivedPiece"),
                                 Status = idr.Field<byte?>("Status"),
                                 TypeNames = idr.Field<string>("TypeNames"),
                                 RowsQty = idr.Field<int>("RowsQty"),
@@ -10651,7 +10768,8 @@ ORDER BY RowNumber ASC
                                 TypeID = idr.Field<int?>("TypeID"),
                                 TypeName = idr.Field<string>("TypeName"),
                                 Piece = idr.Field<int?>("Piece"),
-                                DonePiece = idr.Field<int?>("DonePiece"),
+                                ShippedPiece = idr.Field<int?>("ShippedPiece"),
+                                ReceivedPiece = idr.Field<int?>("ReceivedPiece"),
                                 Specs = idr.Field<string>("Specs"),
                                 Figure = idr.Field<string>("Figure"),
                                 LoadIndex = idr.Field<string>("LoadIndex"),
@@ -10696,7 +10814,8 @@ SELECT
       ,ro.[UserID]
       ,ro.[UserName]
       ,ro.[Piece] TotalPiece
-      ,ro.[DonePiece] TotalDonePiece
+      ,ro.[ShippedPiece] TotalShippedPiece
+      ,ro.[ReceivedPiece] TotalReceivedPiece
       ,ro.[Status]
       ,ro.[ProcessingDate]
       ,ro.[CompletedDate]
@@ -10716,7 +10835,8 @@ SELECT
       ,rog.[TypeName]
       ,rog.[Piece]
       ,rog.[SysPiece]
-      ,rog.[DonePiece]
+      ,rog.[ShippedPiece]
+      ,rog.[ReceivedPiece]
       ,rog.[CreateDate]
       ,rog.[UpdateDate]
       ,p.Specs
@@ -10771,7 +10891,8 @@ INNER JOIN Tbl_Cargo_Product p ON rog.ProductID = p.ProductID
                                 UserID = idr.Field<string>("UserID"),
                                 UserName = idr.Field<string>("UserName"),
                                 TotalPiece = idr.Field<int>("TotalPiece"),
-                                TotalDonePiece = idr.Field<int?>("TotalDonePiece"),
+                                TotalShippedPiece = idr.Field<int?>("TotalShippedPiece"),
+                                TotalReceivedPiece = idr.Field<int?>("TotalReceivedPiece"),
                                 Status = idr.Field<byte?>("Status"),
                                 Remark = idr.Field<string>("Remark"),
                                 CreateDate = idr.Field<DateTime>("CreateDate"),
@@ -10790,7 +10911,8 @@ INNER JOIN Tbl_Cargo_Product p ON rog.ProductID = p.ProductID
                                 TypeID = idr.Field<int?>("TypeID"),
                                 TypeName = idr.Field<string>("TypeName"),
                                 Piece = idr.Field<int>("Piece"),
-                                DonePiece = idr.Field<int?>("DonePiece"),
+                                ShippedPiece = idr.Field<int>("ShippedPiece"),
+                                ReceivedPiece = idr.Field<int>("ReceivedPiece"),
                                 Specs = idr.Field<string>("Specs"),
                                 Figure = idr.Field<string>("Figure"),
                                 LoadIndex = idr.Field<string>("LoadIndex"),
@@ -10810,7 +10932,6 @@ INNER JOIN Tbl_Cargo_Product p ON rog.ProductID = p.ProductID
             SqlHelper conn = new SqlHelper();
             CargoRplOrderDtlDto result = new CargoRplOrderDtlDto();
             CargoRplOrderDtlDto headData = entity;
-;
             CargoRplOrderDtlDto rtData = new CargoRplOrderDtlDto();
             using (Trans trns = new Trans())
             {
@@ -10872,6 +10993,8 @@ WHERE OOSID IN (@{OOSIDs})
                                         OOSID = dr.Field<int>("OOSID"),
                                         OOSLogID = dr.Field<int>("OOSLogID"),
                                         OOSLogRowID = dr.Field<int>("OOSLogRowID"),
+                                        ContainerID = dr.Field<int>("ContainerID"),
+                                        ContainerGoodsID = dr.Field<int>("ContainerGoodsID"),
                                         Remark = matchedPassRow.Remark
                                     });
                                     if(matchedPassRow.ConfirmPiece > 0)
@@ -10941,6 +11064,43 @@ WHERE OOSID IN (@{OOSIDs})
                     bool isExistUser = (userData?.LoginName ?? "") != "";
                     if (!isExistHouse) throw new ApplicationException($"请求人ID({ReqBy})不存在");
                     UserName = userData.UserName;
+
+                    //############ 创建移库单 ############
+                    CargoHouseManager houseBuz = new CargoHouseManager();
+                    var firstRowData = rowsData.FirstOrDefault();
+                    CargoMoveOrderEntity moveOrderData = new CargoMoveOrderEntity()
+                    {
+                        MoveNo = headData.MoveNo,
+                        MoveNum = headData.Piece,
+                        OldHouseID = HouseID.Value.ToString(),
+                        OldHouseName = HouseName,
+                        NewHouseID = FromHouseID.Value,
+                        NewHouseName = FromHouseName,
+                        NewAreaID = firstRowData.AreaID.Value,
+                        Memo = headData.Remark,
+                        OPID = headData.UserID,
+                        LogisID = headData.LogisticID.GetValueOrDefault(),
+                        MoveStatus = "0",
+                        IsSaveIncomming = "0",
+                        MoveGoodsList = rowsData.Select(i => new CargoMoveOrderGoodsEntity()
+                        {
+                            MoveNo = headData.MoveNo,
+                            ProductID = i.ProductID.Value,
+                            ContainerID = i.ContainerID,
+                            ContainerGoodsID = i.ContainerGoodsID,
+                            Piece = i.ConfirmPiece.GetValueOrDefault(),
+                            ActSalePrice = 0,
+                            OPID = headData.UserID
+                        }).ToList()
+                    };
+                    List<CargoMoveOrderGoodsEntity> moveGoodsList = moveOrderData.MoveGoodsList;
+                    //AddMoveOrderData(moveOrderData);
+                    ////2.减库存
+                    //foreach (var movegoods in moveGoodsList)
+                    //{
+                    //    houseBuz.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = movegoods.ContainerGoodsID, Piece = movegoods.Piece, IsAdd = false });
+                    //}
+
                     //获取新补货单号
                     RplNo = GetNewRplNo();
 
@@ -10956,7 +11116,10 @@ INSERT INTO
 		UserID,
 		UserName,
 		Piece,
-		DonePiece,
+        ShippedPiece,
+		ReceivedPiece,
+        LogisticID,
+        LogisticName,
 		Status,
 		ProcessingDate,
 		CompletedDate,
@@ -10977,7 +11140,10 @@ VALUES
 		@UserID,
 		@UserName,
 		@Piece,
-		@DonePiece,
+        @ShippedPiece,
+		@ReceivedPiece,
+        @LogisticID,
+        @LogisticName,
 		@Status,
 		@ProcessingDate,
 		@CompletedDate,
@@ -11004,9 +11170,12 @@ SELECT
                             //传值
                             new SqlParameter("@Piece", SqlDbType.Int) { Value = headData.Piece },
                             new SqlParameter("@Remark", SqlDbType.NVarChar, 500) { Value = (object)headData.Remark ?? DBNull.Value },
+                            new SqlParameter("@LogisticID", SqlDbType.Int) { Value = (object)headData.LogisticID ?? DBNull.Value },
+                            new SqlParameter("@LogisticName", SqlDbType.NVarChar, 50) { Value = (object)headData.LogisticName ?? DBNull.Value },
 
                             //默认值
-                            new SqlParameter("@DonePiece", SqlDbType.Int) { Value = 0 },
+                            new SqlParameter("@ShippedPiece", SqlDbType.Int) { Value = 0 },
+                            new SqlParameter("@ReceivedPiece", SqlDbType.Int) { Value = 0 },
                             new SqlParameter("@Status", SqlDbType.TinyInt) { Value = 0 },
                             new SqlParameter("@ProcessingDate", SqlDbType.DateTime) { Value = DBNull.Value },
                             new SqlParameter("@CompletedDate", SqlDbType.DateTime) { Value = DBNull.Value },
@@ -11032,7 +11201,10 @@ SELECT
                                     UserID = dr.Field<string>("UserID"),
                                     UserName = dr.Field<string>("UserName"),
                                     Piece = dr.Field<int>("Piece"),
-                                    DonePiece = dr.Field<int?>("DonePiece"),
+                                    ShippedPiece = dr.Field<int?>("ShippedPiece"),
+                                    ReceivedPiece = dr.Field<int?>("ReceivedPiece"),
+                                    LogisticID = dr.Field<int?>("LogisticID"),
+                                    LogisticName = dr.Field<string>("LogisticName"),
                                     Status = dr.Field<byte?>("Status"),
                                     Remark = dr.Field<string>("Remark"),
                                     ProcessingDate = dr.Field<DateTime?>("ProcessingDate"),
@@ -11069,10 +11241,13 @@ INSERT INTO
 		TypeName,
 		Piece,
 		SysPiece,
-		DonePiece,
+		ShippedPiece,
+        ReceivedPiece,
         OOSID,
         OOSLogID,
         OOSLogRowID,
+        ContainerID,
+        ContainerGoodsID,
         Remark,
 		CreateDate,
         UpdateDate
@@ -11140,10 +11315,13 @@ WHERE OOSID IN (@{OOSIDs});";
                         string typeNameParam = "@TypeName" + rowIndex;
                         string sysPieceParam = "@SysPiece" + rowIndex;
                         string pieceParam = "@Piece" + rowIndex;
-                        string donePieceParam = "@DonePiece" + rowIndex;
+                        string shippedPieceParam = "@ShippedPiece" + rowIndex;
+                        string receivedPieceParam = "@ReceivedPiece" + rowIndex;
                         string oosIDParam = "@OOSID" + rowIndex;
                         string oosLogIDParam = "@OOSLogID" + rowIndex;
                         string oosLogRowIDParam = "@OOSLogRowID" + rowIndex;
+                        string containerIDParam = "@ContainerID" + rowIndex;
+                        string containerGoodsIDParam = "@ContainerGoodsID" + rowIndex;
                         string remarkParam = "@Remark" + rowIndex;
                         string createDateParam = "@CreateDate" + rowIndex;
                         string updateDateParam = "@UpdateDate" + rowIndex;
@@ -11151,8 +11329,8 @@ WHERE OOSID IN (@{OOSIDs});";
                         sqlvaluesStrList.Add($"({rplIDParam}, {productIDParam}, {productNameParam}, {productCodeParam}, {goodsCodeParam}, " +
                             $"{houseIDParam}, {houseNameParam}, {areaIDParam}, {areaNameParam}, " +
                             $"{typeCateParam}, {typeCateNameParam}, {typeIDParam}, {typeNameParam}, {pieceParam}, " +
-                            $"{sysPieceParam}, {donePieceParam}, {oosIDParam}, {oosLogIDParam}, {oosLogRowIDParam}, " +
-                            $"{remarkParam}, {createDateParam}, {updateDateParam})");
+                            $"{sysPieceParam}, {shippedPieceParam}, {receivedPieceParam}, {oosIDParam}, {oosLogIDParam}, {oosLogRowIDParam}, " +
+                            $"{containerIDParam}, {containerGoodsIDParam}, {remarkParam}, {createDateParam}, {updateDateParam})");
 
                         rowssqlParameters.AddRange(new List<SqlParameter>()
                         {
@@ -11169,7 +11347,8 @@ WHERE OOSID IN (@{OOSIDs});";
                             new SqlParameter(sysPieceParam, SqlDbType.Int) { Value = row.SysPiece },
 
                             //传值
-                            new SqlParameter(donePieceParam, SqlDbType.Int) { Value = 0 },
+                            new SqlParameter(shippedPieceParam, SqlDbType.Int) { Value = 0 },
+                            new SqlParameter(receivedPieceParam, SqlDbType.Int) { Value = 0 },
                             new SqlParameter(pieceParam, SqlDbType.Int) { Value = row.Piece },
                             new SqlParameter(typeCateParam, SqlDbType.Int) { Value = row.TypeCate },
                             new SqlParameter(typeCateNameParam, SqlDbType.NVarChar, 50) { Value = row.TypeCateName },
@@ -11178,6 +11357,8 @@ WHERE OOSID IN (@{OOSIDs});";
                             new SqlParameter(oosIDParam, SqlDbType.Int) { Value = row.OOSID },
                             new SqlParameter(oosLogIDParam, SqlDbType.Int) { Value = row.OOSLogID },
                             new SqlParameter(oosLogRowIDParam, SqlDbType.Int) { Value = row.OOSLogRowID },
+                            new SqlParameter(containerIDParam, SqlDbType.Int) { Value = row.ContainerID },
+                            new SqlParameter(containerGoodsIDParam, SqlDbType.Int) { Value = row.ContainerGoodsID },
                             new SqlParameter(remarkParam, SqlDbType.NVarChar, 500) { Value = row.Remark },
 
                             //默认值
@@ -11217,7 +11398,10 @@ WHERE OOSID IN (@{OOSIDs});";
                                         AreaName = dr.Field<string>("AreaName"),
                                         Piece = dr.Field<int>("Piece"),
                                         SysPiece = dr.Field<int?>("SysPiece"),
-                                        DonePiece = dr.Field<int?>("DonePiece"),
+                                        ShippedPiece = dr.Field<int?>("ShippedPiece"),
+                                        ReceivedPiece = dr.Field<int?>("ReceivedPiece"),
+                                        ContainerID = dr.Field<int>("ContainerID"),
+                                        ContainerGoodsID = dr.Field<int>("ContainerGoodsID"),
                                         CreateDate = dr.Field<DateTime>("CreateDate"),
                                         UpdateDate = dr.Field<DateTime>("UpdateDate")
                                     });
@@ -11255,7 +11439,6 @@ WHERE OOSID IN (@{OOSIDs});";
                     int? FromHouse = headData.FromHouse;
                     int? ParentRplID = headData.ParentRplID;
                     string ReqBy = headData.ReqBy;
-                    string RplNo = "";
                     string HouseName = "";
                     string FromHouseName = "";
                     string ReqByName = "";
@@ -11283,70 +11466,9 @@ WHERE OOSID IN (@{OOSIDs});";
                     bool isExistUser = (userData?.LoginName ?? "") != "";
                     if (!isExistHouse) throw new ApplicationException($"请求人ID({ReqBy})不存在");
                     ReqByName = userData.UserName;
-                    //获取新补货单号
-                    RplNo = GetNewRplNo();
 
                     //------------ 插入审计头数据 ------------
                     string insertHeadSQL = @"
-INSERT INTO
-	Tbl_Cargo_RplOrder (
-		RplNo,
-		HouseID,
-		HouseName,
-		FromHouse,
-		FromHouseName,
-		ReqBy,
-		ReqByName,
-		AppBy,
-		AppByName,
-		ParentRplID,
-		ScrType,
-		SrcCode,
-		SrcID,
-		CreateMethod,
-		Piece,
-		DonePiece,
-		Status,
-		Reason,
-		ProcessingDate,
-		CompletedDate,
-		CancelledDate,
-		Remark,
-		CreateDate,
-		UpdateDate
-	)
-OUTPUT 
-    INSERTED.*
-VALUES
-	(
-		@RplNo,
-		@HouseID,
-		@HouseName,
-		@FromHouse,
-		@FromHouseName,
-		@ReqBy,
-		@ReqByName,
-		@AppBy,
-		@AppByName,
-		@ParentRplID,
-		@ScrType,
-		@SrcCode,
-		@SrcID,
-		@CreateMethod,
-		@Piece,
-		@DonePiece,
-		@Status,
-		@Reason,
-		@ProcessingDate,
-		@CompletedDate,
-		@CancelledDate,
-		@Remark,
-		@CreateDate,
-		@UpdateDate
-	)
-SELECT
-	SCOPE_IDENTITY()";
-                    insertHeadSQL = @"
 INSERT INTO
 	Tbl_Cargo_OutOfStockLog (
 		HouseID,
@@ -11359,6 +11481,7 @@ INSERT INTO
 		SrcCode,
 		SrcID,
 		Piece,
+        ActPiece,
 		ReasonTag,
 		Reason,
 		CreateDate
@@ -11377,6 +11500,7 @@ VALUES
 		@SrcCode,
 		@SrcID,
 		@Piece,
+		@ActPiece,
         @ReasonTag,
 		@Reason,
 		@CreateDate
@@ -11403,6 +11527,7 @@ SELECT
                             new SqlParameter("@SrcCode", SqlDbType.NVarChar, 50) { Value = (object)headData.SrcCode ?? DBNull.Value },
                             new SqlParameter("@SrcID", SqlDbType.Int) { Value = (object)headData.SrcID ?? DBNull.Value },
                             new SqlParameter("@Piece", SqlDbType.Int) { Value = headData.Piece },
+                            new SqlParameter("@ActPiece", SqlDbType.Int) { Value = headData.Piece },
                             new SqlParameter("@CreateDate", SqlDbType.DateTime) { Value = DateTime.Now }
                         };
                         command.Parameters.AddRange(hdsqlParameters.ToArray());
@@ -11455,6 +11580,7 @@ INSERT INTO
 		TypeID,
 		TypeName,
 		Piece,
+        ActPiece,
         MinStockDay,
         MaxStockDay,
         DOI,
@@ -11463,6 +11589,8 @@ INSERT INTO
 		SrcPiece,
 		RestockingQty,
 		InTransitQty,
+        ContainerID,
+        ContainerGoodsID,
 		AvgSalSUM,
 		CreateDate
 	)
@@ -11547,6 +11675,7 @@ VALUES
                         string typeIDParam = "@TypeID" + rowIndex;
                         string typeNameParam = "@TypeName" + rowIndex;
                         string pieceParam = "@Piece" + rowIndex;
+                        string actPieceParam = "@ActPiece" + rowIndex;
 
                         string minstockdayParam = "@MinStockDay" + rowIndex;
                         string maxstockdayParam = "@MaxStockDay" + rowIndex;
@@ -11556,14 +11685,16 @@ VALUES
                         string srcPieceParam = "@SrcPiece" + rowIndex;
                         string restockingqtyParam = "@RestockingQty" + rowIndex;
                         string intransiQtyParam = "@InTransitQty" + rowIndex;
+                        string containerIDParam = "@containerIDParam" + rowIndex;
+                        string containerGoodsIDParam = "@containerGoodsIDParam" + rowIndex;
                         string avgSalSumParam = "@AvgSalSUM" + rowIndex;
                         string createDateParam = "@CreateDate" + rowIndex;
 
                         sqlvaluesStrList.Add($"({rplIDParam}, {productIDParam}, {sidParam}, {productNameParam}, {productCodeParam}, {goodsCodeParam}, " +
                             $"{houseIDParam}, {houseNameParam}, {areaIDParam}, {areaNameParam}, " +
-                            $"{typeCateParam}, {typeCateNameParam}, {typeIDParam}, {typeNameParam}, {pieceParam}," +
+                            $"{typeCateParam}, {typeCateNameParam}, {typeIDParam}, {typeNameParam}, {pieceParam}, {actPieceParam}, " +
                             $"{minstockdayParam}, {maxstockdayParam}, {doiParam}, {minstockParam}, {maxstockParam}, {srcPieceParam}, " +
-                            $"{restockingqtyParam}, {intransiQtyParam}, {avgSalsum}, {createDateParam})");
+                            $"{restockingqtyParam}, {intransiQtyParam}, {containerIDParam}, {containerGoodsIDParam}, {avgSalsum}, {createDateParam})");
 
                         rowssqlParameters.AddRange(new List<SqlParameter>()
                         {
@@ -11581,6 +11712,7 @@ VALUES
                             //传值
                             new SqlParameter(sidParam, SqlDbType.BigInt) { Value = row.SID },
                             new SqlParameter(pieceParam, SqlDbType.Int) { Value = row.Piece },
+                            new SqlParameter(actPieceParam, SqlDbType.Int) { Value = row.Piece },
                             new SqlParameter(typeCateParam, SqlDbType.Int) { Value = row.TypeCate },
                             new SqlParameter(typeCateNameParam, SqlDbType.NVarChar, 50) { Value = row.TypeCateName },
                             new SqlParameter(houseIDParam, SqlDbType.Int) { Value = HouseID},
@@ -11593,7 +11725,10 @@ VALUES
                             new SqlParameter(srcPieceParam, SqlDbType.Int) { Value = srcpiece },
                             new SqlParameter(restockingqtyParam, SqlDbType.Int) { Value = restockingqty },
                             new SqlParameter(intransiQtyParam, SqlDbType.Int) { Value = intransiqty },
+                            new SqlParameter(containerIDParam, SqlDbType.Int) { Value = row.ContainerID.Value },
+                            new SqlParameter(containerGoodsIDParam, SqlDbType.Int) { Value = row.ContainerID.Value },
                             new SqlParameter(avgSalSumParam, SqlDbType.Int) { Value = avgSalsum },
+                            
 
                             //默认值
                             new SqlParameter(createDateParam, SqlDbType.DateTime) { Value = DateTime.Now },
@@ -11638,6 +11773,8 @@ VALUES
                                         SrcPiece = dr.Field<int?>("SrcPiece"),
                                         RestockingQty = dr.Field<int?>("RestockingQty"),
                                         InTransitQty = dr.Field<int?>("InTransitQty"),
+                                        ContainerID = dr.Field<int?>("ContainerID"),
+                                        ContainerGoodsID = dr.Field<int?>("ContainerGoodsID"),
                                         AvgSalSUM = dr.Field<int?>("AvgSalSUM"),
                                         CreateDate = dr.Field<DateTime>("CreateDate"),
                                     });
@@ -11673,6 +11810,8 @@ USING (
     TypeID,
     TypeName,
     Piece,
+    ContainerID,
+    ContainerGoodsID,
     CreateDate,
     UpdateDate
 )
@@ -11707,6 +11846,8 @@ WHEN NOT MATCHED THEN
         TypeName,
         Piece,
         OldPiece,
+        ContainerID,
+        ContainerGoodsID,
         OOSStatus,
         CreateDate,
         UpdateDate
@@ -11730,7 +11871,9 @@ WHEN NOT MATCHED THEN
         source.TypeID,
         source.TypeName,
         source.Piece,
-        default,
+        null,
+        source.ContainerID,
+        source.ContainerGoodsID,
         0,
         source.CreateDate,
         source.UpdateDate
@@ -11773,13 +11916,15 @@ WHERE NOT EXISTS (
                         string typeIDParam = "@TypeID" + rowIndex;
                         string typeNameParam = "@TypeName" + rowIndex;
                         string pieceParam = "@Piece" + rowIndex;
+                        string containerIDParam = "@ContainerID" + rowIndex;
+                        string containerGoodsIDParam = "@ContainerGoodsID" + rowIndex;
                         string createDateParam = "@CreateDate" + rowIndex;
                         string updateDateParam = "@UpdateDate" + rowIndex;
 
                         sqlvaluesStrList.Add($"({oosLogIDParam}, {oosLogRowIDParam}, {productIDParam}, {sidParam}, {productNameParam}, {productCodeParam}, {goodsCodeParam}, " +
                             $"{houseIDParam}, {houseNameParam}, {parentHouseIDParam}, {parentHouseNameParam}, {areaIDParam}, {areaNameParam}, " +
                             $"{typeCateParam}, {typeCateNameParam}, {typeIDParam}, {typeNameParam}, {pieceParam}," +
-                            $"{createDateParam}, {updateDateParam})");
+                            $"{containerIDParam}, {containerGoodsIDParam}, {createDateParam}, {updateDateParam})");
 
                         rowssqlParameters.AddRange(new List<SqlParameter>()
                         {
@@ -11804,6 +11949,8 @@ WHERE NOT EXISTS (
                             new SqlParameter(parentHouseNameParam, SqlDbType.NVarChar, 50) { Value = row.ParentHouseName != null ? (object)row.ParentHouseName : DBNull.Value},
                             new SqlParameter(houseIDParam, SqlDbType.Int) { Value = row.HouseID},
                             new SqlParameter(houseNameParam, SqlDbType.NVarChar, 50) { Value = row.HouseName},
+                            new SqlParameter(containerIDParam, SqlDbType.Int) { Value = row.ContainerID},
+                            new SqlParameter(containerGoodsIDParam, SqlDbType.Int) { Value = row.ContainerGoodsID},
 
                             //默认值
                             new SqlParameter(createDateParam, SqlDbType.DateTime) { Value = DateTime.Now },
@@ -11863,6 +12010,7 @@ INSERT INTO
         OOSLogRowID,
         OldPiece,
         NewPiece,
+        QtyComparison,
         CreateDate
 	)
 OUTPUT 
@@ -11880,22 +12028,39 @@ VALUES
                         string oosLogRowIDParam = "@OOSLogRowID" + rowIndex;
                         string oldPieceParam = "@OldPiece" + rowIndex;
                         string newPieceParam = "@NewPiece" + rowIndex;
+                        string qtyMatchParam = "@QtyMatch" + rowIndex;
                         string createDateParam = "@CreateDate" + rowIndex;
 
-                        sqlvaluesStrList.Add($"({oosIDParam}, {oosLogIDParam}, {oosLogRowIDParam}, {oldPieceParam}, {newPieceParam}, {createDateParam})");
+                        sqlvaluesStrList.Add($"({oosIDParam}, {oosLogIDParam}, {oosLogRowIDParam}, {oldPieceParam}, {newPieceParam}, {qtyMatchParam}, {createDateParam})");
 
+                        int newPiece = row.Piece;
+                        int oldPiece = row.OldPiece.GetValueOrDefault();
+                        int pieceComp = 0;
+                        if(newPiece == oldPiece)
+                        {
+                            pieceComp = 0;
+                        }else if(oldPiece < newPiece)
+                        {
+                            pieceComp = 1;
+                        }else
+                        {
+                            pieceComp = 2;
+                        }
+                        
                         rowssqlParameters.AddRange(new List<SqlParameter>()
                         {
                             //计算
                             new SqlParameter(oosIDParam, SqlDbType.Int) { Value = row.OOSID },
                             new SqlParameter(oosLogIDParam, SqlDbType.Int) { Value = row.OOSLogID },
                             new SqlParameter(oosLogRowIDParam, SqlDbType.Int) { Value = row.OOSLogRowID },
-                            new SqlParameter(oldPieceParam, SqlDbType.Int) { Value = row.OldPiece.HasValue ? (object)row.OldPiece.Value : DBNull.Value },
-                            new SqlParameter(newPieceParam, SqlDbType.Int) { Value = row.Piece },
+                            new SqlParameter(oldPieceParam, SqlDbType.Int) { Value = row.OldPiece.HasValue ? (object)row.OldPiece.Value : DBNull.Value},
+                            new SqlParameter(newPieceParam, SqlDbType.Int) { Value = newPiece },
+                            new SqlParameter(qtyMatchParam, SqlDbType.Int) { Value = pieceComp },
 
                             //默认值
                             new SqlParameter(createDateParam, SqlDbType.DateTime) { Value = DateTime.Now },
                         });
+
 
                         rowIndex++;
                     }
@@ -11936,16 +12101,12 @@ VALUES
                     {
                         throw new ApplicationException($"未找到对应的补货单数据。参数：RplID:{RplID}");
                     }
+                    //检查已完成补货数为0
+                    var anyShippedPiece = matchedRpl.ShippedPiece.GetValueOrDefault() > 0;
                     //检查补货单为 待处理|已取消 状态
-                    if (!new byte[] { 0, 4 }.Contains(matchedRpl.Status.GetValueOrDefault()))
+                    if (anyShippedPiece || !new byte[] { 0, 4 }.Contains(matchedRpl.Status.GetValueOrDefault()))
                     {
                         throw new ApplicationException($"补货单({matchedRpl.RplNo})已经开始补货，不能作废");
-                    }
-                    //检查已完成补货数为0
-                    var anyDonePiece = matchedRpl.DonePiece.GetValueOrDefault() > 0;
-                    if (anyDonePiece)
-                    {
-                        throw new ApplicationException($"补货单({matchedRpl.RplNo})已经有过收货数量，不能作废");
                     }
                 }
 
@@ -12041,7 +12202,7 @@ GROUP BY
 SELECT
 	rog.ProductCode, 
 	ro.FromHouse HouseID,
-	SUM(rog.Piece - rog.DonePiece) Piece
+	SUM(rog.Piece - rog.ShippedPiece) Piece
 FROM
 	Tbl_Cargo_RplOrderGoods rog 
 	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID

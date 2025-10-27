@@ -1,6 +1,7 @@
 ﻿using Cargo.Extensions;
 using House.Business;
 using House.Business.Cargo;
+using House.Business.Log;
 using House.Entity;
 using House.Entity.Cargo;
 using House.Entity.Cargo.Order;
@@ -30,6 +31,7 @@ using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
@@ -62,7 +64,7 @@ namespace Cargo.Order
                 log.Status = "1";
                 log.NvgPage = "";
                 log.UserID = UserInfor == null ? "" : UserInfor.LoginName.Trim();
-                log.Memo = methodName + " " + ex.Message + " " + ex.StackTrace;
+                log.Memo = methodName + " " + ex.FormatErr();
                 bus.InsertLog(log);
             }
             finally
@@ -363,6 +365,300 @@ namespace Cargo.Order
             Response.Clear();
             Response.Write(json);
         }
+
+        public void QueryOrderExcel()
+        {
+            try
+            {
+                CargoOrderEntity queryEntity = new CargoOrderEntity()
+                {
+                    StartDate = Request.GetDateTime("StartDate").GetValueOrDefault(),
+                    EndDate = Request.GetDateTime("EndDate").GetValueOrDefault(),
+                    Piece = Request.GetInt("Piece").GetValueOrDefault(),
+                    OrderNo = Request.GetString("OrderNo"),
+                    LogisAwbNo = Request.GetString("LogisAwbNo"),
+                    AcceptPeople = Request.GetString("AcceptPeople"),
+                    PayClientNum = Request.GetInt("PayClientNum").GetValueOrDefault(),
+                    PayClientName = Request.GetString("PayClientName"),
+                    Dep = Request.GetString("Dep"),
+                    Dest = Request.GetString("Dest"),
+                    CreateAwb = Request.GetString("CreateAwb"),
+                    HAwbNo = Request.GetString("HAwbNo"),
+                    OutHouseName = Request.GetString("OutHouseName"),
+                    OpenOrderSource = Request.GetString("OpenOrderSource") == "-1" ? null : Request.GetString("OpenOrderSource"),
+                    OrderType = Request.GetString("OrderType") == "-1" ? null : Request.GetString("OrderType"),
+                    AwbStatus = Request.GetString("AwbStatus") == "-1" ? null : Request.GetString("AwbStatus"),
+                    FinanceSecondCheck = Request.GetString("FinanceSecondCheck") == "-1" ? null : Request.GetString("FinanceSecondCheck"),
+                    CheckStatus = Request.GetString("CheckStatus") == "-1" ? null : Request.GetString("CheckStatus"),
+                    CargoPermisID = string.IsNullOrEmpty(Request["HouseID"])
+                        ? UserInfor.CargoPermisID
+                        : Request.GetString("HouseID"),
+                    SaleManID = Request.GetString("SaleManID"),
+                    OrderModel = Request.GetString("OrderModel") == "-1" ? null : Request.GetString("OrderModel"),
+                    ThrowGood = Request.GetString("ThrowGood") == "-1" ? null : Request.GetString("ThrowGood"),
+                    BelongHouse = Request.GetString("BelongHouse") == "-1" ? null : Request.GetString("BelongHouse"),
+                    AcceptUnit = Request.GetString("AcceptUnit"),
+                    OutCargoType = Request.GetString("OutCargoType") == "-1" ? null : Request.GetString("OutCargoType"),
+                    PostponeShip = Request.GetString("PostponeShip") == "-1" ? null : Request.GetString("PostponeShip"),
+                    TrafficType = Request.GetString("TrafficType") == "-1" ? null : Request.GetString("TrafficType"),
+                    LineID = Request.GetInt("LineID").GetValueOrDefault(),
+                    ShopCode = Request.GetString("ShopCode"),
+                    SuppClientNum = Request.GetInt("SuppClientNum").GetValueOrDefault(),
+                    BusinessID = Request.GetString("BusinessID")
+                };
+
+                // 分页参数
+                int pageIndex = 0;
+                int pageSize = 0;
+
+                CargoOrderBus bus = new CargoOrderBus();
+                Hashtable rslt = bus.QueryOrderInfo(pageIndex, pageSize, queryEntity);
+
+                var CargoOrderEntityList = (List<CargoOrderEntity>)rslt["rows"];
+                if (CargoOrderEntityList.Count <= 0)
+                {
+                    return;
+                }
+                CargoHouseBus houseBus = new CargoHouseBus();
+                CargoHouseEntity houseEntity = houseBus.QueryCargoHouseByID(UserInfor.HouseID);
+
+                DataTable table = new DataTable();
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("订单号", typeof(string));
+                if (houseEntity.BelongHouse.Equals("6"))
+                {
+                    table.Columns.Add("数量", typeof(decimal));
+                    table.Columns.Add("供应商进仓价", typeof(decimal));
+                    table.Columns.Add("轮胎收入", typeof(decimal));
+                    table.Columns.Add("配送费", typeof(decimal));
+                    table.Columns.Add("平台费", typeof(decimal));
+                    table.Columns.Add("优惠券", typeof(decimal));
+                    table.Columns.Add("超期费", typeof(decimal));
+                    table.Columns.Add("合计", typeof(decimal));
+                }
+                else
+                {
+                    table.Columns.Add("数量", typeof(decimal));
+                    table.Columns.Add("收入", typeof(decimal));
+                    table.Columns.Add("合计", typeof(decimal));
+                }
+                table.Columns.Add("审核状态", typeof(string));
+                table.Columns.Add("结算状态", typeof(string));
+                table.Columns.Add("所属仓库", typeof(string));
+                table.Columns.Add("品牌", typeof(string));
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("花纹", typeof(string));
+                table.Columns.Add("载速", typeof(string));
+                table.Columns.Add("货品代码", typeof(string));
+                table.Columns.Add("周期", typeof(string));
+                //table.Columns.Add("出发站", typeof(string));
+                //table.Columns.Add("到达站", typeof(string));
+                table.Columns.Add("客户名称", typeof(string));//
+                table.Columns.Add("收货人", typeof(string));
+                table.Columns.Add("联系手机", typeof(string));
+                table.Columns.Add("收货地址", typeof(string));
+                table.Columns.Add("业务员", typeof(string));
+                table.Columns.Add("订单类型", typeof(string));
+                table.Columns.Add("开单员", typeof(string));
+                table.Columns.Add("开单时间", typeof(string));
+                table.Columns.Add("订单状态", typeof(string));
+                table.Columns.Add("下单方式", typeof(string));
+                table.Columns.Add("商城订单号", typeof(string));
+                table.Columns.Add("付款方式", typeof(string));
+                table.Columns.Add("支付订单号", typeof(string));
+                table.Columns.Add("供应商", typeof(string));
+                table.Columns.Add("优惠券类型", typeof(string));
+                table.Columns.Add("送货方式", typeof(string));
+                table.Columns.Add("物流公司单号", typeof(string));
+                //table.Columns.Add("物流配送费用", typeof(string));
+                table.Columns.Add("物流公司名称", typeof(string));
+                table.Columns.Add("通联订单ID", typeof(string));
+                table.Columns.Add("入库时间", typeof(DateTime));
+                table.Columns.Add("入库天数", typeof(string));
+                CargoOrderBus orderBus = new CargoOrderBus();
+                int i = 0;
+                string GetText(string value, string id)
+                {
+                    string retStr = string.Empty;
+                    if (id.Contains("OrderModel"))
+                    {
+                        if (value.Trim() == "0")
+                            retStr = "发货单";
+                        else if (value.Trim() == "1")
+                            retStr = "退货单";
+                    }
+                    else if (id.Contains("DeliveryType"))
+                    {
+                        if (value.Trim() == "0")
+                            retStr = "急送";
+                        else if (value.Trim() == "1")
+                            retStr = "自提";
+                        else if (value.Trim() == "2")
+                            retStr = "普送";
+                        else
+                            retStr = "";
+                    }
+                    else if (id.Contains("PayWay"))
+                    {
+                        if (value.Trim() == "0")
+                            retStr = "微信付款";
+                        else if (value.Trim() == "1")
+                            retStr = "额度付款";
+                        else
+                            retStr = "";
+                    }
+                    else if (id.Contains("FinanceSecondCheck"))
+                    {
+                        if (value.Trim() == "0")
+                            retStr = "未审";
+                        else if (value.Trim() == "1")
+                            retStr = "已审";
+                    }
+                    else if (id.Contains("CouponType"))
+                    {
+                        if (value.Trim() == "0")
+                            retStr = "平台券";
+                        else if (value.Trim() == "1")
+                            retStr = "供应商券";
+                    }
+                    else if (id.Contains("CheckStatus"))
+                    {
+                        if (value.Trim() == "0")
+                            retStr = "未结算";
+                        else if (value.Trim() == "1")
+                            retStr = "已结清";
+                        else if (value.Trim() == "2")
+                            retStr = "未结清";
+                    }
+                    else if (id.Contains("TradeType"))
+                    {
+                        if (value.Trim() == "0")
+                            retStr = "账号交易";
+                        else if (value.Trim() == "1")
+                            retStr = "预收款交易";
+                        else if (value.Trim() == "2")
+                            retStr = "返利款交易";
+                        else if (value.Trim() == "3")
+                            retStr = "微信支付";
+                    }
+                    else if (id.Contains("OrderType"))
+                    {
+                        if (value.Trim() == "0")
+                            retStr = "电脑单";
+                        else if (value.Trim() == "1")
+                            retStr = "企业微信单";
+                        else if (value.Trim() == "2")
+                            retStr = "微信商城单";
+                        else if (value.Trim() == "3")
+                            retStr = "APP单";
+                        else if (value.Trim() == "4")
+                            retStr = "小程序单";
+                    }
+                    else if (id.Contains("AwbStatus"))
+                    {
+                        if (value.Trim() == "0")
+                            retStr = "已下单";
+                        else if (value.Trim() == "1")
+                            retStr = "出库中";
+                        else if (value.Trim() == "2")
+                            retStr = "已出库";
+                        else if (value.Trim() == "3")
+                            retStr = "运输在途";
+                        else if (value.Trim() == "4")
+                            retStr = "已到达";
+                        else if (value.Trim() == "5")
+                            retStr = "已签收";
+                    }
+                    return retStr;
+                }
+                var OrderNos = CargoOrderEntityList.Select(x => x.OrderNo).ToArray();
+                var productShelves = orderBus.queryOrderProductForAPP(OrderNos);
+                foreach (var it in CargoOrderEntityList)
+                {
+                    i++;
+                    it.EnSafe();
+                    var matchedPrdctShelve = productShelves.FirstOrDefault(c => c.OrderNo == it.OrderNo);
+                    if(matchedPrdctShelve == null)
+                    {
+                        continue;
+                    }
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["订单号"] = it.OrderNo.Trim();
+                    if (houseEntity.BelongHouse.Equals("6"))
+                    {
+                        newRows["数量"] = it.Piece;
+                        newRows["供应商进仓价"] = matchedPrdctShelve.originalPrice;
+                        newRows["轮胎收入"] = it.OrderModel.Trim().Equals("1") ? -it.TransportFee : it.TransportFee;
+                        newRows["配送费"] = it.TransitFee;
+                        newRows["平台费"] = it.OtherFee;
+                        newRows["优惠券"] = it.InsuranceFee;
+                        newRows["超期费"] = it.OverDueFee;
+
+                        newRows["合计"] = it.OrderModel.Trim().Equals("1") ? -it.TotalCharge : it.TotalCharge;
+                    }
+                    else
+                    {
+                        newRows["数量"] = it.Piece;
+                        newRows["收入"] = it.OrderModel.Trim().Equals("1") ? -it.TransportFee : it.TransportFee;
+                        newRows["合计"] = it.OrderModel.Trim().Equals("1") ? -it.TotalCharge : it.TotalCharge;
+                    }
+                    newRows["审核状态"] = GetText(it.FinanceSecondCheck.Trim(), "FinanceSecondCheck");
+                    newRows["结算状态"] = GetText(it.CheckStatus.Trim(), "CheckStatus");
+                    newRows["所属仓库"] = it.HouseName.Trim();
+                    newRows["品牌"] = matchedPrdctShelve.TypeName;
+                    newRows["规格"] = matchedPrdctShelve.Specs;
+                    newRows["花纹"] = matchedPrdctShelve.Figure;
+                    newRows["载速"] = matchedPrdctShelve.LoadIndex + matchedPrdctShelve.SpeedLevel;
+                    newRows["货品代码"] = matchedPrdctShelve.GoodsCode;
+                    newRows["周期"] = matchedPrdctShelve.Batch;
+                    //newRows["出发站"] = it.Dep.Trim();
+                    //newRows["到达站"] = it.Dest.Trim();
+                    newRows["客户名称"] = it.AcceptUnit.Trim();
+                    newRows["收货人"] = it.AcceptPeople.Trim();
+                    newRows["联系手机"] = it.AcceptCellphone.Trim();
+                    newRows["收货地址"] = it.AcceptAddress.Trim();
+                    newRows["业务员"] = it.SaleManName.Trim();
+                    newRows["订单类型"] = GetText(it.OrderModel.Trim(), "OrderModel");
+                    newRows["开单员"] = it.CreateAwb.Trim();
+                    newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd HH:mm:ss");
+                    newRows["订单状态"] = GetText(it.AwbStatus.Trim(), "AwbStatus");
+                    newRows["下单方式"] = GetText(it.OrderType.Trim(), "OrderType");
+                    newRows["商城订单号"] = it.WXOrderNo;
+                    newRows["付款方式"] = GetText(it.PayWay, "PayWay");
+                    newRows["支付订单号"] = it.WXPayOrderNo;
+                    newRows["供应商"] = it.SuppClientName;
+                    newRows["优惠券类型"] = GetText(it.CouponType, "CouponType");
+                    newRows["送货方式"] = GetText(it.DeliveryType, "DeliveryType");
+                    newRows["物流公司单号"] = it.LogisAwbNo;
+                    //newRows["物流配送费用"] = it.TransitFee;
+                    newRows["物流公司名称"] = it.LogisticName;
+                    newRows["通联订单ID"] = it.Trxid;
+                    if (matchedPrdctShelve.InCargoStatus == 0)
+                    {
+                        newRows["入库时间"] = DateTime.Now.ToString("1900-01-01");
+                        newRows["入库天数"] = "";
+                    }
+                    else
+                    {
+                        var inTime = Convert.ToDateTime(matchedPrdctShelve.InHouseTime);
+                        var CreateDate = Convert.ToDateTime(it.CreateDate);
+                        var day = (CreateDate - inTime).Days;
+                        newRows["入库时间"] = inTime;
+                        newRows["入库天数"] = day;
+                    }
+                    table.Rows.Add(newRows);
+                }
+
+                ToExcel.DataTableToExcel(table, "", "应收账款管理数据表" + DateTime.Now.ToString("yyMMddHHmmss"));
+
+            }catch(Exception ex)
+            {
+                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                Response.Write($"{{\"success\": false, \"message\": \"{ex.Message}\", \"errorCode\": \"SYSTEM_ERROR\"}}");
+            }
+        }
+
         public void QueryOrderPickPlan()
         {
             CargoOrderPickPlanEntity queryEntity = new CargoOrderPickPlanEntity();//HouseID
@@ -424,6 +720,8 @@ namespace Cargo.Order
                 msg.Message = ex.Message;
                 msg.Result = false;
             }
+
+
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
@@ -6969,6 +7267,13 @@ namespace Cargo.Order
                 queryEntity.TypeID = -1;
             }
             queryEntity.FacOrderNo = Request["FacOrderNo"];
+            if (!string.IsNullOrEmpty(queryEntity.FacOrderNo))
+            {
+                queryEntity.FacOrderNo = Regex.Replace(queryEntity.FacOrderNo, @"\s+", "");
+                queryEntity.FacOrderNo = queryEntity.FacOrderNo.Replace('，', ',');
+                var strList = queryEntity.FacOrderNo.Split(',').Where(a=>!string.IsNullOrEmpty(a)).ToList();
+                queryEntity.FacOrderNo = $@"'{string.Join("','", strList)}'";
+            }
             string spe = Convert.ToString(Request["Specs"]).ToUpper();
             if (spe.Contains("/") || spe.Contains("R") || spe.Contains("."))
             {
@@ -7059,6 +7364,13 @@ namespace Cargo.Order
                 queryEntity.TypeID = -1;
             }
             queryEntity.FacOrderNo = Request["FacOrderNo"];
+            if (!string.IsNullOrEmpty(queryEntity.FacOrderNo))
+            {
+                queryEntity.FacOrderNo = Regex.Replace(queryEntity.FacOrderNo, @"\s+", "");
+                queryEntity.FacOrderNo = queryEntity.FacOrderNo.Replace('，', ',');
+                var strList = queryEntity.FacOrderNo.Split(',').Where(a => !string.IsNullOrEmpty(a)).ToList();
+                queryEntity.FacOrderNo = $@"'{string.Join("','", strList)}'";
+            }
             string spe = Convert.ToString(Request["Specs"]).ToUpper();
             if (spe.Contains("/") || spe.Contains("R") || spe.Contains("."))
             {
@@ -10600,7 +10912,8 @@ namespace Cargo.Order
                     LogisID = ent.LogisID,
                     Type = 2
                 }, log);
-            }
+            } 
+
             //返回处理结果
             string ress = JSON.Encode(msg);
             Response.Write(ress);
@@ -17331,10 +17644,12 @@ namespace Cargo.Order
                 newRows["花纹"] = it.Figure;
                 newRows["载速"] = it.LISS;
                 newRows["缺货数量"] = it.Piece;
-                newRows["完成数量"] = it.DonePiece;
+                newRows["移库数量"] = it.ShippedPiece;
+                newRows["到货数量"] = it.ReceivedPiece;
 
                 newRows["总单缺货数量"] = it.TotalPiece;
-                newRows["总单补货数量"] = it.TotalDonePiece;
+                newRows["总单移库数量"] = it.TotalShippedPiece;
+                newRows["总单到货数量"] = it.TotalReceivedPiece;
                 newRows["开单人"] = it.UserName;
                 newRows["备注"] = it.Remark;
                 newRows["开单时间"] = it.CreateDate.ToString("yyyy-MM-dd");
@@ -17361,12 +17676,126 @@ namespace Cargo.Order
 
         }
 
+
+        public void GetOOSExcel()
+        {
+            var userid = UserInfor?.LoginName?.Trim();
+            var username = UserInfor?.UserName;
+            var ipaddress = Common.GetUserIP(Request);
+            CargoOrderBus bus = new CargoOrderBus(userid, username, ipaddress);
+
+            CargoOutOfStockParams oosParams = new CargoOutOfStockParams()
+            {
+                TypeID = Request.GetInt("TypeID"),
+                TypeCate = Request.GetInt("TypeCate"),
+                HouseID = Request.GetInt("HouseID"),
+                AreaID = Request.GetInt("AreaID"),
+                ParentHouse = Request.GetInt("ParentHouse"),
+                Specs = Request.GetString("Specs"),
+                Figure = Request.GetString("Figure"),
+                OOSStatus = Request.GetByte("OOSStatus")
+            };
+            oosParams.PageIndex = 0;
+            oosParams.PageSize = 0;
+            var result = bus.QueryOutOfStocks(oosParams);
+            if (result.Data.Count <= 0) { return; }
+
+
+            string tname = string.Empty;
+            DataTable table = new DataTable();
+            table.Columns.AddRange(new DataColumn[]
+            {
+                new DataColumn("序号", typeof(int)),
+                new DataColumn("产品代码", typeof(string)),
+                new DataColumn("产品名称", typeof(string)),
+                new DataColumn("品牌", typeof(string)),
+                new DataColumn("规格", typeof(string)),
+                new DataColumn("型号", typeof(string)),
+                new DataColumn("花纹", typeof(string)),
+                new DataColumn("载速", typeof(string)),
+                new DataColumn("批次", typeof(string)),
+
+                new DataColumn("月均销量", typeof(int)),
+                new DataColumn("库存度天数", typeof(int)),
+                new DataColumn("最小库存度天数", typeof(int)),
+                new DataColumn("最大库存度天数", typeof(int)),
+                new DataColumn("最小库存数", typeof(int)),
+                new DataColumn("最大库存数", typeof(int)),
+                new DataColumn("在库数量", typeof(int)),
+                new DataColumn("在途数量", typeof(int)),
+                new DataColumn("推荐补货数", typeof(int)),
+
+                new DataColumn("清单状态", typeof(string)),
+                new DataColumn("所在仓库", typeof(string)),
+                new DataColumn("上级仓库", typeof(string)),
+                new DataColumn("更新时间", typeof(string)),
+                new DataColumn("补货时间", typeof(string))
+            });
+
+
+            int i = 0;
+            foreach (var it in result.Data)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+
+                newRows["序号"] = i;
+                newRows["产品代码"] = it.ProductCode;
+                newRows["产品名称"] = it.ProductName;
+                newRows["品牌"] = it.TypeName;
+                newRows["规格"] = it.Specs;
+                newRows["型号"] = it.Model;
+                newRows["花纹"] = it.Figure;
+                newRows["载速"] = it.LoadIndex;
+                newRows["批次"] = it.Batch;
+
+                newRows["月均销量"] = it.AvgSaleNum;
+                newRows["库存度天数"] = it.DOI;
+                newRows["最小库存度天数"] = it.MinStockDay;
+                newRows["最大库存度天数"] = it.MaxStockDay;
+                newRows["最小库存数"] = it.MinStock;
+                newRows["最大库存数"] = it.MaxStock;
+                newRows["在库数量"] = it.CurStock;
+                newRows["在途数量"] = it.InTransitStock;
+                newRows["推荐补货数"] = it.Piece;
+
+                newRows["清单状态"] = it.OOSStatus;
+                newRows["所在仓库"] = it.HouseName;
+                newRows["上级仓库"] = it.ParentHouseName;
+                newRows["更新时间"] = it.UpdateDate?.ToString("yyyy-MM-dd");
+                newRows["补货时间"] = it.LatestRplDate?.ToString("yyyy-MM-dd");
+
+                switch (it.OOSStatus)
+                {
+                    case 0:
+                        newRows["清单状态"] = "未采购";
+                        break;
+                    case 1:
+                        newRows["清单状态"] = "已采购";
+                        break;
+                    case 2:
+                        newRows["清单状态"] = "不采购";
+                        break;
+                    default:
+                        newRows["补货单状态"] = "";
+                        break;
+                }
+                table.Rows.Add(newRows);
+            }
+
+            ToExcel.DataTableToExcel(table, "", "缺货清单数据表" + DateTime.Now.ToString("yyMMddHHmmss"));
+        }
+        
+
         public void AddRplOrder()
         {
             var head = new CargoRplOrderDtlDto
             {
                 HouseID = Request.GetInt("HouseID"),
-                Remark = Request.GetString("Remark")
+                Remark = Request.GetString("Remark"),
+                LogisticID = Request.GetInt("LogisticID"),
+                LogisticName = Request.GetString("LogisticName"),
+                MoveNo = "T" + DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumInt().ToString()
             };
             var rows = Request.GetDataByJson<List<CargoRplOrderGoodsDto>>("Rows");
             head.Rows = rows;

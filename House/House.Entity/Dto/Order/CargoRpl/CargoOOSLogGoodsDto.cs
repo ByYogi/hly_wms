@@ -40,6 +40,8 @@ namespace House.Entity.Dto.Order
         public int? RestockingQty { get; set; }        // 待出库数量
         public int? InTransitQty { get; set; }       // 在途库存
         public int? AvgSalSUM { get; set; }          // 月均销量
+        public int? ContainerID { get; set; }
+        public long? ContainerGoodsID { get; set; }
         public DateTime? CreateDate { get; set; }         
         public DateTime? UpdateDate { get; set; }
 

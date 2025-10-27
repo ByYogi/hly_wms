@@ -32,6 +32,7 @@
             }
             let houseOptionsOrg = null; // 保存大仓列表的请求结果
             let typeCateOptionOrg = null;
+            let logisticOpts = null;
             $(document).ready(function () {
                 var userID = "<%=Ln%>";
                 var columns = [];
@@ -107,6 +108,15 @@
                         }
                     }).combobox('setValue', '1');
                 });
+                $.get("../systempage/sysService.aspx?method=QueryAllLogistic", function(response) {
+                    logisticOpts = JSON.parse(response); // 将返回的数据保存到变量中
+                    
+                    $('#LogisticOpts').combobox({
+                        data: logisticOpts,
+                        valueField: 'ID', textField: 'LogisticName',
+                    });
+
+                })
 
                 columns.push({
                     title: '规格', field: 'Specs', width: '65px'
@@ -187,7 +197,7 @@
                 $('#dg').datagrid({
                     width: '100%',
                     height: '100%',
-                    title: '产品缺货清单', //标题内容
+                    title: '补库清单', //标题内容
                     loadMsg: '数据加载中请稍候...',
                     autoRowHeight: false, //行高是否自动
                     collapsible: true, //是否可折叠
@@ -272,25 +282,28 @@
                 });
                 columns =[
                     {
-                        title: '补货单号', field: 'RplNo', width: '105px'
+                        title: '补货单号', field: 'RplNo', width: '100px'
                     },
                     {
-                        title: '缺货仓库', field: 'FromHouseName', width: '75px'
+                        title: '缺货仓库', field: 'FromHouseName', width: '70px'
                     },
                     {
-                        title: '补货仓库', field: 'HouseName', width: '75px'
+                        title: '补货仓库', field: 'HouseName', width: '70px'
                     },
                     {
-                        title: '产品种数', field: 'RowsQty', width: '75px'
+                        title: '产品种数', field: 'RowsQty', width: '70px'
                     },
                     {
-                        title: '补货数量', field: 'Piece', width: '75px'
+                        title: '补货总数', field: 'Piece', width: '70px'
                     },
                     {
-                        title: '开单人', field: 'UserName', width: '75px'
+                        title: '到库总数', field: 'ReceivedPiece', width: '70px'
                     },
                     {
-                        title: '补货单状态', field: 'Status', width: '75px',
+                        title: '开单人', field: 'UserName', width: '70px'
+                    },
+                    {
+                        title: '补货单状态', field: 'Status', width: '70px',
                         formatter: function (val, row, index) {
                             if (val == "0") { return "<span title='待处理'>已开单</span>"; }
                             else if (val == "1") { return "<span title='补货中'>补货中</span>"; }
@@ -299,11 +312,11 @@
                         }
                     },
                     {
-                        title: '补货品牌', field: 'TypeNames', width: '105px'
+                        title: '补货品牌', field: 'TypeNames', width: '70px'
                     },
                     { title: '开单时间', field: 'CreateDate', width: '120px', formatter: DateTimeFormatter },
                     
-                    { title: '采购单号', field: 'PONo', width: '105px'},
+                    { title: '出库单号', field: 'OONo', width: '105px'},
                     { title: '备注', field: 'Remark', width: '175px'},
                     // { title: '完成时间', field: 'CompletedDate', width: '130px', formatter: DateTimeFormatter },
                     // { title: '花费天数', field: 'SpendDays', width: '130px'}
@@ -332,7 +345,7 @@
                 $('#roDg').datagrid({
                     width: '100%',
                     height: '100%',
-                    title: '补货采购单', //标题内容
+                    title: '补库订单', //标题内容
                     loadMsg: '数据加载中请稍候...',
                     autoRowHeight: false, //行高是否自动
                     pagination: true, //分页是否显示
@@ -345,7 +358,7 @@
                     toolbar: '#roQueryToolbar',
                     url: null,
                     columns: [columns],
-                    onDblClickRow: function (index) { roGoodsSearch(index); }
+                    onClickRow: function (index) { roGoodsSearch(index); }
                 });
 
                 columns = [{
@@ -364,7 +377,7 @@
                         }
                     },
                     {
-                        title: '品牌', field: 'TypeName', width: '120px', formatter: function (value) {
+                        title: '品牌', field: 'TypeName', width: '80px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
@@ -374,25 +387,25 @@
                         }
                     },
                     {
-                        title: '花纹', field: 'Figure', width: '80px', formatter: function (value) {
+                        title: '花纹', field: 'Figure', width: '60px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '载速', field: 'LISS', width: '80px', formatter: function (value) {
+                        title: '载速', field: 'LISS', width: '60px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
                     {
-                        title: '补货数量', field: 'Piece', width: '80px', formatter: function (value) {
+                        title: '补货数量', field: 'Piece', width: '60px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },
-                    // {
-                    //     title: '完成数量', field: 'DonePiece', width: '80px', formatter: function (value) {
-                    //         return "<span title='" + value + "'>" + value + "</span>";
-                    //     }
-                    // },
+                    {
+                        title: '到库数量', field: 'ReceivedPiece', width: '60px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
                 
                     { title: '备注', field: 'Remark', width: '175px'},];
                 
@@ -400,14 +413,14 @@
                 $('#roDg2').datagrid({
                     width: '100%',
                     height: '100%',
-                    title: '补货单产品清单', //标题内容
+                    title: '补库订单货物清单', //标题内容
                     loadMsg: '数据加载中请稍候...',
                     autoRowHeight: false, //行高是否自动
                     pagination: false, //分页是否显示
                     fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
                     singleSelect: true, //设置为 true，则只允许选中一行。
                     checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
-                    idField: 'OOSID',
+                    idField: 'ID',
                     url: null,
                     toolbar: '',
                     columns: [columns],
@@ -572,8 +585,8 @@
                         </table>
                         <div class="space" style="height: 32px;">
                             <span class="space">
-                                <a href="#" class="easyui-linkbutton tblBtn" iconcls="icon-search" plain="false"
-                                    onclick="oosSearch()">查询</a>
+                                <a href="#" id="oosSearchBtn" class="easyui-linkbutton tblBtn" iconcls="icon-search" plain="false"
+                               >查询</a>
                             </span>
                             <span class="space">
                                 <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false"
@@ -581,6 +594,10 @@
                                 <a href="#" id="btnPreSave"
                                     class="easyui-linkbutton" iconcls="icon-compress" plain="false" 
                                 onclick="openCreationModal()">制作补货单</a>
+
+                                
+                                <a href="#" id="oosExportBtn" class="easyui-linkbutton tblBtn" 
+                                iconcls="icon-application_put" plain="false">导出</a>
                             </span>
                         </div>
                     </div>
@@ -662,35 +679,37 @@
             </tr>
         </table>
         
-        <div id="dlg" class="easyui-dialog" style="width: 580px; height: 230px; padding: 0px" closed="true"
+        <div id="dlg" class="easyui-dialog" style="width: 380px; height: 280px; padding: 0px" closed="true"
             buttons="#dlg-buttons" title="创建补货单">
             <form id="fm" class="easyui-form" method="post">
                 <input type="hidden" id="InPiece" />
                 <input type="hidden" id="InIndex" />
                 <table>
                     <colgroup>
-                        <col width="100">
                         <col width="120">
-
-                        <col width="100">
                         <col width="220">
 
                         <col width="auto">
                     </colgroup>
                     <tr>
-                        <td style="text-align: right;">已选产品个数：
-                        </td>
-                        <td>
-                            <input id="SelProductCount" class="easyui-numberbox" readonly data-options="min:0,precision:0"
-                                style="width: 100px;"  />
-                        </td>
-
-                        <td style="text-align: right;">请求仓库:
+                        <td style="text-align: right;">请求仓库：
                         </td>
                         <td>
                         <input id="ReqHouseOpts" class="easyui-combobox"  style="width: 200px;" data-options="required:true"
                             />
                         </td>
+                        
+                        <td></td>
+                    </tr>
+                    <tr>
+
+                        <td style="text-align: right;">已选产品个数：
+                        </td>
+                        <td>
+                            <input id="SelProductCount" class="easyui-numberbox" readonly data-options="min:0,precision:0"
+                                style="width: 200px;"  />
+                        </td>
+
 
                         <td></td>
                     </tr>
@@ -699,15 +718,9 @@
                         </td>
                         <td>
                             <input name="SysPieceTotal" id="SysPieceTotal" class="easyui-numberbox" readonly data-options="min:0,precision:0"
-                                style="width: 100px;"  />
+                                style="width: 200px;"  />
                         </td>
                         
-                        <td rowspan="2" style="text-align: right;">补货单备注：
-                        </td>
-                        <td rowspan="2" > 
-                            <input name="RplRemark" id="RplRemark" class="easyui-textbox" 
-                             type="text" style="width:200px;height:60px"  data-options="multiline:true" />
-                        </td>
 
                         <td></td>
                     </tr>
@@ -716,11 +729,30 @@
                         </td>
                         <td>
                             <input name="ConfirmPieceTotal" id="ConfirmPieceTotal" readonly class="easyui-numberbox" data-options="min:0,precision:0"
-                                style="width: 100px;" />
+                                style="width: 200px;" />
                         </td>
                         
                         <td></td>
+                    </tr>
+                    
+                    <tr>
+                        <td style="text-align: right;">物流公司：
+                        </td>
+                        <td > 
+                            <input name="LogisID" id="LogisticOpts" class="easyui-combobox" style="width: 200px;" />
+                     
+                        </td>
+                        
                         <td></td>
+                    </tr>
+
+                    <tr>
+                        <td rowspan="2" style="text-align: right;">补货单备注：
+                        </td>
+                        <td rowspan="2" > 
+                            <input name="RplRemark" id="RplRemark" class="easyui-textbox" 
+                             type="text" style="width:200px;height:60px"  data-options="multiline:true" />
+                        </td>
                         
                         <td></td>
                     </tr>
@@ -761,8 +793,10 @@
             //补货单工具事件绑定
             $(function() {
                 // $('#robtnCancel').on('click', cancelHandle);
+                $('#oosSearchBtn').on('click', oosSearch)
                 $('#robtnExport').on('click', rodataExport);
                 $('#robtnSearch').on('click', roSearchh)
+                $('#oosExportBtn').on('click', oosExport);
             });
 
             
@@ -785,10 +819,10 @@
                 var row = $("#roDg").datagrid('getData').rows[idx];
                 console.log("row", {idx,row});
                 if (row) {
-                    
                     var gridOpts = $('#roDg2').datagrid('options');
+                    $('#roDg2').datagrid('getPanel').panel('setTitle',  row.RplNo + " 补库订单货物清单");
                     gridOpts.url = 'orderApi.aspx?method=QueryRplOrderGoods&RplID=' + row.RplID;
-                    $('#roDg2').datagrid('load');
+                    $('#roDg2').datagrid('reload');
                 }
             }
 
@@ -823,6 +857,31 @@
                 return
             }
 
+            function oosExport() {
+                var queryParams = {
+                    Specs: $('#ASpecs').val(),
+                    Figure: $('#AFigure').val(),
+                    TypeCate: $("#APID").combobox('getValue'),//一级产品
+                    TypeID: $("#ASID").combobox('getValue'),//二级产品
+                    AreaID: $("#HAID").combobox('getValue'),
+                    HouseID: $("#AHouseID").combobox('getValue'),//仓库ID
+                    OOSStatus: $("#OOSStatusSel").combobox('getValue'),//仓库ID
+                }
+
+                // Url参数拼接
+                var queryString = Object.keys(queryParams)
+                    .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(queryParams[key]))
+                    .join('&');
+                
+                //文件请求API
+                var downloadUrl = 'orderApi.aspx?method=GetOOSExcel&' + queryString;
+                // 创建隐藏的iframe
+                var iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = downloadUrl;
+                document.body.appendChild(iframe);
+                return
+            }
 
             function openUpdteOOSDlg(){
                 $('#updteOOSDlg').dialog('open');
@@ -869,9 +928,13 @@
 
                 var ReqHouseID = $('#ReqHouseOpts').combobox('getValue');
                 var Remark = $('#RplRemark').textbox('getValue'); 
+                var LogisticID = $('#LogisticOpts').combobox('getValue');
+                var LogisticName = $('#LogisticOpts').combobox('getText');
                 var RowsJson = JSON.stringify(rows);
                 console.log("rows", {HouseID:ReqHouseID,
 Remark:Remark,
+LogisticID,
+LogisticName,
 Rows:RowsJson,})
                 // $.messager.progress("close");
                 // $('#dlg').dialog('close');
@@ -879,6 +942,8 @@ Rows:RowsJson,})
                 var postData = {
                     HouseID: ReqHouseID,
                     Remark: Remark,
+                    LogisticID,
+                    LogisticName,
                     Rows: RowsJson
                 };
 
@@ -908,7 +973,8 @@ Rows:RowsJson,})
                         $.messager.progress('close');
                         $('#btnSave').linkbutton('enable');
                         $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion() %>', '保存失败：' + error, 'error');
-                    }
+                    },
+                
                 });
 
             }

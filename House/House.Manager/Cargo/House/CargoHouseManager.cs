@@ -3449,6 +3449,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                 //以产品名称为查询条件
 
                 if (!string.IsNullOrEmpty(entity.ProductName)) { strSQL += " and (a.ProductName like '%" + entity.ProductName + "%' or a.GoodsName like '%" + entity.ProductName + "%')"; }
+                if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and (a.ProductCode like '%" + entity.ProductCode + "%')"; }
                 //以产品名称为查询条件
                 //if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and a.Specs like '%" + entity.Specs + "%'"; }
                 if (entity.HouseID.Equals(62))
@@ -3708,6 +3709,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                 if (!entity.FirstAreaID.Equals(0)) { strSQL += " and h.AreaID = " + entity.FirstAreaID + ""; }
                 //以产品名称为查询条件
                 if (!string.IsNullOrEmpty(entity.ProductName)) { strSQL += " and a.ProductName like '%" + entity.ProductName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and a.ProductCode like '%" + entity.ProductCode + "%'"; }
                 //以产品名称为查询条件
                 //if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and a.Specs like '%" + entity.Specs + "%'"; }
                 if (entity.HouseID.Equals(62))
@@ -5136,7 +5138,7 @@ SELECT
 	rog.ProductCode, 
 	rog.TypeID,
 	ro.FromHouse HouseID,
-	SUM(rog.Piece - rog.DonePiece) Piece
+	SUM(rog.Piece - rog.ShippedPiece) Piece
 FROM
 	Tbl_Cargo_RplOrderGoods rog 
 	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
@@ -5833,7 +5835,7 @@ SELECT
 	rog.ProductCode, 
 	rog.TypeID,
 	ro.FromHouse HouseID,
-	SUM(rog.Piece - rog.DonePiece) Piece
+	SUM(rog.Piece - rog.ShippedPiece) Piece
 FROM
 	Tbl_Cargo_RplOrderGoods rog 
 	INNER JOIN Tbl_Cargo_RplOrder ro ON rog.RplID = ro.RplID
@@ -6460,7 +6462,7 @@ where a.GoodsCode='{entity.GoodsCode}'
             try
             {
                 #region 组织查询数据
-                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.SID ASC) AS RowNumber,  a.*,b.TypeName,b.ParentID,b.TypeParentName as ParentName,spp.UnitPrice from tbl_Cargo_ProductSpec a inner join Tbl_Cargo_ProductType b on a.TypeID=b.TypeID left join tbl_Cargo_SupplierProductPrice spp on a.ProductCode=spp.ProductCode and spp.SupplierNum='" + entity.SuppClientNum + "' where (1=1) and spp.DelFlag=0";
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.SID ASC) AS RowNumber,  a.*,b.TypeName,b.ParentID,b.TypeParentName as ParentName,spp.UnitPrice from tbl_Cargo_ProductSpec a inner join Tbl_Cargo_ProductType b on a.TypeID=b.TypeID left join tbl_Cargo_SupplierProductPrice spp on a.ProductCode=spp.ProductCode and spp.SupplierNum='" + entity.SuppClientNum + "' where (1=1) and a.DelFlag=0 and spp.DelFlag=0  and UpClientID=1";
                 if (!entity.HouseID.Equals(0)) { strSQL += " and spp.HouseID=" + entity.HouseID; }
                 if (!string.IsNullOrEmpty(entity.Specs))
                 {
@@ -6520,7 +6522,7 @@ where a.GoodsCode='{entity.GoodsCode}'
                 #endregion
                 resHT["rows"] = result;
                 #region 查询总数
-                string strCount = @"select count(*) as TotalCount from tbl_Cargo_ProductSpec a inner join Tbl_Cargo_ProductType b on a.TypeID=b.TypeID inner join Tbl_Cargo_ProductType c on b.ParentID=c.TypeID left join tbl_Cargo_SupplierProductPrice spp on a.ProductCode=spp.ProductCode and spp.SupplierNum='" + entity.SuppClientNum + "' where(1 = 1)  and spp.DelFlag=0 ";
+                string strCount = @"select count(*) as TotalCount from tbl_Cargo_ProductSpec a inner join Tbl_Cargo_ProductType b on a.TypeID=b.TypeID inner join Tbl_Cargo_ProductType c on b.ParentID=c.TypeID left join tbl_Cargo_SupplierProductPrice spp on a.ProductCode=spp.ProductCode and spp.SupplierNum='" + entity.SuppClientNum + "' where(1 = 1)  and a.DelFlag=0 and spp.DelFlag=0  and UpClientID=1 ";
                 if (!entity.HouseID.Equals(0)) { strCount += " and spp.HouseID=" + entity.HouseID; }
                 if (!string.IsNullOrEmpty(entity.Specs))
                 {

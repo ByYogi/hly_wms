@@ -17,16 +17,23 @@ namespace House.Entity.Dto.Order.CargoRpl
         public string UserID { get; set; }       // 请求人
         public string UserName { get; set; }       // 请求人名称
         public int Piece { get; set; }      // 补货数量
-        public int? DonePiece { get; set; }      // 补货数量
+        public int? ShippedPiece { get; set; }      // 补货数量
+        public int? ReceivedPiece { get; set; }      // 补货数量
         public byte? Status { get; set; }        // 状态 (0:待处理;1:已处理;2:补货中;3:已完成;4:已取消)
         public DateTime? ProcessingDate { get; set; }       // 处理时间
         public DateTime? CompletedDate { get; set; }        // 完成时间
         public DateTime? CancelledDate { get; set; }        // 取消时间
         public string Remark { get; set; }      // 备注
+        public int? LogisticID { get; set; }      // 物流
+        public string LogisticName { get; set; }      // 物流
         public DateTime CreateDate { get; set; }        // 创建时间
         public DateTime? UpdateDate { get; set; }       // 更新时间
 
+
         public List<CargoRplOrderGoodsDto> Rows { get; set; } = new List<CargoRplOrderGoodsDto>();
+
+        //工具字段
+        public string MoveNo { get; set; }
     }
 
     public class CargoRplOrderExcelModel
@@ -40,7 +47,8 @@ namespace House.Entity.Dto.Order.CargoRpl
         public string UserID { get; set; }       // 请求人
         public string UserName { get; set; }       // 请求人名称
         public int TotalPiece { get; set; }      // 补货数量
-        public int? TotalDonePiece { get; set; }      // 补货数量
+        public int? TotalShippedPiece { get; set; }      // 补货数量
+        public int? TotalReceivedPiece { get; set; }      // 补货数量
         public byte? Status { get; set; }        // 状态 (0:待处理;1:已处理;2:补货中;3:已完成;4:已取消)
         public DateTime? ProcessingDate { get; set; }       // 处理时间
         public DateTime? CompletedDate { get; set; }        // 完成时间
@@ -67,8 +75,9 @@ namespace House.Entity.Dto.Order.CargoRpl
         public string LoadIndex { get; set; } //载重
         public string SpeedLevel { get; set; } //速度级别
         public int Piece { get; set; }      // 补货数量
+        public int? ShippedPiece { get; set; }      // 补货数量
+        public int? ReceivedPiece { get; set; }      // 补货数量
         public int? SysPiece { get; set; }               // 建议补货数量
-        public int? DonePiece { get; set; }
 
 
         //计算字段
