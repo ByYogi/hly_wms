@@ -113,6 +113,7 @@
     <Compile Include="Cargo\House\CargoLogisLineEntity.cs" />
     <Compile Include="Cargo\House\CargoMoveContainerEntity.cs" />
     <Compile Include="Cargo\House\CargoSafeStockEntity.cs" />
+    <Compile Include="Cargo\House\CargoStockDownloadEntity.cs" />
     <Compile Include="Cargo\House\CargoStockTakeEntity.cs" />
     <Compile Include="Cargo\House\CargoStockTakeFileEntity.cs" />
     <Compile Include="Cargo\House\CargoVoiceBroadEntity.cs" />
@@ -144,6 +145,7 @@
     <Compile Include="Cargo\Order\CargoOutOfStock.cs" />
     <Compile Include="Cargo\Order\CargoPurchaseOrderEntity.cs" />
     <Compile Include="Cargo\Order\CargoPurchaseOrderGoodsEntity.cs" />
+    <Compile Include="Cargo\Order\CargoReplOutOrderRelate.cs" />
     <Compile Include="Cargo\Order\CargoRplOrder.cs" />
     <Compile Include="Cargo\Order\CargoRplOrderGoods.cs" />
     <Compile Include="Cargo\Product\CargoImportEntity.cs" />

@@ -595,6 +595,7 @@
     <Content Include="House\LogisLineManager.aspx" />
     <Content Include="House\SafeStock.aspx" />
     <Content Include="House\StockBook.aspx" />
+    <Content Include="House\StockFileDownload.aspx" />
     <Content Include="House\StockRubik.aspx" />
     <Content Include="House\StockSnap.aspx" />
     <Content Include="House\StockTakeManager.aspx" />
@@ -2758,6 +2759,13 @@
     </Compile>
     <Compile Include="House\StockBook.aspx.designer.cs">
       <DependentUpon>StockBook.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="House\StockFileDownload.aspx.cs">
+      <DependentUpon>StockFileDownload.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="House\StockFileDownload.aspx.designer.cs">
+      <DependentUpon>StockFileDownload.aspx</DependentUpon>
     </Compile>
     <Compile Include="House\StockRubik.aspx.cs">
       <DependentUpon>StockRubik.aspx</DependentUpon>

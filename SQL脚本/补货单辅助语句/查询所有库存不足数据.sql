@@ -39,8 +39,22 @@ PRINT('------------ 区域仓库 ------------');
 --ON #childArea (HouseID,AreaID)
 --INCLUDE(RootArea);
 
+
 -- 产品&品牌
 WITH 
+containerGoods as (
+	SELECT
+		b.ProductID,
+		ca.RootArea AreaID,
+		SUM(a.Piece) AS Piece
+	FROM Tbl_Cargo_ContainerGoods AS a
+	INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
+	INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
+	INNER JOIN Tbl_Cargo_ProductType c ON a.TypeID = c.TypeID
+	INNER JOIN #childArea ca ON d.AreaID = ca.AreaID AND b.HouseID = ca.HouseID
+	WHERE b.SpecsType != 5
+	GROUP BY b.ProductID, ca.RootArea
+),
 pCTE as (
 SELECT 
 	DISTINCT
@@ -65,7 +79,7 @@ SELECT
 FROM
 	Tbl_Cargo_Product p
 	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-	INNER JOIN Tbl_Cargo_ContainerGoods cg ON p.ProductID = cg.ProductID
+	INNER JOIN containerGoods cg ON p.ProductID = cg.ProductID AND cg.AreaID = 3677
 	INNER JOIN #childArea ca ON ca.AreaID = 3677
 	LEFT JOIN Tbl_Cargo_ProductType pt2 ON pt.ParentID = pt2.TypeID
 	LEFT JOIN Tbl_Cargo_House h ON p.HouseID = h.HouseID
