@@ -13,7 +13,7 @@
       </system.Web>
   -->
   <system.web>
-    <compilation debug="true" targetFramework="4.6.2" />
+    <compilation debug="true" targetFramework="4.8" />
     <pages controlRenderingCompatibilityVersion="4.0" />
   </system.web>
   <appSettings>
@@ -94,11 +94,11 @@
     <!--GTMC訂單文件上傳路徑配置信息-->
     <add key="GTMCFile" value="D:\Code\WareHouse\Cargo\Cargo\upload\GTMC\" />
     <!--GTMC訂單文件上傳路徑配置信息-->
-    <!--好来运接口地址-->
-    <add key="HLYAPI" value="http://14.23.159.115:8803" />
-    <!--<add key="HLYAPI" value="http://14.23.159.115:9001"/>-->
-    <!--正式-->
-    <!--<add key="HLYAPI" value="http://api.haolaiyun.com:8803/"/>-->
+	  <!--好来运接口地址-->
+	  <add key="HLYAPI" value="http://14.23.159.115:8803" />
+	  <!--<add key="HLYAPI" value="http://14.23.159.115:9001"/>-->
+	  <!--正式-->
+	  <!--<add key="HLYAPI" value="http://api.haolaiyun.com:8803/"/>-->
     <!--好来运接口地址-->
     <!--科技公司小程序 慧采云仓配置-->
     <add key="HCYCAppID" value="wxe3be9ccbf381b0bc" />
@@ -116,6 +116,7 @@
     <add key="HCYCMachID_DLQF" value="1676310875" />
     <add key="TodayOrderTransitFee" value="15" />
     <!--科技公司小程序 慧采云仓配置-->
+	  
     <!--Redis缓存配置信息-->
     <add key="TokenTimeOutMinute" value="10080" />
     <add key="redis" value="8.138.12.37:6379,password=xlc951753" />
@@ -162,10 +163,6 @@
       <dependentAssembly>
         <assemblyIdentity name="System.Buffers" publicKeyToken="cc7b13ffcd2ddd51" culture="neutral" />
         <bindingRedirect oldVersion="0.0.0.0-4.0.3.0" newVersion="4.0.3.0" />
-      </dependentAssembly>
-      <dependentAssembly>
-        <assemblyIdentity name="System.IO.Compression" publicKeyToken="b77a5c561934e089" culture="neutral" />
-        <bindingRedirect oldVersion="0.0.0.0-4.2.0.0" newVersion="4.2.0.0" />
       </dependentAssembly>
     </assemblyBinding>
   </runtime>

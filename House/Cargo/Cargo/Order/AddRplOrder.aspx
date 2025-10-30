@@ -305,15 +305,15 @@
                     {
                         title: '开单人', field: 'UserName', width: '70px'
                     },
-                    {
-                        title: '补货单状态', field: 'Status', width: '70px',
-                        formatter: function (val, row, index) {
-                            if (val == "0") { return "<span title='待处理'>已开单</span>"; }
-                            else if (val == "1") { return "<span title='补货中'>补货中</span>"; }
-                            else if (val == "2") { return "<span title='已完成'>已完成</span>"; }
-                            else { return ""; }
-                        }
-                    },
+                    // {
+                    //     title: '补货单状态', field: 'Status', width: '70px',
+                    //     formatter: function (val, row, index) {
+                    //         if (val == "0") { return "<span title='待处理'>已开单</span>"; }
+                    //         else if (val == "1") { return "<span title='补货中'>补货中</span>"; }
+                    //         else if (val == "2") { return "<span title='已完成'>已完成</span>"; }
+                    //         else { return ""; }
+                    //     }
+                    // },
                     {
                         title: '补货品牌', field: 'TypeNames', width: '70px'
                     },

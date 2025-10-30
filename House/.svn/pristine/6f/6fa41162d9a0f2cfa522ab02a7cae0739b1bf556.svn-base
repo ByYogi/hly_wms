@@ -4568,15 +4568,14 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
         /// 保存出库单数据
         /// </summary>
         /// <param name="entity"></param>
-        public long saveOutCargoData(List<CargoContainerShowEntity> entity)
+        public void saveOutCargoData(List<CargoContainerShowEntity> entity)
         {
             try
             {
-                long id = 0;
                 foreach (var it in entity)
                 {
                     string strSQL = @"INSERT INTO Tbl_Cargo_OutContainerGoods(ContainerID,TypeID,ProductID,Piece,Weight,OutHouseTime,IsPrintOutCargo,OutCargoID) VALUES (@ContainerID,@TypeID,@ProductID,@Piece,@Weight,@OutHouseTime,@IsPrintOutCargo,@OutCargoID)";
-                    strSQL += " SELECT SCOPE_IDENTITY();";
+
 
 
                     using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
@@ -4589,10 +4588,9 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                         conn.AddInParameter(cmd, "@OutHouseTime", DbType.DateTime, DateTime.Now);
                         conn.AddInParameter(cmd, "@IsPrintOutCargo", DbType.String, it.IsPrintOutCargo ? "1" : "0");
                         conn.AddInParameter(cmd, "@OutCargoID", DbType.String, it.OutCargoID);
-                        id = Convert.ToInt64(conn.ExecuteScalar(cmd));
+                        conn.ExecuteNonQuery(cmd);
                     }
                 }
-                return id;
             }
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
         }
@@ -5134,8 +5132,7 @@ WHERE
 	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
     AND fo.OrderType <> 2 --筛除退货单
     AND ISNULL(p.ProductCode, '') <> '' 
-GROUP BY p.ProductCode, p.TypeID, p.HouseID) a
-GROUP BY ProductCode, TypeID, HouseID
+GROUP BY p.ProductCode, p.TypeID, p.HouseID
 ;
 ");
             conditions = new List<string>();

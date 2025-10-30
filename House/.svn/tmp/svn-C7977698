@@ -4568,15 +4568,14 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
         /// 保存出库单数据
         /// </summary>
         /// <param name="entity"></param>
-        public long saveOutCargoData(List<CargoContainerShowEntity> entity)
+        public void saveOutCargoData(List<CargoContainerShowEntity> entity)
         {
             try
             {
-                long id = 0;
                 foreach (var it in entity)
                 {
                     string strSQL = @"INSERT INTO Tbl_Cargo_OutContainerGoods(ContainerID,TypeID,ProductID,Piece,Weight,OutHouseTime,IsPrintOutCargo,OutCargoID) VALUES (@ContainerID,@TypeID,@ProductID,@Piece,@Weight,@OutHouseTime,@IsPrintOutCargo,@OutCargoID)";
-                    strSQL += " SELECT SCOPE_IDENTITY();";
+
 
 
                     using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
@@ -4589,10 +4588,9 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                         conn.AddInParameter(cmd, "@OutHouseTime", DbType.DateTime, DateTime.Now);
                         conn.AddInParameter(cmd, "@IsPrintOutCargo", DbType.String, it.IsPrintOutCargo ? "1" : "0");
                         conn.AddInParameter(cmd, "@OutCargoID", DbType.String, it.OutCargoID);
-                        id = Convert.ToInt64(conn.ExecuteScalar(cmd));
+                        conn.ExecuteNonQuery(cmd);
                     }
                 }
-                return id;
             }
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
         }
@@ -9399,19 +9397,6 @@ WHERE
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
         }
 
-        public void delFileLog()
-        {
-            string strSQL = @"delete from Tbl_Cargo_StockDownload where OP_DATE<DATEADD(month, -1, GETDATE());";
-            try
-            {
-                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
-                {
-                    conn.ExecuteNonQuery(cmd);
-                }
-            }
-            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
-        }
-
         public Hashtable QueryStockFile(int pIndex, int pNum, CargoStockDownloadEntity entity)
         {
             Hashtable hashtable = new Hashtable();
@@ -9442,7 +9427,7 @@ WHERE
                             {
                                 ID = Convert.ToInt64(idrCount["ID"]),
                                 FileName = Convert.ToString(idrCount["FileName"]),
-                                //FilePath = Convert.ToString(idrCount["FilePath"]),
+                                FilePath = Convert.ToString(idrCount["FilePath"]),
                                 OP_DATE = Convert.ToDateTime(idrCount["OP_DATE"]),
                             });
                         }
@@ -9481,32 +9466,6 @@ WHERE
                 throw new ApplicationException(ex.Message);
             }
             return hashtable;
-        }
-
-        public CargoStockDownloadEntity GetFileData(string ID)
-        {
-            CargoStockDownloadEntity result = new CargoStockDownloadEntity();
-            try
-            {
-                string strSQL = $@"select * from Tbl_Cargo_StockDownload where ID={ID}";
-                using (DbCommand cmdAdd = conn.GetSqlStringCommond(strSQL))
-                {
-                    using (DataTable dt = conn.ExecuteDataTable(cmdAdd))
-                    {
-                        foreach (DataRow idr in dt.Rows)
-                        {
-                            result = new CargoStockDownloadEntity
-                            {
-                                ID = Convert.ToInt64(idr["ID"]),
-                                FilePath = Convert.ToString(idr["FilePath"]),
-                                FileName = Convert.ToString(idr["FileName"]),
-                            };
-                        }
-                    }
-                }
-            }
-            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
-            return result;
         }
     }
 

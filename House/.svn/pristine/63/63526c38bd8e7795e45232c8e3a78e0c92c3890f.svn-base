@@ -753,28 +753,29 @@ namespace House.Business.Cargo
                     scope.Complete();
 
                     //入库成功后，检查并更新缺货产品数据
-                    //var containerIDs = entity.Select(c => c.ContainerID).ToArray();
-                    //var containerData = man.QueryAreaByContainer(containerIDs);
-                    //if(containerData.Count() > 0)
-                    //{
-                    //    List<UpdateOOSGoodsParam> oosGdsParams = entity.Select(i => new UpdateOOSGoodsParam()
-                    //    {
-                    //        ProductID = i.ProductID,
-                    //        AreaID = containerData.FirstOrDefault(c => c.ContainerID == i.ContainerID)?.AreaID ?? 0,
-                    //    }).Where(c => c.AreaID != 0).ToList();
-                    //    UpdateOOSParam oosParams = new UpdateOOSParam()
-                    //    {
-                    //        UserID = _userid,
-                    //        UserName = _username,
-                    //        ReasonTag = "IO",
-                    //        SrcType = 5,
-                    //        SrcID = null,
-                    //        SrcCode = string.Empty,
-                    //        Rows = oosGdsParams
-                    //    };
-                    //    CargoOrderBus ordrBus = new CargoOrderBus();
-                    //    ordrBus.TryUpdateOutOfStock(oosParams);
-                    //}
+                    var containerIDs = entity.Select(c => c.ContainerID).ToArray();
+                    var containerData = man.QueryAreaByContainer(containerIDs);
+                    if(containerData.Count() > 0)
+                    {
+
+                        List<UpdateOOSGoodsParam> oosGdsParams = entity.Select(i => new UpdateOOSGoodsParam()
+                        {
+                            ProductID = i.ProductID,
+                            AreaID = containerData.FirstOrDefault(c => c.ContainerID == i.ContainerID)?.AreaID ?? 0,
+                        }).Where(c => c.AreaID != 0).ToList();
+                        UpdateOOSParam oosParams = new UpdateOOSParam()
+                        {
+                            UserID = _userid,
+                            UserName = _username,
+                            ReasonTag = "IO",
+                            SrcType = 5,
+                            SrcID = null,
+                            SrcCode = string.Empty,
+                            Rows = oosGdsParams
+                        };
+                        CargoOrderBus ordrBus = new CargoOrderBus();
+                        ordrBus.TryUpdateOutOfStock(oosParams);
+                    }
                 }
                 catch (ApplicationException ex)
                 {
@@ -1035,7 +1036,7 @@ namespace House.Business.Cargo
             {
                 log.Memo = "出库成功 订单号：" + entity[0].OrderNo + "，出库单号：" + entity[0].OutCargoID.ToString();
                 //1.保存出库单数据
-                long id = man.saveOutCargoData(entity);
+                man.saveOutCargoData(entity);
                 //2.判断出库的件数是否为全部出，如果是全部出则删除入库单数据，修改货位表在库件数，如果不是全部出，则入库表，货位表修改出库件数
                 foreach (var it in entity)
                 {
@@ -1077,8 +1078,8 @@ namespace House.Business.Cargo
                         UserName = _username,
                         ReasonTag = "OO",
                         SrcType = 6,
-                        SrcID = (int)id,
-                        SrcCode = entity[0].OrderNo,
+                        SrcID = null,
+                        SrcCode = string.Empty,
                         Rows = oosGdsParams
                     };
                     CargoOrderBus ordrBus = new CargoOrderBus();

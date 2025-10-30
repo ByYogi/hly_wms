@@ -1,0 +1,274 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{A888A0D3-FFB1-4444-8CA1-BF7C42EEFBA0}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>House.Entity</RootNamespace>
+    <AssemblyName>House.Entity</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Newtonsoft.Json.Net35">
+      <HintPath>..\DLL\Newtonsoft.Json.Net35.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Cargo\Approve\CargoApproveEntity.cs" />
+    <Compile Include="Cargo\Approve\CargoApproveFileEntity.cs" />
+    <Compile Include="Cargo\Approve\CargoApproveRelateEntity.cs" />
+    <Compile Include="Cargo\APP\APPCargoNoticeEntity.cs" />
+    <Compile Include="Cargo\APP\APPClientAccountEntity.cs" />
+    <Compile Include="Cargo\APP\APPVersionEntity.cs" />
+    <Compile Include="Cargo\Arrive\AwbEntity.cs" />
+    <Compile Include="Cargo\Arrive\AwbFilesEntity.cs" />
+    <Compile Include="Cargo\Arrive\AwbRemarkEntity.cs" />
+    <Compile Include="Cargo\Arrive\AwbRoadEntity.cs" />
+    <Compile Include="Cargo\Arrive\AwbStatus.cs" />
+    <Compile Include="Cargo\Arrive\AwbStatusTrackEntity.cs" />
+    <Compile Include="Cargo\Arrive\CarrierEntity.cs" />
+    <Compile Include="Cargo\Arrive\CityEntity.cs" />
+    <Compile Include="Cargo\Arrive\ClientAcceptAddressEntity.cs" />
+    <Compile Include="Cargo\Arrive\ClientEntity.cs" />
+    <Compile Include="Cargo\Arrive\DeliveryEntity.cs" />
+    <Compile Include="Cargo\Arrive\DepManifestEntity.cs" />
+    <Compile Include="Cargo\Arrive\DriverCardEntity.cs" />
+    <Compile Include="Cargo\Arrive\HlyAwbEntity.cs" />
+    <Compile Include="Cargo\Arrive\HlyExchangeEntity.cs" />
+    <Compile Include="Cargo\Arrive\NewaySystemUserEntity.cs" />
+    <Compile Include="Cargo\Arrive\TransitEntity.cs" />
+    <Compile Include="Cargo\Arrive\TruckEntity.cs" />
+    <Compile Include="Cargo\Arrive\TruckStatusTrackEntity.cs" />
+    <Compile Include="Cargo\Client\CargoClientAccountEntity.cs" />
+    <Compile Include="Cargo\Client\CargoSuppClientAccountEntity.cs" />
+    <Compile Include="Cargo\Client\CargoSuppClientAccountGoodsEntity.cs" />
+    <Compile Include="Cargo\Client\CargoClientEntity.cs" />
+    <Compile Include="Cargo\Client\CargoClientFileEntity.cs" />
+    <Compile Include="Cargo\Client\CargoClientIncomeEntity.cs" />
+    <Compile Include="Cargo\Client\CargoClientInvoiceHeaderEntity.cs" />
+    <Compile Include="Cargo\Client\CargoClientPostAddressEntity.cs" />
+    <Compile Include="Cargo\Client\CargoClientTypeIDEntity.cs" />
+    <Compile Include="Cargo\Client\CargoPurchaserEntity.cs" />
+    <Compile Include="Cargo\Client\CargoSpecialVIPNumEntity.cs" />
+    <Compile Include="Cargo\Client\CargoSuppClientAccountEntity.cs" />
+    <Compile Include="Cargo\Client\CargoSuppClientAccountGoodsEntity.cs" />
+    <Compile Include="Cargo\Client\CargoUpClientEntity.cs" />
+    <Compile Include="Cargo\Client\ClientSessionEntity.cs" />
+    <Compile Include="Cargo\Conti\CargoContiSaleOrderRespEntity.cs" />
+    <Compile Include="Cargo\Conti\CargoContiStockSyncEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoAccountEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoApproveCheckEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoApproveSetEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoCashierEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoExpenseEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoFinanceBasicDataEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoPaymentEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoPriceModifyEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoReceiveInfoEntity.cs" />
+    <Compile Include="Cargo\Finance\CargoReceivePayMonitorEntity.cs" />
+    <Compile Include="Cargo\House\CargoAreaEntity.cs" />
+    <Compile Include="Cargo\House\CargoBannerEntity.cs" />
+    <Compile Include="Cargo\House\CargoBehaviorEntity.cs" />
+    <Compile Include="Cargo\House\CargoCityEntity.cs" />
+    <Compile Include="Cargo\House\CargoContainerEntity.cs" />
+    <Compile Include="Cargo\House\CargoContainerGoodsEntity.cs" />
+    <Compile Include="Cargo\House\CargoContainerOutEntity.cs" />
+    <Compile Include="Cargo\House\CargoContainerShowEntity.cs" />
+    <Compile Include="Cargo\House\CargoContainerStarEntity.cs" />
+    <Compile Include="Cargo\House\CargoHouseAimEntity.cs" />
+    <Compile Include="Cargo\House\CargoHouseBrandShareEntity.cs" />
+    <Compile Include="Cargo\House\CargoHouseEntity.cs" />
+    <Compile Include="Cargo\House\CargoLineNetMappingEntity.cs" />
+    <Compile Include="Cargo\House\CargoLogisLineEntity.cs" />
+    <Compile Include="Cargo\House\CargoMoveContainerEntity.cs" />
+    <Compile Include="Cargo\House\CargoSafeStockEntity.cs" />
+    <Compile Include="Cargo\House\CargoStockDownloadEntity.cs" />
+    <Compile Include="Cargo\House\CargoStockTakeEntity.cs" />
+    <Compile Include="Cargo\House\CargoStockTakeFileEntity.cs" />
+    <Compile Include="Cargo\House\CargoVoiceBroadEntity.cs" />
+    <Compile Include="Cargo\Interface\CargoAPIMessage.cs" />
+    <Compile Include="Cargo\Interface\CargoInterfaceEntity.cs" />
+    <Compile Include="Cargo\Interface\CargoKD100Entity.cs" />
+    <Compile Include="Cargo\Interface\CargoLYEntity.cs" />
+    <Compile Include="Cargo\Interface\CargoNewayDataPush.cs" />
+    <Compile Include="Cargo\Interface\contiOutOrderEntity.cs" />
+    <Compile Include="Cargo\Interface\HlyEntity.cs" />
+    <Compile Include="Cargo\Interface\saleOpenInfoResp.cs" />
+    <Compile Include="Cargo\Interface\StockApiEntity.cs" />
+    <Compile Include="Cargo\Order\CargoCassMallEntity.cs" />
+    <Compile Include="Cargo\Order\CargoExterOrderAlloEntity.cs" />
+    <Compile Include="Cargo\Order\CargoFactoryOrderBarcodeEntity.cs" />
+    <Compile Include="Cargo\Order\CargoFactoryOrderEntity.cs" />
+    <Compile Include="Cargo\Order\CargoFactoryPurchaseOrderEntity.cs" />
+    <Compile Include="Cargo\Order\CargoGtmcProOrderEntity.cs" />
+    <Compile Include="Cargo\Order\CargoMoveOrderEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOrderBundleEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOrderDayStatisticsEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOrderEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOrderGoodsEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOrderPickPlanEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOrderPickPlanGoodsEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOrderPushEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOrderReturnOrderEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOrderStatusEntity.cs" />
+    <Compile Include="Cargo\Order\CargoOutOfStock.cs" />
+    <Compile Include="Cargo\Order\CargoPurchaseOrderEntity.cs" />
+    <Compile Include="Cargo\Order\CargoPurchaseOrderGoodsEntity.cs" />
+    <Compile Include="Cargo\Order\CargoReplOutOrderRelate.cs" />
+    <Compile Include="Cargo\Order\CargoRplOrder.cs" />
+    <Compile Include="Cargo\Order\CargoRplOrderGoods.cs" />
+    <Compile Include="Cargo\Product\CargoImportEntity.cs" />
+    <Compile Include="Cargo\Product\CargoProductAccessCountEntity.cs" />
+    <Compile Include="Cargo\Product\CargoProductAccessDetailsEntity.cs" />
+    <Compile Include="Cargo\Product\CargoProductBasicPriceEntity.cs" />
+    <Compile Include="Cargo\Product\CargoProductCarTyreEntity.cs" />
+    <Compile Include="Cargo\Product\CargoProductEntity.cs" />
+    <Compile Include="Cargo\Product\CargoProductShelvesEntity.cs" />
+    <Compile Include="Cargo\Product\CargoProductSpecEntity.cs" />
+    <Compile Include="Cargo\Product\CargoProductTagEntity.cs" />
+    <Compile Include="Cargo\Product\CargoProductTypeEntity.cs" />
+    <Compile Include="Cargo\Product\CargoHouseBrandPriceEntity.cs" />
+    <Compile Include="Cargo\Product\CargoRuleBankEntity.cs" />
+    <Compile Include="Cargo\Product\CargoSupplierProductPriceEntity.cs" />
+    <Compile Include="Cargo\Purchase\CargoRealFactoryPurchaseHouseEntity.cs" />
+    <Compile Include="Cargo\Purchase\CargoRealFactoryPurchaseOrderEntity.cs" />
+    <Compile Include="Cargo\Purchase\CargoRealFactoryPurchaseOrderGoodsEntity.cs" />
+    <Compile Include="Cargo\QY\CheckinRuleEntity.cs" />
+    <Compile Include="Cargo\QY\QYCheckinDataEntity.cs" />
+    <Compile Include="Cargo\QY\QYCheckinDayReportEntity.cs" />
+    <Compile Include="Cargo\QY\QYCheckinMonthlyReportEntity.cs" />
+    <Compile Include="Cargo\QY\QyConfigEntity.cs" />
+    <Compile Include="Cargo\QY\QyGroupChatEntity.cs" />
+    <Compile Include="Cargo\QY\QyOrderUpdatePriceEntity.cs" />
+    <Compile Include="Cargo\QY\QyPushConfigEntity.cs" />
+    <Compile Include="Cargo\QY\QyTagEntity.cs" />
+    <Compile Include="Cargo\QY\QyUserEntity.cs" />
+    <Compile Include="Cargo\QY\QyUserStatisEntity.cs" />
+    <Compile Include="Cargo\Report\CargoBigDataViewEntity.cs" />
+    <Compile Include="Cargo\Report\CargoDailyReportEntity.cs" />
+    <Compile Include="Cargo\Report\CargoDayStockEntity.cs" />
+    <Compile Include="Cargo\Report\CargoDLTDataStatisEntity.cs" />
+    <Compile Include="Cargo\Report\CargoMonthStatisEntity.cs" />
+    <Compile Include="Cargo\Report\CargoOrderOutTimeEntity.cs" />
+    <Compile Include="Cargo\Report\CargoReportMoveContainerEntity.cs" />
+    <Compile Include="Cargo\Report\CargoSaleStockStatisEntity.cs" />
+    <Compile Include="Cargo\Report\CargoStocktakingEntity.cs" />
+    <Compile Include="Cargo\Report\CargoLeaderCookpitEntity.cs" />
+    <Compile Include="Cargo\Report\CargoWeixinMallReportEntity.cs" />
+    <Compile Include="Cargo\Report\SaleDayReportEntity.cs" />
+    <Compile Include="Cargo\Report\SaleManReportEntity.cs" />
+    <Compile Include="Cargo\Static\CargoCityManagerEntity.cs" />
+    <Compile Include="Cargo\Static\CargoFeedBackEntity.cs" />
+    <Compile Include="Cargo\Static\CargoUserReportCommentsEntity.cs" />
+    <Compile Include="Cargo\Static\CargoReportCommentsEntity.cs" />
+    <Compile Include="Cargo\Static\CargoHouseLogisPollEntity.cs" />
+    <Compile Include="Cargo\Static\CargoLogisticEntity.cs" />
+    <Compile Include="Cargo\Static\CargoDailyReportsEntity.cs" />
+    <Compile Include="Cargo\Static\CargoNoticeUserViewEntity.cs" />
+    <Compile Include="Cargo\Static\CargoNoticeEntity.cs" />
+    <Compile Include="Cargo\Static\CargoProductPriceEntity.cs" />
+    <Compile Include="Cargo\Static\CargoPushDataEntity.cs" />
+    <Compile Include="Cargo\Supplier\CargoSupplierCoodEntity.cs" />
+    <Compile Include="Cargo\Supplier\CargoSupplierEntity.cs" />
+    <Compile Include="Cargo\WxApplet\AppletRegisterEntity.cs" />
+    <Compile Include="Cargo\WxApplet\BannerListEntity.cs" />
+    <Compile Include="Cargo\WxApplet\GoodsEntity.cs" />
+    <Compile Include="Cargo\WxApplet\LogisticsInfoEntity.cs" />
+    <Compile Include="Cargo\WxApplet\MiniProCouponEntity.cs" />
+    <Compile Include="Cargo\WxApplet\MiniProOrderEntity.cs" />
+    <Compile Include="Cargo\WxApplet\NoticeEntity.cs" />
+    <Compile Include="Cargo\WxApplet\OrderDetailEntity.cs" />
+    <Compile Include="Cargo\WxApplet\OrderEntity.cs" />
+    <Compile Include="Cargo\WxApplet\OrderListEntity.cs" />
+    <Compile Include="Cargo\WxApplet\OrderStatisticsEntity.cs" />
+    <Compile Include="Cargo\WxApplet\ProvincesEntity.cs" />
+    <Compile Include="Cargo\WxApplet\RuleBankEntity.cs" />
+    <Compile Include="Cargo\WxApplet\ShippingAddressListEntity.cs" />
+    <Compile Include="Cargo\WxApplet\ShippingCarInfoEntity.cs" />
+    <Compile Include="Cargo\WxApplet\UserAmountEntity.cs" />
+    <Compile Include="Cargo\WxApplet\UserDetailEntity.cs" />
+    <Compile Include="Cargo\WxApplet\WeChatPayEntity.cs" />
+    <Compile Include="Cargo\WxApplet\WxClientEntity.cs" />
+    <Compile Include="Cargo\WX\WXCouponEntity.cs" />
+    <Compile Include="Cargo\WX\WXMobileCodeEntity.cs" />
+    <Compile Include="Cargo\WX\WXOrderEntity.cs" />
+    <Compile Include="Cargo\WX\WXOrderManagerEntity.cs" />
+    <Compile Include="Cargo\WX\WXSecKillEntity.cs" />
+    <Compile Include="Cargo\WX\WXTaobaoEntity.cs" />
+    <Compile Include="Cargo\WX\WXUserAddressEntity.cs" />
+    <Compile Include="Cargo\WX\WXUserEntity.cs" />
+    <Compile Include="Cargo\WX\WXUserPointEntity.cs" />
+    <Compile Include="Dto\Base\DataRespsBase.cs" />
+    <Compile Include="Dto\Base\ListResponsBase.cs" />
+    <Compile Include="Dto\Order\AvgMonthSalesData.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoOutOfStockDto.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoOOSLogDtlDto.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoRplOrderDtlDto.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoOOSLogDto.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoRplOrderDto.cs" />
+    <Compile Include="Dto\CassMallDTO.cs" />
+    <Compile Include="Dto\ContainerGoodsInsertDto.cs" />
+    <Compile Include="Dto\ExportPurchaseOrderDto.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoOOSLogGoodsDto.cs" />
+    <Compile Include="Dto\Order\CargoRpl\CargoRplOrderGoodsDto.cs" />
+    <Compile Include="Dto\Base\PaginationBase.cs" />
+    <Compile Include="Dto\Order\CargoRpl\RplOrderGenerationParam.cs" />
+    <Compile Include="Dto\TempProducts.cs" />
+    <Compile Include="House\SystemOrganizeEntity.cs" />
+    <Compile Include="Log\ErrMessage.cs" />
+    <Compile Include="Log\LogEntity.cs" />
+    <Compile Include="Log\userAPIMessage.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="House\SystemDepartEntity.cs" />
+    <Compile Include="House\SystemFirmEntity.cs" />
+    <Compile Include="House\SystemItemEntity.cs" />
+    <Compile Include="House\SystemRoleEntity.cs" />
+    <Compile Include="House\SystemSetEntity.cs" />
+    <Compile Include="House\SystemUnitEntity.cs" />
+    <Compile Include="House\SystemUserEntity.cs" />
+    <Compile Include="Cargo\QY\QyDepartEntity.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy $(TargetDir)$(TargetFileName) $(SolutionDir)DLL</PostBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

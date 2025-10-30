@@ -617,27 +617,6 @@ namespace House.Business.Cargo
                     throw;
                 }
             }
-
-            ////销售单创建后库存变少，检查是否需要创建补货单
-            //List<RplOrderAutoGeneratParam_Goods> rplGoodsList = new List<RplOrderAutoGeneratParam_Goods>();
-            //if(entity != null && entity.goodsList != null && entity.goodsList.Any())
-            //{
-            //    RplOrderAutoGeneratParam rplParam = new RplOrderAutoGeneratParam()
-            //    {
-            //        ReqBy = entity.CreateAwbID,
-            //        ReqByName = entity.CreateAwb,
-            //        SrcType = 1, //销售单标记
-            //        SrcCode = entity.OrderNo,
-            //        GoodsList = entity.goodsList.Select(x => new RplOrderAutoGeneratParam_Goods()
-            //        {
-            //            ProductID = x.ProductID,
-            //            AreaID = x.AreaID,
-            //        }).ToList()
-            //    };
-            //    TryGeneralRplOrder(rplParam);
-            //}
-
-
         }
         /// <summary>
         /// 新增订单数据
@@ -2795,7 +2774,7 @@ namespace House.Business.Cargo
                 try
                 {
                     //1.保存移库单 
-                    man.AddMoveOrderData(entity);
+                    var moveOrderData = man.AddMoveOrderData(entity);
                     //2.减库存
                     foreach (var it in entity.MoveGoodsList)
                     {
@@ -2803,6 +2782,31 @@ namespace House.Business.Cargo
                     }
                     lw.WriteLog(entity, log);
                     scope.Complete();
+
+
+                    if(moveOrderData != null)
+                    {
+                        CargoHouseManager houseMan = new CargoHouseManager();
+                        var containerIDs = entity.MoveGoodsList.Select(c => c.ContainerID).ToArray();
+                        var containerData = houseMan.QueryAreaByContainer(containerIDs);
+                        List<UpdateOOSGoodsParam> oosGdsParams = entity.MoveGoodsList.Select(i => new UpdateOOSGoodsParam()
+                        {
+                            ProductID = i.ProductID,
+                            AreaID = containerData.FirstOrDefault(c => c.ContainerID == i.ContainerID)?.AreaID ?? 0,
+                        }).Where(c => c.AreaID != 0).ToList();
+                        UpdateOOSParam oosParams = new UpdateOOSParam()
+                        {
+                            UserID = _userid,
+                            UserName = _username,
+                            ReasonTag = "TO",
+                            SrcType = 3,
+                            SrcID = (int)moveOrderData.ID,
+                            SrcCode = moveOrderData.MoveNo,
+                            Rows = oosGdsParams
+                        };
+                        CargoOrderBus ordrBus = new CargoOrderBus();
+                        ordrBus.TryUpdateOutOfStock(oosParams);
+                    }
                 }
                 catch (ApplicationException ex)
                 {
@@ -3060,12 +3064,13 @@ namespace House.Business.Cargo
                 {
                     try
                     {
-                        man.AddOrderInfo(entity);
+                        long orderID = man.AddOrderInfo(entity);
                         houseBus.saveOutCargoData(outHouseList, log);
 
                         log.Memo = "";
                         lw.WriteLog(entity, log);
                         scope.Complete();
+
                     }
                     catch (ApplicationException ex)
                     {
@@ -5245,7 +5250,7 @@ namespace House.Business.Cargo
             LogEntity log = new LogEntity();
             log.Moudle = "任务调度";
             log.Status = "0";
-            log.NvgPage = "尝试生成静态化昨日销量数据";
+            log.NvgPage = "尝试生成本周静态化日销量数据";
             log.Operate = "A";
             LogWrite<CargoOrderEntity> lw = new LogWrite<CargoOrderEntity>();
             try
@@ -5267,7 +5272,7 @@ namespace House.Business.Cargo
             LogEntity log = new LogEntity();
             log.Moudle = "任务调度";
             log.Status = "0";
-            log.NvgPage = "尝试生成静态化上个月平均销量";
+            log.NvgPage = "尝试生成上个月静态化平均销量数据";
             log.Operate = "A";
             LogWrite<CargoOrderEntity> lw = new LogWrite<CargoOrderEntity>();
             try

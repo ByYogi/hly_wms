@@ -75,7 +75,7 @@
       <HintPath>..\DLL\Newtonsoft.Json.Net35.dll</HintPath>
     </Reference>
     <Reference Include="RBush, Version=4.0.0.0, Culture=neutral, PublicKeyToken=c77e27b81f4d0187, processorArchitecture=MSIL">
-      <HintPath>..\packages\RBush.Signed.4.0.0\lib\net47\RBush.dll</HintPath>
+      <HintPath>..\packages\RBush.Signed.4.0.0\lib\netstandard2.0\RBush.dll</HintPath>
     </Reference>
     <Reference Include="Senparc.Weixin">
       <HintPath>..\DLL\Senparc.Weixin.dll</HintPath>

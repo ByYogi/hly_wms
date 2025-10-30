@@ -2866,7 +2866,7 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
         /// 新增订单数据
         /// </summary>
         /// <param name="entity"></param>
-        public long AddOrderInfo(CargoOrderEntity entity)
+        public void AddOrderInfo(CargoOrderEntity entity)
         {
             entity.EnSafe();
             CargoClientManager client = new CargoClientManager();
@@ -3123,8 +3123,6 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
                     }
                 }
                 #endregion
-
-                return did;
             }
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
 
