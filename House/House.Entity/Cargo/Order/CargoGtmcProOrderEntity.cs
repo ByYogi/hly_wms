@@ -198,6 +198,7 @@ namespace House.Entity.Cargo
         /// </summary>
         public DateTime AutoOrderHandleTime { get; set; }
 
+        public byte? OrderOwner { get; set; }
         public List<CargoGtmcProOrderDetailEntity> orderDetail { get; set; }
         /// <summary>
         /// 去NULL,替换危险字符

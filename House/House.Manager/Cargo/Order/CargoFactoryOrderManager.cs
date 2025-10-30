@@ -739,6 +739,7 @@ namespace House.Manager.Cargo
                                 City = Convert.ToString(idr["City"]),
                                 Province = Convert.ToString(idr["Province"]),
                                 Region = Convert.ToString(idr["Product"]),
+                                OrderOwner = idr.Field<byte?>("OrderOwner"),
                                 ExterOrderAlloNum = string.IsNullOrEmpty(Convert.ToString(idr["ExterOrderAlloNum"])) ? 0 : Convert.ToInt32(idr["ExterOrderAlloNum"]),
                             });
                         }
