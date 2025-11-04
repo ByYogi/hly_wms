@@ -30,10 +30,10 @@ namespace House.DataAccess
             switch (connectionString)
             {
                 case "HLYSql":
-                    this.connection = CreateConnection(Properties.Resources.HLYSql);
+                    this.connection = CreateConnection(""); //CreateConnection(Properties.Resources.HLYSql);
                     break;
                 case "Neway":
-                    this.connection=CreateConnection(Properties.Resources.NewayDeploySql);
+                    this.connection= CreateConnection("");//CreateConnection(Properties.Resources.NewayDeploySql);
                     break;
                 default:
                     this.connection = CreateConnection(connectionString);

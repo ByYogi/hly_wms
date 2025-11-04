@@ -146,6 +146,9 @@
     <Compile Include="Cargo\Order\CargoPurchaseOrderEntity.cs" />
     <Compile Include="Cargo\Order\CargoPurchaseOrderGoodsEntity.cs" />
     <Compile Include="Cargo\Order\CargoReplOutOrderRelate.cs" />
+    <Compile Include="Cargo\Order\CargoReserveOrderEntity.cs" />
+    <Compile Include="Cargo\Order\CargoReserveOrderGoodsEntity.cs" />
+    <Compile Include="Cargo\Order\CargoReserveOrderPaymentRecordEntity.cs" />
     <Compile Include="Cargo\Order\CargoRplOrder.cs" />
     <Compile Include="Cargo\Order\CargoRplOrderGoods.cs" />
     <Compile Include="Cargo\Product\CargoImportEntity.cs" />
@@ -244,6 +247,7 @@
     <Compile Include="Dto\Order\CargoRpl\CargoRplOrderGoodsDto.cs" />
     <Compile Include="Dto\Base\PaginationBase.cs" />
     <Compile Include="Dto\Order\CargoRpl\RplOrderGenerationParam.cs" />
+    <Compile Include="Dto\Purchase\RealFactoryPODetailDto.cs" />
     <Compile Include="Dto\TempProducts.cs" />
     <Compile Include="House\SystemOrganizeEntity.cs" />
     <Compile Include="Log\ErrMessage.cs" />

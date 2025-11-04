@@ -1,0 +1,661 @@
+﻿<%@ Page Title="采购明细查询" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true"
+    CodeBehind="RealFactoryPODetail.aspx.cs" Inherits="Cargo.Purchase.RealFactoryPODetail" %>
+
+    <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+        <%-- <script src="../JS/easy/js/datagrid-cellediting.js" type="text/javascript"></script> --%>
+            <style type="text/css">
+                .tblBtn {
+                    letter-spacing: 4px;
+                    /* 字间距可调 */
+                    padding: 0 2px;
+                }
+
+                .space {
+                    display: inline-flex;
+                    /* 横向排列 */
+                    gap: 8px;
+                    /* 按钮间距统一由 gap 控制 */
+                    align-items: center;
+                    /* 垂直居中 */
+                    vertical-align: middle;
+                    /* 与其他行内元素对齐，消除多余上间距 */
+                }
+
+                .space-lg {
+                    display: inline-flex;
+                    /* 横向排列 */
+                    gap: 22px;
+                    /* 按钮间距统一由 gap 控制 */
+                    align-items: center;
+                    /* 垂直居中 */
+                    vertical-align: middle;
+                    /* 与其他行内元素对齐，消除多余上间距 */
+                }
+            </style>
+            <script type="text/javascript">
+                //页面加载显示遮罩层
+                var pc;
+                $.parser.onComplete = function () {
+                    if (pc) {
+                        clearTimeout(pc);
+                    }
+                    pc = setTimeout(closemask, 10);
+                }
+                //关闭加载中遮罩层
+                function closemask() {
+                    $("#Loading").fadeOut("normal", function () {
+                        $(this).remove();
+                    });
+                }
+
+                window.onload = function () {
+                    adjustment();
+                    $.ajaxSetup({ async: true });
+                    $.getJSON("../Client/clientApi.aspx?method=QueryAllUpClientDep", function (data) {
+                        UpClientDep = data;
+                    });
+                }
+                $(window).resize(function () {
+                    adjustment();
+                });
+                function adjustment() {
+                    var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+                    $('#dg').datagrid("resize", { height: height });
+                }
+                var ownershipFormatter = function (val, row, index) {
+                    if (val == "1") { return "<span title='昆明云仓'>昆明云仓</span>"; }
+                    else if (val == "2") { return "<span title='龙华云仓'>龙华云仓</span>"; }
+                    else if (val == "3") { return "<span title='东平云仓'>东平云仓</span>"; }
+                    else if (val == "4") { return "<span title='沙井云仓'>沙井云仓</span>"; }
+                    else if (val == "5") { return "<span title='星沙云仓'>星沙云仓</span>"; }
+                    else if (val == "6") { return "<span title='增城云仓'>增城云仓</span>"; }
+                    else if (val == "7") { return "<span title='西安云仓'>西安云仓</span>"; }
+                    else if (val == "8") { return "<span title='汉口云仓'>汉口云仓</span>"; }
+                    else if (val == "9") { return "<span title='顺捷云仓'>顺捷云仓</span>"; }
+                    else if (val == "10") { return "<span title='汕头云仓'>汕头云仓</span>"; }
+                    else if (val == "11") { return "<span title='渭南云仓'>渭南云仓</span>"; }
+                    else if (val == "12") { return "<span title='北辰云仓'>北辰云仓</span>"; }
+                    else if (val == "13") { return "<span title='南沙云仓'>南沙云仓</span>"; }
+                    else if (val == "14") { return "<span title='从化云仓'>从化云仓</span>"; }
+                    else if (val == "15") { return "<span title='南海云仓'>南海云仓</span>"; }
+                    else if (val == "16") { return "<span title='大兴云仓'>大兴云仓</span>"; }
+                    else if (val == "17") { return "<span title='经开云仓'>经开云仓</span>"; }
+                    else if (val == "18") { return "<span title='香坊云仓'>香坊云仓</span>"; }
+                    else if (val == "19") { return "<span title='栾城云仓'>栾城云仓</span>"; }
+                    else if (val == "20") { return "<span title='铁西云仓'>铁西云仓</span>"; }
+                    else if (val == "21") { return "<span title='济南云仓'>济南云仓</span>"; }
+                    else if (val == "22") { return "<span title='太原云仓'>太原云仓</span>"; }
+                    else if (val == "23") { return "<span title='衡阳云仓'>衡阳云仓</span>"; }
+                    else if (val == "24") { return "<span title='嘉定云仓'>嘉定云仓</span>"; }
+                    else if (val == "25") { return "<span title='常熟云仓'>常熟云仓</span>"; }
+                    else if (val == "26") { return "<span title='杭州云仓'>杭州云仓</span>"; }
+                    else if (val == "27") { return "<span title='南山云仓'>南山云仓</span>"; }
+                    else if (val == "28") { return "<span title='双流云仓'>双流云仓</span>"; }
+                    else if (val == "29") { return "<span title='江宁云仓'>江宁云仓</span>"; }
+                    else if (val == "30") { return "<span title='连江云仓'>连江云仓</span>"; }
+                    else if (val == "31") { return "<span title='兰州云仓'>兰州云仓</span>"; }
+                    else if (val == "32") { return "<span title='银川云仓'>银川云仓</span>"; }
+                    else if (val == "33") { return "<span title='新疆云仓'>新疆云仓</span>"; }
+                    else if (val == "34") { return "<span title='南开云仓'>南开云仓</span>"; }
+                    else if (val == "35") { return "<span title='兴宁云仓'>兴宁云仓</span>"; }
+                    else if (val == "36") { return "<span title='花都云仓'>花都云仓</span>"; }
+                    else if (val == "37") { return "<span title='蔡甸云仓'>蔡甸云仓</span>"; }
+                    else if (val == "38") { return "<span title='光明云仓'>光明云仓</span>"; }
+                    else if (val == "39") { return "<span title='秀英云仓'>秀英云仓</span>"; }
+                    else if (val == "40") { return "<span title='贵阳云仓'>贵阳云仓</span>"; }
+                    else if (val == "41") { return "<span title='揭阳云仓'>揭阳云仓</span>"; }
+                    else if (val == "42") { return "<span title='南宁云仓'>南宁云仓</span>"; }
+                    else if (val == "43") { return "<span title='韶关云仓'>韶关云仓</span>"; }
+                    else if (val == "44") { return "<span title='肇庆云仓'>肇庆云仓</span>"; }
+                    else if (val == "45") { return "<span title='广州狄乐OE'>广州狄乐OE</span>"; }
+                    else if (val == "46") { return "<span title='广州狄乐RE'>广州狄乐RE</span>"; }
+                    else if (val == "47") { return "<span title='湖北狄乐RE'>湖北狄乐RE</span>"; }
+                    else if (val == "48") { return "<span title='湖南狄乐RE'>湖南狄乐RE</span>"; }
+                    else { return ""; }
+                };
+
+                $(document).ready(function () {
+                    $('#dg').datagrid({
+                        width: '100%',
+                        title: '', //标题内容
+                        loadMsg: '数据加载中, 请稍候...',
+                        autoRowHeight: false, //行高是否自动
+                        collapsible: true, //是否可折叠
+                        pagination: true, //分页是否显示
+                        showFooter: true,
+                        pageSize: 30, //每页多少条
+                        pageList: [30, 50, 500, 1000, 10000, 100000],
+                        fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                        singleSelect: true, //设置为 true，则只允许选中一行。
+                        //checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                        idField: 'PurOrderID',
+                        url: null,
+                        toolbar: '#toolbar',
+                        columns: [[
+                            {
+                                title: '序号', field: 'SN', align: 'right', formatter: function (value, row, index) {
+                                    return "<span>" + ++index + "</span>";
+                                }
+                            },
+                            {
+                                title: '采购单号', field: 'PurOrderNo', width: '120px'
+                            },
+                            {
+                                title: '开单时间', field: 'CreateDate', width: '120px', formatter: DateTimeFormatter
+                            },
+                            {
+                                title: '需求部门', field: 'PurDepart', width: '80px'
+                            },
+                            {
+                                title: '物权方', field: 'OwnerShip', width: '80px', formatter: ownershipFormatter
+                            },
+                            {
+                                title: '是否含税', field: 'WhetherTax', width: '40px',
+                                formatter: function (val, row, index) {
+                                    if (val == "0") { return "<span title='不含税'>不含税</span>"; }
+                                    else if (val == "1") { return "<span title='含税'>含税</span>"; }
+                                    else { return ""; }
+                                }
+                            },
+                            {
+                                title: '供应商', field: 'PurchaserName', width: '130px'
+                            },
+                            {
+                                title: '采购单类型', field: 'PurchaseType', width: '80px',
+                                formatter: function (val, row, index) {
+                                    if (val == "0") { return "<span title='工厂采购'>工厂采购</span>"; }
+                                    else if (val == "1") { return "<span title='市场采购'>市场采购</span>"; }
+                                    else { return ""; }
+                                }
+                            },
+                            {
+                                title: '入库单类型', field: 'PurchaseInStoreType', width: '80px', formatter: function (val, row, index) {
+                                    if (val == "0") { return "<span title='入仓单'>入仓单</span>"; }
+                                    else if (val == "1") { return "<span title='调货单'>调货单</span>"; }
+                                    else if (val == "2") { return "<span title='提送单'>提送单</span>"; }
+                                    else { return ""; }
+                                }
+                            },
+                            {
+                                title: '开单员', field: 'CreateAwb', width: '80px'
+                            },
+                            {
+                                title: '付款方式', field: 'PaymentMethod', width: '80px',
+                                formatter: function (val, row, index) {
+                                    if (val == "0") { return "<span title='月结'>月结</span>"; }
+                                    else if (val == "1") { return "<span title='周结'>周结</span>"; }
+                                    else if (val == "2") { return "<span title='现结'>现结</span>"; }
+                                    else { return ""; }
+                                }
+                            },
+                            {
+                                title: '产品编码', field: 'ProductCode', width: '100px'
+                            },
+                            {
+                                title: '产品名称', field: 'ProductName', width: '100px'
+                            },
+                            {
+                                title: '品牌', field: 'TypeName', width: '60px'
+                            },
+                            {
+                                title: '规格', field: 'Specs', width: '80px'
+                            },
+                            {
+                                title: '花纹', field: 'Figure', width: '80px'
+                            },
+                            {
+                                title: '货品代码', field: 'GoodsCode', width: '100px'
+                            },
+                            {
+                                title: '载重指数', field: 'LoadIndex', width: '60px'
+                            },
+                            {
+                                title: '速度级别', field: 'SpeedLevel', width: '60px'
+                            },
+                            {
+                                title: '采购数量', field: 'Piece', width: '60px'
+                            },
+                            {
+                                title: '采购价格', field: 'PurchasePrice', width: '60px'
+                            }
+                        ]],
+                    });
+
+                    // var datenow = new Date();
+                    // $('#StartDate').datebox('setValue', getNowFormatDate(datenow));
+                    // $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
+                });
+                //查询
+                function dosearch() {
+                    $('#dg').datagrid('clearSelections');
+                    var gridOpts = $('#dg').datagrid('options');
+                    gridOpts.url = 'purchaseApi.aspx?method=QueryRealFactoryPODetail';
+
+                    $('#dg').datagrid('load', {
+                        PurOrderNo: $('#PurOrderNo-ipt').textbox('getValue'),        // 采购单号
+                        PurchaserName: $('#PurchaserName-ipt').textbox('getValue'),  // 供应商
+                        ProductCode: $('#ProductCode-ipt').textbox('getValue'),      // 产品编码
+                        Specs: $('#Specs-ipt').textbox('getValue'),                  // 规格
+                        StartDate: $('#StartDate').datebox('getValue'),              // 开单时间起
+                        EndDate: $('#EndDate').datebox('getValue'),                  // 开单时间止
+                        PurchaseType: $('#PurchaseType-sel').combobox('getValue'),   // 采购单类型
+                        TypeName: $('#TypeName-ipt').textbox('getValue'),            // 品牌名称
+                        GoodsCode: $('#GoodsCode-ipt').textbox('getValue'),          // 货品代码
+                        Figure: $('#Figure-ipt').textbox('getValue')                 // 花纹
+                    });
+                    console.log(gridOpts.url);
+                }
+            </script>
+    </asp:Content>
+
+    <asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+        <div id='Loading'
+            style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+            <div style="display: table-cell; vertical-align: middle">
+                <h1>
+                    <font size="9">页面加载中……</font>
+                </h1>
+            </div>
+        </div>
+        <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'"
+            style="width: 100%">
+        <table>
+             <colgroup>
+                    <col width="100">
+                    <col width="140">
+
+                    <col width="100">
+                    <col width="140">
+
+                    <col width="100">
+                    <col width="140">
+
+                    <col width="100">
+                    <col width="140">
+
+                    <col width="100">
+                    <col width="240">
+
+                    <col width="auto">
+            </colgroup>
+            <tr>
+                <td style="text-align: right;">采购单号:</td>
+                <td>
+                    <input id="PurOrderNo-ipt" class="easyui-textbox" data-options="prompt:'请输入采购单号'" style="width: 100px" />
+                </td>
+
+                <td style="text-align: right;">供应商:</td>
+                <td>
+                    <input id="PurchaserName-ipt" class="easyui-textbox" data-options="prompt:'请输入供应商名称'" style="width: 100px" />
+                </td>
+
+                <td style="text-align: right;">产品编码:</td>
+                <td>
+                    <input id="ProductCode-ipt" class="easyui-textbox" data-options="prompt:'请输入产品编码'" style="width: 100px" />
+                </td>
+
+                <td style="text-align: right;">规格:</td>
+                <td>
+                    <input id="Specs-ipt" class="easyui-textbox" data-options="prompt:'请输入规格'" style="width: 100px" />
+                </td>
+
+                <td style="text-align: right;">开单时间:</td>
+                <td>
+                    <input id="StartDate" class="easyui-datebox" style="width: 100px" /> ~
+                    <input id="EndDate" class="easyui-datebox" style="width: 100px" />
+                </td>
+
+                <td></td>
+            </tr>
+
+            <tr>
+                <td style="text-align: right;">采购单类型:</td>
+                <td>
+                    <select class="easyui-combobox" id="PurchaseType-sel" style="width: 100px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">工厂采购</option>
+                        <option value="1">市场采购</option>
+                    </select>
+                </td>
+
+                <td style="text-align: right;">品牌名称:</td>
+                <td>
+                    <input id="TypeName-ipt" class="easyui-textbox" data-options="prompt:'请输入品牌'" style="width: 100px" />
+                </td>
+
+                <td style="text-align: right;">货品代码:</td>
+                <td>
+                    <input id="GoodsCode-ipt" class="easyui-textbox" data-options="prompt:'请输入货品代码'" style="width: 100px" />
+                </td>
+
+                <td style="text-align: right;">花纹:</td>
+                <td>
+                    <input id="Figure-ipt" class="easyui-textbox" data-options="prompt:'请输入花纹'" style="width: 100px" />
+                </td>
+                
+                <td></td>
+            </tr>
+        </table>
+
+        </div>
+        <table id="dg" class="easyui-datagrid"></table>
+        <div id="toolbar">
+            <div class="space-lg">
+                <span class="space">
+                    <a href="#" class="easyui-linkbutton tblBtn" id="btnSearch" iconcls="icon-search"
+                        plain="false">查询</a>
+                </span>
+                <span class="space">
+                    <a href="#" class="easyui-linkbutton tblBtn" id="btnExport" iconcls="icon-application_put"
+                        plain="false">导出</a>
+                </span>
+            </div>
+
+            <form runat="server" id="fm1">
+            </form>
+        </div>
+
+
+
+        <div id="dlgOrder" class="easyui-dialog" buttons="#dlgOrder-buttons" closable="true">
+
+            <table>
+                <tr>
+                    <td>
+                        <input type="hidden" id="HiddenMoveStatus" />
+                        <table id="dgSave" class="easyui-datagrid">
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <div id="dlgOrder-buttons">
+            <table style="width: 100%">
+                <tr>
+                    <td>
+                        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+                            onclick="javascript:$('#dlgOrder').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!--Begin 查询产品标签列表-->
+        <div id="productTag" class="easyui-dialog" style="width: 1100px; height: 520px; padding: 1px" closed="true"
+            buttons="#productTag-buttons">
+            <table id="dgTag" class="easyui-datagrid">
+            </table>
+            <div id="productTag-buttons">
+
+                <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+                    onclick="javascript:$('#productTag').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+            </div>
+        </div>
+        <!--End 查询产品标签列表-->
+
+        <script type="text/javascript">
+            //Easyui 初始化
+            $(function () {
+                $('#dlgOrder').dialog({
+                    modal: true,
+                    title: '采购单明细',
+                    width: 900,
+                    closed: true
+                });
+
+                const columns = [{
+                    title: '产品代码', field: 'ProductCode', width: '120px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                },
+                {
+                    title: '产品名称', field: 'ProductName', width: '120px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                },
+                {
+                    title: '货品代码', field: 'GoodsCode', width: '100px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                },
+                {
+                    title: '品牌', field: 'TypeName', width: '120px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                },
+                {
+                    title: '规格', field: 'Specs', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                },
+                {
+                    title: '花纹', field: 'Figure', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                },
+                {
+                    title: '载速', field: 'LISS', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                },
+                {
+                    title: '完成数量', field: 'DonePiece', width: '80px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                }]
+                $('#dgSave').datagrid({
+                    width: '880px',
+                    height: '300px',
+                    title: '', //标题内容
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: false, //行高是否自动
+                    collapsible: false, //是否可折叠
+                    pagination: false, //分页是否显示
+                    fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: true, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'ID',
+                    url: null,
+                    toolbar: '',
+                    onClickCell: onClickCell,
+                    columns: [columns],
+                    rowStyler: function (index, row) {
+                        // if (row.Piece != row.NewPiece) { return "background-color:#f7d9d9"; };
+                    }
+                });
+            })
+            //统一事件绑定
+            $(function () {
+                $('#btnExport').on('click', dataExport);
+                $('#btnSearch').on('click', dosearch)
+            });
+
+
+
+            //导出数据
+            function dataExport() {
+                var pager = $('#dg').datagrid('getPager');
+                var pageData = pager.pagination('options');
+                var pageIndex = pageData.pageNumber;  // 当前页码（从1开始）
+                var pageSize = pageData.pageSize;     // 每页大小
+                var queryParams = {
+                    RplNo: $('#RplNo').val(),
+                    HouseID: $("#HouseID").combobox('getValue'),
+                    FromHouse: $("#FromHouse").combobox('getValue'),
+                    Status: $("#Status").combobox('getValue'),
+                    StartDate: $('#StartDate').datebox('getValue'),
+                    EndDate: $('#EndDate').datebox('getValue'),
+                    TypeCate: $('#TypeCate').datebox('getValue'),
+                    TypeID: $('#TypeID').datebox('getValue'),
+                    page: pageIndex,
+                    rows: pageSize
+                }
+
+                console.log({ queryParams, pageData });
+                var queryString = Object.keys(queryParams)
+                    .map(key => encodeURIComponent(key) + '=' + encodeURIComponent(queryParams[key]))
+                    .join('&');
+                var downloadUrl = 'orderApi.aspx?method=GetRplOrderExcel&' + queryString;
+
+                // 创建隐藏的iframe
+                var iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = downloadUrl;
+                document.body.appendChild(iframe);
+                return
+            }
+
+            //删除仓库信息
+            function DelItem() {
+                var rows = $('#dg').datagrid('getSelections');
+                if (rows == null || rows == "") {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                    return;
+                }
+                $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                    if (r) {
+                        var json = JSON.stringify(rows)
+                        $.ajax({
+                            url: 'orderApi.aspx?method=DelMoveOrder',
+                            type: 'post', dataType: 'json', data: { data: json },
+                            success: function (text) {
+                                //var result = eval('(' + msg + ')');
+                                if (text.Result == true) {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                    $('#dg').datagrid('reload');
+                                }
+                                else {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+            //保存仓库信息
+            function saveItem() {
+                $('#fm').form('submit', {
+                    url: 'houseApi.aspx?method=SaveCargoHouse',
+                    onSubmit: function () {
+                        return $(this).form('enableValidation').form('validate');
+                    },
+                    success: function (msg) {
+                        var result = eval('(' + msg + ')');
+                        if (result.Result) {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                            $('#dlgOrder').dialog('close'); 	// close the dialog
+                            dosearch();
+                        } else {
+                            $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                        }
+                    }
+                })
+            }
+            var IsModifyOrder = false;
+            var editIndex = undefined;
+            function endEditing() {
+                if (editIndex == undefined) { return true }
+                if ($('#dgSave').datagrid('validateRow', editIndex)) {
+                    var rows = $("#dgSave").datagrid('getData').rows[editIndex];
+                    var ed = $('#dgSave').datagrid('getEditors', editIndex);
+                    var cg = ed[0];
+                    if (cg == undefined) { return false; }
+                    if (cg.field == "Piece") {
+                        //修改件数
+                        var oldPiece = Number(rows.Piece);
+                        var newPiece = Number(cg.target.val());
+                        if (oldPiece == newPiece) {
+                            $('#dgSave').datagrid('endEdit', editIndex);
+                            editIndex = undefined;
+                            return;
+                        }
+                        //修改件数
+                        rows.Piece = newPiece;
+                        rows.oldPiece = oldPiece;
+                        var json = JSON.stringify([rows])
+                        $.messager.progress({ msg: '请稍后,正在保存中...' });
+                        $.ajax({
+                            url: 'orderApi.aspx?method=UpdateMoveOrderPiece',
+                            type: 'post', dataType: 'json', data: { data: json },
+                            success: function (text) {
+                                //var result = eval('(' + msg + ')');
+                                $.messager.progress("close");
+                                if (text.Result == true) {
+                                    IsModifyOrder = true;
+                                    alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
+                                }
+                                else {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                    $('#dgSave').datagrid('rejectChanges');
+                                    editIndex = undefined;
+                                }
+                            }
+                        });
+                    }
+                    $('#dgSave').datagrid('endEdit', editIndex);
+                    editIndex = undefined;
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            function onClickCell(index, field) {
+                if ($("#HiddenMoveStatus").val() == "1" || $("#HiddenMoveStatus").val() == "2" || $("#HiddenMoveStatus").val() == "4") { return; }
+                var rows = $("#dgSave").datagrid('getData').rows[index];
+                if (field == "Piece") {
+                    if (endEditing()) {
+                        $('#dgSave').datagrid('selectRow', index)
+                            .datagrid('editCell', { index: index, field: field });
+                        editIndex = index;
+                    }
+                } else {
+                    if (editIndex == undefined) { return true }
+                    rows = $("#dgSave").datagrid('getData').rows[editIndex];
+                    var ed = $('#dgSave').datagrid('getEditors', editIndex);
+                    var cg = ed[0];
+                    if (cg == undefined) {
+                        return true;
+                    }
+                    var sum = 0;
+                    if (cg.field == "Piece") {
+                        var oldPiece = Number(rows.Piece);
+                        var newPiece = Number(cg.target.val());
+                        if (oldPiece == newPiece) {
+                            $('#dgSave').datagrid('endEdit', editIndex);
+                            editIndex = undefined;
+                            return;
+                        }
+                        //修改件数
+                        rows.Piece = newPiece;
+                        rows.oldPiece = oldPiece;
+
+                        var json = JSON.stringify([rows])
+                        $.messager.progress({ msg: '请稍后,正在保存中...' });
+                        $.ajax({
+                            url: 'orderApi.aspx?method=UpdateMoveOrderPiece',
+                            type: 'post', dataType: 'json', data: { data: json },
+                            success: function (text) {
+                                $.messager.progress("close");
+                                //var result = eval('(' + msg + ')');
+                                if (text.Result == true) {
+                                    IsModifyOrder = true;
+                                    alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
+                                }
+                                else {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                    $('#dgSave').datagrid('rejectChanges');
+                                    editIndex = undefined;
+                                }
+                            }
+                        });
+                    }
+                    $('#dgSave').datagrid('endEdit', editIndex);
+                    editIndex = undefined;
+                }
+            }
+
+
+        </script>
+
+    </asp:Content>

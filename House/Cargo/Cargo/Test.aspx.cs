@@ -1,14 +1,17 @@
 ﻿
 using Cargo.QY;
+using ClosedXML.Excel;
 using House.Business.Cargo;
 using House.Entity;
 using House.Entity.Cargo;
+using House.Entity.Cargo.House;
 using House.Entity.Cargo.Interface;
 using House.Entity.Dto.Order.CargoRpl;
 using iText.Kernel.Pdf;
 using Memcached.ClientLibrary;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using NPOI.HSSF.Model;
 using NPOI.HSSF.Record.Formula.Functions;
 using NPOI.HSSF.Util;
 using NPOI.POIFS.Properties;
@@ -30,6 +33,7 @@ using System.Drawing;
 using System.EnterpriseServices;
 using System.IO;
 using System.Linq;
+using System.Management;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
@@ -50,11 +54,8 @@ using static System.Net.WebRequestMethods;
 
 namespace Cargo
 {
-    using Microsoft.Win32;
-
     public partial class Test : System.Web.UI.Page
     {
-
         private string GetContiUrl()
         {
             return ConfigurationSettings.AppSettings["ContiUrl"];
@@ -410,8 +411,10 @@ namespace Cargo
         }
         protected void Page_Load(object sender, EventArgs e)
         {
+            CargoHouseBus houseBus = new CargoHouseBus();
+            CargoClientBus clientBus = new CargoClientBus();
             CargoOrderBus ordrBus = new CargoOrderBus();
-
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
             //销售单创建后库存变少，检查是否需要创建补货单
             List<UpdateOOSGoodsParam> rplGoodsList = new List<UpdateOOSGoodsParam>();
             UpdateOOSParam oosParams = new UpdateOOSParam()
@@ -426,947 +429,1055 @@ namespace Cargo
                 {
                     new UpdateOOSGoodsParam()
                     {
-                        ProductID = 490778,
-                        AreaID = 3677,
+                        ProductCode = "2323",
+                        HouseID = 93,
                     },
                     new UpdateOOSGoodsParam()
                     {
-                        ProductID = 526076,
-                        AreaID = 3677,
+                        ProductCode = "2323",
+                        HouseID = 93,
                     },
                     new UpdateOOSGoodsParam()
                     {
-                        ProductID = 943096,
-                        AreaID = 3677,
+                        ProductCode = "2323",
+                        HouseID = 93,
                     },
-                }
+                } 
             };
             ordrBus.TryUpdateOutOfStock(oosParams);
             return;
+
+            #region 同步订单出库标签数据至马牌系统
+
+
 
             ordrBus.GenerateDailySalesSnapshot();
             return;
 
             // RedisHelper.HashSet("HCYCHouseStockSyc", "93_34_LTCT215551603", "LTCT215551603");
             // RedisHelper.HashSet("HCYCHouseStockSyc", "93_34_LTCT225551801", "LTCT225551801");
-            CargoInterfaceBus bus = new CargoInterfaceBus();
-            List<CargoProductEntity> testList = bus.QueryNextDayStockSync(new CargoProductEntity {  });
+            //CargoInterfaceBus bus = new CargoInterfaceBus();
+            //List<CargoProductEntity> testList = ordrBus.QueryNextDayStockSync(new CargoProductEntity { });
 
-            bus.SaveNextDayProductData(testList);
+            //ordrBus.SaveNextDayProductData(testList);
             return;
 
 
 
-
-            RedisValue[] redisValues = RedisHelper.HashKeys("NextDayOrderShareSync");
-            foreach (RedisValue redisValue in redisValues)
+            #region 定时作废超过10分钟未付款云仓订单
+            try
             {
-                string key = redisValue.ToString();//ST250729043_101_93   订单key
-                string goodsList = Convert.ToString(RedisHelper.HashGet("NextDayOrderShareSync", key));//订单明细
+                LogEntity log = new LogEntity();
+                log.IPAddress = "";
+                log.Moudle = "服务管理";
+                log.Status = "0";
+                log.NvgPage = "定时作废超过10分钟未付款订单";
+                log.UserID = "";
+                log.Operate = "D";
+                List<CargoOrderEntity> orderList = ordrBus.QueryWxOrderDataInfo(new CargoOrderEntity
+                {
+                    BelongHouse = "6",
+                    PayStatus = "0",
+                    CheckOutType = "5"
+                    ,
+                    CreateDate = DateTime.Now.AddMinutes(-10),
+                    StartDate = DateTime.Now,
+                    EndDate = DateTime.Now
+                });
+                List<CargoOrderEntity> list = new List<CargoOrderEntity>();
+                foreach (CargoOrderEntity item in orderList)
+                {
+                    list.Add(new CargoOrderEntity
+                    {
+                        OrderID = item.OrderID,
+                        OrderNo = item.OrderNo,
+                        Dep = item.Dep,
+                        Dest = item.Dest,
+                        Piece = item.Piece,
+                        TransportFee = item.TransportFee,
+                        TransitFee = item.TransitFee,
+                        DeliveryFee = item.DeliveryFee,
+                        InsuranceFee = item.InsuranceFee,
+                        OtherFee = item.OtherFee,
+                        TotalCharge = item.TotalCharge,
+                        AcceptUnit = item.AcceptUnit,
+                        AcceptPeople = item.AcceptPeople,
+                        AcceptTelephone = item.AcceptTelephone,
+                        AcceptCellphone = item.AcceptCellphone,
+                        AcceptAddress = item.AcceptAddress,
+                        SaleManName = item.SaleManName,
+                        CreateAwb = item.CreateAwb,
+                        CreateAwbID = item.CreateAwbID,
+                        CreateDate = item.CreateDate,
+                        LogisAwbNo = item.LogisAwbNo,
+                        LogisticName = item.LogisticName,
+                        WXOrderNo = item.WXOrderNo,
+                        OutHouseName = item.OutHouseName,
+                        Remark = item.Remark,
+                        ThrowGood = item.ThrowGood,
+                        HouseID = item.HouseID,
+                        TrafficType = item.TrafficType,
+                        //DeleteID = RobotID,
+                        //DeleteName = RobotName,
+                        PayClientNum = item.PayClientNum,
+                        CheckStatus = item.CheckStatus,
+                    });
 
-                // #region 增量同步共享仓库存至前置仓
-                // //以TypeID为Key，ProductCode为Value
-                // Dictionary<int, string> DPdicCass = new Dictionary<int, string>();
-                // Dictionary<int, string> SJdicCass = new Dictionary<int, string>();
-                // string StProductCode = string.Empty;
-                // RedisValue[] HCYCredisValues = RedisHelper.HashKeys("HCYCHouseStockSyc");
-                // foreach (RedisValue redisValue in HCYCredisValues)
-                // {
-                //     string key = redisValue.ToString();//93_34_LTCT245452005
-                //     string ProductCodeV = Convert.ToString(RedisHelper.HashGet("HCYCHouseStockSyc", key));
-                //     int HouseID = Convert.ToInt32(key.Split('_')[0]);
-                //     //品牌ID
-                //     int TypeID = Convert.ToInt32(key.Split('_')[1]);
-                //     //产品编码
-                //     string ProductCode = Convert.ToString(key.Split('_')[2]);
+                    //仓库同步缓存
+                    CargoHouseBus house = new CargoHouseBus();
+                    List<CargoProductEntity> syncProduct = house.SyncTypeOrderNo(item.OrderNo);
+                    //foreach (CargoProductEntity product in syncProduct)
+                    //{
 
-                //     //处理东平云仓和顺捷云仓库存数据
-                //     if (HouseID.Equals(93))
-                //     {
-                //         if (DPdicCass.ContainsKey(TypeID))
-                //         {
-                //             // 获取当前Key的内容
-                //             string currentValue = DPdicCass[TypeID];
+                    //    if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+                    //    {
+                    //        RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
+                    //    }
+                    //}
+                }
 
-                //             // 更新内容
-                //             string updatedValue = currentValue + "','" + ProductCode;
-                //             DPdicCass[TypeID] = updatedValue;
-                //         }
-                //         else
-                //         {
-                //             DPdicCass.Add(TypeID, ProductCode);
-                //         }
-                //     }
-                //     else if (HouseID.Equals(100))
-                //     {
-                //         if (SJdicCass.ContainsKey(TypeID))
-                //         {
-                //             // 获取当前Key的内容
-                //             string currentValue = SJdicCass[TypeID];
+                //bus.DeleteOrderInfo(list, log);
 
-                //             // 更新内容
-                //             string updatedValue = currentValue + "','" + ProductCode;
-                //             SJdicCass[TypeID] = updatedValue;
-                //         }
-                //         else
-                //         {
-                //             SJdicCass.Add(TypeID, ProductCode);
-                //         }
-                //     }
-                // }
-
-                // //开始同步东平仓增量库存
-                // foreach (var cass in DPdicCass)
-                // {
-                //     List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 93, TypeID = cass.Key, ProductCode = cass.Value });
-                //     bus.SaveNextDayProductData(entities);
-                // }
-                // //开始同步顺捷仓增量库存
-                // foreach (var cass in SJdicCass)
-                // {
-                //     List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 100, TypeID = cass.Key, ProductCode = cass.Value });
-                //     bus.SaveNextDayProductData(entities);
-                // }
-
-                // RedisHelper.KeyDelete("HCYCHouseStockSyc");
-                //// LogHelper.WriteLog("HCYCHouseStockSyc缓存删除成功");
-                // #endregion
-
-                //ScanContiQRCode();
-                //double distance = Common.CalculateDistance(Convert.ToDouble(108.33921460623363), Convert.ToDouble(22.873639278749174), Convert.ToDouble(116.35922045622952), Convert.ToDouble(40.06789579773766));
-                //string ss = ";";
-                ////机器人账号
-                //LogEntity log = new LogEntity();
-                //log.IPAddress = "";
-                //log.Moudle = "服务管理";
-                //log.Status = "0";
-                //log.NvgPage = "定单推送服务";
-                //log.UserID = "2029";
-                //log.Operate = "A";
-
-
-
-
-
-                List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 93 });
-
-                bus.SaveNextDayProductData(entities);
-
-                string sss = ";";
-
-                //RedisValue[] redisValues = RedisHelper.HashKeys("NextDayOrderShareSync");
-                //foreach (RedisValue redisValue in redisValues)
+                //foreach (var it in list)
                 //{
-                //    string key = redisValue.ToString();//ST250729043_101_93   订单key
-                //    string goodsList = Convert.ToString(RedisHelper.HashGet("NextDayOrderShareSync", key));//订单明细
-
-                //    string oriOrderNo = Convert.ToString(key.Split('_')[0]);
-                //    int oriHouseID = Convert.ToInt32(key.Split('_')[1]);
-                //    int ShareHouseID = Convert.ToInt32(key.Split('_')[2]);
-                //    //保存生成仓库订单
-                //    List<CargoContainerShowEntity> outHouseList = new List<CargoContainerShowEntity>();
-                //    List<CargoOrderGoodsEntity> entDest = new List<CargoOrderGoodsEntity>();
-
-                //    CargoOrderEntity ent = orderBus.QueryOrderInfo(new CargoOrderEntity { OrderNo = oriOrderNo });
-
-                //    if (!ent.CheckStatus.Equals("1"))
-                //    {
-                //        //如果次日达订单没有支付就跳过
-                //        continue;
-                //    }
-
-                //    int OrderNum = 0;
-
-                //    CargoHouseEntity houseEnt = house.QueryCargoHouseByID(ShareHouseID);
-                //    ent.HouseID = ShareHouseID;
-                //    ent.OrignHouseID = oriHouseID;
-                //    ent.OrignHouseName = "";
-                //    ent.ShareHouseID = 0;
-                //    ent.ShareHouseName = "";
-                //    ent.Dep = houseEnt.DepCity;
-                //    ent.OpenOrderNo = oriOrderNo;
-                //    ent.LogisID = houseEnt.HouseID.Equals(97) || houseEnt.HouseID.Equals(95) || houseEnt.HouseID.Equals(101) ? 62 : houseEnt.HouseID.Equals(136) ? 383 : 34;
-                //    ent.CreateDate = DateTime.Now;
-                //    string outID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString();//出库单号
-                //    ent.OrderNo = Common.GetMaxOrderNumByCurrentDate(houseEnt.HouseID, houseEnt.HouseCode, out OrderNum);
-                //    ent.OutHouseName = houseEnt.Name;
-                //    ent.OrderNum = OrderNum;
-
-
-
-                //    List<CargoInterfaceEntity> goods = new List<CargoInterfaceEntity>();
-                //    ArrayList rows = (ArrayList)JSON.Decode(goodsList);
-                //    decimal originalPrice = 0M;
-                //    foreach (Hashtable row in rows)
-                //    {
-                //        int piece = Convert.ToInt32(row["StockNum"]);
-                //        decimal ActSalePrice = Convert.ToDecimal(row["ActSalePrice"]);
-                //        CargoInterfaceEntity queryEntity = new CargoInterfaceEntity
-                //        {
-                //            ProductCode = Convert.ToString(row["ProductCode"]),
-                //            HouseID = houseEnt.HouseID,
-                //            //TypeID = productBasic[0].TypeID,
-                //            BatchYear = Convert.ToInt32(row["BatchYear"]),
-                //            ParentID = 1,
-                //            SuppClientNum = ent.SuppClientNum.ToString(),
-                //            SpecsType = "4",
-                //        };
-                //        List<CargoInterfaceEntity> stockList = bus.queryCargoStock(queryEntity);
-                //        if (stockList.Count <= 0)
-                //        {
-                //            //LogHelper.WriteLog("商品库存不足");
-                //        }
-                //        if (stockList.Sum(c => c.StockNum) < piece)
-                //        {
-                //            //LogHelper.WriteLog(productBasic[0].Specs + " " + productBasic[0].Figure + "库存不足");
-                //        }
-                //        //减库存规则，一周期早的先出先进先出，二数量和库存数刚好一样的先出
-                //        foreach (var it in stockList)
-                //        {
-                //            if (it.StockNum <= 0) { continue; }
-
-                //            CargoContainerShowEntity cargo = new CargoContainerShowEntity();
-                //            cargo.OrderNo = ent.OrderNo;//订单号
-                //            cargo.OutCargoID = outID;
-                //            cargo.ContainerID = it.ContainerID;
-                //            cargo.TypeID = it.TypeID;
-                //            cargo.ProductID = it.ProductID;
-
-                //            cargo.ID = it.ContainerGoodsID;//库存表ID
-
-                //            //cargo.TypeName = Convert.ToString(row["TypeName"]).Trim();
-                //            cargo.HouseName = houseEnt.Name;
-                //            //cargo.AreaName = Convert.ToString(row["AreaName"]).Trim();
-                //            cargo.ProductName = it.ProductName;
-                //            cargo.Model = it.Model;
-                //            cargo.Specs = it.Specs;
-                //            cargo.Figure = it.Figure;
-                //            int inHouseDay = (int)(DateTime.Now - it.InHouseTime).TotalDays;
-                //            int OverDay = 0;
-                //            decimal OnlyOverDayFee = 0;
-
-                //            #region 减库存逻辑
-                //            if (piece < it.StockNum)
-                //            {
-                //                //部分出
-                //                entDest.Add(new CargoOrderGoodsEntity
-                //                {
-                //                    OrderNo = ent.OrderNo,
-                //                    ProductID = it.ProductID,
-                //                    HouseID = ent.HouseID,
-                //                    AreaID = it.AreaID,
-                //                    Piece = piece,
-                //                    //ActSalePrice = it.SalePrice,
-                //                    ActSalePrice = ActSalePrice,
-                //                    SupplySalePrice = it.InHousePrice,
-                //                    ContainerCode = it.ContainerCode,
-                //                    OutCargoID = outID,
-                //                    OP_ID = log.UserID,
-                //                    OverDayNum = OverDay,
-                //                    OverDueFee = OnlyOverDayFee,
-                //                });
-
-                //                cargo.Piece = piece;
-                //                cargo.InPiece = it.StockNum;
-                //                originalPrice += piece * it.InHousePrice;//计算成本价
-                //                outHouseList.Add(cargo);
-                //                break;
-                //            }
-                //            if (piece.Equals(it.StockNum))
-                //            {
-                //                //要出库件数和第一条库存件数刚刚好，则就全部出
-                //                entDest.Add(new CargoOrderGoodsEntity
-                //                {
-                //                    OrderNo = ent.OrderNo,
-                //                    ProductID = it.ProductID,
-                //                    HouseID = ent.HouseID,
-                //                    AreaID = it.AreaID,
-                //                    Piece = piece,
-                //                    //ActSalePrice = it.SalePrice,
-                //                    SupplySalePrice = it.InHousePrice,
-                //                    ActSalePrice = ActSalePrice,
-                //                    ContainerCode = it.ContainerCode,
-                //                    OutCargoID = outID,
-
-                //                    OP_ID = log.UserID,
-                //                    OverDayNum = OverDay,
-                //                    OverDueFee = OnlyOverDayFee,
-                //                });
-                //                cargo.Piece = piece;
-                //                cargo.InPiece = it.StockNum;
-                //                originalPrice += piece * it.InHousePrice;//计算成本价
-
-                //                outHouseList.Add(cargo);
-                //                break;
-                //            }
-                //            if (piece > it.StockNum)
-                //            {
-                //                //全部出
-                //                entDest.Add(new CargoOrderGoodsEntity
-                //                {
-                //                    OrderNo = ent.OrderNo,
-                //                    ProductID = it.ProductID,
-                //                    HouseID = ent.HouseID,
-                //                    AreaID = it.AreaID,
-                //                    Piece = it.StockNum,
-                //                    //ActSalePrice = it.SalePrice,
-                //                    SupplySalePrice = it.InHousePrice,
-                //                    ActSalePrice = ActSalePrice,
-                //                    ContainerCode = it.ContainerCode,
-                //                    OutCargoID = outID,
-
-                //                    OP_ID = log.UserID,
-                //                    OverDayNum = OverDay,
-                //                    OverDueFee = OnlyOverDayFee,
-                //                });
-                //                cargo.Piece = it.StockNum;
-                //                cargo.InPiece = it.StockNum;
-                //                originalPrice += it.StockNum * it.InHousePrice;//计算成本价
-                //                outHouseList.Add(cargo);
-                //                piece = piece - it.StockNum;
-                //                continue;
-                //            }
-                //            #endregion
-                //        }
-                //    }
-
-                //    ent.OpenOrderSource = "1";
-                //    ent.goodsList = entDest;
-
-                //    //保存生成仓库出库订单
-                //    orderBus.AddOrderInfo(ent, outHouseList, log);
-
-
-                //    //更新原仓库订单的关联订单
-                //    bus.UpdateOrderOpenNo(new CargoOrderEntity { HouseID = oriHouseID, OrderNo = oriOrderNo, OpenOrderNo = ent.OrderNo });
-
-                //    //删除已经保存订单成功的Key
-                //    RedisHelper.HashDelete("NextDayOrderShareSync", key);
-
-                //    //LogHelper.WriteLog("订单：" + oriOrderNo + "保存成功");
-                //}
-
-
-
-                //#region 南宁云仓库存同步开思
-                //try
-                //{
-                //    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 136 });
-                //    StockApiResponseEntity entity = new StockApiResponseEntity();
-                //    entity.Params = new Params();
-                //    entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
-                //    entity.data = new List<Data>();
-
-                //    if (res.Count > 0)
-                //    {
-                //        entity.Params.firstData = true;
-                //        entity.Params.lastData = false;
-                //        entity.Params.updateMode = "ALL";
-                //        long tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
-                //        string strRes = string.Empty;
-                //        entity.Params.tpsBatchId = tpsBatchId;
-                //        int cou = 0;
-                //        for (int i = 0; i < res.Count; i++)
-                //        {
-                //            if (cou == 500)
-                //            {
-                //                cou = 0;
-                //                strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"), "2b2b36889e304645b28f94bfdd2ead9e");
-
-                //                entity = new StockApiResponseEntity();
-                //                entity.Params = new Params();
-                //                entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
-                //                entity.data = new List<Data>();
-                //                if (strRes.IndexOf("200") >= 0)
-                //                {
-                //                    //tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
-                //                    entity.Params.tpsBatchId = tpsBatchId;
-                //                    entity.Params.firstData = false;
-                //                    entity.Params.lastData = false;
-                //                    entity.Params.updateMode = "ALL";
-                //                }
-                //            }
-
-                //            string casscode = res[i].CassProductCode;
-                //            if (res[i].TypeID.Equals(34) || res[i].TypeID.Equals(345) || res[i].TypeID.Equals(163))
-                //            {
-                //                casscode = res[i].GoodsCode;
-                //            }
-                //            else
-                //            {
-                //                casscode = string.IsNullOrEmpty(res[i].CassProductCode) ? res[i].ProductCode : res[i].CassProductCode;
-
-                //            }
-                //            string typename = res[i].TypeName;
-                //            if (res[i].TypeID.Equals(9))
-                //            {
-                //                typename = "横滨/优科豪马";
-                //            }
-                //            else if (res[i].TypeID.Equals(66))
-                //            {
-                //                typename = "固铂轮胎";
-                //            }
-                //            decimal saleprice = 0.00M;
-
-                //            //按百分比
-                //            saleprice = Math.Ceiling(res[i].SalePrice * (1 + 1 / 100));
-
-                //            entity.data.Add(new Data
-                //            {
-                //                CassProductCode = casscode,
-                //                ProductName = res[i].ProductName,
-                //                TypeName = typename,
-                //                SalePrice = saleprice,
-                //                StockNum = res[i].StockNum,
-                //                Batch = res[i].Batch,
-                //                HouseID = res[i].HouseID,
-                //            });
-                //            //LogHelper.WriteLog("南宁云仓开思全量推送ID:" + casscode + "，库存：" + res[i].StockNum.ToString() + "，周期：" + res[i].Batch + ",本次推送金额:" + saleprice.ToString());
-                //            cou++;
-
-                //        }
-                //        entity.Params.lastData = true;
-                //        strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"), "2b2b36889e304645b28f94bfdd2ead9e");
-
-                //        if (strRes.IndexOf("200") >= 0)
-                //        {
-                //            //bus.UpdateStatus(res);
-                //            //LogHelper.WriteLog("南宁云仓开思推送成功!共计" + res.Count + "条数据");
-                //        }
-                //    }
-
-                //}
-                //catch (Exception ex)
-                //{
-                //    //LogHelper.WriteLog("南宁云仓开思推送出现错误!Message" + ex.Message);
-                //    throw;
-                //}
-                //#endregion
-
-
-                //SendBillMessage();
-                //Common.SendRefundModelMsg("1232", "250105165949189", 12,"beizhu");
-                //Common.SendRePlaceAnOrderMsg("542207", "test001", "Order001", "戴尔笔记本",8000,20);
-
-                //SendTemplateMessage();
-
-                //SyncStock();
-
-                //GetDongShunTyreData();
-
-                //CargoInterfaceBus interBus = new CargoInterfaceBus();
-
-                //CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
-                //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
-                //List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
-                //List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
-                ////深圳龙华云配仓库
-                //stockSync = new CargoContiStockSyncEntity();
-                //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
-                //stockList = new List<CargoContiStockListEntity>();
-                //List<CargoSafeStockEntity> ypStock = interBus.QueryGZContiStockData(new CargoSafeStockEntity { HouseIDStr = "9,93" });
-                //if (ypStock.Count > 0)
-                //{
-                //    foreach (var stock in ypStock)
-                //    {
-                //        if (string.IsNullOrEmpty(stock.GoodsCode) || stock.GoodsCode.Length < 7) { continue; }
-                //        if (LHYPsKUEntities.Exists(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7))))
-                //        {
-                //            CargoContiStockSKUEntity existEntity = LHYPsKUEntities.Find(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7)));
-                //            existEntity.dots.Add(new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum });
-                //            //existEntity.qty += stock.StockNum;
-                //        }
-                //        else
-                //        {
-                //            LHYPsKUEntities.Add(new CargoContiStockSKUEntity
-                //            {
-                //                skuCode = stock.GoodsCode.Substring(0, 7),
-                //                dots = new List<CargoContiStockDOTEntity> { new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum } }
-                //                //qty = stock.StockNum
-                //            });
-                //        }
-                //    }
-                //}
-                //stockList.Add(new CargoContiStockListEntity
-                //{
-                //    warehouseName = "广州仓",
-                //    skuQtyList = LHYPsKUEntities
-                //});
-                ////stockList.Add(new CargoContiStockListEntity
-                ////{
-                ////    warehouseName = "维京广州仓",
-                ////    skuQtyList = gzWjEntity
-                ////});
-                //stockSync.stockList = stockList;
-                //string body = JSON.Encode(stockSync);
-                //try
-                //{
-                //    string contiUrlss = "https://cdms.continental-tires.cn/api/openapi/stock/dotSync";
-                //    string res = wxHttpUtility.ContiSendPostHttpRequest(contiUrlss, "application/json", body);
-                //    // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步成功");
-                //}
-                //catch (ApplicationException ex)
-                //{
-                //    // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步失败");
-                //}
-
-
-
-                //RedisHelper.HashSet("OpenSystemStockSyc", "93_34_LTCT245452005", "03118970000");
-
-
-
-                //int djjg = (int)Math.Floor(154 / Convert.ToDecimal(1.009));
-
-                //LogEntity log = new LogEntity();
-                //log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
-                //log.Moudle = "慧采云仓";
-                //log.Status = "0";
-                //log.NvgPage = "小程序付款";
-                //log.UserID = "MiniPro";
-                //log.Operate = "U";
-                //CargoWeiXinBus bus = new CargoWeiXinBus();
-                //CargoOrderBus orderBus = new CargoOrderBus();
-                //CargoClientBus clientBus = new CargoClientBus();
-                //string out_trade_no = "24101209303138";
-                //if (!bus.IsExistWeixinOrderPay(new WXOrderEntity { OrderNo = out_trade_no, PayStatus = "1" }))
-                //{
-                //    List<WXOrderEntity> result = bus.QueryWeixinOrderInfo(1, 5, new WXOrderEntity { OrderNo = out_trade_no });
-                //    //1. 修改订单支付状态
-                //    bus.UpdateWeixinOrderPayStatus(new WXOrderEntity { OrderNo = out_trade_no, WXPayOrderNo = "24101209161425511111", PayStatus = "1", CargoOrderNo = result[0].CargoOrderNo }, log);
-                //    //扫描运单二维码支付成功返回的请求
-                //    //1.修改订单的支付状态
-                //    CargoFinanceBus fina = new CargoFinanceBus();
-                //    //先审核
-                //    List<CargoOrderEntity> oeL = new List<CargoOrderEntity>();
-                //    oeL.Add(new CargoOrderEntity
-                //    {
-                //        OrderID = result[0].OrderID,
-                //        OrderNo = result[0].CargoOrderNo,
-                //        FinanceSecondCheck = "1",
-                //        FinanceSecondCheckName = result[0].Name,
-                //        FinanceSecondCheckDate = DateTime.Now
-                //    });
-                //    fina.plSecondCheckOrder(oeL, log);
-                //    CargoOrderEntity ord = orderBus.QueryOrderInfo(new CargoOrderEntity { OrderNo = result[0].CargoOrderNo });
-
-                //    //if (!ord.HouseID.Equals(93))
-                //    //{
-                //    //    orderBus.InsertCargoOrderPush(new CargoOrderPushEntity
-                //    //    {
-                //    //        OrderNo = ord.OrderNo,
-                //    //        Dep = ord.Dep,
-                //    //        Dest = ord.Dest,
-                //    //        Piece = ord.Piece,
-                //    //        TransportFee = ord.TransportFee,
-                //    //        ClientNum = ord.ClientNum.ToString(),
-                //    //        AcceptAddress = ord.AcceptAddress,
-                //    //        AcceptCellphone = ord.AcceptCellphone,
-                //    //        AcceptTelephone = ord.AcceptTelephone,
-                //    //        AcceptPeople = ord.AcceptPeople,
-                //    //        AcceptUnit = ord.AcceptUnit,
-                //    //        HouseID = ord.HouseID.ToString(),
-                //    //        HouseName = ord.OutHouseName,
-                //    //        OP_ID = ord.OP_ID,
-                //    //        PushType = "0",
-                //    //        PushStatus = "0",
-                //    //        LogisID = ord.LogisID
-                //    //    }, log);
-                //    //}
-
-                //    //再支付
-                //    string awbidlist = string.Empty;
-                //    List<string> entOrderNo = new List<string>();
-                //    //如果客户是微信付款，并已支付成功，则修改订单状态为已结算
-                //    CargoCashierEntity ent = new CargoCashierEntity();
-                //    ent.WxID = 337;//科技公司的微信商城微信支付收款账号ID
-                //    ent.AffectWX = Convert.ToInt32(175) / 100;//微信 支付的金额
-
-                //    ent.OP_ID = log.UserID;
-                //    ent.UserName = log.UserID;
-                //    ent.RType = "0";//收支类型，0收入1支出
-                //    ent.FromTO = "0";//按订单号收款
-                //    ent.TradeType = "3";//微信商城付款
-                //    ent.CheckStatus = "1";
-                //    ent.WxOrderNo = out_trade_no;
-                //    entOrderNo.Add(result[0].CargoOrderNo);
-                //    awbidlist += result[0].CargoOrderNo + ",";
-
-                //    ent.ClientNum = result[0].ClientNum;
-                //    ent.OrderNo = entOrderNo;
-                //    ent.AffectAwbNO = awbidlist;
-                //    fina.SaveCash(ent, log);
-                //    Common.WriteTextLog("慧采云仓小程序 收款完成" + out_trade_no + "，订单号：" + result[0].CargoOrderNo);
-
-                //    try
-                //    {
-                //        if (!ord.CheckOutType.Equals("3"))
-                //        {
-                //            string proStr = string.Empty;
-                //            if (result[0].productList.Count > 0)
-                //            {
-                //                proStr = result[0].productList[0].ProductName;
-                //            }
-
-                //            CargoHouseBus house = new CargoHouseBus();
-                //            CargoHouseEntity houseEnt = house.QueryCargoHouseByID(ord.HouseID);
-                //            string fkfs = ord.CheckOutType.Equals("3") ? "货到付款" : "现付";
-                //            string shf = ord.DeliveryType.Equals("0") ? "急送" : ord.DeliveryType.Equals("1") ? "自提" : "次日达";
-                //            string tit = ord.ThrowGood.Equals("22") ? "急速达" : "次日达";
-                //            QySendInfoEntity send = new QySendInfoEntity();
-                //            send.title = tit + " 有新订单";
-                //            //推送给提交人
-                //            send.msgType = msgType.textcard;
-                //            send.agentID = "1000003";//消息通知的应用
-                //            send.AgentSecret = "VkkRCESh5hxT8FStrYa0jWjIg0ux--M670SoFFyuimM";
-                //            //send.toUser = qup.ApplyID;<div>订单金额：" + ord.TotalCharge.ToString("F2") + "</div>
-                //            send.toTag = houseEnt.HCYCOrderPushTagID.ToString();
-                //            //send.toTag = "19";
-                //            send.content = "<div></div><div>出库仓库：" + houseEnt.Name + "</div><div>商城订单号：" + ord.WXOrderNo + "</div><div>出库订单号：" + ord.OrderNo + "</div><div>订单数量：" + result[0].Piece.ToString() + "</div><div>货物信息：" + proStr + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>门店名称：" + ord.AcceptUnit + "</div><div>收货信息：" + ord.AcceptPeople + " " + ord.AcceptCellphone + "</div><div>收货地址：" + ord.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
-                //            send.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + ord.OrderNo;
-                //            WxQYSendHelper.DLTQYPushInfo(send);
-
-
-                //            #region 推送好来运系统
-
-                //            if (houseEnt.HouseID.Equals(93) || houseEnt.HouseID.Equals(101))
-                //            {
-                //                List<CargoContainerShowEntity> outHouseList = orderBus.QueryOrderByOrderNo(new CargoOrderEntity { OrderNo = ord.OrderNo });
-                //                //内部订单
-                //                orderBus.SaveHlyOrderData(outHouseList, ord);
-                //            }
-                //            else
-                //            {
-                //                orderBus.InsertCargoOrderPush(new CargoOrderPushEntity
-                //                {
-                //                    OrderNo = ord.OrderNo,
-                //                    Dep = ord.Dep,
-                //                    Dest = ord.Dest,
-                //                    Piece = ord.Piece,
-                //                    TransportFee = ord.TransportFee,
-                //                    ClientNum = ent.ClientNum.ToString(),
-                //                    AcceptAddress = ord.AcceptAddress,
-                //                    AcceptCellphone = ord.AcceptCellphone,
-                //                    AcceptTelephone = ord.AcceptTelephone,
-                //                    AcceptPeople = ord.AcceptPeople,
-                //                    AcceptUnit = ord.AcceptUnit,
-                //                    HouseID = houseEnt.HouseID.ToString(),
-                //                    HouseName = ord.OutHouseName,
-                //                    OP_ID = ord.CreateAwb,
-                //                    PushType = "0",
-                //                    PushStatus = "0",
-                //                    LogisID = ord.HouseID.Equals(97) || ord.HouseID.Equals(95) || ord.HouseID.Equals(101) ? 62 : ord.DeliveryType.Equals("1") ? 46 : 34
-                //                }, log);
-
-                //            }
-
-                //            #endregion
-
-
-                //            CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
-                //            cargoNewOrder.HouseName = houseEnt.Name;
-                //            cargoNewOrder.OrderNo = ord.WXOrderNo;
-                //            cargoNewOrder.OrderNum = result[0].Piece.ToString();
-                //            cargoNewOrder.ClientInfo = ord.AcceptPeople + " " + ord.AcceptCellphone + " " + ord.AcceptAddress;// "泰乐 华笙 广东省广州市白云区东平加油站左侧";
-                //            cargoNewOrder.ProductInfo = proStr;// "马牌 215/55R16 CC6 98V";
-                //            cargoNewOrder.DeliveryName = shf;// "自提";
-                //            cargoNewOrder.ReceivePeople = "";
-                //            string hcno = JSON.Encode(cargoNewOrder);
-                //            List<CargoVoiceBroadEntity> voiceBroadList = house.GetVoiceBroadList(new CargoVoiceBroadEntity { HouseID = houseEnt.HouseID });
-                //            foreach (var voice in voiceBroadList)
-                //            {
-                //                mc.Add("NewOrderNotice_" + voice.LoginName, hcno);
-                //            }
-                //            //RedisHelper.SetString("NewOrderNotice", JSON.Encode(cargoNewOrder));
-                //        }
-
-                //        //支付成功，向客户发放优惠券根据订单明细返回的优惠规则ID，查询该规则的促销优惠内容，并向客户发放优惠券
-                //        long RuleID = result[0].productList[0].RuleID;
-                //        CargoPriceBus price = new CargoPriceBus();
-                //        CargoRuleBankEntity mrule = price.QueryRuleBank(RuleID);
-                //        //如果是发放优惠券的规则，则向客户发放优惠券
-                //        if (mrule != null && mrule.IssueCoupon == 1)
-                //        {
-                //            int couponNum = result[0].Piece / mrule.FullEntry;
-                //            for (int i = 0; i < couponNum; i++)
-                //            {
-                //                clientBus.AddCoupon(new WXCouponEntity { WXID = result[0].WXID, Money = mrule.CutEntry, UseStatus = "0", GainDate = DateTime.Now, StartDate = DateTime.Now, EndDate = DateTime.Now.AddDays(mrule.ServiceTime), TypeID = mrule.UseTypeID, TypeName = mrule.UseTypeName, CouponType = mrule.CouponType.ToString(), SuppClientNum = mrule.SuppClientNum, IsSuperPosition = mrule.IsSuperPosition.ToString(), FromOrderNO = ord.OrderNo }, log);
-                //            }
-                //        }
-                //    }
-                //    catch (ApplicationException ex)
-                //    {
-
-                //    }
-
-                //    //WriteTextLog("扫描支付 收款完成");
-                //}
-
-
-
-
-                //#region 缓存
-                //string[] serverlist = ConfigurationSettings.AppSettings["memcachedServer"].Split('/');
-                //SockIOPool pool = SockIOPool.GetInstance(ConfigurationSettings.AppSettings["PoolName"]);
-                //pool.SetServers(serverlist);
-                //pool.InitConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["InitConnections"]);//连接池初始容量
-                //pool.MinConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MinConnections"]);//最小容量
-                //pool.MaxConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MaxConnections"]);//最大容量
-                //pool.SocketConnectTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketConnectTimeout"]);//数据读取超时时间
-                //pool.SocketTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketTimeout"]);//Socket连接超时时间
-                //pool.MaintenanceSleep = Convert.ToInt64(ConfigurationSettings.AppSettings["MaintenanceSleep"]);//线程池维护线程之间的休眠时间
-                //pool.Failover = Convert.ToBoolean(ConfigurationSettings.AppSettings["Failover"]);//使用缓存服务器自动切换功能，当一台服务器死了可以自动切换到另外一台查找缓存
-
-                //pool.Nagle = Convert.ToBoolean(ConfigurationSettings.AppSettings["Nagle"]);//禁用Nagle算法
-                //pool.Initialize();
-                //mc.PoolName = ConfigurationSettings.AppSettings["PoolName"];
-                //mc.EnableCompression = true;
-                //mc.CompressionThreshold = 10240;
-                //#endregion
-                //CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
-                //cargoNewOrder.HouseName = "东平云仓";
-                //cargoNewOrder.OrderNo = "201401010001";
-                //cargoNewOrder.OrderNum = "2";
-                //cargoNewOrder.ClientInfo = "泰乐 华笙 广东省广州市白云区东平加油站左侧";
-                //cargoNewOrder.ProductInfo = "马牌 215/55R16 CC6 98V";
-                //cargoNewOrder.DeliveryName = "自提";
-                //cargoNewOrder.ReceivePeople = "";
-
-                //string hcno = JSON.Encode(cargoNewOrder);
-                //mc.Add("NewOrderNotice", hcno);
-                //string res = (string)mc.Get("NewOrderNotice");
-                //Response.Write(res);
-                //RedisHelper.SetString("NewOrderNotice", json);
-
-                //CargoOrderBus order = new CargoOrderBus();
-                ////查询所有云仓仓库
-                //CargoHouseBus houseBus = new CargoHouseBus();
-                //List<CargoHouseEntity> houseList = houseBus.QueryALLHouse(new CargoHouseEntity { BelongHouse = "6" });
-                //string cper = "119";
-                //foreach (var it in houseList)
-                //{
-                //    cper += "," + it.HouseID.ToString();
-                //}
-                //CargoOrderEntity entity = new CargoOrderEntity();
-                //entity.BelongHouse = "0";
-                //entity.CargoPermisID = cper;
-                //entity.StartDate = DateTime.Now.AddDays(-10);
-                //entity.LogisID = 34;
-                //order.SetOrderSignByHLY(entity);
-                //LogHelper.WriteLog("同步好来运签收数据成功");
-
-                //CargoInterfaceBus interBus = new CargoInterfaceBus();
-                //CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
-                //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
-                //List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
-                //List<CargoContiStockSKUEntity> sKUEntities = new List<CargoContiStockSKUEntity>();//东莞改为众汇前置仓20231227
-                //List<CargoContiStockSKUEntity> SZsKUEntities = new List<CargoContiStockSKUEntity>();//深圳
-                //List<CargoContiStockSKUEntity> JYsKUEntities = new List<CargoContiStockSKUEntity>();//揭阳
-                //List<CargoContiStockSKUEntity> GZsKUEntities = new List<CargoContiStockSKUEntity>();//广州
-                //List<CargoContiStockSKUEntity> HNsKUEntities = new List<CargoContiStockSKUEntity>();//华南二仓
-                //List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
-                //List<CargoContiStockSKUEntity> DPCPsKUEntities = new List<CargoContiStockSKUEntity>();//东平城配仓
-                //List<CargoContiStockSKUEntity> STsKUEntities = new List<CargoContiStockSKUEntity>();//汕头云仓
-                ////汕头仓库
-                //stockSync = new CargoContiStockSyncEntity();
-                //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
-                //stockList = new List<CargoContiStockListEntity>();
-                //List<CargoSafeStockEntity> stStock = interBus.QueryContiStockData(new CargoSafeStockEntity { HouseID = "91" });
-                //if (stStock.Count > 0)
-                //{
-                //    foreach (var stock in stStock)
-                //    {
-
-                //        if (string.IsNullOrEmpty(stock.GoodsCode) || stock.GoodsCode.Length < 7) { continue; }
-                //        if (STsKUEntities.Exists(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7))))
-                //        {
-                //            CargoContiStockSKUEntity existEntity = STsKUEntities.Find(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7)));
-                //            existEntity.dots.Add(new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum });
-                //            //existEntity.qty += stock.StockNum;
-                //        }
-                //        else
-                //        {
-                //            STsKUEntities.Add(new CargoContiStockSKUEntity
-                //            {
-                //                skuCode = stock.GoodsCode.Substring(0, 7),
-                //                dots = new List<CargoContiStockDOTEntity> { new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum } }
-                //                //qty = stock.StockNum
-                //            });
-                //        }
-                //    }
-                //}
-                //stockList.Add(new CargoContiStockListEntity
-                //{
-                //    warehouseName = "深圳龙华云配仓库",
-                //    skuQtyList = STsKUEntities
-                //});
-
-                //stockList.Add(new CargoContiStockListEntity
-                //{
-                //    warehouseName = "维京广州仓",
-                //    skuQtyList = gzWjEntity
-                //});
-                //stockSync.stockList = stockList;
-                //string body = JSON.Encode(stockSync);
-                //try
-                //{
-                //    string contiUrl = "https://cdms.continental-tires.cn/api/openapi/stock/dotSync";
-                //    string res = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", body);
-                //    //LogHelper.WriteLog("汕头仓库马牌维京库存同步成功");
-                //}
-                //catch (ApplicationException ex)
-                //{
-                //    //LogHelper.WriteLog("汕头仓库马牌维京库存同步失败");
-                //}
-
-
-                //CargoHouseBus busss = new CargoHouseBus();
-
-                //CargoContainerShowEntity queryEntity = new CargoContainerShowEntity();
-                //queryEntity.HouseID = 93;
-                //queryEntity.Specs = "2055516";
-                //queryEntity.IsLockStock = "0";//非锁定的库存
-                //queryEntity.TypeParentID = 1; //查询分类是轮胎的品牌产品库存
-
-                //int pageIndex = 1;//查询条件 分页 第几页
-                //int pageSize = 20; //查询条件 分页 每页数量
-                //List<CargoContainerShowEntity> list = busss.QueryHouseStockDataMiniPro(pageIndex, pageSize, queryEntity);
-
-                ////机器人账号
-                //LogEntity log = new LogEntity();
-                //log.IPAddress = "";
-                //log.Moudle = "服务管理";
-                //log.Status = "0";
-                //log.NvgPage = "定单推送服务";
-                //log.UserID = "2029";
-                //log.Operate = "A";
-                //CargoInterfaceBus bus = new CargoInterfaceBus();
-
-                ////string contiOutUrl = "https://cdms.continental-tires.cn/api/remote/openWms/getWmsDoHeaderInfoPage";
-                ////string outbody = "{\"updateStartTime\": \"" + DateTime.Now.AddHours(-10).ToString("yyyy-MM-dd HH:mm:ss") + "\",	\"updateEndTime\": \"" + DateTime.Now.AddHours(-5).ToString("yyyy-MM-dd HH:mm:ss") + "\",	\"pageNum\": 1,\"pageSize\": 100}";
-                ////string contistr = wxHttpUtility.ContiSendPostHttpRequest(contiOutUrl, "application/json", outbody);
-                ////contiOutOrderEntity contiOrder = JsonConvert.DeserializeObject<contiOutOrderEntity>(contistr);
-                ////if (contiOrder.code.Equals(10000))
-                ////{
-                ////    bus.UpdateContiOrderOutData(contiOrder.data.list, log);
-                ////}
-
-
-                ////CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
-                ////stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
-                ////List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
-                ////List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
-                //////深圳龙华云配仓库
-                ////stockSync = new CargoContiStockSyncEntity();
-                ////stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
-                ////stockList = new List<CargoContiStockListEntity>();
-                ////List<CargoSafeStockEntity> ypStock = bus.QueryGZContiStockData(new CargoSafeStockEntity { HouseID = "91" });
-                ////if (ypStock.Count > 0)
-                ////{
-                ////    foreach (var stock in ypStock)
-                ////    {
-                ////        if (string.IsNullOrEmpty(stock.GoodsCode) || stock.GoodsCode.Length < 7) { continue; }
-                ////        if (LHYPsKUEntities.Exists(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7))))
-                ////        {
-                ////            CargoContiStockSKUEntity existEntity = LHYPsKUEntities.Find(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7)));
-                ////            existEntity.dots.Add(new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum });
-                ////            //existEntity.qty += stock.StockNum;
-                ////        }
-                ////        else
-                ////        {
-                ////            LHYPsKUEntities.Add(new CargoContiStockSKUEntity
-                ////            {
-                ////                skuCode = stock.GoodsCode.Substring(0, 7),
-                ////                dots = new List<CargoContiStockDOTEntity> { new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum } }
-                ////                //qty = stock.StockNum
-                ////            });
-                ////        }
-                ////    }
-                ////}
-                ////stockList.Add(new CargoContiStockListEntity
-                ////{
-                ////    warehouseName = "深圳龙华云配仓库",
-                ////    skuQtyList = LHYPsKUEntities
-                ////});
-                //////stockList.Add(new CargoContiStockListEntity
-                //////{
-                //////    warehouseName = "维京广州仓",
-                //////    skuQtyList = gzWjEntity
-                //////});
-                ////stockSync.stockList = stockList;
-                ////string  body = JSON.Encode(stockSync);
-                ////try
-                ////{
-                ////    string contiUrl = "https://cdms.continental-tires.cn/api/openapi/stock/dotSync";
-                ////    string res = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", body);
-                ////   // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步成功");
-                ////}
-                ////catch (ApplicationException ex)
-                ////{
-                ////   // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步失败");
-                ////}
-
-
-
-
-
-
-
-                //saleOpenInfoResp entity = new saleOpenInfoResp();
-                //entity.HouseIDStr = "9,45,84,83,91,93,95,97,101";
-                //entity.StartDate = DateTime.Now.AddDays(-5);
-                //entity.InCreateStatus = "1";
-                //entity.IsPushOutTag = "0";
-                //List<saleOpenInfoResp> infoResps = bus.QueryContiOutOrderInfo(entity);
-                //if (infoResps.Count > 0)
-                //{
-                //    foreach (var res in infoResps)
-                //    {
-                //        OutOrderStatus outOrder = new OutOrderStatus();
-                //        outOrder.doNo = res.doNo;
-                //        outOrder.deliveryType = 4;
-                //        outOrder.contractName = res.SaleManName;
-                //        outOrder.contractMobile = res.SaleCellphone;
-                //        List<OutDetail> outs = new List<OutDetail>();
-                //        List<CargoProductTagEntity> result = bus.QueryContiOutOrderDetail(new saleOpenInfoResp { CargoOrderNo = res.CargoOrderNo });
-                //        if (result.Count > 0)
-                //        {
-                //            var groupedItems = result.GroupBy(item => item.GoodsCode).Select(group => new { GoodsCode = group.Key, Count = group.Count() });
-                //            foreach (var group in groupedItems)
-                //            {
-                //                OutDetail outD = new OutDetail();
-                //                outD.outNum = group.Count;
-                //                outD.skuCode = group.GoodsCode.Substring(0, 7);
-
-                //                List<BarCodeEntity> barCodeEntities = new List<BarCodeEntity>();
-                //                List<CargoProductTagEntity> cpt = result.Where(c => c.GoodsCode == group.GoodsCode).ToList();
-                //                foreach (var cp in cpt)
-                //                {
-                //                    barCodeEntities.Add(new BarCodeEntity
-                //                    {
-                //                        barCode = cp.TyreCode,
-                //                        dot = cp.Batch,
-                //                        scanTime = cp.OutCargoTime.ToString("yyyy-MM-dd HH:mm:ss")
-                //                    });
-                //                }
-                //                outD.barCodeList = barCodeEntities;
-                //                outs.Add(outD);
-                //            }
-                //        }
-                //        outOrder.doDetails = outs;
-
-                //        //处理Json推送到马牌系统
-                //        string postJson = JsonConvert.SerializeObject(outOrder);
-                //        string contiUrl = "https://cdms.continental-tires.cn/api/openapi/out/sync";
-                //        string oks = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", postJson);
-                //        if (oks.Contains("10000"))
-                //        {
-                //            //成功
-                //            bus.UpdateContiOutOrderPushStatus(new saleOpenInfoResp { IsPushOutTag = "1", orderCode = res.orderCode }, log);
-                //        }
-                //    }
+                //    bus.UpdateCargoOrderPush(new CargoOrderPushEntity { OrderNo = it.OrderNo, PushType = "2", PushStatus = "0", Dest = it.Dest, Piece = it.Piece, AcceptUnit = it.AcceptUnit, AcceptAddress = it.AcceptAddress, AcceptPeople = it.AcceptPeople, AcceptTelephone = it.AcceptTelephone, AcceptCellphone = it.AcceptCellphone, ClientNum = it.ClientNum.ToString(), LogisID = it.LogisID }, log);
                 //}
             }
+            catch (Exception ex)
+            {
+                //LogHelper.WriteLog("定时作废超过10分钟未付款订单失败，错误信息" + ex.Message);
+            }
+            #endregion
+
+            try
+            {
+                //机器人账号
+                LogEntity log = new LogEntity();
+                log.IPAddress = "";
+                log.Moudle = "服务管理";
+                log.Status = "0";
+                log.NvgPage = "马牌订单出库同步";
+                log.UserID = "";
+                log.Operate = "A";
+
+                saleOpenInfoResp mapai = new saleOpenInfoResp();
+                //mapai.HouseIDStr = "9,45,84,83,91,93,95,97,101";
+                mapai.StartDate = DateTime.Now.AddDays(-5);
+                //mapai.StartDate = Convert.ToDateTime("2025-06-01 17:55:09.000");
+                mapai.InCreateStatus = "1";
+                mapai.IsPushOutTag = "0";
+                List<saleOpenInfoResp> infoResps = nwBus.QueryContiOutOrderInfo(mapai);
+                if (infoResps.Count > 0)
+                {
+                    //LogHelper.WriteLog("出库标签数据开始同步");
+                    foreach (var res in infoResps)
+                    {
+                        OutOrderStatus outOrder = new OutOrderStatus();
+                        outOrder.doNo = res.doNo;
+                        outOrder.deliveryType = 4;
+                        outOrder.contractName = res.SaleManName;
+                        outOrder.contractMobile = res.SaleCellphone;
+
+
+                        List<OutDetail> outs = new List<OutDetail>();
+                        List<CargoProductTagEntity> result = nwBus.QueryContiOutOrderDetail(new saleOpenInfoResp { CargoOrderNo = res.CargoOrderNo });
+                        if (result.Count > 0)
+                        {
+                            var groupedItems = result.GroupBy(item => item.GoodsCode).Select(group => new { GoodsCode = group.Key, Count = group.Count() });
+                            var keysCount = groupedItems.Sum(a=>a.Count);
+                            if (keysCount != res.OrderPiece)
+                            {
+                                continue;
+                            }
+                            foreach (var group in groupedItems)
+                            {
+                                OutDetail outD = new OutDetail();
+                                outD.outNum = group.Count;
+                                outD.skuCode = group.GoodsCode.Substring(0, 7);
+
+                                List<BarCodeEntity> barCodeEntities = new List<BarCodeEntity>();
+                                List<CargoProductTagEntity> cpt = result.Where(c => c.GoodsCode == group.GoodsCode).ToList();
+                                foreach (var cp in cpt)
+                                {
+                                    barCodeEntities.Add(new BarCodeEntity
+                                    {
+                                        barCode = cp.TyreCode,
+                                        dot = cp.Batch,
+                                        scanTime = cp.OutCargoTime.ToString("yyyy-MM-dd HH:mm:ss")
+                                    });
+                                }
+                                outD.barCodeList = barCodeEntities;
+                                outs.Add(outD);
+                            }
+                        }
+                        if (outs.Count <= 0)
+                        {
+                            continue;
+                        }
+                        outOrder.doDetails = outs;
+
+                        //处理Json推送到马牌系统
+                        //string postJson = JsonConvert.SerializeObject(outOrder);
+                        //string contiUrl = "https://cdms.continental-tires.cn/api/openapi/out/sync";
+                        //string oks = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", postJson);
+                        //if (oks.Contains("10000"))
+                        //{
+                        //    //成功
+                        //    //LogHelper.WriteLog(res.orderCode + "出库标签同步成功");
+                        //    nwBus.UpdateContiOutOrderPushStatus(new saleOpenInfoResp { IsPushOutTag = "1", orderCode = res.orderCode }, log);
+                        //}
+                        //else if (oks.Contains("10025"))
+                        //{
+                        //    //LogHelper.WriteLog(res.orderCode + oks);
+                        //    nwBus.UpdateContiOutOrderPushStatus(new saleOpenInfoResp { IsPushOutTag = "1", orderCode = res.orderCode }, log);
+                        //}
+                        //else
+                        //{
+                        //    //LogHelper.WriteLog(res.orderCode + "出库标签同步失败：" + oks);
+                        //}
+
+                    }
+                }
+
+            }
+            catch (ApplicationException ex)
+            {
+                //LogHelper.WriteLog("同步订单出库标签数据至马牌系统失败");
+            }
+
+            #endregion
+
+            //SendSalesMessage();
+            //机器人账号
+            //LogEntity log = new LogEntity();
+            //log.IPAddress = "";
+            //log.Moudle = "服务管理";
+            //log.Status = "0";
+            //log.NvgPage = "定单推送服务";
+            //log.UserID = "2029";
+            //log.Operate = "A";
+
+            //CargoInterfaceBus bus = new CargoInterfaceBus();
+            //CargoOrderBus orderBus = new CargoOrderBus();
+            //CargoHouseBus house = new CargoHouseBus();
+            ////List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { });
+
+            ////bus.SaveNextDayProductData(entities);
+
+
+            //RedisValue[] redisValues = RedisHelper.HashKeys("NextDayOrderShareSync");
+            //foreach (RedisValue redisValue in redisValues)
+            //{
+            //    string key = redisValue.ToString();//ST250729043_101_93   订单key
+            //    string goodsList = Convert.ToString(RedisHelper.HashGet("NextDayOrderShareSync", key));//订单明细
+
+            //    string oriOrderNo = Convert.ToString(key.Split('_')[0]);
+            //    int oriHouseID = Convert.ToInt32(key.Split('_')[1]);
+            //    int ShareHouseID = Convert.ToInt32(key.Split('_')[2]);
+            //    //保存生成仓库订单
+            //    List<CargoContainerShowEntity> outHouseList = new List<CargoContainerShowEntity>();
+            //    List<CargoOrderGoodsEntity> entDest = new List<CargoOrderGoodsEntity>();
+
+            //    CargoOrderEntity ent = orderBus.QueryOrderInfo(new CargoOrderEntity { OrderNo = oriOrderNo });
+
+            //    if (!ent.CheckStatus.Equals("1"))
+            //    {
+            //        //如果次日达订单没有支付就跳过
+            //        continue;
+            //    }
+
+            //    int OrderNum = 0;
+
+            //    CargoHouseEntity houseEnt = house.QueryCargoHouseByID(ShareHouseID);
+            //    ent.HouseID = ShareHouseID;
+            //    ent.OrignHouseID = oriHouseID;
+            //    ent.OrignHouseName = "";
+            //    ent.ShareHouseID = 0;
+            //    ent.ShareHouseName = "";
+            //    ent.Dep = houseEnt.DepCity;
+            //    ent.OpenOrderNo = oriOrderNo;
+            //    ent.LogisID = houseEnt.HouseID.Equals(97) || houseEnt.HouseID.Equals(95) || houseEnt.HouseID.Equals(101) ? 62 : houseEnt.HouseID.Equals(136) ? 383 : 34;
+            //    ent.CreateDate = DateTime.Now;
+            //    string outID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString();//出库单号
+            //    ent.OrderNo = Common.GetMaxOrderNumByCurrentDate(houseEnt.HouseID, houseEnt.HouseCode, out OrderNum);
+            //    ent.OutHouseName = houseEnt.Name;
+            //    ent.OrderNum = OrderNum;
+
+
+
+            //    List<CargoInterfaceEntity> goods = new List<CargoInterfaceEntity>();
+            //    ArrayList rows = (ArrayList)JSON.Decode(goodsList);
+            //    decimal originalPrice = 0M;
+            //    foreach (Hashtable row in rows)
+            //    {
+            //        int piece = Convert.ToInt32(row["StockNum"]);
+            //        decimal ActSalePrice = Convert.ToDecimal(row["ActSalePrice"]);
+            //        CargoInterfaceEntity queryEntity = new CargoInterfaceEntity
+            //        {
+            //            ProductCode = Convert.ToString(row["ProductCode"]),
+            //            HouseID = houseEnt.HouseID,
+            //            //TypeID = productBasic[0].TypeID,
+            //            BatchYear = Convert.ToInt32(row["BatchYear"]),
+            //            ParentID = 1,
+            //            SuppClientNum = ent.SuppClientNum.ToString(),
+            //            SpecsType = "4",
+            //        };
+            //        List<CargoInterfaceEntity> stockList2 = bus.queryCargoStock(queryEntity);
+            //        if (stockList2.Count <= 0)
+            //        {
+            //            //LogHelper.WriteLog("商品库存不足");
+            //        }
+            //        if (stockList2.Sum(c => c.StockNum) < piece)
+            //        {
+            //            //LogHelper.WriteLog(productBasic[0].Specs + " " + productBasic[0].Figure + "库存不足");
+            //        }
+            //        //减库存规则，一周期早的先出先进先出，二数量和库存数刚好一样的先出
+            //        foreach (var it in stockList2)
+            //        {
+            //            if (it.StockNum <= 0) { continue; }
+
+            //            CargoContainerShowEntity cargo = new CargoContainerShowEntity();
+            //            cargo.OrderNo = ent.OrderNo;//订单号
+            //            cargo.OutCargoID = outID;
+            //            cargo.ContainerID = it.ContainerID;
+            //            cargo.TypeID = it.TypeID;
+            //            cargo.ProductID = it.ProductID;
+
+            //            cargo.ID = it.ContainerGoodsID;//库存表ID
+
+            //            //cargo.TypeName = Convert.ToString(row["TypeName"]).Trim();
+            //            cargo.HouseName = houseEnt.Name;
+            //            //cargo.AreaName = Convert.ToString(row["AreaName"]).Trim();
+            //            cargo.ProductName = it.ProductName;
+            //            cargo.Model = it.Model;
+            //            cargo.Specs = it.Specs;
+            //            cargo.Figure = it.Figure;
+            //            int inHouseDay = (int)(DateTime.Now - it.InHouseTime).TotalDays;
+            //            int OverDay = 0;
+            //            decimal OnlyOverDayFee = 0;
+
+            //            #region 减库存逻辑
+            //            if (piece < it.StockNum)
+            //            {
+            //                //部分出
+            //                entDest.Add(new CargoOrderGoodsEntity
+            //                {
+            //                    OrderNo = ent.OrderNo,
+            //                    ProductID = it.ProductID,
+            //                    HouseID = ent.HouseID,
+            //                    AreaID = it.AreaID,
+            //                    Piece = piece,
+            //                    //ActSalePrice = it.SalePrice,
+            //                    ActSalePrice = ActSalePrice,
+            //                    SupplySalePrice = it.InHousePrice,
+            //                    ContainerCode = it.ContainerCode,
+            //                    OutCargoID = outID,
+            //                    OP_ID = log.UserID,
+            //                    OverDayNum = OverDay,
+            //                    OverDueFee = OnlyOverDayFee,
+            //                });
+
+            //                cargo.Piece = piece;
+            //                cargo.InPiece = it.StockNum;
+            //                originalPrice += piece * it.InHousePrice;//计算成本价
+            //                outHouseList.Add(cargo);
+            //                break;
+            //            }
+            //            if (piece.Equals(it.StockNum))
+            //            {
+            //                //要出库件数和第一条库存件数刚刚好，则就全部出
+            //                entDest.Add(new CargoOrderGoodsEntity
+            //                {
+            //                    OrderNo = ent.OrderNo,
+            //                    ProductID = it.ProductID,
+            //                    HouseID = ent.HouseID,
+            //                    AreaID = it.AreaID,
+            //                    Piece = piece,
+            //                    //ActSalePrice = it.SalePrice,
+            //                    SupplySalePrice = it.InHousePrice,
+            //                    ActSalePrice = ActSalePrice,
+            //                    ContainerCode = it.ContainerCode,
+            //                    OutCargoID = outID,
+
+            //                    OP_ID = log.UserID,
+            //                    OverDayNum = OverDay,
+            //                    OverDueFee = OnlyOverDayFee,
+            //                });
+            //                cargo.Piece = piece;
+            //                cargo.InPiece = it.StockNum;
+            //                originalPrice += piece * it.InHousePrice;//计算成本价
+
+            //                outHouseList.Add(cargo);
+            //                break;
+            //            }
+            //            if (piece > it.StockNum)
+            //            {
+            //                //全部出
+            //                entDest.Add(new CargoOrderGoodsEntity
+            //                {
+            //                    OrderNo = ent.OrderNo,
+            //                    ProductID = it.ProductID,
+            //                    HouseID = ent.HouseID,
+            //                    AreaID = it.AreaID,
+            //                    Piece = it.StockNum,
+            //                    //ActSalePrice = it.SalePrice,
+            //                    SupplySalePrice = it.InHousePrice,
+            //                    ActSalePrice = ActSalePrice,
+            //                    ContainerCode = it.ContainerCode,
+            //                    OutCargoID = outID,
+
+            //                    OP_ID = log.UserID,
+            //                    OverDayNum = OverDay,
+            //                    OverDueFee = OnlyOverDayFee,
+            //                });
+            //                cargo.Piece = it.StockNum;
+            //                cargo.InPiece = it.StockNum;
+            //                originalPrice += it.StockNum * it.InHousePrice;//计算成本价
+            //                outHouseList.Add(cargo);
+            //                piece = piece - it.StockNum;
+            //                continue;
+            //            }
+            //            #endregion
+            //        }
+            //    }
+
+            //    ent.OpenOrderSource = "1";
+            //    ent.goodsList = entDest;
+
+            //    //保存生成仓库出库订单
+            //    orderBus.AddOrderInfo(ent, outHouseList, log);
+
+
+            //    //更新原仓库订单的关联订单
+            //    bus.UpdateOrderOpenNo(new CargoOrderEntity { HouseID = oriHouseID, OrderNo = oriOrderNo, OpenOrderNo = ent.OrderNo });
+
+            //    //删除已经保存订单成功的Key
+            //    RedisHelper.HashDelete("NextDayOrderShareSync", key);
+
+            //    //LogHelper.WriteLog("订单：" + oriOrderNo + "保存成功");
+            //}
+
+
+
+            //#region 南宁云仓库存同步开思
+            //try
+            //{
+            //    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 136 });
+            //    StockApiResponseEntity entity = new StockApiResponseEntity();
+            //    entity.Params = new Params();
+            //    entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+            //    entity.data = new List<Data>();
+
+            //    if (res.Count > 0)
+            //    {
+            //        entity.Params.firstData = true;
+            //        entity.Params.lastData = false;
+            //        entity.Params.updateMode = "ALL";
+            //        long tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+            //        string strRes = string.Empty;
+            //        entity.Params.tpsBatchId = tpsBatchId;
+            //        int cou = 0;
+            //        for (int i = 0; i < res.Count; i++)
+            //        {
+            //            if (cou == 500)
+            //            {
+            //                cou = 0;
+            //                strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"), "2b2b36889e304645b28f94bfdd2ead9e");
+
+            //                entity = new StockApiResponseEntity();
+            //                entity.Params = new Params();
+            //                entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+            //                entity.data = new List<Data>();
+            //                if (strRes.IndexOf("200") >= 0)
+            //                {
+            //                    //tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+            //                    entity.Params.tpsBatchId = tpsBatchId;
+            //                    entity.Params.firstData = false;
+            //                    entity.Params.lastData = false;
+            //                    entity.Params.updateMode = "ALL";
+            //                }
+            //            }
+
+            //            string casscode = res[i].CassProductCode;
+            //            if (res[i].TypeID.Equals(34) || res[i].TypeID.Equals(345) || res[i].TypeID.Equals(163))
+            //            {
+            //                casscode = res[i].GoodsCode;
+            //            }
+            //            else
+            //            {
+            //                casscode = string.IsNullOrEmpty(res[i].CassProductCode) ? res[i].ProductCode : res[i].CassProductCode;
+
+            //            }
+            //            string typename = res[i].TypeName;
+            //            if (res[i].TypeID.Equals(9))
+            //            {
+            //                typename = "横滨/优科豪马";
+            //            }
+            //            else if (res[i].TypeID.Equals(66))
+            //            {
+            //                typename = "固铂轮胎";
+            //            }
+            //            decimal saleprice = 0.00M;
+
+            //            //按百分比
+            //            saleprice = Math.Ceiling(res[i].SalePrice * (1 + 1 / 100));
+
+            //            entity.data.Add(new Data
+            //            {
+            //                CassProductCode = casscode,
+            //                ProductName = res[i].ProductName,
+            //                TypeName = typename,
+            //                SalePrice = saleprice,
+            //                StockNum = res[i].StockNum,
+            //                Batch = res[i].Batch,
+            //                HouseID = res[i].HouseID,
+            //            });
+            //            //LogHelper.WriteLog("南宁云仓开思全量推送ID:" + casscode + "，库存：" + res[i].StockNum.ToString() + "，周期：" + res[i].Batch + ",本次推送金额:" + saleprice.ToString());
+            //            cou++;
+
+            //        }
+            //        entity.Params.lastData = true;
+            //        strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"), "2b2b36889e304645b28f94bfdd2ead9e");
+
+            //        if (strRes.IndexOf("200") >= 0)
+            //        {
+            //            //bus.UpdateStatus(res);
+            //            //LogHelper.WriteLog("南宁云仓开思推送成功!共计" + res.Count + "条数据");
+            //        }
+            //    }
+
+            //}
+            //catch (Exception ex)
+            //{
+            //    //LogHelper.WriteLog("南宁云仓开思推送出现错误!Message" + ex.Message);
+            //    throw;
+            //}
+            //#endregion
+
+
+            //SendBillMessage();
+            //Common.SendRefundModelMsg("1232", "250105165949189", 12,"beizhu");
+            //Common.SendRePlaceAnOrderMsg("542207", "test001", "Order001", "戴尔笔记本",8000,20);
+
+            //SendTemplateMessage();
+
+            //SyncStock();
+
+            //GetDongShunTyreData();
+
+            return;
+            //CargoInterfaceBus interBus = new CargoInterfaceBus();
+
+            //CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
+            //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            //List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
+            //List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
+            ////深圳龙华云配仓库
+            //stockSync = new CargoContiStockSyncEntity();
+            //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            //stockList = new List<CargoContiStockListEntity>();
+            //List<CargoSafeStockEntity> ypStock = interBus.QueryGZContiStockData(new CargoSafeStockEntity { HouseIDStr = "9,93" });
+            //if (ypStock.Count > 0)
+            //{
+            //    foreach (var stock in ypStock)
+            //    {
+            //        if (string.IsNullOrEmpty(stock.GoodsCode) || stock.GoodsCode.Length < 7) { continue; }
+            //        if (LHYPsKUEntities.Exists(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7))))
+            //        {
+            //            CargoContiStockSKUEntity existEntity = LHYPsKUEntities.Find(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7)));
+            //            existEntity.dots.Add(new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum });
+            //            //existEntity.qty += stock.StockNum;
+            //        }
+            //        else
+            //        {
+            //            LHYPsKUEntities.Add(new CargoContiStockSKUEntity
+            //            {
+            //                skuCode = stock.GoodsCode.Substring(0, 7),
+            //                dots = new List<CargoContiStockDOTEntity> { new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum } }
+            //                //qty = stock.StockNum
+            //            });
+            //        }
+            //    }
+            //}
+            //stockList.Add(new CargoContiStockListEntity
+            //{
+            //    warehouseName = "广州仓",
+            //    skuQtyList = LHYPsKUEntities
+            //});
+            ////stockList.Add(new CargoContiStockListEntity
+            ////{
+            ////    warehouseName = "维京广州仓",
+            ////    skuQtyList = gzWjEntity
+            ////});
+            //stockSync.stockList = stockList;
+            //string body = JSON.Encode(stockSync);
+            //try
+            //{
+            //    string contiUrlss = "https://cdms.continental-tires.cn/api/openapi/stock/dotSync";
+            //    string res = wxHttpUtility.ContiSendPostHttpRequest(contiUrlss, "application/json", body);
+            //    // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步成功");
+            //}
+            //catch (ApplicationException ex)
+            //{
+            //    // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步失败");
+            //}
+
+
+
+            //RedisHelper.HashSet("OpenSystemStockSyc", "93_34_LTCT245452005", "03118970000");
+
+
+
+            //int djjg = (int)Math.Floor(154 / Convert.ToDecimal(1.009));
+
+            //LogEntity log = new LogEntity();
+            //log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            //log.Moudle = "慧采云仓";
+            //log.Status = "0";
+            //log.NvgPage = "小程序付款";
+            //log.UserID = "MiniPro";
+            //log.Operate = "U";
+            //CargoWeiXinBus bus = new CargoWeiXinBus();
+            //CargoOrderBus orderBus = new CargoOrderBus();
+            //CargoClientBus clientBus = new CargoClientBus();
+            //string out_trade_no = "24101209303138";
+            //if (!bus.IsExistWeixinOrderPay(new WXOrderEntity { OrderNo = out_trade_no, PayStatus = "1" }))
+            //{
+            //    List<WXOrderEntity> result = bus.QueryWeixinOrderInfo(1, 5, new WXOrderEntity { OrderNo = out_trade_no });
+            //    //1. 修改订单支付状态
+            //    bus.UpdateWeixinOrderPayStatus(new WXOrderEntity { OrderNo = out_trade_no, WXPayOrderNo = "24101209161425511111", PayStatus = "1", CargoOrderNo = result[0].CargoOrderNo }, log);
+            //    //扫描运单二维码支付成功返回的请求
+            //    //1.修改订单的支付状态
+            //    CargoFinanceBus fina = new CargoFinanceBus();
+            //    //先审核
+            //    List<CargoOrderEntity> oeL = new List<CargoOrderEntity>();
+            //    oeL.Add(new CargoOrderEntity
+            //    {
+            //        OrderID = result[0].OrderID,
+            //        OrderNo = result[0].CargoOrderNo,
+            //        FinanceSecondCheck = "1",
+            //        FinanceSecondCheckName = result[0].Name,
+            //        FinanceSecondCheckDate = DateTime.Now
+            //    });
+            //    fina.plSecondCheckOrder(oeL, log);
+            //    CargoOrderEntity ord = orderBus.QueryOrderInfo(new CargoOrderEntity { OrderNo = result[0].CargoOrderNo });
+
+            //    //if (!ord.HouseID.Equals(93))
+            //    //{
+            //    //    orderBus.InsertCargoOrderPush(new CargoOrderPushEntity
+            //    //    {
+            //    //        OrderNo = ord.OrderNo,
+            //    //        Dep = ord.Dep,
+            //    //        Dest = ord.Dest,
+            //    //        Piece = ord.Piece,
+            //    //        TransportFee = ord.TransportFee,
+            //    //        ClientNum = ord.ClientNum.ToString(),
+            //    //        AcceptAddress = ord.AcceptAddress,
+            //    //        AcceptCellphone = ord.AcceptCellphone,
+            //    //        AcceptTelephone = ord.AcceptTelephone,
+            //    //        AcceptPeople = ord.AcceptPeople,
+            //    //        AcceptUnit = ord.AcceptUnit,
+            //    //        HouseID = ord.HouseID.ToString(),
+            //    //        HouseName = ord.OutHouseName,
+            //    //        OP_ID = ord.OP_ID,
+            //    //        PushType = "0",
+            //    //        PushStatus = "0",
+            //    //        LogisID = ord.LogisID
+            //    //    }, log);
+            //    //}
+
+            //    //再支付
+            //    string awbidlist = string.Empty;
+            //    List<string> entOrderNo = new List<string>();
+            //    //如果客户是微信付款，并已支付成功，则修改订单状态为已结算
+            //    CargoCashierEntity ent = new CargoCashierEntity();
+            //    ent.WxID = 337;//科技公司的微信商城微信支付收款账号ID
+            //    ent.AffectWX = Convert.ToInt32(175) / 100;//微信 支付的金额
+
+            //    ent.OP_ID = log.UserID;
+            //    ent.UserName = log.UserID;
+            //    ent.RType = "0";//收支类型，0收入1支出
+            //    ent.FromTO = "0";//按订单号收款
+            //    ent.TradeType = "3";//微信商城付款
+            //    ent.CheckStatus = "1";
+            //    ent.WxOrderNo = out_trade_no;
+            //    entOrderNo.Add(result[0].CargoOrderNo);
+            //    awbidlist += result[0].CargoOrderNo + ",";
+
+            //    ent.ClientNum = result[0].ClientNum;
+            //    ent.OrderNo = entOrderNo;
+            //    ent.AffectAwbNO = awbidlist;
+            //    fina.SaveCash(ent, log);
+            //    Common.WriteTextLog("慧采云仓小程序 收款完成" + out_trade_no + "，订单号：" + result[0].CargoOrderNo);
+
+            //    try
+            //    {
+            //        if (!ord.CheckOutType.Equals("3"))
+            //        {
+            //            string proStr = string.Empty;
+            //            if (result[0].productList.Count > 0)
+            //            {
+            //                proStr = result[0].productList[0].ProductName;
+            //            }
+
+            //            CargoHouseBus house = new CargoHouseBus();
+            //            CargoHouseEntity houseEnt = house.QueryCargoHouseByID(ord.HouseID);
+            //            string fkfs = ord.CheckOutType.Equals("3") ? "货到付款" : "现付";
+            //            string shf = ord.DeliveryType.Equals("0") ? "急送" : ord.DeliveryType.Equals("1") ? "自提" : "次日达";
+            //            string tit = ord.ThrowGood.Equals("22") ? "急速达" : "次日达";
+            //            QySendInfoEntity send = new QySendInfoEntity();
+            //            send.title = tit + " 有新订单";
+            //            //推送给提交人
+            //            send.msgType = msgType.textcard;
+            //            send.agentID = "1000003";//消息通知的应用
+            //            send.AgentSecret = "VkkRCESh5hxT8FStrYa0jWjIg0ux--M670SoFFyuimM";
+            //            //send.toUser = qup.ApplyID;<div>订单金额：" + ord.TotalCharge.ToString("F2") + "</div>
+            //            send.toTag = houseEnt.HCYCOrderPushTagID.ToString();
+            //            //send.toTag = "19";
+            //            send.content = "<div></div><div>出库仓库：" + houseEnt.Name + "</div><div>商城订单号：" + ord.WXOrderNo + "</div><div>出库订单号：" + ord.OrderNo + "</div><div>订单数量：" + result[0].Piece.ToString() + "</div><div>货物信息：" + proStr + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>门店名称：" + ord.AcceptUnit + "</div><div>收货信息：" + ord.AcceptPeople + " " + ord.AcceptCellphone + "</div><div>收货地址：" + ord.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
+            //            send.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + ord.OrderNo;
+            //            WxQYSendHelper.DLTQYPushInfo(send);
+
+
+            //            #region 推送好来运系统
+
+            //            if (houseEnt.HouseID.Equals(93) || houseEnt.HouseID.Equals(101))
+            //            {
+            //                List<CargoContainerShowEntity> outHouseList = orderBus.QueryOrderByOrderNo(new CargoOrderEntity { OrderNo = ord.OrderNo });
+            //                //内部订单
+            //                orderBus.SaveHlyOrderData(outHouseList, ord);
+            //            }
+            //            else
+            //            {
+            //                orderBus.InsertCargoOrderPush(new CargoOrderPushEntity
+            //                {
+            //                    OrderNo = ord.OrderNo,
+            //                    Dep = ord.Dep,
+            //                    Dest = ord.Dest,
+            //                    Piece = ord.Piece,
+            //                    TransportFee = ord.TransportFee,
+            //                    ClientNum = ent.ClientNum.ToString(),
+            //                    AcceptAddress = ord.AcceptAddress,
+            //                    AcceptCellphone = ord.AcceptCellphone,
+            //                    AcceptTelephone = ord.AcceptTelephone,
+            //                    AcceptPeople = ord.AcceptPeople,
+            //                    AcceptUnit = ord.AcceptUnit,
+            //                    HouseID = houseEnt.HouseID.ToString(),
+            //                    HouseName = ord.OutHouseName,
+            //                    OP_ID = ord.CreateAwb,
+            //                    PushType = "0",
+            //                    PushStatus = "0",
+            //                    LogisID = ord.HouseID.Equals(97) || ord.HouseID.Equals(95) || ord.HouseID.Equals(101) ? 62 : ord.DeliveryType.Equals("1") ? 46 : 34
+            //                }, log);
+
+            //            }
+
+            //            #endregion
+
+
+            //            CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
+            //            cargoNewOrder.HouseName = houseEnt.Name;
+            //            cargoNewOrder.OrderNo = ord.WXOrderNo;
+            //            cargoNewOrder.OrderNum = result[0].Piece.ToString();
+            //            cargoNewOrder.ClientInfo = ord.AcceptPeople + " " + ord.AcceptCellphone + " " + ord.AcceptAddress;// "泰乐 华笙 广东省广州市白云区东平加油站左侧";
+            //            cargoNewOrder.ProductInfo = proStr;// "马牌 215/55R16 CC6 98V";
+            //            cargoNewOrder.DeliveryName = shf;// "自提";
+            //            cargoNewOrder.ReceivePeople = "";
+            //            string hcno = JSON.Encode(cargoNewOrder);
+            //            List<CargoVoiceBroadEntity> voiceBroadList = house.GetVoiceBroadList(new CargoVoiceBroadEntity { HouseID = houseEnt.HouseID });
+            //            foreach (var voice in voiceBroadList)
+            //            {
+            //                mc.Add("NewOrderNotice_" + voice.LoginName, hcno);
+            //            }
+            //            //RedisHelper.SetString("NewOrderNotice", JSON.Encode(cargoNewOrder));
+            //        }
+
+            //        //支付成功，向客户发放优惠券根据订单明细返回的优惠规则ID，查询该规则的促销优惠内容，并向客户发放优惠券
+            //        long RuleID = result[0].productList[0].RuleID;
+            //        CargoPriceBus price = new CargoPriceBus();
+            //        CargoRuleBankEntity mrule = price.QueryRuleBank(RuleID);
+            //        //如果是发放优惠券的规则，则向客户发放优惠券
+            //        if (mrule != null && mrule.IssueCoupon == 1)
+            //        {
+            //            int couponNum = result[0].Piece / mrule.FullEntry;
+            //            for (int i = 0; i < couponNum; i++)
+            //            {
+            //                clientBus.AddCoupon(new WXCouponEntity { WXID = result[0].WXID, Money = mrule.CutEntry, UseStatus = "0", GainDate = DateTime.Now, StartDate = DateTime.Now, EndDate = DateTime.Now.AddDays(mrule.ServiceTime), TypeID = mrule.UseTypeID, TypeName = mrule.UseTypeName, CouponType = mrule.CouponType.ToString(), SuppClientNum = mrule.SuppClientNum, IsSuperPosition = mrule.IsSuperPosition.ToString(), FromOrderNO = ord.OrderNo }, log);
+            //            }
+            //        }
+            //    }
+            //    catch (ApplicationException ex)
+            //    {
+
+            //    }
+
+            //    //WriteTextLog("扫描支付 收款完成");
+            //}
+
+
+
+
+            //#region 缓存
+            //string[] serverlist = ConfigurationSettings.AppSettings["memcachedServer"].Split('/');
+            //SockIOPool pool = SockIOPool.GetInstance(ConfigurationSettings.AppSettings["PoolName"]);
+            //pool.SetServers(serverlist);
+            //pool.InitConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["InitConnections"]);//连接池初始容量
+            //pool.MinConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MinConnections"]);//最小容量
+            //pool.MaxConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MaxConnections"]);//最大容量
+            //pool.SocketConnectTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketConnectTimeout"]);//数据读取超时时间
+            //pool.SocketTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketTimeout"]);//Socket连接超时时间
+            //pool.MaintenanceSleep = Convert.ToInt64(ConfigurationSettings.AppSettings["MaintenanceSleep"]);//线程池维护线程之间的休眠时间
+            //pool.Failover = Convert.ToBoolean(ConfigurationSettings.AppSettings["Failover"]);//使用缓存服务器自动切换功能，当一台服务器死了可以自动切换到另外一台查找缓存
+
+            //pool.Nagle = Convert.ToBoolean(ConfigurationSettings.AppSettings["Nagle"]);//禁用Nagle算法
+            //pool.Initialize();
+            //mc.PoolName = ConfigurationSettings.AppSettings["PoolName"];
+            //mc.EnableCompression = true;
+            //mc.CompressionThreshold = 10240;
+            //#endregion
+            //CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
+            //cargoNewOrder.HouseName = "东平云仓";
+            //cargoNewOrder.OrderNo = "201401010001";
+            //cargoNewOrder.OrderNum = "2";
+            //cargoNewOrder.ClientInfo = "泰乐 华笙 广东省广州市白云区东平加油站左侧";
+            //cargoNewOrder.ProductInfo = "马牌 215/55R16 CC6 98V";
+            //cargoNewOrder.DeliveryName = "自提";
+            //cargoNewOrder.ReceivePeople = "";
+
+            //string hcno = JSON.Encode(cargoNewOrder);
+            //mc.Add("NewOrderNotice", hcno);
+            //string res = (string)mc.Get("NewOrderNotice");
+            //Response.Write(res);
+            //RedisHelper.SetString("NewOrderNotice", json);
+
+            //CargoOrderBus order = new CargoOrderBus();
+            ////查询所有云仓仓库
+            //CargoHouseBus houseBus = new CargoHouseBus();
+            //List<CargoHouseEntity> houseList = houseBus.QueryALLHouse(new CargoHouseEntity { BelongHouse = "6" });
+            //string cper = "119";
+            //foreach (var it in houseList)
+            //{
+            //    cper += "," + it.HouseID.ToString();
+            //}
+            //CargoOrderEntity entity = new CargoOrderEntity();
+            //entity.BelongHouse = "0";
+            //entity.CargoPermisID = cper;
+            //entity.StartDate = DateTime.Now.AddDays(-10);
+            //entity.LogisID = 34;
+            //order.SetOrderSignByHLY(entity);
+            //LogHelper.WriteLog("同步好来运签收数据成功");
+
+            //CargoInterfaceBus interBus = new CargoInterfaceBus();
+            //CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
+            //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            //List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
+            //List<CargoContiStockSKUEntity> sKUEntities = new List<CargoContiStockSKUEntity>();//东莞改为众汇前置仓20231227
+            //List<CargoContiStockSKUEntity> SZsKUEntities = new List<CargoContiStockSKUEntity>();//深圳
+            //List<CargoContiStockSKUEntity> JYsKUEntities = new List<CargoContiStockSKUEntity>();//揭阳
+            //List<CargoContiStockSKUEntity> GZsKUEntities = new List<CargoContiStockSKUEntity>();//广州
+            //List<CargoContiStockSKUEntity> HNsKUEntities = new List<CargoContiStockSKUEntity>();//华南二仓
+            //List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
+            //List<CargoContiStockSKUEntity> DPCPsKUEntities = new List<CargoContiStockSKUEntity>();//东平城配仓
+            //List<CargoContiStockSKUEntity> STsKUEntities = new List<CargoContiStockSKUEntity>();//汕头云仓
+            ////汕头仓库
+            //stockSync = new CargoContiStockSyncEntity();
+            //stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            //stockList = new List<CargoContiStockListEntity>();
+            //List<CargoSafeStockEntity> stStock = interBus.QueryContiStockData(new CargoSafeStockEntity { HouseID = "91" });
+            //if (stStock.Count > 0)
+            //{
+            //    foreach (var stock in stStock)
+            //    {
+
+            //        if (string.IsNullOrEmpty(stock.GoodsCode) || stock.GoodsCode.Length < 7) { continue; }
+            //        if (STsKUEntities.Exists(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7))))
+            //        {
+            //            CargoContiStockSKUEntity existEntity = STsKUEntities.Find(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7)));
+            //            existEntity.dots.Add(new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum });
+            //            //existEntity.qty += stock.StockNum;
+            //        }
+            //        else
+            //        {
+            //            STsKUEntities.Add(new CargoContiStockSKUEntity
+            //            {
+            //                skuCode = stock.GoodsCode.Substring(0, 7),
+            //                dots = new List<CargoContiStockDOTEntity> { new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum } }
+            //                //qty = stock.StockNum
+            //            });
+            //        }
+            //    }
+            //}
+            //stockList.Add(new CargoContiStockListEntity
+            //{
+            //    warehouseName = "深圳龙华云配仓库",
+            //    skuQtyList = STsKUEntities
+            //});
+
+            //stockList.Add(new CargoContiStockListEntity
+            //{
+            //    warehouseName = "维京广州仓",
+            //    skuQtyList = gzWjEntity
+            //});
+            //stockSync.stockList = stockList;
+            //string body = JSON.Encode(stockSync);
+            //try
+            //{
+            //    string contiUrl = "https://cdms.continental-tires.cn/api/openapi/stock/dotSync";
+            //    string res = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", body);
+            //    //LogHelper.WriteLog("汕头仓库马牌维京库存同步成功");
+            //}
+            //catch (ApplicationException ex)
+            //{
+            //    //LogHelper.WriteLog("汕头仓库马牌维京库存同步失败");
+            //}
+
+
+            //CargoHouseBus busss = new CargoHouseBus();
+
+            //CargoContainerShowEntity queryEntity = new CargoContainerShowEntity();
+            //queryEntity.HouseID = 93;
+            //queryEntity.Specs = "2055516";
+            //queryEntity.IsLockStock = "0";//非锁定的库存
+            //queryEntity.TypeParentID = 1; //查询分类是轮胎的品牌产品库存
+
+            //int pageIndex = 1;//查询条件 分页 第几页
+            //int pageSize = 20; //查询条件 分页 每页数量
+            //List<CargoContainerShowEntity> list = busss.QueryHouseStockDataMiniPro(pageIndex, pageSize, queryEntity);
+
+            ////机器人账号
+            //LogEntity log = new LogEntity();
+            //log.IPAddress = "";
+            //log.Moudle = "服务管理";
+            //log.Status = "0";
+            //log.NvgPage = "定单推送服务";
+            //log.UserID = "2029";
+            //log.Operate = "A";
+            //CargoInterfaceBus bus = new CargoInterfaceBus();
+
+            ////string contiOutUrl = "https://cdms.continental-tires.cn/api/remote/openWms/getWmsDoHeaderInfoPage";
+            ////string outbody = "{\"updateStartTime\": \"" + DateTime.Now.AddHours(-10).ToString("yyyy-MM-dd HH:mm:ss") + "\",	\"updateEndTime\": \"" + DateTime.Now.AddHours(-5).ToString("yyyy-MM-dd HH:mm:ss") + "\",	\"pageNum\": 1,\"pageSize\": 100}";
+            ////string contistr = wxHttpUtility.ContiSendPostHttpRequest(contiOutUrl, "application/json", outbody);
+            ////contiOutOrderEntity contiOrder = JsonConvert.DeserializeObject<contiOutOrderEntity>(contistr);
+            ////if (contiOrder.code.Equals(10000))
+            ////{
+            ////    bus.UpdateContiOrderOutData(contiOrder.data.list, log);
+            ////}
+
+
+            ////CargoContiStockSyncEntity stockSync = new CargoContiStockSyncEntity();
+            ////stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            ////List<CargoContiStockListEntity> stockList = new List<CargoContiStockListEntity>();
+            ////List<CargoContiStockSKUEntity> LHYPsKUEntities = new List<CargoContiStockSKUEntity>();//龙华云配仓
+            //////深圳龙华云配仓库
+            ////stockSync = new CargoContiStockSyncEntity();
+            ////stockSync.outNo = Guid.NewGuid().ToString().Replace("-", "");
+            ////stockList = new List<CargoContiStockListEntity>();
+            ////List<CargoSafeStockEntity> ypStock = bus.QueryGZContiStockData(new CargoSafeStockEntity { HouseID = "91" });
+            ////if (ypStock.Count > 0)
+            ////{
+            ////    foreach (var stock in ypStock)
+            ////    {
+            ////        if (string.IsNullOrEmpty(stock.GoodsCode) || stock.GoodsCode.Length < 7) { continue; }
+            ////        if (LHYPsKUEntities.Exists(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7))))
+            ////        {
+            ////            CargoContiStockSKUEntity existEntity = LHYPsKUEntities.Find(c => c.skuCode.Equals(stock.GoodsCode.Substring(0, 7)));
+            ////            existEntity.dots.Add(new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum });
+            ////            //existEntity.qty += stock.StockNum;
+            ////        }
+            ////        else
+            ////        {
+            ////            LHYPsKUEntities.Add(new CargoContiStockSKUEntity
+            ////            {
+            ////                skuCode = stock.GoodsCode.Substring(0, 7),
+            ////                dots = new List<CargoContiStockDOTEntity> { new CargoContiStockDOTEntity { dot = stock.Batch, qty = stock.StockNum } }
+            ////                //qty = stock.StockNum
+            ////            });
+            ////        }
+            ////    }
+            ////}
+            ////stockList.Add(new CargoContiStockListEntity
+            ////{
+            ////    warehouseName = "深圳龙华云配仓库",
+            ////    skuQtyList = LHYPsKUEntities
+            ////});
+            //////stockList.Add(new CargoContiStockListEntity
+            //////{
+            //////    warehouseName = "维京广州仓",
+            //////    skuQtyList = gzWjEntity
+            //////});
+            ////stockSync.stockList = stockList;
+            ////string  body = JSON.Encode(stockSync);
+            ////try
+            ////{
+            ////    string contiUrl = "https://cdms.continental-tires.cn/api/openapi/stock/dotSync";
+            ////    string res = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", body);
+            ////   // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步成功");
+            ////}
+            ////catch (ApplicationException ex)
+            ////{
+            ////   // LogHelper.WriteLog("深圳龙华云配仓库马牌维京库存同步失败");
+            ////}
+
+
+
+
+
+
+
+            //saleOpenInfoResp entity = new saleOpenInfoResp();
+            //entity.HouseIDStr = "9,45,84,83,91,93,95,97,101";
+            //entity.StartDate = DateTime.Now.AddDays(-5);
+            //entity.InCreateStatus = "1";
+            //entity.IsPushOutTag = "0";
+            //List<saleOpenInfoResp> infoResps = bus.QueryContiOutOrderInfo(entity);
+            //if (infoResps.Count > 0)
+            //{
+            //    foreach (var res in infoResps)
+            //    {
+            //        OutOrderStatus outOrder = new OutOrderStatus();
+            //        outOrder.doNo = res.doNo;
+            //        outOrder.deliveryType = 4;
+            //        outOrder.contractName = res.SaleManName;
+            //        outOrder.contractMobile = res.SaleCellphone;
+            //        List<OutDetail> outs = new List<OutDetail>();
+            //        List<CargoProductTagEntity> result = bus.QueryContiOutOrderDetail(new saleOpenInfoResp { CargoOrderNo = res.CargoOrderNo });
+            //        if (result.Count > 0)
+            //        {
+            //            var groupedItems = result.GroupBy(item => item.GoodsCode).Select(group => new { GoodsCode = group.Key, Count = group.Count() });
+            //            foreach (var group in groupedItems)
+            //            {
+            //                OutDetail outD = new OutDetail();
+            //                outD.outNum = group.Count;
+            //                outD.skuCode = group.GoodsCode.Substring(0, 7);
+
+            //                List<BarCodeEntity> barCodeEntities = new List<BarCodeEntity>();
+            //                List<CargoProductTagEntity> cpt = result.Where(c => c.GoodsCode == group.GoodsCode).ToList();
+            //                foreach (var cp in cpt)
+            //                {
+            //                    barCodeEntities.Add(new BarCodeEntity
+            //                    {
+            //                        barCode = cp.TyreCode,
+            //                        dot = cp.Batch,
+            //                        scanTime = cp.OutCargoTime.ToString("yyyy-MM-dd HH:mm:ss")
+            //                    });
+            //                }
+            //                outD.barCodeList = barCodeEntities;
+            //                outs.Add(outD);
+            //            }
+            //        }
+            //        outOrder.doDetails = outs;
+
+            //        //处理Json推送到马牌系统
+            //        string postJson = JsonConvert.SerializeObject(outOrder);
+            //        string contiUrl = "https://cdms.continental-tires.cn/api/openapi/out/sync";
+            //        string oks = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", postJson);
+            //        if (oks.Contains("10000"))
+            //        {
+            //            //成功
+            //            bus.UpdateContiOutOrderPushStatus(new saleOpenInfoResp { IsPushOutTag = "1", orderCode = res.orderCode }, log);
+            //        }
+            //    }
+            //}
         }
 
         private void SyncStock()
@@ -1935,7 +2046,7 @@ namespace Cargo
         }
         private void ScanContiQRCode()
         {
-            string TagCode = "QRB03155080000002220324820241204";//马牌二维码
+            string TagCode = "QRA03135800000000000356620250210";//马牌二维码
             string[] tArr = TagCode.Split('=');
             if (tArr.Length > 1)
             {
@@ -2699,7 +2810,7 @@ namespace Cargo
                 if (accessToken != null)
                 {
                     //获取指定天数内销售情况
-                    string days = "1"; //天数
+                    string days = Common.GetSerViceSupplierDay(); ; //天数
                     days = string.IsNullOrEmpty(days) ? "1" : days;
                     var SupplierSalesData = cargoWeiXinBus.QueryWxSupplierSalesData(null, Convert.ToInt32(days));
 
@@ -2709,11 +2820,12 @@ namespace Cargo
                     {
                         foreach (var item2 in SupplierList.Where(a => item.SuppClientNum.ToString() == a.ClientNum))
                         {
+                            if (item2.wxOpenID!= "oluY8vksVHoHiGsYBBsCwnPpNz38") continue;
                             string openId = item2.wxOpenID;
                             //string templateId = GetdltSalesModelID(); //设置的模板ID
                             string templateId = "oCGTDH6IfLYlRC-TaEan_LN1E_Ffn9auGmU5LkAGga4"; //设置的模板ID
                                                                                                //string toUrl = GetdltServiceToUrl(); //跳转url
-                            string toUrl = "http://dlt.neway5.com/Weixin/wxSupplierDataDisplay.aspx"; //跳转url
+                            string toUrl = "http://dlt.neway5.com/Weixin/wxSupplierDataDisplay.aspx?currdate=" + DateTime.Now.ToString("yyyy-MM-dd"); //跳转url
                             string url = "https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=" + accessToken;
                             //设置推送的模板，包括推送的openid、模板ID-templateId 、推送的信息：dt1.Rows[i]["XXX"]等
                             string temp = "{\"touser\": \"" + openId + "\"," +
@@ -2746,7 +2858,6 @@ namespace Cargo
                 strReturn = ex.Message;
                 //Console.WriteLine(strReturn);
             }
-
         }
         /// <summary>
         /// 服务号 账单推送
@@ -2837,6 +2948,189 @@ namespace Cargo
             streamReceive.Dispose();
             streamReader.Dispose();
             return strResult;
+        }
+
+        #endregion
+
+        #region 狄乐库存定时导出
+        public void DiLeInventoryExport()
+        {
+            CargoHouseBus houseBus = new CargoHouseBus();
+            var dataList = houseBus.GetInventoryList();
+            CargoProductBus bus = new CargoProductBus();
+            List<CargoProductSourceEntity> list = bus.QueryAllProductSource();
+
+            string tname = string.Empty;
+            DataTable table = new DataTable("库存数据");
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("产品ID", typeof(int));
+
+            table.Columns.Add("产品名称", typeof(string));
+            table.Columns.Add("品牌大类", typeof(string));
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("产品编码", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("型号", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("载重指数", typeof(string));
+            table.Columns.Add("速度级别", typeof(string));
+            table.Columns.Add("批次", typeof(string));
+            table.Columns.Add("周期年", typeof(int));
+            table.Columns.Add("库存数量", typeof(int));
+            table.Columns.Add("在库天数", typeof(int));
+            table.Columns.Add("超期费用", typeof(decimal));
+            //if (UserInfor.IsAdmin.Equals("1"))
+            //{
+            //    table.Columns.Add("单价", typeof(decimal));
+            //}
+            table.Columns.Add("门店价", typeof(decimal));
+            table.Columns.Add("小程序价", typeof(decimal));
+            table.Columns.Add("次日达价", typeof(decimal));
+            table.Columns.Add("批发价", typeof(decimal));
+            //if (UserInfor.IsCostPrice.Equals("1"))
+            //{
+            //    if (!UserInfor.IsAdmin.Equals("1"))
+            //    {
+            //        table.Columns.Add("单价", typeof(decimal));
+            //    }
+            //    table.Columns.Add("成本价", typeof(string));
+            //}
+            table.Columns.Add("货位代码", typeof(string));
+            table.Columns.Add("所在区域", typeof(string));
+            table.Columns.Add("一级区域", typeof(string));
+            table.Columns.Add("所在仓库", typeof(string));
+            table.Columns.Add("归属部门", typeof(string));
+            table.Columns.Add("产品来源", typeof(string));
+            table.Columns.Add("物权方", typeof(string));
+            table.Columns.Add("业务类型(物权)", typeof(string));
+            table.Columns.Add("供应商", typeof(string));
+            table.Columns.Add("来货单号", typeof(string));
+            table.Columns.Add("产地", typeof(string));
+            table.Columns.Add("入库时间", typeof(string));
+
+            int i = 0;
+            foreach (var it in dataList)
+            {
+                i++;
+                DataRow newRows = table.NewRow();
+                newRows["序号"] = i;
+                newRows["产品ID"] = it.ProductID;
+
+                newRows["产品名称"] = it.ProductName;
+                newRows["品牌大类"] = it.TypeParentName;
+                newRows["品牌"] = it.TypeName;
+                newRows["产品编码"] = it.ProductCode;
+                newRows["货品代码"] = it.GoodsCode;
+                //newRows["开单日期"] = it.CreateDate.ToString("yyyy-MM-dd") == "0001-01-01" || it.CreateDate.ToString("yyyy-MM-dd") == "1900-01-01" ? "" : it.CreateDate.ToString("yyyy-MM-dd");
+                newRows["规格"] = it.Specs.Trim();
+                newRows["型号"] = it.Model.Trim();
+                newRows["花纹"] = it.Figure;
+                newRows["载重指数"] = it.LoadIndex;
+                newRows["速度级别"] = it.SpeedLevel;
+                newRows["批次"] = it.Batch;
+                newRows["周期年"] = it.BatchYear;
+                newRows["库存数量"] = it.Piece;
+                newRows["在库天数"] = it.InHouseDay;
+                newRows["超期费用"] = it.OverDueFee.ToString("F2");
+
+                //if (UserInfor.IsAdmin.Equals("1"))
+                //{
+                //    newRows["单价"] = it.UnitPrice;
+                //}
+                newRows["门店价"] = it.TradePrice;
+                newRows["小程序价"] = it.SalePrice;
+                newRows["次日达价"] = it.NextDayPrice;
+                newRows["批发价"] = it.WholesalePrice;
+                //if (UserInfor.IsCostPrice.Equals("1"))
+                //{
+                //    if (!UserInfor.IsAdmin.Equals("1"))
+                //    {
+                //        newRows["单价"] = it.UnitPrice;
+                //    }
+                //    newRows["成本价"] = it.CostPrice;
+                //}
+                newRows["货位代码"] = it.ContainerCode;
+                newRows["所在区域"] = it.AreaName;
+                newRows["一级区域"] = it.ParentAreaName;
+                newRows["所在仓库"] = it.FirstAreaName;
+                newRows["归属部门"] = it.BelongDepart;
+                newRows["产品来源"] = GetSoureName(list, Convert.ToInt32(it.Source));
+                newRows["物权方"] = GetText(it.OwnerShip, "OwnerShip");
+                newRows["业务类型(物权)"] = GetText(it.GoodsClass, "GoodsClass");
+                newRows["供应商"] = it.Supplier;
+                newRows["来货单号"] = it.SourceOrderNo;
+                newRows["产地"] = it.Born.Equals("1") ? "进口" : "国产";
+                newRows["入库时间"] = it.InHouseTime;
+
+                table.Rows.Add(newRows);
+            }
+            var fileName = "仓库库存数据-" + DateTime.Now.ToString("yyyyMMddHHmm")+ ".xlsx";
+            var filePath = string.Empty;
+            ExportDataTableToExcel(table, fileName, out filePath);
+            if (System.IO.File.Exists(filePath))
+            {
+                houseBus.saveFileLog(new CargoStockDownloadEntity { FileName = fileName, FilePath = filePath });
+            }
+        }
+        private string GetStockFile()
+        {
+            return ConfigurationSettings.AppSettings["StockFile"];
+        }
+        public void ExportDataTableToExcel(DataTable table, string fileName, out string filePath)
+        {
+            // 获取项目根目录（或你可换成指定目录）
+            string projectDir = "D:\\Work\\WareHouse2\\Files\\新建文件夹\\";
+            string exportDir = Path.Combine(projectDir, "");
+
+            if (!Directory.Exists(exportDir))
+                Directory.CreateDirectory(exportDir);
+
+            filePath = Path.Combine(exportDir, fileName);
+
+            using (var workbook = new XLWorkbook())
+            {
+                var worksheet = workbook.Worksheets.Add(table, table.TableName);
+                worksheet.Columns().AdjustToContents(); // 自动列宽
+                workbook.SaveAs(filePath);
+            }
+
+            //Console.WriteLine($"📁 文件已保存到: {filePath}");
+        }
+        private string GetText(string value, string id)
+        {
+            string retStr = "";
+            if (id.Contains("GoodsClass"))
+            {
+                if (value.Trim() == "0") retStr = "自有";
+                else if (value.Trim() == "1") retStr = "进驻";
+                else if (value.Trim() == "2") retStr = "托管";
+            }
+            else if (id.Contains("OwnerShip"))
+            {
+                if (value.Trim() == "48") retStr = "湖南狄乐RE";
+                else if (value.Trim() == "1") retStr = "昆明云仓";
+                else if (value.Trim() == "2") retStr = "已出库";
+                else if (value.Trim() == "3") retStr = "运输在途";
+                else if (value.Trim() == "4") retStr = "已到达";
+                else if (value.Trim() == "5") retStr = "已签收";
+                else if (value.Trim() == "6") retStr = "已拣货";
+            }
+
+            return retStr;
+        }
+        public string GetSoureName(List<CargoProductSourceEntity> ProductSource, int Source)
+        {
+            string SourceName = "";
+            for (var i = 0; i < ProductSource.Count; i++)
+            {
+                if (ProductSource[i].Source == Source)
+                {
+                    SourceName = ProductSource[i].SourceName;
+                    break;
+                }
+            }
+            return SourceName;
         }
 
         #endregion
