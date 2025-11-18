@@ -1,6 +1,5 @@
 ﻿
 using Cargo.QY;
-using ClosedXML.Excel;
 using House.Business.Cargo;
 using House.Entity;
 using House.Entity.Cargo;
@@ -3120,12 +3119,6 @@ namespace Cargo
 
             filePath = Path.Combine(exportDir, fileName);
 
-            using (var workbook = new XLWorkbook())
-            {
-                var worksheet = workbook.Worksheets.Add(table, table.TableName);
-                worksheet.Columns().AdjustToContents(); // 自动列宽
-                workbook.SaveAs(filePath);
-            }
 
             //Console.WriteLine($"📁 文件已保存到: {filePath}");
         }
