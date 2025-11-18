@@ -46,6 +46,7 @@ using System.Text;
 using System.Threading;
 using System.Timers;
 using System.Web;
+using System.Web.Configuration;
 using System.Web.Script.Serialization;
 using System.Web.UI;
 using System.Web.UI.WebControls;
@@ -409,8 +410,39 @@ namespace Cargo
 
             }
         }
+
+        private void CheckConfiguration()
+        {
+            try
+            {
+                // 直接读取配置文件
+                string webConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web.config");
+                var config = WebConfigurationManager.OpenWebConfiguration("~");
+
+                // 检查 httpRuntime
+                var httpRuntime = config.GetSection("system.web/httpRuntime") as HttpRuntimeSection;
+                if (httpRuntime != null)
+                {
+                    Response.Write($"MaxRequestLength: {httpRuntime.MaxRequestLength} KB<br>");
+                    Response.Write($"ExecutionTimeout: {httpRuntime.ExecutionTimeout}<br>");
+                }
+
+                // 检查其他相关配置
+                var compilation = config.GetSection("system.web/compilation") as CompilationSection;
+                if (compilation != null)
+                {
+                    Response.Write($"Debug: {compilation.Debug}<br>");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Configuration check error: {ex.Message}");
+            }
+        }
         protected void Page_Load(object sender, EventArgs e)
         {
+            CheckConfiguration();
+            return;
             CargoHouseBus houseBus = new CargoHouseBus();
             CargoClientBus clientBus = new CargoClientBus();
             CargoOrderBus ordrBus = new CargoOrderBus();

@@ -17261,51 +17261,90 @@ where a.OrderNo='{entity.OrderNo}'
 
         public List<AvgMonthSalesData> GetAvgMonthSales(List<AvgMonthSalesData_qryParam> queryParams)
         {
-            SqlHelper conn = new SqlHelper();
             List<AvgMonthSalesData> rsltData = new List<AvgMonthSalesData>();
-string queryRODataStr = @"
+
+            try
+            {
+                #region 组装查询SQL语句
+                
+                string queryRODataStr = @"
 SELECT 
     mss.ProductCode,
+    mss.TypeID,
     mss.HouseID,
+    mss.AreaID,
     SUM(mss.SumLast3Months) AS TotalPiece,       -- 最近3个月总销量
     (SUM(mss.WeightedMonthSale)) AS AvgMonthSale  -- 加权月均销量
 FROM Tbl_Cargo_MonthSaleStatic mss
-INNER JOIN ##quryParamTemp qpt ON mss.ProductCode = qpt.ProductCode AND mss.HouseID = qpt.HouseID
+INNER JOIN ##quryParamTemp qpt ON mss.ProductCode = qpt.ProductCode AND mss.AreaID = qpt.AreaID
 WHERE YearMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) - 1,0) 
-GROUP BY mss.ProductCode, mss.HouseID;
+GROUP BY mss.ProductCode, mss.TypeID, mss.HouseID, mss.AreaID;
 ";
-            StringBuilder sqlBuilder = new StringBuilder();
-            sqlBuilder.AppendLine(@"
+
+                StringBuilder sqlBuilder = new StringBuilder();
+                sqlBuilder.AppendLine(@"
 IF OBJECT_ID('tempdb..##quryParamTemp') IS NOT NULL DROP TABLE ##quryParamTemp;
 CREATE TABLE ##quryParamTemp(
     ProductCode NVARCHAR(50),
-    HouseID INT
+    AreaID INT
 );
 ");
-            string createTempTblStr = sqlBuilder.ToString();
-            string strSQL = queryRODataStr;
-            using (DbCommand command = conn.GetSqlStringCommond(createTempTblStr))
-            {
-                command.Connection.Open();
-                command.ExecuteNonQuery();
-                conn.BulkInsertData(queryParams, "##quryParamTemp");
-                command.CommandText = strSQL;
-                using (DataTable dt = conn.ExecuteDataTable(command))
+
+                int batchSize = 1000;
+                int index = 1;
+                List<string> tempTblVals = new List<string>();
+
+                foreach (var queryParam in queryParams)
                 {
-                    foreach (DataRow idr in dt.Rows)
+                    tempTblVals.Add($"(N'{queryParam.ProductCode?.Replace("'", "''")}', {queryParam.AreaID})");
+
+                    if (index % batchSize == 0)
                     {
-                        rsltData.Add(new AvgMonthSalesData
+                        sqlBuilder.AppendLine("INSERT INTO ##quryParamTemp (ProductCode, AreaID) VALUES");
+                        sqlBuilder.AppendLine(string.Join("," + Environment.NewLine, tempTblVals) + ";");
+                        tempTblVals.Clear();
+                    }
+
+                    index++;
+                }
+
+                // 插入剩余不足2000条的
+                if (tempTblVals.Count > 0)
+                {
+                    sqlBuilder.AppendLine("INSERT INTO ##quryParamTemp (ProductCode, AreaID) VALUES");
+                    sqlBuilder.AppendLine(string.Join("," + Environment.NewLine, tempTblVals) + ";");
+                }
+
+                string createTempTblStr = sqlBuilder.ToString();
+
+
+                #endregion
+                string strSQL = createTempTblStr + queryRODataStr;
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dt.Rows)
                         {
-                            ProductCode = Convert.ToString(idr["ProductCode"]),
-                            HouseID = Convert.ToInt32(idr["HouseID"]),
-                            TotalPiece = Convert.ToInt32(idr["TotalPiece"]),
-                            AvgMonthSale = Convert.ToInt32(idr["AvgMonthSale"]),
-                        });
+                            rsltData.Add(new AvgMonthSalesData
+                            {
+                                ProductCode = Convert.ToString(idr["ProductCode"]),
+                                TypeID = Convert.ToInt32(idr["TypeID"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                AreaID = Convert.ToInt32(idr["AreaID"]),
+                                TotalPiece = Convert.ToInt32(idr["TotalPiece"]),
+                                AvgMonthSale = Convert.ToInt32(idr["AvgMonthSale"]),
+                            });
+                        }
                     }
                 }
             }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
 
             return rsltData;
         }
+
+
+
     }
 }

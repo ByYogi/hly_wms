@@ -3,7 +3,6 @@ using House.Entity.Cargo;
 using House.Entity.Cargo.House;
 using House.Entity.Cargo.Product;
 using House.Entity.Dto;
-using House.Entity.Dto.House;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -5427,7 +5426,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
                         int stockNum = idr.Field<int>("StockNum");
 
                         int allCurNum = (curNum + moveNum);
-                        if (minStock > stockNum)
+                        if (minStock > allCurNum)
                         {
                             lessNum = maxStock - allCurNum;
                             excessNum = allCurNum - maxStock;
@@ -5437,7 +5436,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
                             lessNum = stockNum - allCurNum;
                             excessNum = allCurNum - stockNum;
                         }
-                        lessNum = lessNum < 0 || lessNum >= minStock ? 0 : lessNum;
+                        lessNum = lessNum < 0 ? 0 : lessNum;
 
                         result.Add(new CargoSafeStockEntity
                         {
@@ -5526,8 +5525,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
         /// <param name="entity"></param>
         public void InsertSafeStockData(CargoSafeStockEntity entity)
         {
-            string strSQL = @"
-INSERT INTO
+            string strSQL = @"INSERT INTO
   Tbl_Cargo_SafeStock (
     HouseID,
     AreaID,
@@ -5694,161 +5692,6 @@ WHERE
             }
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
         }
-
-        /// <summary>
-        /// 修改或更新安全库存数据
-        /// </summary>
-        /// <param name="entity"></param>
-        public void UpdateOrAddSafeStockData(List<ModifySafeStockDto> listData)
-        {
-            string createTempTblSql = @"
-IF OBJECT_ID('tempdb..##tempSS') IS NOT NULL
-    DROP TABLE ##tempSS;
-CREATE TABLE ##tempSS(
-    HouseID INT,
-    AreaID INT,
-    TypeID INT,
-    Specs NVARCHAR(50),
-    Figure NVARCHAR(50),
-    GoodsCode NVARCHAR(50),
-    LoadIndex NVARCHAR(50),
-    SpeedLevel NVARCHAR(50),
-    StockNum INT,
-    OPID NVARCHAR(50),
-    OP_DATE DATETIME,
-    MaxStock INT,
-    MinStock INT,
-    ProductCode NVARCHAR(50),
-    MinStockDay INT,
-    MaxStockDay INT,
-    HCYCStock INT,
-    OEStock INT,
-    REStock INT,
-    IsolatedStock INT,
-    ControlStock INT,
-
-    AvgSaleNum INT
-)
-";
-            string strSQL = @"
-MERGE INTO Tbl_Cargo_SafeStock AS target
-USING ##tempSS AS source
-ON target.HouseID = source.HouseID AND target.ProductCode = source.ProductCode
-WHEN MATCHED THEN
-UPDATE
-SET
-  target.HouseID = source.HouseID,
-  target.AreaID = source.AreaID,
-  target.TypeID = source.TypeID,
-  target.Specs = source.Specs,
-  target.Figure = source.Figure,
-  target.GoodsCode = source.GoodsCode,
-  target.LoadIndex = source.LoadIndex,
-  target.SpeedLevel = source.SpeedLevel,
-  target.StockNum = source.StockNum,
-  target.OPID = source.OPID,
-  target.OP_DATE = source.OP_DATE,
-  target.MaxStock = source.MaxStock,
-  target.MinStock = source.MinStock,
-  target.ProductCode = source.ProductCode,
-  target.MinStockDay = source.MinStockDay,
-  target.MaxStockDay = source.MaxStockDay,
-  target.HCYCStock = source.HCYCStock,
-  target.OEStock = source.OEStock,
-  target.REStock = source.REStock,
-  target.IsolatedStock = source.IsolatedStock,
-  target.ControlStock = source.ControlStock
-
-WHEN NOT MATCHED THEN
-
-INSERT (
-    HouseID,
-    AreaID,
-    TypeID,
-    GoodsCode,
-    Specs,
-    Figure,
-    LoadIndex,
-    SpeedLevel,
-    StockNum,
-    OPID,
-    OP_DATE,
-    ProductCode,
-    MinStock,
-    MaxStock,
-    MinStockDay,
-    MaxStockDay,
-    HCYCStock,
-    OEStock,
-    REStock,
-    IsolatedStock,
-    ControlStock
-  )
-VALUES
-  (
-    source.HouseID,
-    source.AreaID,
-    source.TypeID,
-    source.GoodsCode,
-    source.Specs,
-    source.Figure,
-    source.LoadIndex,
-    source.SpeedLevel,
-    source.StockNum,
-    source.OPID,
-    source.OP_DATE,
-    source.ProductCode,
-    source.MinStock,
-    source.MaxStock,
-    source.MinStockDay,
-    source.MaxStockDay,
-    source.HCYCStock,
-    source.OEStock,
-    source.REStock,
-    source.IsolatedStock,
-    source.ControlStock
-  )
-OUTPUT 
-    inserted.*;
-";
-            try
-            {
-                foreach (var entity in listData)
-                {
-                    var AvgSaleNum = entity.AvgSaleNum;
-                    var MaxStockDay = entity.MaxStockDay;
-                    int? maxStock = 0;
-                    int minStock = 0;
-                    if (AvgSaleNum.HasValue && MaxStockDay.HasValue)
-                    {
-                        maxStock = (int)Math.Floor((double)entity.AvgSaleNum / 30 * (double)entity.MaxStockDay);
-                        minStock = (int)Math.Floor((double)entity.AvgSaleNum / 30 * (double)entity.MinStockDay);
-                    }
-
-                    int safeNum = entity.OEStock.GetValueOrDefault() + entity.HCYCStock.GetValueOrDefault() + entity.REStock.GetValueOrDefault();
-                    entity.MaxStock = maxStock;
-                    entity.MinStock = minStock;
-                    entity.StockNum = safeNum;
-                    entity.OP_DATE = DateTime.Now;
-                }
-                using (DbCommand cmd = conn.GetSqlStringCommond(createTempTblSql))
-                {
-                    cmd.Connection.Open();
-                    cmd.ExecuteNonQuery();
-                    conn.BulkInsertData(listData, "##tempSS");
-
-
-                    cmd.CommandText = strSQL;
-                    cmd.ExecuteNonQuery();
-
-                    cmd.Connection.Close();
-                }
-            }
-            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
-        }
-
-
-
         /// <summary>
         /// 删除安全库存数据
         /// </summary>

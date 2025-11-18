@@ -461,10 +461,8 @@
             <a href="#" class="easyui-linkbutton letterSpacing" iconcls="icon-cut" plain="false" onclick="DelItem()">删除</a>
         </span> 
         <span class="space">
-            <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="AwbExport()">导出当前数据</a>
-            <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="ExportALL()">导出所有数据</a>
-            <a href="#" class="easyui-linkbutton" iconcls="icon-application_double" plain="false" onclick="AwbImport()">导入库存配置</a>
-            <a href="#" class="easyui-linkbutton" id="directUploadDataFile" iconcls="icon-out_cargo"  name="file" onclick="DrctImportFileData()">直接导入库存配置</a>
+            <a href="#" class="easyui-linkbutton letterSpacing" iconcls="icon-application_put" plain="false" onclick="AwbExport()">导出</a>
+            <a href="#" class="easyui-linkbutton letterSpacing" iconcls="icon-application_get" plain="false" onclick="AwbImport()">导入</a>
             <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false" onclick="salesReload()">同步最新销量数据</a>
         </span> 
          </div>
@@ -780,22 +778,6 @@
                 }
             });
         }
-        function ExportALL(){
-            var row = $("#dg").datagrid('getData').rows[0];
-            if (row == null) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '没有数据可以进行导出，请重新查询！', 'warning'); return; }
-            $.messager.progress({ msg: '请稍后,正在导出中...' });
-
-            $.ajax({
-                url: "houseApi.aspx?method=QuerySafeStockDataForExport",
-                success: function (text) {
-                    $.messager.progress("close");
-                    if (text == "OK") {
-                        var obj = document.getElementById("<%=btnDerived.ClientID %>"); obj.click();
-                    }
-                    else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
-                }
-            });
-        }
         //导入
         function AwbImport() {
             $('#dlgImport').dialog('open').dialog('setTitle', '导入安全库存数据');
@@ -806,7 +788,7 @@
         function showData() {
             var columns = [];
             var HID = "<%=UserInfor.HouseID%>";
-            // columns.push({ title: '', field: 'ExcelNo', checkbox: true,  width: '35px' });
+            columns.push({ title: '', field: 'ExcelNo', checkbox: true,  width: '35px' });
             columns.push({ title: '所属仓库', field: 'HouseName', width: '65px' });
             columns.push({ title: '产品品牌', field: 'TypeName', width: '65px' });
             columns.push({ title: '产品编码', field: 'ProductCode', width: '85px' });
@@ -839,93 +821,13 @@
                 pageSize: 12, //每页多少条
                 pageList: [12, 20],
                 fitColumns: true, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
-                singleSelect: true, //设置为 true，则只允许选中一行。
+                singleSelect: false, //设置为 true，则只允许选中一行。
                 checkOnSelect: false, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
                 url: null,
                 toolbar: '#dginporttoolbar',
                 columns: [columns]
             });
         }
-
-        var dynamicFileInput = null;
-function DrctImportFileData() {
-    // 清理已存在的文件输入框
-    if (dynamicFileInput) {
-        dynamicFileInput.remove();
-    }
-    
-    // 创建文件输入框
-    dynamicFileInput = $('<input type="file" accept=".xlsx,.xls" style="display:none;">');
-    $('body').append(dynamicFileInput);
-    
-    // 监听文件选择
-    dynamicFileInput.on('change', function() {
-        var file = this.files[0];
-        if (file) {
-            // 简单验证
-            if (file.size > 10 * 1024 * 1024) {
-                $.messager.alert('错误', '文件大小不能超过 10MB', 'error');
-                return;
-            }
-            
-            // 上传文件
-            uploadFile(file);
-        }
-        
-        // 清理
-        setTimeout(() => dynamicFileInput?.remove(), 1000);
-    });
-    
-    dynamicFileInput.click();
-}
-
-function uploadFile(file) {
-    // 显示加载状态
-    $('#directUploadDataFile').linkbutton({
-        text: '导入中...',
-        iconCls: 'icon-out_cargo',
-        disabled: true
-    });
-    
-    var formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', 'inventory_config');
-    
-    $.ajax({
-        url: 'houseApi.aspx?method=saveFileAndData',
-        type: 'POST',
-        data: formData,
-        processData: false,
-        contentType: false,
-        dataType: 'json',
-        success: function(response) {
-            if (response.Result) {
-                $.messager.alert('成功', '库存配置导入成功！', 'info');
-                // 成功状态
-                $('#directUploadDataFile').linkbutton({
-                    text: '导入成功',
-                    iconCls: 'icon-ok'
-                });
-                
-                dosearch();
-            } else {
-                $.messager.alert('错误', response.Message, 'error');
-            }
-        },
-        error: function() {
-            $.messager.alert('错误', '上传失败', 'error');
-        },
-        complete: function(){
-            // 恢复状态
-            $('#directUploadDataFile').linkbutton({
-                text: '直接导入库存配置',
-                iconCls: 'icon-out_cargo',
-                disabled: false
-            });
-        }
-    });
-}
-
         //保存上传的文件
         function saveFile() {
             var file = $("#fileT").val();
@@ -1054,11 +956,6 @@ function uploadFile(file) {
                 $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请先导入需要保存的数据！', 'warning');
                 return;
             }
-            if(rows.length > 4000){
-                //只允许导入4000条数据，因为 IIS 默认限制了最大请求长度为 4MB
-                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '最大只允许导入4000条数据！', 'warning');
-                return;
-            }
             var msg = "确定保存？";
             //var existCount = $('#ExistCount').val();
             //if (existCount > 0) {
@@ -1068,7 +965,6 @@ function uploadFile(file) {
                 if (r) {
                     $.messager.progress({ msg: '请稍后,正在保存中...' });
                     var json = JSON.stringify(rows)
-                    console.log("保存数据",{rows, json});
                     $.ajax({
                         url: 'houseApi.aspx?method=SaveImportData',
                         type: 'post', dataType: 'json', data: { data: json },
@@ -1081,13 +977,10 @@ function uploadFile(file) {
                                 $("#fileT").val("");
                                 $('#dgImport').datagrid('loadData', { total: 0, rows: [] 
                             });
+                    }
+                    else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
                             }
-                            else {
-                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
-                            }
-                        },
-                        complete: function (xhr, status, error) {
-                            $.messager.progress("close");
                         }
                     });
                 }

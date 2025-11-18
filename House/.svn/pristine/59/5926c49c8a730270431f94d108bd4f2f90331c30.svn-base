@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>House.Entity</RootNamespace>
     <AssemblyName>House.Entity</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -234,7 +234,6 @@
     <Compile Include="Cargo\WX\WXUserPointEntity.cs" />
     <Compile Include="Dto\Base\DataRespsBase.cs" />
     <Compile Include="Dto\Base\ListResponsBase.cs" />
-    <Compile Include="Dto\House\ModifySafeStockDto.cs" />
     <Compile Include="Dto\Order\AvgMonthSalesData.cs" />
     <Compile Include="Dto\Order\CargoRpl\CargoOutOfStockDto.cs" />
     <Compile Include="Dto\Order\CargoRpl\CargoOOSLogDtlDto.cs" />

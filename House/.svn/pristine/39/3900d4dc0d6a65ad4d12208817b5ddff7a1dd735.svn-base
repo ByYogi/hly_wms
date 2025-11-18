@@ -1652,106 +1652,6 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
             return result;
         }
-        /// <summary>
-        /// 查询订单数据
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        public CargoReserveOrderEntity QueryReserveOrderInfo(CargoReserveOrderEntity entity)
-        {
-            CargoReserveOrderEntity result = new CargoReserveOrderEntity();
-            try
-            {
-                string strSQL = @"Select top 10 a.*,ISNULL(b.PreReceiveMoney,0) as PreReceiveMoney,ISNULL(b.RebateMoney,0) as RebateMoney,ISNULL(b.ClientID,0) as ClientID,b.City,b.Province,b.ShopCode,b.UpClientID,b.UpClientShortName,c.LogisticName,h.HouseCode,h.Name as HouseName from Tbl_Cargo_ReserveOrder as a LEFT JOIN Tbl_Cargo_ReserveOrderGoods AS g ON a.OrderNo= g.OrderNo left join Tbl_Cargo_Client as b on a.PayClientNum=b.ClientNum left join Tbl_Cargo_Logistic c on a.LogisID=c.ID inner join Tbl_Cargo_House h on a.HouseID=h.HouseID Where 1=1";
-                if (!entity.HouseID.Equals(0))
-                {
-                    strSQL += " and a.HouseID=" + entity.HouseID;
-                }
-                if (!string.IsNullOrEmpty(entity.HouseIDStr))
-                {
-                    strSQL += " and a.HouseID in (" + entity.HouseIDStr + ")";
-
-                }
-                if (!string.IsNullOrEmpty(entity.OrderNo))
-                {
-                    //strSQL += " and a.OrderNo like '%" + entity.OrderNo + "%'";
-                    strSQL += " and a.OrderNo=@OrderNo";
-                }
-                if (entity.OrderID != 0)
-                {
-                    strSQL += " and a.OrderID=@OrderID";
-                }
-                if (!string.IsNullOrEmpty(entity.HAwbNo))
-                {
-                    strSQL += " and CHARINDEX(','+'" + entity.HAwbNo + "'+',' , ','+a.HAwbNo+',') > 0";
-                }
-                if (!string.IsNullOrEmpty(entity.ShopCode))
-                {
-                    strSQL += " and b.ShopCode=@ShopCode";
-                }
-                if (!string.IsNullOrEmpty(entity.RelateOrderNo))
-                {
-                    strSQL += " and g.RelateOrderNo=@RelateOrderNo";
-                }
-                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-                {
-
-                    if (!string.IsNullOrEmpty(entity.OrderNo))
-                    {
-                        conn.AddInParameter(command, "@OrderNo", DbType.String, entity.OrderNo);
-                    }
-                    if (entity.OrderID != 0)
-                    {
-                        conn.AddInParameter(command, "@OrderID", DbType.Int64, entity.OrderID);
-                    }
-                    if (!string.IsNullOrEmpty(entity.ShopCode))
-                    {
-                        conn.AddInParameter(command, "@ShopCode", DbType.String, entity.ShopCode);
-                    }
-                    if (!string.IsNullOrEmpty(entity.RelateOrderNo))
-                    {
-                        conn.AddInParameter(command, "@RelateOrderNo", DbType.String, entity.RelateOrderNo);
-                    }
-                    using (DataTable dt = conn.ExecuteDataTable(command))
-                    {
-                        foreach (DataRow idr in dt.Rows)
-                        {
-                            result = new CargoReserveOrderEntity
-                            {
-                                OrderID = Convert.ToInt64(idr["OrderID"]),
-                                OrderNo = Convert.ToString(idr["OrderNo"]),
-                                OrderNum = Convert.ToInt32(idr["OrderNum"]),
-                                Dep = Convert.ToString(idr["Dep"]),
-                                Dest = Convert.ToString(idr["Dest"]),
-                                AcceptUnit = Convert.ToString(idr["AcceptUnit"]),
-                                AcceptPeople = Convert.ToString(idr["AcceptPeople"]),
-                                AcceptTelephone = Convert.ToString(idr["AcceptTelephone"]),
-                                AcceptCellphone = Convert.ToString(idr["AcceptCellphone"]),
-                                AcceptAddress = Convert.ToString(idr["AcceptAddress"]),
-                                OrderType = Convert.ToString(idr["OrderType"]),
-                                OrderModel = Convert.ToString(idr["OrderModel"]),
-                                CheckOutType = Convert.ToString(idr["CheckOutType"]),
-                                DeliveryType = Convert.ToString(idr["DeliveryType"]),
-                                AwbStatus = Convert.ToString(idr["AwbStatus"]),
-                                CheckStatus = Convert.ToString(idr["CheckStatus"]),
-                                ClientNum = Convert.ToInt32(idr["ClientNum"]),
-                                ClientID = Convert.ToInt64(idr["ClientID"]),
-                                PayClientName = Convert.ToString(idr["PayClientName"]),
-                                BelongHouse = Convert.ToString(idr["BelongHouse"]),
-                                OutHouseName = Convert.ToString(idr["OutHouseName"]),
-                                FinanceSecondCheck = Convert.ToString(idr["FinanceSecondCheck"]),
-                                OP_ID = Convert.ToString(idr["OP_ID"]),
-                                OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
-                                WXOrderNo = Convert.ToString(idr["WXOrderNo"]),
-                                ThrowGood = Convert.ToString(idr["ThrowGood"]),
-                            };
-                        }
-                    }
-                }
-            }
-            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
-            return result;
-        }
         public List<CargoOrderEntity> QueryWxOrderDataInfo(CargoOrderEntity entity)
         {
             List<CargoOrderEntity> result = new List<CargoOrderEntity>();
@@ -3244,11 +3144,11 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
             string strSQL = $@"INSERT INTO Tbl_Cargo_ReserveOrder(orderno, ordernum, logisawbno, logisid, deliverysettlement, dep, dest, piece, insurancefee,
     onlinepaidamount, transitfee, transportfee, deliveryfee, otherfee, totalcharge, checkouttype, traffictype,
     deliverytype, acceptunit, acceptaddress, acceptpeople, accepttelephone, acceptcellphone, createdate,
-    houseid, outhousename, op_id, awbstatus, remark, ordertype, ordermodel,WXOrderNo,PaymentType,PayClientNum,ClientNum";
+    houseid, outhousename, op_id, awbstatus, remark, ordertype, ordermodel,PaymentType";
             strSQL += $@") VALUES (@orderno, @ordernum, @logisawbno, @logisid, @deliverysettlement, @dep,  @dest, @piece, @insurancefee,
     @onlinepaidamount, @transitfee, @transportfee, @deliveryfee, @otherfee, @totalcharge, @checkouttype, @traffictype,
     @deliverytype, @acceptunit, @acceptaddress, @acceptpeople, @accepttelephone, @acceptcellphone, @createdate,
-    @houseid, @outhousename, @op_id, @awbstatus, @remark, @ordertype, @ordermodel, @WXOrderNo, @PaymentType, @PayClientNum, @ClientNum";
+    @houseid, @outhousename, @op_id, @awbstatus, @remark, @ordertype, @ordermodel, @PaymentType";
             strSQL += ") SELECT SCOPE_IDENTITY()";
             try
             {
@@ -3256,6 +3156,7 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
                 entity.EnSafe();
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
+                    // 假设 conn 是数据库连接对象，cmd 是命令对象
                     // 假设 conn 是数据库连接对象，cmd 是命令对象
                     conn.AddInParameter(cmd, "@orderno", DbType.String, entity.OrderNo);
                     conn.AddInParameter(cmd, "@ordernum", DbType.String, entity.OrderNum);
@@ -3293,10 +3194,7 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
                     conn.AddInParameter(cmd, "@remark", DbType.String, entity.Remark);
                     conn.AddInParameter(cmd, "@ordertype", DbType.String, entity.OrderType);
                     conn.AddInParameter(cmd, "@ordermodel", DbType.String, entity.OrderModel);
-                    conn.AddInParameter(cmd, "@WXOrderNo", DbType.String, entity.WXOrderNo);
                     conn.AddInParameter(cmd, "@PaymentType", DbType.Int32, entity.PaymentType);
-                    conn.AddInParameter(cmd, "@PayClientNum", DbType.Int32, entity.PayClientNum);
-                    conn.AddInParameter(cmd, "@ClientNum", DbType.Int32, entity.ClientNum);
                    
 
                     //conn.ExecuteNonQuery(cmd);
@@ -5996,17 +5894,7 @@ a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.H
 
             CargoClientManager client = new CargoClientManager();
             Int64 did = 0;
-            string strSQL = @"INSERT INTO Tbl_Cargo_Order(OrderNo,OrderNum,HAwbNo,Dep,Dest,Piece,TransportFee,TotalCharge,CheckOutType,TrafficType,DeliveryType,AcceptUnit,AcceptPeople,AcceptTelephone,AcceptCellphone,AcceptAddress,CreateAwb,CreateDate,OP_ID,OP_DATE,AwbStatus,Remark,SaleManID,SaleManName,HouseID,CreateAwbID,OrderType,OrderModel,ClientNum,ThrowGood,PayClientNum,PayClientName,BelongHouse,OutHouseName,LogisID";
-            if (entity.CheckStatus== "1" && entity.FinanceSecondCheck== "1")
-            {
-                strSQL += $@",CheckStatus,CheckDate,FinanceSecondCheck,FinanceSecondCheckName,FinanceSecondCheckDate";
-            }
-            strSQL += $@") VALUES (@OrderNo,@OrderNum,@HAwbNo,@Dep,@Dest,@Piece,@TransportFee,@TotalCharge,@CheckOutType,@TrafficType,@DeliveryType,@AcceptUnit,@AcceptPeople,@AcceptTelephone,@AcceptCellphone,@AcceptAddress,@CreateAwb,@CreateDate,@OP_ID,@OP_DATE,@AwbStatus,@Remark,@SaleManID,@SaleManName,@HouseID,@CreateAwbID,@OrderType,@OrderModel,@ClientNum,@ThrowGood,@PayClientNum,@PayClientName,@BelongHouse,@OutHouseName,@LogisID";
-            if (entity.CheckStatus == "1" && entity.FinanceSecondCheck == "1")
-            {
-                strSQL += $@",@CheckStatus,@CheckDate,@FinanceSecondCheck,@FinanceSecondCheckName,@FinanceSecondCheckDate";
-            }
-            strSQL += $@") SELECT @@IDENTITY";
+            string strSQL = @"INSERT INTO Tbl_Cargo_Order(OrderNo,OrderNum,HAwbNo,Dep,Dest,Piece,TransportFee,TotalCharge,CheckOutType,TrafficType,DeliveryType,AcceptUnit,AcceptPeople,AcceptTelephone,AcceptCellphone,AcceptAddress,CreateAwb,CreateDate,OP_ID,OP_DATE,AwbStatus,Remark,SaleManID,SaleManName,HouseID,CreateAwbID,OrderType,OrderModel,ClientNum,ThrowGood,PayClientNum,PayClientName,BelongHouse,OutHouseName,LogisID) VALUES (@OrderNo,@OrderNum,@HAwbNo,@Dep,@Dest,@Piece,@TransportFee,@TotalCharge,@CheckOutType,@TrafficType,@DeliveryType,@AcceptUnit,@AcceptPeople,@AcceptTelephone,@AcceptCellphone,@AcceptAddress,@CreateAwb,@CreateDate,@OP_ID,@OP_DATE,@AwbStatus,@Remark,@SaleManID,@SaleManName,@HouseID,@CreateAwbID,@OrderType,@OrderModel,@ClientNum,@ThrowGood,@PayClientNum,@PayClientName,@BelongHouse,@OutHouseName,@LogisID) SELECT @@IDENTITY";
             try
             {
                 #region 订单保存
@@ -6047,15 +5935,7 @@ a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.H
                     conn.AddInParameter(cmd, "@PayClientNum", DbType.Int32, entity.PayClientNum);
                     conn.AddInParameter(cmd, "@BelongHouse", DbType.String, entity.BelongHouse);
                     conn.AddInParameter(cmd, "@OutHouseName", DbType.String, entity.OutHouseName);
-                    conn.AddInParameter(cmd, "@LogisID", DbType.Int32, entity.LogisID);
-                    if (entity.CheckStatus == "1" && entity.FinanceSecondCheck == "1")
-                    {
-                        conn.AddInParameter(cmd, "@CheckStatus", DbType.String, entity.CheckStatus);
-                        conn.AddInParameter(cmd, "@CheckDate", DbType.DateTime, entity.CheckDate);
-                        conn.AddInParameter(cmd, "@FinanceSecondCheck", DbType.Int32, entity.FinanceSecondCheck);
-                        conn.AddInParameter(cmd, "@FinanceSecondCheckName", DbType.String, entity.FinanceSecondCheckName);
-                        conn.AddInParameter(cmd, "@FinanceSecondCheckDate", DbType.DateTime, entity.FinanceSecondCheckDate);
-                    }
+                    conn.AddInParameter(cmd, "@LogisID", DbType.String, entity.LogisID);
                     //conn.ExecuteNonQuery(cmd);
                     did = Convert.ToInt64(conn.ExecuteScalar(cmd));
                 }
@@ -16855,18 +16735,17 @@ order by TypeID
         public Hashtable QueryReserveOrder(int pIndex, int pNum, ReserveCargoOrderEntity entity)
         {
             Hashtable resHT = new Hashtable();
-            List<CargoReserveOrderEntity> result = new List<CargoReserveOrderEntity>();
+            List<HouseEntity> result = new List<HouseEntity>();
             string strSQL = $@"
                 SELECT TOP {pNum} *
                     FROM (SELECT DISTINCT ROW_NUMBER() OVER (ORDER BY a.CreateDate DESC) AS RowNumber,
                                           a.*,
                                           b.LogisticName,
                                           h.Name                                         AS HouseName,
-                                          h.Cellphone                                    as HouseCellphone,wx.WXPayOrderNo
+                                          h.Cellphone                                    as HouseCellphone
                           from Tbl_Cargo_ReserveOrder as a
                                    left join tbl_cargo_Logistic as b on a.LogisID = b.ID
                                    inner JOIN Tbl_Cargo_House AS h ON a.HouseID = h.HouseID
-                                   left join Tbl_WX_Order as wx on a.WXOrderNo=wx.OrderNo
                           Where (1 = 1)
                 ";
             //下单方式
@@ -16986,63 +16865,10 @@ order by TypeID
                     {
                         //List<CargoOrderPickPlanGoodsEntity> OrderPickPlanGoodsList = GetOrderPickPlanGoodsList(Convert.ToString(idr["PickPlanNo"]));
                         #region 获取运单数据
-                        result.Add(new CargoReserveOrderEntity
+                        result.Add(new HouseEntity
                         {
-                            OrderID = Convert.ToInt64(idr["OrderID"]),
-                            OrderNo = Convert.ToString(idr["OrderNo"]),
-                            WXPayOrderNo = Convert.ToString(idr["WXPayOrderNo"]),
-                            LogisAwbNo = Convert.ToString(idr["LogisAwbNo"]),
-                            DeliverySettlement = Convert.ToString(idr["DeliverySettlement"]),
-                            Dep = Convert.ToString(idr["Dep"]),
-                            Dest = Convert.ToString(idr["Dest"]),
-                            InsuranceFee = string.IsNullOrEmpty(Convert.ToString(idr["InsuranceFee"])) ? 0 : Convert.ToDecimal(idr["InsuranceFee"]),
-                            OnlinePaidAmount = string.IsNullOrEmpty(Convert.ToString(idr["OnlinePaidAmount"])) ? 0 : Convert.ToDecimal(idr["OnlinePaidAmount"]),
-                            TransitFee = string.IsNullOrEmpty(Convert.ToString(idr["TransitFee"])) ? 0 : Convert.ToDecimal(idr["TransitFee"]),
-                            TransportFee = string.IsNullOrEmpty(Convert.ToString(idr["TransportFee"])) ? 0 : Convert.ToDecimal(idr["TransportFee"]),
-                            DeliveryFee = string.IsNullOrEmpty(Convert.ToString(idr["DeliveryFee"])) ? 0 : Convert.ToDecimal(idr["DeliveryFee"]),
-                            OtherFee = string.IsNullOrEmpty(Convert.ToString(idr["OtherFee"])) ? 0 : Convert.ToDecimal(idr["OtherFee"]),
-                            TotalCharge = string.IsNullOrEmpty(Convert.ToString(idr["TotalCharge"])) ? 0 : Convert.ToDecimal(idr["TotalCharge"]),
-                            CheckOutType = Convert.ToString(idr["CheckOutType"]),
-                            TrafficType = Convert.ToString(idr["TrafficType"]),
-                            DeliveryType = Convert.ToString(idr["DeliveryType"]),
-                            AcceptUnit = Convert.ToString(idr["AcceptUnit"]),
-                            AcceptAddress = Convert.ToString(idr["AcceptAddress"]),
-                            AcceptPeople = Convert.ToString(idr["AcceptPeople"]),
-                            AcceptTelephone = Convert.ToString(idr["AcceptTelephone"]),
-                            AcceptCellphone = Convert.ToString(idr["AcceptCellphone"]),
-                            CheckStatus = Convert.ToString(idr["CheckStatus"]),
-                            PaymentType = Convert.ToString(idr["PaymentType"]),
-                            Signer = Convert.ToString(idr["Signer"]),
-                            CreateDate = string.IsNullOrEmpty(Convert.ToString(idr["CreateDate"])) ? DateTime.MinValue : Convert.ToDateTime(idr["CreateDate"]),
-                            CheckDate = string.IsNullOrEmpty(Convert.ToString(idr["CheckDate"])) ? DateTime.MinValue : Convert.ToDateTime(idr["CheckDate"]),
-                            SignTime = string.IsNullOrEmpty(Convert.ToString(idr["SignTime"])) ? DateTime.MinValue : Convert.ToDateTime(idr["SignTime"]),
-                            OP_DATE = string.IsNullOrEmpty(Convert.ToString(idr["OP_DATE"])) ? DateTime.MinValue : Convert.ToDateTime(idr["OP_DATE"]),
-                            OutHouseName = Convert.ToString(idr["OutHouseName"]),
-                            OP_ID = Convert.ToString(idr["OP_ID"]),
-                            AwbStatus = Convert.ToString(idr["AwbStatus"]),
-                            Remark = Convert.ToString(idr["Remark"]),
-                            OrderType = Convert.ToString(idr["OrderType"]),
-                            FinanceSecondCheck = Convert.ToString(idr["FinanceSecondCheck"]),
-                            OrderModel = Convert.ToString(idr["OrderModel"]),
-                            ThrowGood = Convert.ToString(idr["ThrowGood"]),
-                            BelongHouse = Convert.ToString(idr["BelongHouse"]),
-                            OrderNum = string.IsNullOrEmpty(Convert.ToString(idr["OrderNum"])) ? 0 : Convert.ToInt32(idr["OrderNum"]),
-                            LogisID = string.IsNullOrEmpty(Convert.ToString(idr["LogisID"])) ? 0 : Convert.ToInt32(idr["LogisID"]),
-                            Piece = string.IsNullOrEmpty(Convert.ToString(idr["Piece"])) ? 0 : Convert.ToInt32(idr["Piece"]),
-                            ClientNum = string.IsNullOrEmpty(Convert.ToString(idr["ClientNum"])) ? 0 : Convert.ToInt32(idr["ClientNum"]),
-                            HouseID = string.IsNullOrEmpty(Convert.ToString(idr["HouseID"])) ? 0 : Convert.ToInt32(idr["HouseID"]),
-                            IsSupplierType = string.IsNullOrEmpty(Convert.ToString(idr["IsSupplierType"])) ? 0 : Convert.ToInt32(idr["IsSupplierType"]),
-                            IsHouseType = string.IsNullOrEmpty(Convert.ToString(idr["IsHouseType"])) ? 0 : Convert.ToInt32(idr["IsHouseType"]),
-                            IsTransitFee = string.IsNullOrEmpty(Convert.ToString(idr["IsTransitFee"])) ? 0 : Convert.ToInt32(idr["IsTransitFee"]),
-                            WXOrderNo = Convert.ToString(idr["WXOrderNo"]),
-                            PayClientNum = string.IsNullOrEmpty(Convert.ToString(idr["PayClientNum"])) ?0: Convert.ToInt32(idr["PayClientNum"]),
-                            PayClientName = Convert.ToString(idr["PayClientName"]),
-                            FinanceSecondCheckName = Convert.ToString(idr["FinanceSecondCheckName"]),
-                            FinanceSecondCheckDate =string.IsNullOrEmpty(Convert.ToString(idr["FinanceSecondCheckDate"]))?DateTime.MinValue: Convert.ToDateTime(idr["FinanceSecondCheckDate"]),
-                            LogisticName = Convert.ToString(idr["LogisticName"]),
-                            HouseName = Convert.ToString(idr["HouseName"]),
-                            HouseCellphone = Convert.ToString(idr["HouseCellphone"]),
-
+                            Value = Convert.ToString(idr["facilityId"]),
+                            Name = Convert.ToString(idr["facilityName"]),
                             //PickPlanGoodsList = OrderPickPlanGoodsList
                         });
                         #endregion
@@ -17056,7 +16882,6 @@ order by TypeID
                           from Tbl_Cargo_ReserveOrder as a
                                    left join tbl_cargo_Logistic as b on a.LogisID = b.ID
                                    inner JOIN Tbl_Cargo_House AS h ON a.HouseID = h.HouseID
-                                   left join Tbl_WX_Order as wx on a.WXOrderNo=wx.OrderNo
                           Where (1 = 1)
                 ";
             //下单方式
@@ -17177,135 +17002,92 @@ order by TypeID
             return resHT;
         }
 
-        public List<CargoReserveOrderGoodsEntity> QueryReserveOrderGoods(CargoReserveOrderGoodsEntity entity)
-        {
-            List<CargoReserveOrderGoodsEntity> result = new List<CargoReserveOrderGoodsEntity>();
-            string strSQL = $@"
-                select a.OrderGoodsID, a.OrderNo, a.ProductCode, a.TypeID, a.Model, a.GoodsCode, a.Specs, a.Figure, a.LoadIndex, a.SpeedLevel, a.HouseID, a.Piece, a.ActSalePrice, a.Born, a.Assort, a.ProductName, a.OP_ID, a.OP_DATE,b.TypeName,c.Name as HouseName from Tbl_Cargo_ReserveOrderGoods as a
-inner join Tbl_Cargo_ProductType as b on a.TypeID=b.TypeID
-inner join Tbl_Cargo_House as c on a.HouseID=c.HouseID
-where a.OrderNo='{entity.OrderNo}'
-                ";
-            
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                using (DataTable dt = conn.ExecuteDataTable(command))
-                {
-                    foreach (DataRow idr in dt.Rows)
-                    {
-                        //List<CargoOrderPickPlanGoodsEntity> OrderPickPlanGoodsList = GetOrderPickPlanGoodsList(Convert.ToString(idr["PickPlanNo"]));
-                        #region 获取运单数据
-                        result.Add(new CargoReserveOrderGoodsEntity
-                        {
-                            OrderNo = Convert.ToString(idr["OrderNo"]),
-                            ProductCode = Convert.ToString(idr["ProductCode"]),
-                            TypeID = Convert.ToInt32(idr["TypeID"]),
-                            Model = Convert.ToString(idr["Model"]),
-                            GoodsCode = Convert.ToString(idr["GoodsCode"]),
-                            Specs = Convert.ToString(idr["Specs"]),
-                            Figure = Convert.ToString(idr["Figure"]),
-                            LoadIndex = Convert.ToString(idr["LoadIndex"]),
-                            SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
-                            HouseID = Convert.ToInt32(idr["HouseID"]),
-                            Piece = Convert.ToInt32(idr["Piece"]),
-                            ActSalePrice = Convert.ToDecimal(idr["ActSalePrice"]),
-                            Born = Convert.ToString(idr["Born"]),
-                            Assort = Convert.ToString(idr["Assort"]),
-                            ProductName = Convert.ToString(idr["ProductName"]),
-                            TypeName = Convert.ToString(idr["TypeName"]),
-                            HouseName = Convert.ToString(idr["HouseName"])
-
-                            //PickPlanGoodsList = OrderPickPlanGoodsList
-                        });
-                        #endregion
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        public List<CargoReserveOrderPaymentRecordEntity> QueryReserveOrderPaymentRecord(CargoReserveOrderPaymentRecordEntity entity)
-        {
-            List<CargoReserveOrderPaymentRecordEntity> result = new List<CargoReserveOrderPaymentRecordEntity>();
-            string strSQL = $@"
-                select * from Tbl_Cargo_ReserveOrderPaymentRecord where OrderNo='{entity.OrderNo}'
-                ";
-            
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                using (DataTable dt = conn.ExecuteDataTable(command))
-                {
-                    foreach (DataRow idr in dt.Rows)
-                    {
-                        //List<CargoOrderPickPlanGoodsEntity> OrderPickPlanGoodsList = GetOrderPickPlanGoodsList(Convert.ToString(idr["PickPlanNo"]));
-                        #region 获取运单数据
-                        result.Add(new CargoReserveOrderPaymentRecordEntity
-                        {
-                            ID = Convert.ToInt64(idr["ID"]),
-                            OrderNo = Convert.ToString(idr["OrderNo"]),
-                            WxOrderNo = Convert.ToString(idr["WxOrderNo"]),
-                            WXPayOrderNo = Convert.ToString(idr["WXPayOrderNo"]),
-                            PaymentType = Convert.ToInt32(idr["PaymentType"]),
-                            Trxid = Convert.ToString(idr["Trxid"]),
-                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
-                            //PickPlanGoodsList = OrderPickPlanGoodsList
-                        });
-                        #endregion
-                    }
-                }
-            }
-
-            return result;
-        }
-
         public List<AvgMonthSalesData> GetAvgMonthSales(List<AvgMonthSalesData_qryParam> queryParams)
         {
-            SqlHelper conn = new SqlHelper();
             List<AvgMonthSalesData> rsltData = new List<AvgMonthSalesData>();
-string queryRODataStr = @"
+
+            try
+            {
+                #region 组装查询SQL语句
+                
+                string queryRODataStr = @"
 SELECT 
     mss.ProductCode,
+    mss.TypeID,
     mss.HouseID,
+    mss.AreaID,
     SUM(mss.SumLast3Months) AS TotalPiece,       -- 最近3个月总销量
     (SUM(mss.WeightedMonthSale)) AS AvgMonthSale  -- 加权月均销量
 FROM Tbl_Cargo_MonthSaleStatic mss
-INNER JOIN ##quryParamTemp qpt ON mss.ProductCode = qpt.ProductCode AND mss.HouseID = qpt.HouseID
+INNER JOIN ##quryParamTemp qpt ON mss.ProductCode = qpt.ProductCode AND mss.AreaID = qpt.AreaID
 WHERE YearMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) - 1,0) 
-GROUP BY mss.ProductCode, mss.HouseID;
+GROUP BY mss.ProductCode, mss.TypeID, mss.HouseID, mss.AreaID;
 ";
-            StringBuilder sqlBuilder = new StringBuilder();
-            sqlBuilder.AppendLine(@"
+
+                StringBuilder sqlBuilder = new StringBuilder();
+                sqlBuilder.AppendLine(@"
 IF OBJECT_ID('tempdb..##quryParamTemp') IS NOT NULL DROP TABLE ##quryParamTemp;
 CREATE TABLE ##quryParamTemp(
     ProductCode NVARCHAR(50),
-    HouseID INT
+    AreaID INT
 );
 ");
-            string createTempTblStr = sqlBuilder.ToString();
-            string strSQL = queryRODataStr;
-            using (DbCommand command = conn.GetSqlStringCommond(createTempTblStr))
-            {
-                command.Connection.Open();
-                command.ExecuteNonQuery();
-                conn.BulkInsertData(queryParams, "##quryParamTemp");
-                command.CommandText = strSQL;
-                using (DataTable dt = conn.ExecuteDataTable(command))
+
+                int batchSize = 1000;
+                int index = 1;
+                List<string> tempTblVals = new List<string>();
+
+                foreach (var queryParam in queryParams)
                 {
-                    foreach (DataRow idr in dt.Rows)
+                    tempTblVals.Add($"(N'{queryParam.ProductCode?.Replace("'", "''")}', {queryParam.AreaID})");
+
+                    if (index % batchSize == 0)
                     {
-                        rsltData.Add(new AvgMonthSalesData
+                        sqlBuilder.AppendLine("INSERT INTO ##quryParamTemp (ProductCode, AreaID) VALUES");
+                        sqlBuilder.AppendLine(string.Join("," + Environment.NewLine, tempTblVals) + ";");
+                        tempTblVals.Clear();
+                    }
+
+                    index++;
+                }
+
+                // 插入剩余不足2000条的
+                if (tempTblVals.Count > 0)
+                {
+                    sqlBuilder.AppendLine("INSERT INTO ##quryParamTemp (ProductCode, AreaID) VALUES");
+                    sqlBuilder.AppendLine(string.Join("," + Environment.NewLine, tempTblVals) + ";");
+                }
+
+                string createTempTblStr = sqlBuilder.ToString();
+
+
+                #endregion
+                string strSQL = createTempTblStr + queryRODataStr;
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dt.Rows)
                         {
-                            ProductCode = Convert.ToString(idr["ProductCode"]),
-                            HouseID = Convert.ToInt32(idr["HouseID"]),
-                            TotalPiece = Convert.ToInt32(idr["TotalPiece"]),
-                            AvgMonthSale = Convert.ToInt32(idr["AvgMonthSale"]),
-                        });
+                            rsltData.Add(new AvgMonthSalesData
+                            {
+                                ProductCode = Convert.ToString(idr["ProductCode"]),
+                                TypeID = Convert.ToInt32(idr["TypeID"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                AreaID = Convert.ToInt32(idr["AreaID"]),
+                                TotalPiece = Convert.ToInt32(idr["TotalPiece"]),
+                                AvgMonthSale = Convert.ToInt32(idr["AvgMonthSale"]),
+                            });
+                        }
                     }
                 }
             }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
 
             return rsltData;
         }
+
+
+
     }
 }

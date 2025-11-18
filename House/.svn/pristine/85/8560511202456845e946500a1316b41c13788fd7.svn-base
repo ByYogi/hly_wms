@@ -6,10 +6,8 @@ using House.Entity;
 using House.Entity.Cargo;
 using House.Entity.Cargo.House;
 using House.Entity.Cargo.Product;
-using House.Entity.Dto.House;
 using House.Entity.Dto.Order;
 using Newtonsoft.Json;
-using NPOI.HSSF.Record.Formula.Functions;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -5001,10 +4999,13 @@ namespace Cargo.House
         #endregion
 
         #region 库存导入Excel文件
-        public List<CargoSafeStockEntity> DecodeHouseExcel(HttpFileCollection files)
+        /// <summary>
+        /// 库存导入Excel文件
+        /// </summary>
+        public void saveFile()
         {
-            List<CargoSafeStockEntity> listData = new List<CargoSafeStockEntity>();
-            if (files == null || files.Count == 0) return listData;
+            System.Web.HttpFileCollection files = this.Request.Files;
+            if (files == null || files.Count == 0) return;
             string attachmentId = Guid.NewGuid().ToString();
             DataTable data = ToExcel.ImportExcelData(files);
 
@@ -5016,19 +5017,36 @@ namespace Cargo.House
             import.ExistCount = 0;
             string msg = "";
 
+            //List<CargoFactoryOrderEntity> ent = new List<CargoFactoryOrderEntity>();
+
             CargoFactoryOrderBus FacBus = new CargoFactoryOrderBus();
 
             //验证上传excel文件列数是否有效
             if (data.Columns.Count < 9)
             {
-                throw new ApplicationException("请检查导入文件是否为有9列字段");
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "请检查导入文件是否为有9列字段";
+                string abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
             }
             //清空table中的空行
             removeEmpty(data);
             if (data.Rows.Count <= 0)
             {
-                throw new ApplicationException("导入数据为空");
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "导入数据为空";
+                string abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
             }
+
 
             //获取所有可用品牌用于表格显示品牌
             CargoProductBasicPriceBus spescBus = new CargoProductBasicPriceBus();
@@ -5051,7 +5069,7 @@ namespace Cargo.House
             ProductBasicDt = spescBus.QueryProductSpecDate(new CargoProductEntity { });
 
             DataTable newData = new DataTable();
-            newData.Columns.Add("HouseID", typeof(int));
+            newData.Columns.Add("HouseID", typeof(string));
             newData.Columns.Add("HouseName", typeof(string));
             newData.Columns.Add("AreaID", typeof(int));
             newData.Columns.Add("AreaName", typeof(string));
@@ -5078,6 +5096,7 @@ namespace Cargo.House
             newData.Columns.Add("ProductCode", typeof(string));
             newData.Columns.Add("ProductName", typeof(string));
             newData.Columns.Add("Model", typeof(string));
+
 
             int abnormalCount = 0;
             for (int i = 0; i < data.Rows.Count; i++)
@@ -5232,23 +5251,18 @@ namespace Cargo.House
             for (int i = 0; i < newData.Rows.Count; i++)
             {
                 var curRow = newData.Rows[i];
-                int HouseID = curRow.Field<int?>("HouseID") ?? 0;
+                int AreaID = curRow.Field<int?>("AreaID") ?? 0;
                 string ProductCode = curRow.Field<string>("ProductCode");
                 avgMonthSalesData_QryParams.Add(new AvgMonthSalesData_qryParam()
                 {
                     ProductCode = ProductCode,
-                    HouseID = HouseID
+                    AreaID = AreaID
                 });
             }
-
-            if (abnormalCount > 0)
-            {
-                throw new ApplicationException(msg);
-            }
-
             var avgMthSals = orderBuz.GetAvgMonthSales(avgMonthSalesData_QryParams);
 
             //赋值表格
+            List<CargoSafeStockEntity> entityFiles = new List<CargoSafeStockEntity>();
             if (newData.Rows.Count > 0)
             {
                 for (int i = 0; i < newData.Rows.Count; i++)
@@ -5256,7 +5270,6 @@ namespace Cargo.House
                     var curRow = newData.Rows[i];
                     CargoSafeStockEntity ent = new CargoSafeStockEntity();
                     int AreaID = curRow.Field<int?>("AreaID") ?? 0;
-                    int HouseID = curRow.Field<int?>("HouseID") ?? 0;
                     string ProductCode = (curRow.Field<string>("ProductCode") ?? string.Empty).Trim();
                     int MinStockDay = curRow.Field<int?>("MinStockDay") ?? 0;
                     int MaxStockDay = curRow.Field<int?>("MaxStockDay") ?? 0;
@@ -5264,16 +5277,16 @@ namespace Cargo.House
                     int? HCYCStock = curRow.Field<int?>("HCYCStock");
                     int? REStock = curRow.Field<int?>("REStock");
 
-                    var avgMthSalData = avgMthSals.FirstOrDefault(c => c.ProductCode == ProductCode && c.HouseID == HouseID);
+                    var avgMthSalData = avgMthSals.FirstOrDefault(c => c.ProductCode == ProductCode && c.AreaID == AreaID);
                     int avgMthSal = avgMthSalData?.AvgMonthSale ?? 0;
                     double avgDaySal = avgMthSal / 30d;
-                    int minStock = Convert.ToInt32(Math.Ceiling(avgDaySal * MinStockDay));
-                    int maxStock = Convert.ToInt32(Math.Ceiling(avgDaySal * MaxStockDay));
+                    int minStock =  Convert.ToInt32(Math.Ceiling(avgDaySal * MinStockDay));
+                    int maxStock =  Convert.ToInt32(Math.Ceiling(avgDaySal * MaxStockDay));
                     int stockNum = OEStock.GetValueOrDefault() + HCYCStock.GetValueOrDefault() + REStock.GetValueOrDefault();
 
                     ent.ExcelNo = i + 1;
 
-                    ent.HouseID = curRow.Field<int?>("HouseID")?.ToString() ?? string.Empty;
+                    ent.HouseID = curRow.Field<string>("HouseID") ?? string.Empty;
                     ent.HouseName = (curRow.Field<string>("HouseName") ?? string.Empty).Trim();
 
                     ent.AreaID = AreaID;
@@ -5305,126 +5318,24 @@ namespace Cargo.House
                     ent.ProductName = (curRow.Field<string>("ProductName") ?? string.Empty).Trim();
                     ent.Model = (curRow.Field<string>("Model") ?? string.Empty).Trim();
 
-                    listData.Add(ent);
+                    entityFiles.Add(ent);
                 }
             }
-            return listData;
-        }
+            string json = JSON.Encode(entityFiles);
 
-        /// <summary>
-        /// 库存导入Excel文件
-        /// </summary>
-        public void saveFile()
-        {
-            HttpFileCollection files = Request.Files;
-            CargoImportEntity import = new CargoImportEntity();
-            import.Result = true;
-            import.Data = "";
-            import.Message = "";
-            import.Type = 0;
-            import.ExistCount = 0;
-            if (files == null || files.Count == 0) return;
-            try
+            if (abnormalCount > 0)
             {
-                var entityFiles = DecodeHouseExcel(files);
-                string json = JSON.Encode(entityFiles);
-
-                import.Result = true;
-                import.Data = json;
-                json = JSON.Encode(import);
-                Response.Clear();
-                Response.Write(json);
-                Response.Flush();
-            }
-            catch (Exception ex)
-            {
-                import.Result = false;
                 import.Type = 1;
-                import.Message = ex.Message;
-                string abnormalJson = JSON.Encode(import);
-                Response.Clear();
-                Response.Write(abnormalJson);
-                Response.End();
-                return;
+                import.Message = msg;
             }
-        }
-
-
-        public void saveFileAndData()
-        {
-            HttpFileCollection files = Request.Files;
-            CargoImportEntity import = new CargoImportEntity();
             import.Result = true;
-            import.Data = "";
-            import.Message = "";
-            import.Type = 0;
-            import.ExistCount = 0;
-            if (files == null || files.Count == 0) return;
+            import.Data = json;
+            json = JSON.Encode(import);
+            Response.Clear();
+            Response.Write(json);
+            Response.End();
 
-
-            LogEntity log = new LogEntity();
-            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
-            log.Moudle = "仓库管理";
-            log.Status = "0";
-            log.NvgPage = "安全库存导入";
-            log.UserID = UserInfor.LoginName.Trim();
-            log.Operate = "A";
-            try
-            {
-                var entityFiles = DecodeHouseExcel(files);
-
-                List<ModifySafeStockDto> modifySS = new List<ModifySafeStockDto>();
-                modifySS = entityFiles.Select(e => new ModifySafeStockDto
-                {
-                    HouseID = int.TryParse(e.HouseID, out int cHosueID) ? cHosueID : 0,
-                    AreaID = e.AreaID,
-                    TypeID = e.TypeID,
-                    Specs = e.Specs,
-                    Figure = e.Figure,
-                    GoodsCode = e.GoodsCode,
-                    LoadIndex = e.LoadIndex,
-                    SpeedLevel = e.SpeedLevel,
-                    StockNum = e.StockNum,
-                    OPID = UserInfor.LoginName,
-                    OP_DATE = e.OP_DATE,
-                    MaxStock = e.MaxStock,
-                    MinStock = e.MinStock,
-                    ProductCode = e.ProductCode,
-                    MinStockDay = e.MinStockDay,
-                    MaxStockDay = e.MaxStockDay,
-                    HCYCStock = e.HCYCStock,
-                    OEStock = e.OEStock,
-                    REStock = e.REStock,
-                    IsolatedStock = e.IsolatedStock,
-                    ControlStock = e.ControlStock,
-                    AvgSaleNum = e.AvgSaleNum
-                }).ToList();
-
-                CargoHouseBus bus = new CargoHouseBus();
-                bus.SaveImportSafeStock(modifySS, log);
-
-                string json = JSON.Encode(entityFiles);
-
-                import.Result = true;
-                import.Data = json;
-                json = JSON.Encode(import);
-                Response.Clear();
-                Response.Write(json);
-                Response.Flush();
-            }
-            catch (Exception ex)
-            {
-                import.Result = false;
-                import.Type = 1;
-                import.Message = ex.Message;
-                string abnormalJson = JSON.Encode(import);
-                Response.Clear();
-                Response.Write(abnormalJson);
-                Response.End();
-                return;
-            }
         }
-
         /// <summary>
         /// 保存导入的数据
         /// </summary>
@@ -5484,34 +5395,7 @@ namespace Cargo.House
                     msg.Result = false;
                     goto ERROR;
                 }
-                List<ModifySafeStockDto> modifySS = new List<ModifySafeStockDto>();
-                modifySS = entityFiles.Select(e => new ModifySafeStockDto
-                {
-                    HouseID = int.TryParse(e.HouseID, out int cHosueID) ? cHosueID : 0,
-                    AreaID = e.AreaID,
-                    TypeID = e.TypeID,
-                    Specs = e.Specs,
-                    Figure = e.Figure,
-                    GoodsCode = e.GoodsCode,
-                    LoadIndex = e.LoadIndex,
-                    SpeedLevel = e.SpeedLevel,
-                    StockNum = e.StockNum,
-                    OPID = e.OPID,
-                    OP_DATE = e.OP_DATE,
-                    MaxStock = e.MaxStock,
-                    MinStock = e.MinStock,
-                    ProductCode = e.ProductCode,
-                    MinStockDay = e.MinStockDay,
-                    MaxStockDay = e.MaxStockDay,
-                    HCYCStock = e.HCYCStock,
-                    OEStock = e.OEStock,
-                    REStock = e.REStock,
-                    IsolatedStock = e.IsolatedStock,
-                    ControlStock = e.ControlStock,
-                    AvgSaleNum = e.AvgSaleNum
-                }).ToList();
-
-                bus.SaveImportSafeStock(modifySS, log);
+                bus.SaveImportSafeStock(entityFiles, log);
 
                 if (msg.Result)
                 {

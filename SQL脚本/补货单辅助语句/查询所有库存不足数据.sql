@@ -42,61 +42,60 @@
 
 --在途
 --drop table #iti
-SELECT ProductCode, HouseID, SUM(Piece) Piece INTO #iti FROM (
--- 移库单
-SELECT
-    p.ProductCode,
-    mo2.NewHouseID AS HouseID,
-    SUM(mo.Piece - mo.NewPiece) AS Piece
-FROM Tbl_Cargo_MoveOrderGood AS mo
-INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
-INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
-WHERE mo2.MoveStatus <> 2
-    AND ISNULL(p.ProductCode, '') <> ''
-    AND mo.Piece - mo.NewPiece > 0
-	AND mo2.NewHouseID = 93
-GROUP BY p.ProductCode, mo2.NewHouseID
-UNION ALL
+--SELECT ProductCode, HouseID, SUM(Piece) Piece INTO #iti FROM (
+---- 移库单
+--SELECT
+--    p.ProductCode,
+--    mo2.NewHouseID AS HouseID,
+--    SUM(mo.Piece - mo.NewPiece) AS Piece
+--FROM Tbl_Cargo_MoveOrderGood AS mo
+--INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
+--INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
+--WHERE mo2.MoveStatus <> 2
+--    AND ISNULL(p.ProductCode, '') <> ''
+--    AND mo.Piece - mo.NewPiece > 0
+--	AND mo2.NewHouseID = 93
+--GROUP BY p.ProductCode, mo2.NewHouseID
+--UNION ALL
 
-SELECT
-    p.ProductCode,
-    p.HouseID,
-	SUM(ReplyNumber - fo.InPiece) Piece
-FROM
-	Tbl_Cargo_FactoryOrder fo
-    INNER JOIN (SELECT ProductCode, HouseID FROM Tbl_Cargo_Product GROUP BY ProductCode, HouseID) AS p ON fo.ProductCode = p.ProductCode AND fo.HouseID = p.HouseID
-WHERE
-	(1 = 1)
-	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
-    AND fo.OrderType <> 2 --筛除退货单
-    AND ISNULL(p.ProductCode, '') <> '' 
-	AND fo.HouseID = 93
-GROUP BY p.ProductCode, p.HouseID
-) a 
-WHERE (1=1) AND HouseID = 93
-GROUP BY ProductCode, HouseID;
+--SELECT
+--    p.ProductCode,
+--    p.HouseID,
+--	SUM(ReplyNumber - fo.InPiece) Piece
+--FROM
+--	Tbl_Cargo_FactoryOrder fo
+--    INNER JOIN (SELECT ProductCode, HouseID FROM Tbl_Cargo_Product GROUP BY ProductCode, HouseID) AS p ON fo.ProductCode = p.ProductCode AND fo.HouseID = p.HouseID
+--WHERE
+--	(1 = 1)
+--	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
+--    AND fo.OrderType <> 2 --筛除退货单
+--    AND ISNULL(p.ProductCode, '') <> '' 
+--	AND fo.HouseID = 93
+--GROUP BY p.ProductCode, p.HouseID
+--) a 
+--WHERE (1=1) AND HouseID = 93
+--GROUP BY ProductCode, HouseID;
 
-select * from #iti where ProductCode = 'LTDAL205551601'
+--select * from #iti where ProductCode = 'LTDAL205551601'
 -- 产品
 WITH 
 containerGoods as (
 	SELECT
+		MAX(b.ProductID) ProductID,
 		b.ProductCode,
-		ca.RootArea AreaID,
+		b.HouseID,
 		SUM(a.Piece) AS Piece
 	FROM Tbl_Cargo_ContainerGoods AS a
 	INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
 	INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
 	INNER JOIN Tbl_Cargo_ProductType c ON a.TypeID = c.TypeID
-	INNER JOIN #childArea ca ON d.AreaID = ca.AreaID AND b.HouseID = ca.HouseID
 	WHERE b.SpecsType != 5 
-	GROUP BY b.ProductCode, ca.RootArea
+	GROUP BY b.ProductCode, b.HouseID
 ),
 
 pCTE as (
 SELECT 
 	DISTINCT
-	p.ProductID,
 	p.ProductName,
 	p.ProductCode,
 	p.GoodsCode,
@@ -112,13 +111,11 @@ SELECT
 	h.Name HouseName,
 	h.ParentID HouseParentID,
 	h.ParentName HouseParentName,
-	ISNULL(cg.Piece, 0) InPiece,
-	ca.RootArea AreaID
+	ISNULL(cg.Piece, 0) InPiece
 FROM
 	Tbl_Cargo_Product p
 	INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
-	INNER JOIN #childArea ca ON ca.HouseID = p.HouseID
-	INNER JOIN containerGoods cg ON p.ProductCode = cg.ProductCode AND cg.AreaID = ca.RootArea
+	INNER JOIN containerGoods cg ON p.ProductID = cg.ProductID
 	LEFT JOIN Tbl_Cargo_ProductType pt2 ON pt.ParentID = pt2.TypeID
 	LEFT JOIN Tbl_Cargo_House h ON p.HouseID = h.HouseID
 WHERE
@@ -140,10 +137,10 @@ SELECT
 	p.*
 FROM
 	Tbl_Cargo_SafeStock ss
-	INNER JOIN pCTE p ON p.ProductCode = ss.ProductCode AND p.AreaID = ss.AreaID
+	INNER JOIN pCTE p ON p.ProductCode = ss.ProductCode AND p.HouseID = ss.HouseID
 	LEFT JOIN #iti iti ON iti.ProductCode = p.ProductCode AND iti.HouseID = p.HouseID
-	LEFT JOIN Tbl_Cargo_MonthSaleStatic mss ON mss.ProductCode = p.ProductCode AND mss.AreaID = p.AreaID AND mss.YearMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) -1 ,0)
-	LEFT JOIN Tbl_Cargo_OutOfStock oos ON oos.ProductID = p.ProductID AND oos.AreaID = p.AreaID
+	LEFT JOIN Tbl_Cargo_MonthSaleStatic mss ON mss.ProductCode = p.ProductCode AND mss.HouseID = p.HouseID AND mss.YearMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) -1 ,0)
+	LEFT JOIN Tbl_Cargo_OutOfStock oos ON oos.ProductCode = p.ProductCode AND oos.HouseID = p.HouseID
 WHERE 
 	ss.MinStock > 0 AND MaxStock > 0
 	AND (oos.OOSID IS NOT NULL OR (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0)) < ss.MinStock)

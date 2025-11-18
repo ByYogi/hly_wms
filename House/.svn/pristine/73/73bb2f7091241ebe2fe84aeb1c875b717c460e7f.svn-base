@@ -3,7 +3,6 @@ using House.Entity.Cargo;
 using House.Entity.Cargo.House;
 using House.Entity.Cargo.Product;
 using House.Entity.Dto;
-using House.Entity.Dto.House;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -4999,6 +4998,7 @@ PRINT('------------ 当前库存 ------------');
 SELECT
     b.TypeID,
     b.HouseID,
+    ca.RootArea AreaID,
     b.ProductCode,
     SUM(a.Piece) AS Piece
     INTO #tempCurStock
@@ -5008,7 +5008,11 @@ INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
 INNER JOIN Tbl_Cargo_ProductType c ON a.TypeID = c.TypeID
 INNER JOIN #tempChildArea ca ON d.AreaID = ca.AreaID AND b.HouseID = ca.HouseID
 WHERE b.SpecsType != 5 @{conditions}
-GROUP BY b.TypeID, b.HouseID, b.ProductCode; 
+GROUP BY b.TypeID, b.HouseID, b.ProductCode, ca.RootArea;
+
+CREATE UNIQUE INDEX IX_#tempCurStock
+ON #tempCurStock(ProductCode,TypeID,HouseID,AreaID)
+INCLUDE(Piece);
 ");
 
             conditions = new List<string>();
@@ -5183,35 +5187,40 @@ INCLUDE(Piece);
             #region Tbl_Cargo_MoveOrderGood 在途库存
             strBld.Append(@"
 PRINT('------------ 在途库存 ------------');
-SELECT ProductCode, HouseID, SUM(Piece) Piece INTO #tempITI FROM (
+SELECT ProductCode, TypeID, HouseID, SUM(Piece) Piece INTO #tempITI FROM (
 -- 移库单
 SELECT
     p.ProductCode,
+    p.TypeID,
     mo2.NewHouseID AS HouseID,
     SUM(mo.Piece - mo.NewPiece) AS Piece
 FROM Tbl_Cargo_MoveOrderGood AS mo
 INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
 INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+INNER JOIN #tempChildArea ca ON mo2.NewAreaID = ca.AreaID AND mo2.NewHouseID = ca.HouseID
 WHERE mo2.MoveStatus <> 2
     AND ISNULL(p.ProductCode, '') <> ''
     AND mo.Piece - mo.NewPiece > 0
-GROUP BY p.ProductCode, mo2.NewHouseID
+GROUP BY p.ProductCode, p.TypeID, mo2.NewHouseID
 UNION ALL
 
 SELECT
-    fo.ProductCode,
-    fo.HouseID,
+    p.ProductCode,
+    p.TypeID,
+    p.HouseID,
 	SUM(ReplyNumber - fo.InPiece) Piece
 FROM
 	Tbl_Cargo_FactoryOrder fo
+    INNER JOIN (SELECT DISTINCT ProductCode, TypeID, HouseID FROM Tbl_Cargo_Product) AS p ON fo.ProductCode = p.ProductCode AND fo.HouseID = p.HouseID --无法使用ProductID匹配，用ProductID匹配会匹配不到数据；产品表有异常重复数据，需要去重
+    INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
 WHERE
 	(1 = 1)
 	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
     AND fo.OrderType <> 2 --筛除退货单
-    AND ISNULL(fo.ProductCode, '') <> ''
-GROUP BY fo.ProductCode, fo.HouseID 
-) a
-GROUP BY ProductCode, HouseID
+    AND ISNULL(p.ProductCode, '') <> '' 
+GROUP BY p.ProductCode, p.TypeID, p.HouseID) a
+GROUP BY ProductCode, TypeID, HouseID
 ;
 ");
             conditions = new List<string>();
@@ -5221,6 +5230,14 @@ GROUP BY ProductCode, HouseID
             {
                 conditions.Add($"HouseID IN ({entity.HouseID})");
             }
+            if (entity.TypeID != 0)
+            {
+                conditions.Add($"TypeID = {entity.TypeID}");
+            }
+            //if (entity.ParentID != 0)
+            //{
+            //    conditions.Add($"pt.ParentID = {entity.ParentID}");
+            //}
 
             // 拼接动态 WHERE 条件
             if (conditions.Count > 0)
@@ -5305,6 +5322,7 @@ INNER JOIN Tbl_Cargo_ProductType AS pt
 
 LEFT JOIN #tempCurStock AS cs
     ON s.HouseID = cs.HouseID
+    AND s.AreaID = cs.AreaID
     AND s.ProductCode = cs.ProductCode
     AND s.TypeID = cs.TypeID
 
@@ -5322,6 +5340,7 @@ LEFT JOIN #tempTotalSalePiece AS tos
 
 LEFT JOIN #tempITI AS ms
     ON s.HouseID = ms.HouseID
+   AND s.TypeID = ms.TypeID
    AND s.ProductCode = ms.ProductCode
 
 LEFT JOIN #tempAvgSale AS avs
@@ -5437,7 +5456,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
                             lessNum = stockNum - allCurNum;
                             excessNum = allCurNum - stockNum;
                         }
-                        lessNum = lessNum < 0 || lessNum >= minStock ? 0 : lessNum;
+                        lessNum = lessNum < 0 ? 0 : lessNum;
 
                         result.Add(new CargoSafeStockEntity
                         {
@@ -5526,8 +5545,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
         /// <param name="entity"></param>
         public void InsertSafeStockData(CargoSafeStockEntity entity)
         {
-            string strSQL = @"
-INSERT INTO
+            string strSQL = @"INSERT INTO
   Tbl_Cargo_SafeStock (
     HouseID,
     AreaID,
@@ -5694,161 +5712,6 @@ WHERE
             }
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
         }
-
-        /// <summary>
-        /// 修改或更新安全库存数据
-        /// </summary>
-        /// <param name="entity"></param>
-        public void UpdateOrAddSafeStockData(List<ModifySafeStockDto> listData)
-        {
-            string createTempTblSql = @"
-IF OBJECT_ID('tempdb..##tempSS') IS NOT NULL
-    DROP TABLE ##tempSS;
-CREATE TABLE ##tempSS(
-    HouseID INT,
-    AreaID INT,
-    TypeID INT,
-    Specs NVARCHAR(50),
-    Figure NVARCHAR(50),
-    GoodsCode NVARCHAR(50),
-    LoadIndex NVARCHAR(50),
-    SpeedLevel NVARCHAR(50),
-    StockNum INT,
-    OPID NVARCHAR(50),
-    OP_DATE DATETIME,
-    MaxStock INT,
-    MinStock INT,
-    ProductCode NVARCHAR(50),
-    MinStockDay INT,
-    MaxStockDay INT,
-    HCYCStock INT,
-    OEStock INT,
-    REStock INT,
-    IsolatedStock INT,
-    ControlStock INT,
-
-    AvgSaleNum INT
-)
-";
-            string strSQL = @"
-MERGE INTO Tbl_Cargo_SafeStock AS target
-USING ##tempSS AS source
-ON target.HouseID = source.HouseID AND target.ProductCode = source.ProductCode
-WHEN MATCHED THEN
-UPDATE
-SET
-  target.HouseID = source.HouseID,
-  target.AreaID = source.AreaID,
-  target.TypeID = source.TypeID,
-  target.Specs = source.Specs,
-  target.Figure = source.Figure,
-  target.GoodsCode = source.GoodsCode,
-  target.LoadIndex = source.LoadIndex,
-  target.SpeedLevel = source.SpeedLevel,
-  target.StockNum = source.StockNum,
-  target.OPID = source.OPID,
-  target.OP_DATE = source.OP_DATE,
-  target.MaxStock = source.MaxStock,
-  target.MinStock = source.MinStock,
-  target.ProductCode = source.ProductCode,
-  target.MinStockDay = source.MinStockDay,
-  target.MaxStockDay = source.MaxStockDay,
-  target.HCYCStock = source.HCYCStock,
-  target.OEStock = source.OEStock,
-  target.REStock = source.REStock,
-  target.IsolatedStock = source.IsolatedStock,
-  target.ControlStock = source.ControlStock
-
-WHEN NOT MATCHED THEN
-
-INSERT (
-    HouseID,
-    AreaID,
-    TypeID,
-    GoodsCode,
-    Specs,
-    Figure,
-    LoadIndex,
-    SpeedLevel,
-    StockNum,
-    OPID,
-    OP_DATE,
-    ProductCode,
-    MinStock,
-    MaxStock,
-    MinStockDay,
-    MaxStockDay,
-    HCYCStock,
-    OEStock,
-    REStock,
-    IsolatedStock,
-    ControlStock
-  )
-VALUES
-  (
-    source.HouseID,
-    source.AreaID,
-    source.TypeID,
-    source.GoodsCode,
-    source.Specs,
-    source.Figure,
-    source.LoadIndex,
-    source.SpeedLevel,
-    source.StockNum,
-    source.OPID,
-    source.OP_DATE,
-    source.ProductCode,
-    source.MinStock,
-    source.MaxStock,
-    source.MinStockDay,
-    source.MaxStockDay,
-    source.HCYCStock,
-    source.OEStock,
-    source.REStock,
-    source.IsolatedStock,
-    source.ControlStock
-  )
-OUTPUT 
-    inserted.*;
-";
-            try
-            {
-                foreach (var entity in listData)
-                {
-                    var AvgSaleNum = entity.AvgSaleNum;
-                    var MaxStockDay = entity.MaxStockDay;
-                    int? maxStock = 0;
-                    int minStock = 0;
-                    if (AvgSaleNum.HasValue && MaxStockDay.HasValue)
-                    {
-                        maxStock = (int)Math.Floor((double)entity.AvgSaleNum / 30 * (double)entity.MaxStockDay);
-                        minStock = (int)Math.Floor((double)entity.AvgSaleNum / 30 * (double)entity.MinStockDay);
-                    }
-
-                    int safeNum = entity.OEStock.GetValueOrDefault() + entity.HCYCStock.GetValueOrDefault() + entity.REStock.GetValueOrDefault();
-                    entity.MaxStock = maxStock;
-                    entity.MinStock = minStock;
-                    entity.StockNum = safeNum;
-                    entity.OP_DATE = DateTime.Now;
-                }
-                using (DbCommand cmd = conn.GetSqlStringCommond(createTempTblSql))
-                {
-                    cmd.Connection.Open();
-                    cmd.ExecuteNonQuery();
-                    conn.BulkInsertData(listData, "##tempSS");
-
-
-                    cmd.CommandText = strSQL;
-                    cmd.ExecuteNonQuery();
-
-                    cmd.Connection.Close();
-                }
-            }
-            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
-        }
-
-
-
         /// <summary>
         /// 删除安全库存数据
         /// </summary>
@@ -5943,20 +5806,34 @@ INCLUDE(RootArea);
             strBld.Append(@"
 PRINT('------------ 当前库存 ------------');
 SELECT
+    b.TypeID,
     b.HouseID,
+    ca.RootArea AreaID,
     b.ProductCode,
     SUM(a.Piece) AS Piece
     INTO #tempCurStock
 FROM Tbl_Cargo_ContainerGoods AS a
 INNER JOIN Tbl_Cargo_Product AS b ON a.ProductID = b.ProductID
 INNER JOIN Tbl_Cargo_Container AS d ON a.ContainerID = d.ContainerID
+INNER JOIN Tbl_Cargo_ProductType c ON a.TypeID = c.TypeID
+INNER JOIN #tempChildArea ca ON d.AreaID = ca.AreaID AND b.HouseID = ca.HouseID
 WHERE b.SpecsType != 5 @{conditions}
-GROUP BY b.HouseID, b.ProductCode;
+GROUP BY b.TypeID, b.HouseID, b.ProductCode, ca.RootArea;
+
+CREATE UNIQUE INDEX IX_#tempCurStock
+ON #tempCurStock(ProductCode,TypeID,HouseID,AreaID)
+INCLUDE(Piece);
 ");
 
             conditions = new List<string>();
             if (!string.IsNullOrEmpty(entity.HouseID))
                 conditions.Add($"b.HouseID IN ({entity.HouseID})");
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
+            if (entity.TypeID != 0)
+                conditions.Add($"a.TypeID = {entity.TypeID}");
+            if (entity.ParentID != 0)
+                conditions.Add($"c.ParentID = {entity.ParentID}");
 
             if (conditions.Count > 0)
             {
@@ -6014,35 +5891,40 @@ ON #tempOrderStats(ProductCode,TypeID,HouseID)
             #region Tbl_Cargo_MoveOrderGood 在途库存
             strBld.Append(@"
 PRINT('------------ 在途库存 ------------');
-SELECT ProductCode, HouseID, SUM(Piece) Piece INTO #tempITI FROM (
+SELECT ProductCode, TypeID, HouseID, SUM(Piece) Piece INTO #tempITI FROM (
 -- 移库单
 SELECT
     p.ProductCode,
+    p.TypeID,
     mo2.NewHouseID AS HouseID,
     SUM(mo.Piece - mo.NewPiece) AS Piece
 FROM Tbl_Cargo_MoveOrderGood AS mo
 INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
 INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
+INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
+INNER JOIN #tempChildArea ca ON mo2.NewAreaID = ca.AreaID AND mo2.NewHouseID = ca.HouseID
 WHERE mo2.MoveStatus <> 2
     AND ISNULL(p.ProductCode, '') <> ''
     AND mo.Piece - mo.NewPiece > 0
-GROUP BY p.ProductCode, mo2.NewHouseID
+GROUP BY p.ProductCode, p.TypeID, mo2.NewHouseID
 UNION ALL
 
 SELECT
-    fo.ProductCode,
-    fo.HouseID,
+    p.ProductCode,
+    p.TypeID,
+    p.HouseID,
 	SUM(ReplyNumber - fo.InPiece) Piece
 FROM
 	Tbl_Cargo_FactoryOrder fo
+    INNER JOIN (SELECT DISTINCT ProductCode, TypeID, HouseID FROM Tbl_Cargo_Product) AS p ON fo.ProductCode = p.ProductCode AND fo.HouseID = p.HouseID --无法使用ProductID匹配，用ProductID匹配会匹配不到数据；产品表有异常重复数据，需要去重
+    INNER JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
 WHERE
 	(1 = 1)
 	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
     AND fo.OrderType <> 2 --筛除退货单
-    AND ISNULL(fo.ProductCode, '') <> ''
-GROUP BY fo.ProductCode, fo.HouseID 
-) a
-GROUP BY ProductCode, HouseID
+    AND ISNULL(p.ProductCode, '') <> '' 
+GROUP BY p.ProductCode, p.TypeID, p.HouseID) a
+GROUP BY ProductCode, TypeID, HouseID
 ;
 ");
             conditions = new List<string>();
@@ -6051,6 +5933,10 @@ GROUP BY ProductCode, HouseID
             if (!string.IsNullOrEmpty(entity.HouseID))
             {
                 conditions.Add($"HouseID IN ({entity.HouseID})");
+            }
+            if (entity.TypeID != 0)
+            {
+                conditions.Add($"TypeID = {entity.TypeID}");
             }
             // 拼接动态 WHERE 条件
             if (conditions.Count > 0)
@@ -6102,8 +5988,6 @@ INCLUDE(AvgMonthSale);
                 strBld.Replace("@{conditions}", "");
             }
             #endregion
-
-            //主要查询
             strBld.AppendLine(@"
 SELECT
   g.Name AS HouseName,
@@ -6130,6 +6014,7 @@ FROM
     Tbl_Cargo_SafeStock AS f
   INNER JOIN #tempCurStock AS cs 
    ON  f.HouseID = cs.HouseID --当前库数
+   AND f.TypeID = cs.TypeID
    AND f.ProductCode = cs.ProductCode
   INNER JOIN #tempOrderStats AS os 
    ON  f.HouseID = os.HouseID -- 销量
@@ -6137,6 +6022,7 @@ FROM
    AND f.ProductCode = os.ProductCode
   LEFT JOIN #tempITI AS ms 
    ON  f.HouseID = ms.HouseID  -- 在途数量
+   AND f.TypeID = ms.TypeID
    AND f.ProductCode = ms.ProductCode
   LEFT JOIN Tbl_Cargo_House AS g ON f.HouseID = g.HouseID
   LEFT JOIN Tbl_Cargo_Area AS h ON f.AreaID = h.AreaID
