@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(dir:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(nul)",
+      "Bash(xargs:*)",
+      "Bash(svn info:*)",
+      "Bash(svn log:*)",
+      "Bash(sqlcmd:*)"
     ],
     "deny": [],
     "ask": []

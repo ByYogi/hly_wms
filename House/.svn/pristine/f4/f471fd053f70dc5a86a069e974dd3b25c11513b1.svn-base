@@ -1486,8 +1486,7 @@
 
             showProCurementGrid({
                 orderNos: JSON.stringify(row.map(a => a.OrderNo)),
-                AStock: $("#AStock").prop('checked') ? 1 : 0,
-                SuppClientNum:'551098' //写死
+                AStock: $("#AStock").prop('checked') ? 1 : 0
             });
             //$('#cgTbl').datagrid('clearSelections');
             //var gridOpts = $('#cgTbl').datagrid('options');
@@ -1501,7 +1500,7 @@
             //dlgOutHouse
             var rows = $('#dg').datagrid('getSelections');
             if (rows == null || rows == "") {
-                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要出库的数据！', 'warning');
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
                 return;
             }
             $('#dlgOutHouse').dialog('open').dialog('setTitle', '生成出库单');
@@ -1521,7 +1520,7 @@
         function GenerateOutboundOrder() {
             var rows = $('#dg').datagrid('getSelections');
             if (rows == null || rows == "") {
-                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要出库的数据！', 'warning');
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
                 return;
             }
             var ids = rows.map(a => a.OrderID).join(',')
@@ -1534,7 +1533,6 @@
                     if (text.Result == true) {
                         $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '操作完成!', 'info');
                         $('#dg').datagrid('reload');
-                        $('#dlgOutHouse').dialog('close')
                     }
                     else {
                         $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
@@ -1547,8 +1545,7 @@
             var row = $('#dg').datagrid('getSelections');
             $('#cgTbl').datagrid('load', {
                 orderNos: JSON.stringify(row.map(a => a.OrderNo)),
-                AStock: $("#AStock").prop('checked') ? 1 : 0,
-                SuppClientNum: '551098' //写死
+                AStock: $("#AStock").prop('checked') ? 1 : 0
             });
         }
 
@@ -2051,7 +2048,6 @@
                             //param.NoType = $("#NoType").combobox('getValues').toString();//仓库ID
                             //param.ClientTypeName = $('#ClientTypeID').combobox('getText');
                             //param.SettleHouseName = $('#SettleHouseID').combobox('getText');
-                            param.PurDepartID = $("#PurDepartID").combobox("getValue")
                             var trd = $(this).form('enableValidation').form('validate');
 
                             return trd

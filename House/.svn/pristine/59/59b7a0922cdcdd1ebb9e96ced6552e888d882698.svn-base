@@ -143,7 +143,7 @@
                         }
                     },
                     {
-                        title: '可调拨数', field: 'ExcessNum', align: 'right', width: '70px', sortable: true, sorter: function (a, b) {
+                        title: '过剩库存', field: 'ExcessNum', align: 'right', width: '70px', sortable: true, sorter: function (a, b) {
                             return (parseInt(a) > parseInt(b) ? 1 : -1);
                         }
                     },

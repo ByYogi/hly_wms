@@ -5170,39 +5170,45 @@ GROUP BY CAST(a.CreateDate AS DATE), c.ProductCode, c.TypeID, c.HouseID, ca.Root
             strBld.Append(@"
 PRINT('------------ 当前销量 ------------');
 SELECT
+    t.TypeID,
     t.HouseID,
     t.ProductCode,
+    t.AreaID,
     SUM(t.SaleNum)   AS SaleNum,
     SUM(t.WXSaleNum) AS WXSaleNum
 INTO #tempOrderStats
 FROM (
     -- 历史销量
     SELECT
+        a.TypeID,
         a.HouseID,
         a.ProductCode,
+        a.AreaID,
         SUM(a.Piece)   AS SaleNum,
         SUM(a.WXPiece) AS WXSaleNum
     FROM Tbl_Cargo_DailySaleStatic a
     INNER JOIN Tbl_Cargo_ProductType d
         ON a.TypeID = d.TypeID
     WHERE (1=1) @{conditions}
-    GROUP BY a.HouseID, a.ProductCode
+    GROUP BY a.TypeID, a.HouseID, a.ProductCode, a.AreaID
 
     UNION ALL
 
     -- 当日销量
     SELECT
+        ts.TypeID,
         ts.HouseID,
         ts.ProductCode,
+        ts.AreaID,
         SUM(ts.Piece)   AS SaleNum,
         SUM(ts.WXPiece) AS WXSaleNum
     FROM #tempTodaySale ts
-    GROUP BY ts.HouseID, ts.ProductCode
+    GROUP BY ts.TypeID, ts.HouseID, ts.ProductCode, ts.AreaID
 ) t
-GROUP BY t.HouseID, t.ProductCode;
+GROUP BY t.TypeID, t.HouseID, t.ProductCode, t.AreaID;
 
 CREATE UNIQUE INDEX IX_#tempOrderStats
-ON #tempOrderStats(ProductCode,HouseID)
+ON #tempOrderStats(ProductCode,TypeID,HouseID,AreaID)
 INCLUDE(SaleNum, WXSaleNum);
 ");
 
@@ -5211,6 +5217,8 @@ INCLUDE(SaleNum, WXSaleNum);
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
                 conditions.Add($"a.HouseID IN ({entity.HouseID})");
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"a.AreaID IN ({entity.ParamAreaID})");
             // 制单日期范围
             if (entity.StartDate != default)
                 conditions.Add($"a.SalesDate >= '{entity.StartDate:yyyy-MM-dd}'");
@@ -5235,31 +5243,34 @@ INCLUDE(SaleNum, WXSaleNum);
             strBld.Append(@"
 PRINT('------------ 全国销量 ------------');
 SELECT
+    t.TypeID,
     t.ProductCode,
     SUM(t.Piece) AS Piece
 INTO #tempTotalSalePiece
 FROM (
     -- 历史销量
     SELECT
+        a.TypeID,
         a.ProductCode,
         SUM(a.Piece) AS Piece
     FROM Tbl_Cargo_DailySaleStatic a
     WHERE (1 = 1) @{conditions}
-    GROUP BY a.ProductCode
+    GROUP BY a.TypeID, a.ProductCode
 
     UNION ALL
 
     -- 当日销量
     SELECT
+        ts.TypeID,
         ts.ProductCode,
         SUM(ts.Piece) AS Piece
     FROM #tempTodaySale ts
-    GROUP BY ts.ProductCode
+    GROUP BY ts.TypeID, ts.ProductCode
 ) t
-GROUP BY t.ProductCode;
+GROUP BY t.TypeID, t.ProductCode;
 
 CREATE UNIQUE INDEX IX_#tempTotalSalePiece
-ON #tempTotalSalePiece(ProductCode)
+ON #tempTotalSalePiece(TypeID,ProductCode)
 INCLUDE(Piece);
 ");
             conditions = new List<string>();
@@ -5344,15 +5355,17 @@ INCLUDE(Piece);
 PRINT('------------ 月均销量 ------------');
 SELECT 
     ProductCode,
+    TypeID,
     HouseID,
+    AreaID,
     SUM(SumLast3Months) AS TotalPiece,       -- 最近3个月总销量
     (SUM(WeightedMonthSale)) AS AvgMonthSale  -- 加权月均销量
     INTO #tempAvgSale
 FROM Tbl_Cargo_MonthSaleStatic a
 WHERE YearMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) - 1,0) @{conditions}
-GROUP BY ProductCode,  HouseID;
+GROUP BY ProductCode, TypeID, HouseID, AreaID;
 CREATE UNIQUE INDEX IX_#tempAvgSale
-ON #tempAvgSale(ProductCode,HouseID)
+ON #tempAvgSale(ProductCode,TypeID,HouseID,AreaID)
 INCLUDE(AvgMonthSale);
 ");
 
@@ -5361,6 +5374,9 @@ INCLUDE(AvgMonthSale);
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
                 conditions.Add($"a.HouseID IN ({entity.HouseID})");
+            // 区域 ID
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"a.AreaID IN ({entity.ParamAreaID})");
             // 拼接动态 WHERE 条件
             if (conditions.Count > 0)
             {
@@ -5413,10 +5429,13 @@ LEFT JOIN #tempALLWhsPiece AS tw ON s.ProductCode = tw.ProductCode
 
 LEFT JOIN #tempOrderStats AS os
     ON s.HouseID = os.HouseID
+   AND s.TypeID = os.TypeID
    AND s.ProductCode = os.ProductCode
+   AND s.AreaID = os.AreaID
 
 LEFT JOIN #tempTotalSalePiece AS tos
-   ON s.ProductCode = tos.ProductCode
+    ON s.TypeID = tos.TypeID
+   AND s.ProductCode = tos.ProductCode
 
 LEFT JOIN #tempPurchaseITI AS pms
     ON s.HouseID = pms.HouseID
@@ -5428,7 +5447,9 @@ LEFT JOIN #tempTransferITI AS tms
 
 LEFT JOIN #tempAvgSale AS avs
    ON s.HouseID = avs.HouseID
+   AND s.TypeID = avs.TypeID
    AND s.ProductCode = avs.ProductCode
+   AND s.AreaID = avs.AreaID
 WHERE (1 = 1) @{conditions}
 ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
 
@@ -5515,7 +5536,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
 
                         if (curNum > 0 && dayAvgSaleDouble > 0)
                         {
-                            doi = Convert.ToInt32(Math.Round((double)(curNum / dayAvgSaleDouble), 0));
+                            doi = Convert.ToInt32(Math.Floor((double)(curNum / dayAvgSaleDouble)));
                             doi = Math.Max(1, doi); // 苏老师：0表示该货品未启用状态，所以最少显示1天
                         }
 
@@ -5540,7 +5561,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
                             lessNum = stockNum - allCurNum;
                             excessNum = allCurNum - stockNum;
                         }
-                        lessNum = (lessNum < 0 || allCurNum >= minStock) ? 0 : lessNum;
+                        lessNum = lessNum < 0 || allCurNum >= minStock ? 0 : lessNum;
                         excessNum = excessNum < 0 ? 0 : excessNum;
 
                         result.Add(new CargoSafeStockEntity
@@ -6079,6 +6100,7 @@ GROUP BY b.HouseID, b.ProductCode;
             strBld.Append(@"
 --  当前仓库产品近3个月销售记录
 SELECT
+    c.TypeID,
     c.HouseID,
     c.ProductCode,
     MAX(a.CreateDate) CreateDate
@@ -6086,19 +6108,27 @@ INTO #tempOrderStats
 FROM Tbl_Cargo_Order AS a
 INNER JOIN Tbl_Cargo_OrderGoods AS b ON a.OrderNo = b.OrderNo
 INNER JOIN Tbl_Cargo_Product AS c ON b.ProductID = c.ProductID
+INNER JOIN Tbl_Cargo_ProductType d ON c.TypeID = d.TypeID
+INNER JOIN #tempChildArea ca ON b.HouseID = ca.HouseID AND b.AreaID = ca.AreaID
 WHERE a.ThrowGood != 25
     AND a.OrderModel = 0 
     AND c.SpecsType != 5
     AND CAST(a.CreateDate AS DATE) >= DATEADD(MONTH,-2,GETDATE()) @{conditions}
-GROUP BY c.HouseID, c.ProductCode;
+GROUP BY c.TypeID, c.HouseID, c.ProductCode;
 CREATE UNIQUE INDEX IX_#tempOrderStats
-ON #tempOrderStats(ProductCode,HouseID)
+ON #tempOrderStats(ProductCode,TypeID,HouseID)
 ");
             conditions = new List<string>();
 
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
                 conditions.Add($"b.HouseID IN ({entity.HouseID})");
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"ca.RootArea IN ({entity.ParamAreaID})");
+            if (entity.TypeID != 0)
+                conditions.Add($"c.TypeID = {entity.TypeID}");
+            if (entity.ParentID != 0)
+                conditions.Add($"d.ParentID = {entity.ParentID}");
 
             // 统一拼接 WHERE 条件
             if (conditions.Count > 0)
@@ -6110,44 +6140,39 @@ ON #tempOrderStats(ProductCode,HouseID)
                 strBld.Replace("@{conditions}", "");
             }
             #endregion
-            #region Tbl_Cargo_MoveOrderGood 和 Tbl_Cargo_FactoryOrder 在途库存 (拆分为采购在途和移库在途)
+            #region Tbl_Cargo_MoveOrderGood 在途库存
             strBld.Append(@"
-PRINT('------------ 采购在途库存 ------------');
--- 采购在途：来自采购订单
-SELECT
-    fo.ProductCode,
-    fo.HouseID,
-    SUM(ReplyNumber - fo.InPiece) AS Piece
-INTO #tempPurchaseITI
-FROM Tbl_Cargo_FactoryOrder fo
-WHERE (1 = 1)
-    AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
-    AND fo.OrderType <> 2 --筛除退货单
-    AND ISNULL(fo.ProductCode, '') <> ''
-GROUP BY fo.ProductCode, fo.HouseID;
-
-CREATE UNIQUE INDEX IX_#tempPurchaseITI
-ON #tempPurchaseITI(ProductCode, HouseID)
-INCLUDE(Piece);
-
-PRINT('------------ 移库在途库存 ------------');
--- 移库在途：来自移库订单
+PRINT('------------ 在途库存 ------------');
+SELECT ProductCode, HouseID, SUM(Piece) Piece INTO #tempITI FROM (
+-- 移库单
 SELECT
     p.ProductCode,
     mo2.NewHouseID AS HouseID,
     SUM(mo.Piece - mo.NewPiece) AS Piece
-INTO #tempTransferITI
 FROM Tbl_Cargo_MoveOrderGood AS mo
 INNER JOIN Tbl_Cargo_MoveOrder AS mo2 ON mo2.MoveNo = mo.MoveNo
 INNER JOIN Tbl_Cargo_Product AS p ON mo.ProductID = p.ProductID
 WHERE mo2.MoveStatus <> 2
     AND ISNULL(p.ProductCode, '') <> ''
     AND mo.Piece - mo.NewPiece > 0
-GROUP BY p.ProductCode, mo2.NewHouseID;
+GROUP BY p.ProductCode, mo2.NewHouseID
+UNION ALL
 
-CREATE UNIQUE INDEX IX_#tempTransferITI
-ON #tempTransferITI(ProductCode, HouseID)
-INCLUDE(Piece);
+SELECT
+    fo.ProductCode,
+    fo.HouseID,
+	SUM(ReplyNumber - fo.InPiece) Piece
+FROM
+	Tbl_Cargo_FactoryOrder fo
+WHERE
+	(1 = 1)
+	AND (fo.InCargoStatus = 0 OR fo.InCargoStatus = 2)
+    AND fo.OrderType <> 2 --筛除退货单
+    AND ISNULL(fo.ProductCode, '') <> ''
+GROUP BY fo.ProductCode, fo.HouseID 
+) a
+GROUP BY ProductCode, HouseID
+;
 ");
             conditions = new List<string>();
 
@@ -6172,17 +6197,19 @@ INCLUDE(Piece);
             #region Tbl_Cargo_OrderGoods 月均销量
             strBld.AppendLine(@"
 PRINT('------------ 月均销量 ------------');
-SELECT
+SELECT 
     ProductCode,
+    TypeID,
     HouseID,
+    AreaID,
     SUM(SumLast3Months) AS TotalPiece,       -- 最近3个月总销量
     (SUM(WeightedMonthSale)) AS AvgMonthSale  -- 加权月均销量
     INTO #tempAvgSale
 FROM Tbl_Cargo_MonthSaleStatic a
 WHERE YearMonth = DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) - 1,0) @{conditions}
-GROUP BY ProductCode, HouseID;
+GROUP BY ProductCode, TypeID, HouseID, AreaID;
 CREATE UNIQUE INDEX IX_#tempAvgSale
-ON #tempAvgSale(ProductCode,HouseID)
+ON #tempAvgSale(ProductCode,TypeID,HouseID,AreaID)
 INCLUDE(AvgMonthSale);
 ");
 
@@ -6191,6 +6218,9 @@ INCLUDE(AvgMonthSale);
             // 仓库 ID
             if (!string.IsNullOrEmpty(entity.HouseID))
                 conditions.Add($"a.HouseID IN ({entity.HouseID})");
+            // 区域 ID
+            if (!string.IsNullOrEmpty(entity.ParamAreaID))
+                conditions.Add($"a.AreaID IN ({entity.ParamAreaID})");
             // 拼接动态 WHERE 条件
             if (conditions.Count > 0)
             {
@@ -6220,35 +6250,34 @@ SELECT
   f.SpeedLevel,
   f.StockNum,
   os.CreateDate AS LastSalDate,
-  ISNULL(pms.Piece, 0) AS PurchaseMoveNum,
-  ISNULL(tms.Piece, 0) AS TransferMoveNum,
+  COALESCE(ms.Piece, 0) AS MoveNum,
   cs.Piece AS CurNum,
-  cs.Piece + ISNULL(pms.Piece, 0) + ISNULL(tms.Piece, 0) - f.StockNum AS LessNum,
+  cs.Piece + COALESCE(ms.Piece, 0) - f.StockNum AS LessNum,
   CAST(ISNULL(avs.AvgMonthSale, 0) AS INT) AS WeightedAvgSaleNum,
   CAST(ISNULL(avs.TotalPiece, 0) / 3  AS INT) AS AvgSaleNum
-FROM
+FROM 
     Tbl_Cargo_SafeStock AS f
-  INNER JOIN #tempCurStock AS cs
+  INNER JOIN #tempCurStock AS cs 
    ON  f.HouseID = cs.HouseID --当前库数
    AND f.ProductCode = cs.ProductCode
-  INNER JOIN #tempOrderStats AS os
+  INNER JOIN #tempOrderStats AS os 
    ON  f.HouseID = os.HouseID -- 销量
+   AND f.TypeID = os.TypeID
    AND f.ProductCode = os.ProductCode
-  LEFT JOIN #tempPurchaseITI AS pms
-   ON  f.HouseID = pms.HouseID  -- 采购在途数量
-   AND f.ProductCode = pms.ProductCode
-  LEFT JOIN #tempTransferITI AS tms
-   ON  f.HouseID = tms.HouseID  -- 移库在途数量
-   AND f.ProductCode = tms.ProductCode
+  LEFT JOIN #tempITI AS ms 
+   ON  f.HouseID = ms.HouseID  -- 在途数量
+   AND f.ProductCode = ms.ProductCode
   LEFT JOIN Tbl_Cargo_House AS g ON f.HouseID = g.HouseID
   LEFT JOIN Tbl_Cargo_Area AS h ON f.AreaID = h.AreaID
   LEFT JOIN Tbl_Cargo_ProductType AS j ON f.TypeID = j.TypeID
     LEFT JOIN #tempAvgSale AS avs
        ON f.HouseID = avs.HouseID
+       AND f.TypeID = avs.TypeID
        AND f.ProductCode = avs.ProductCode
+       AND f.AreaID = avs.AreaID
 WHERE
   (1 = 1)
-  AND cs.Piece + ISNULL(pms.Piece, 0) + ISNULL(tms.Piece, 0) - f.StockNum < 0
+  AND cs.Piece + COALESCE(ms.Piece, 0) - f.StockNum < 0
 ");
             conditions = new List<string>();
 
@@ -6278,10 +6307,6 @@ WHERE
                     {
                         if (Convert.ToInt32(idr["LessNum"]) < 0)
                         {
-                            int purchaseMoveNum = idr.Field<int>("PurchaseMoveNum");
-                            int transferMoveNum = idr.Field<int>("TransferMoveNum");
-                            int moveNum = purchaseMoveNum + transferMoveNum;  // 合计在途 = 采购在途 + 移库在途
-
                             result.Add(new CargoSafeStockEntity
                             {
                                 HouseName = Convert.ToString(idr["HouseName"]),
@@ -6297,7 +6322,7 @@ WHERE
                                 SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
                                 StockNum = Convert.ToInt32(idr["StockNum"]),
                                 CurNum = Convert.ToInt32(idr["CurNum"]),
-                                MoveNum = moveNum,    //在途库存数(合计) = 采购在途 + 移库在途
+                                MoveNum = Convert.ToInt32(idr["MoveNum"]),
                                 LessNum = Convert.ToInt32(idr["LessNum"]),
                                 WeightedAvgSaleNum = Convert.ToInt32(idr["WeightedAvgSaleNum"]),
                                 AvgSaleNum = Convert.ToInt32(idr["AvgSaleNum"]),

@@ -3960,7 +3960,7 @@ namespace Cargo.Interface
                     //Dictionary<String, String> rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "");
                     Dictionary<String, String> rsp = new Dictionary<string, string>();
                     if (IsDebug)
-                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://1e9ddad2.r15.cpolar.top/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
+                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://f3f8ae1.r15.cpolar.top/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     else
                         rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     Dictionary<String, String> payinfoDic = payinfo(rsp);
@@ -4442,11 +4442,11 @@ namespace Cargo.Interface
                 if (IsReserve == 1)
                 {
                     OrderNo = OrderNo + "_" + PayMentType;
-                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://1e9ddad2.r15.cpolar.top/Interface/AdvanceUnionPaySuccess.aspx", "");
+                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://f3f8ae1.r15.cpolar.top/Interface/AdvanceUnionPaySuccess.aspx", "");
                 }
                 else
                 {
-                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://1e9ddad2.r15.cpolar.top/Interface/UnionPaySuccess.aspx", "");
+                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://f3f8ae1.r15.cpolar.top/Interface/UnionPaySuccess.aspx", "");
                 }
             }
             else
