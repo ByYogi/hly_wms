@@ -977,11 +977,23 @@ namespace House.Manager.Cargo
         {
             foreach (var it in entity)
             {
-                string strSQL = @"Update Tbl_Cargo_Product set IsLockStock=@IsLockStock where ProductID=@ProductID ";
-
+                string strSQL = @"Update Tbl_Cargo_Product set IsLockStock=@IsLockStock ";
+                if (it.IsLockStock.Equals("1"))
+                {
+                    //锁定
+                    strSQL += ",LockStockName=@LockStockName,LockStockDate=@LockStockDate,LockStockMemo=@LockStockMemo,UnLockStockDate=@UnLockStockDate";
+                }
+                strSQL += " where ProductID=@ProductID ";
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
                 {
                     conn.AddInParameter(cmd, "@IsLockStock", DbType.String, it.IsLockStock);
+                    if (it.IsLockStock.Equals("1"))
+                    {
+                        conn.AddInParameter(cmd, "@LockStockMemo", DbType.String, it.LockStockMemo);
+                        conn.AddInParameter(cmd, "@LockStockName", DbType.String, it.LockStockName);
+                        conn.AddInParameter(cmd, "@LockStockDate", DbType.DateTime, it.LockStockDate);
+                        conn.AddInParameter(cmd, "@UnLockStockDate", DbType.Date, it.UnLockStockDate);
+                    }
                     conn.AddInParameter(cmd, "@ProductID", DbType.Int64, it.ProductID);
                     conn.ExecuteNonQuery(cmd);
                 }
@@ -1390,7 +1402,7 @@ WITH UniqueProducts AS (
         Model,
         ROW_NUMBER() OVER (PARTITION BY ProductCode ORDER BY ProductID) AS rn
     FROM Tbl_Cargo_Product
-    WHERE ProductCode IN (SELECT ID FROM ##IDs)
+    WHERE TRIM(ProductCode) IN (SELECT ID FROM ##IDs)
 )
 SELECT
     p.ProductCode,
@@ -1427,7 +1439,7 @@ Values @{tempTblVals}
                         List<string> tempTblVals = new List<string>();
                         foreach (var id in groupData)
                         {
-                            tempTblVals.Add($"('{id}')");
+                            tempTblVals.Add($"('{id?.Trim()}')");
                         }
                         insertIDsTempSql = insertIDsTempSql.Replace("@{tempTblVals}", string.Join("," + Environment.NewLine, tempTblVals));
                         cmd.CommandText = insertIDsTempSql;
@@ -3255,7 +3267,7 @@ Values @{tempTblVals}
                                 OutCargoOperID = Convert.ToString(idr["OutCargoOperID"]),
                                 OutCargoTime = string.IsNullOrEmpty(Convert.ToString(idr["OutCargoTime"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["OutCargoTime"]),
                                 TyreCode = Convert.ToString(idr["TyreCode"]),
-                                ContainerID =string.IsNullOrEmpty(Convert.ToString(idr["ContainerID"]))?0: Convert.ToInt32(idr["ContainerID"]),
+                                ContainerID = string.IsNullOrEmpty(Convert.ToString(idr["ContainerID"])) ? 0 : Convert.ToInt32(idr["ContainerID"]),
                                 MoveOrderNo = Convert.ToString(idr["MoveOrderNo"]),
                                 OrderNo = Convert.ToString(idr["OrderNo"])
                             });
@@ -5709,6 +5721,34 @@ WHERE (1=1) ";
             return resHT;
         }
 
+        public List<CargoAddProductShelvesEntity> QueryReserveShelves()
+        {
+            List<CargoAddProductShelvesEntity> result = new List<CargoAddProductShelvesEntity>();
+            try
+            {
+                string strSQL = $@" select * from Tbl_Cargo_Shelves where 1=1 and SaleType=5";
+
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new CargoAddProductShelvesEntity
+                            {
+                                ID = Convert.ToInt64(idr["ID"]),
+                                ProductCode = Convert.ToString(idr["ProductCode"]),
+                                TypeID = Convert.ToInt32(idr["TypeID"]),
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                ProductName = Convert.ToString(idr["ProductName"]),
+                            });
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
 
         #endregion
 

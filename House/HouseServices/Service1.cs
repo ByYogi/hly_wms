@@ -4406,56 +4406,56 @@ namespace HouseServices
             CargoHouseBus houseBus = new CargoHouseBus();
 
             #region 20251113注释，不再向小程序推送发货订单
-            //try
-            //{
-            //    //处理所有云仓订单
-            //    List<WXOrderEntity> wXOrders = order.QueryMiniOrderSendWx(new WXOrderEntity { CreateDate = DateTime.Now.AddDays(-10), OrderStatus = "2" });
-            //    if (wXOrders.Count > 0)
-            //    {
-            //        LogHelper.WriteLog("开始向小程序推送订单发货状态");
-            //        //慧采云仓小程序AppID和Secret
-            //        string acctoken = Senparc.Weixin.MP.Containers.AccessTokenContainer.TryGetAccessToken(ConfigurationSettings.AppSettings["HCYCAppID"], ConfigurationSettings.AppSettings["HCYCAppSecret"]);
-            //        foreach (var it in wXOrders)
-            //        {
-            //            if (string.IsNullOrEmpty(it.WXPayOrderNo))
-            //            {
-            //                continue;
-            //            }
-            //            try
-            //            {
-            //                string ps = "{\"order_key\": {\"order_number_type\": 2,\"transaction_id\": \"" + it.WXPayOrderNo + "\"},\"delivery_mode\": 1,\"logistics_type\": 2,\"shipping_list\": [{\"item_desc\": \"" + it.Memo + "\"}],\"upload_time\": \"" + DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ssK") + "\",\"payer\": {\"openid\": \"" + it.wxOpenID + "\"}}";
-            //                string wxReturnStr = wxHttpUtility.SendHttpRequest("https://api.weixin.qq.com/wxa/sec/order/upload_shipping_info?access_token=" + acctoken, ps);
-            //                if (!string.IsNullOrEmpty(wxReturnStr))
-            //                {
-            //                    ArrayList GridRows = (ArrayList)JSON.Decode("[" + wxReturnStr + "]");
-            //                    foreach (Hashtable row in GridRows)
-            //                    {
-            //                        if (Convert.ToString(row["errcode"]).Equals("0"))
-            //                        {
-            //                            LogHelper.WriteLog("向小程序推送订单发货状态成功" + it.CargoOrderNo);
-            //                            //推送成功
-            //                            order.UpdateOrderStatusWxPushStatus(new CargoOrderStatusEntity { ID = it.ID, WxSendStatusPush = "1", OrderNo = it.CargoOrderNo, WXOrderNo = it.OrderNo }, log);
-            //                        }
-            //                        else
-            //                        {
-            //                            LogHelper.WriteLog("向小程序推送订单发货状态失败" + it.CargoOrderNo + Convert.ToString(row["errmsg"]));
-            //                        }
+            try
+            {
+                //处理所有云仓订单
+                List<WXOrderEntity> wXOrders = order.QueryMiniOrderSendWx(new WXOrderEntity { CreateDate = DateTime.Now.AddDays(-10), OrderStatus = "2" });
+                if (wXOrders.Count > 0)
+                {
+                    LogHelper.WriteLog("开始向小程序推送订单发货状态");
+                    //慧采云仓小程序AppID和Secret
+                    string acctoken = Senparc.Weixin.MP.Containers.AccessTokenContainer.TryGetAccessToken(ConfigurationSettings.AppSettings["HCYCAppID"], ConfigurationSettings.AppSettings["HCYCAppSecret"]);
+                    foreach (var it in wXOrders)
+                    {
+                        if (string.IsNullOrEmpty(it.WXPayOrderNo))
+                        {
+                            continue;
+                        }
+                        try
+                        {
+                            string ps = "{\"order_key\": {\"order_number_type\": 2,\"transaction_id\": \"" + it.WXPayOrderNo + "\"},\"delivery_mode\": 1,\"logistics_type\": 2,\"shipping_list\": [{\"item_desc\": \"" + it.Memo + "\"}],\"upload_time\": \"" + DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ssK") + "\",\"payer\": {\"openid\": \"" + it.wxOpenID + "\"}}";
+                            string wxReturnStr = wxHttpUtility.SendHttpRequest("https://api.weixin.qq.com/wxa/sec/order/upload_shipping_info?access_token=" + acctoken, ps);
+                            if (!string.IsNullOrEmpty(wxReturnStr))
+                            {
+                                ArrayList GridRows = (ArrayList)JSON.Decode("[" + wxReturnStr + "]");
+                                foreach (Hashtable row in GridRows)
+                                {
+                                    if (Convert.ToString(row["errcode"]).Equals("0"))
+                                    {
+                                        LogHelper.WriteLog("向小程序推送订单发货状态成功" + it.CargoOrderNo);
+                                        //推送成功
+                                        order.UpdateOrderStatusWxPushStatus(new CargoOrderStatusEntity { ID = it.ID, WxSendStatusPush = "1", OrderNo = it.CargoOrderNo, WXOrderNo = it.OrderNo }, log);
+                                    }
+                                    else
+                                    {
+                                        LogHelper.WriteLog("向小程序推送订单发货状态失败" + it.CargoOrderNo + Convert.ToString(row["errmsg"]));
+                                    }
 
-            //                    }
-            //                }
-            //            }
-            //            catch (ApplicationException ex)
-            //            {
-            //                LogHelper.WriteLog("向小程序推送订单发货状态失败" + it.CargoOrderNo);
-            //                continue;
-            //            }
-            //        }
-            //    }
-            //}
-            //catch (ApplicationException ex)
-            //{
-            //    LogHelper.WriteLog("向小程序推送订单发货状态失败");
-            //}
+                                }
+                            }
+                        }
+                        catch (ApplicationException ex)
+                        {
+                            LogHelper.WriteLog("向小程序推送订单发货状态失败" + it.CargoOrderNo);
+                            continue;
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                LogHelper.WriteLog("向小程序推送订单发货状态失败");
+            }
             #endregion
 
             //每天早上零辰2点处理当前时间的仓库库存数据保存

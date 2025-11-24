@@ -5693,7 +5693,7 @@ left join (
 left join (
    select b.TypeID, e.HouseID,
            count(distinct case when b.Piece<>0 then ProductCode end) as ProCount,
-            sum( case when a.InHouseTime<CONVERT(DATE, DATEADD(DAY, -89, GETDATE())) then b.Piece end) as OverduePiece,
+            sum( case when b.Piece <> 0 and a.InHouseTime<CONVERT(DATE, DATEADD(DAY, -89, GETDATE())) then b.Piece end) as OverduePiece,
            count(distinct ProductCode) as ProCountAll,
            sum(b.Piece) as ProPiece
     from Tbl_Cargo_Product a
@@ -5703,7 +5703,7 @@ left join (
     inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID
     inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID
     inner join Tbl_Cargo_House as e on d.HouseID = e.HouseID
-    where a.IsLockStock = '0' and a.SpecsType <> 5 and h.IsShowStock = '0'  and Piece<>0 {(entity.SuppClientNum != 0 ? $@" and SuppClientNum='{entity.SuppClientNum}'" : "")}
+    where a.IsLockStock = '0' and a.SpecsType <> 5 and h.IsShowStock = '0'  {(entity.SuppClientNum != 0 ? $@" and SuppClientNum='{entity.SuppClientNum}'" : "")}
     group by b.TypeID, e.HouseID
 ) c on a2.TypeID = c.TypeID and a2.HouseID = c.HouseID
 left join (
@@ -6878,7 +6878,7 @@ left join (
 left join (
    select b.TypeID, --e.HouseID,
            count(distinct case when b.Piece<>0 then ProductCode end) as ProCount,
-           sum(case when a.InHouseTime<CONVERT(DATE, DATEADD(DAY, -89, GETDATE())) then b.Piece end) as OverduePiece,
+           sum(case when b.Piece <> 0 and a.InHouseTime<CONVERT(DATE, DATEADD(DAY, -89, GETDATE())) then b.Piece end) as OverduePiece,
            count(distinct ProductCode) as ProCountAll,
            sum(b.Piece) as ProPiece
     from Tbl_Cargo_Product a
@@ -6888,7 +6888,7 @@ left join (
     inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID
     inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID
     inner join Tbl_Cargo_House as e on d.HouseID = e.HouseID
-    where a.IsLockStock = '0' and a.SpecsType <> 5 and h.IsShowStock = '0'  and Piece<>0 --and a.OperaType<>0
+    where a.IsLockStock = '0' and a.SpecsType <> 5 and h.IsShowStock = '0'  --and a.OperaType<>0
     group by b.TypeID--, e.HouseID
 ) c on a2.TypeID = c.TypeID --and a2.HouseID = c.HouseID
 left join (

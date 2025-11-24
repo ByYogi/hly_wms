@@ -370,6 +370,25 @@ namespace House.Manager.Cargo
             return result;
         }
         /// <summary>
+        /// 修改客户类型
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void SaveClientType(List<CargoClientEntity> entity)
+        {
+            foreach (var it in entity)
+            {
+                string strSQL = @"UPDATE Tbl_Cargo_Client SET ClientType=@ClientType WHERE ClientID=@ClientID";
+
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@ClientID", DbType.Int64, it.ClientID);
+                    conn.AddInParameter(cmd, "@ClientType", DbType.String, it.ClientType);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+        }
+        /// <summary>
         /// 删除客户数据
         /// </summary>
         /// <param name="entity"></param>
@@ -1835,7 +1854,7 @@ namespace House.Manager.Cargo
                             {
                                 ID = Convert.ToInt32(idr["ID"]),
                                 DepName = Convert.ToString(idr["DepName"]),
-                                MarketType= Convert.ToString(idr["MarketType"])
+                                MarketType = Convert.ToString(idr["MarketType"])
                             });
                         }
                     }

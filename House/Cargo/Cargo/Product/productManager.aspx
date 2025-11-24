@@ -2431,6 +2431,32 @@
         <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgUpInNum').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
     </div>
     <!--End 复制产品数据修改数量-->
+
+
+    <!--库存锁定-->
+    <div id="divModifyClientType" class="easyui-dialog" style="width: 400px; height: 350px;" closed="true" buttons="#divModifyClientType-buttons">
+        <table>
+            <tr>
+                <td style="text-align: right;">锁定原因:
+                </td>
+                <td>
+                    <textarea name="LockStockMemo" id="LockStockMemo" rows="5" style="width: 300px;"></textarea></td>
+            </tr>
+            <tr>
+                <td style="text-align: right;">解锁日期:
+                </td>
+                <td>
+                    <input name="UnLockStockDate" id="UnLockStockDate" class="easyui-datebox" data-options="required:true" style="width: 300px;" /></td>
+            </tr>
+        </table>
+    </div>
+    <div id="divModifyClientType-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="SaveLockStock()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+     <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#divModifyClientType').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+    <!--库存锁定-->
+
+
     <object id="LODOP_OB" title="dd" classid="clsid:2105C259-1E0C-4534-8141-A753534CB4CA"
         width="0px" height="0px">
         <embed id="LODOP_EM" type="application/x-print-lodop" width="0px" height="0px"></embed>
@@ -2456,12 +2482,55 @@
                 $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要操作的数据！', 'warning');
                 return;
             }
+            if (rows[0].IsLockStock == "1") {
+                //解锁
+                $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定解锁该产品库存？', function (r) {
+                    if (r) {
+                        var json = JSON.stringify(rows)
+                        $.ajax({
+                            url: 'productApi.aspx?method=LockStockCargoProduct',
+                            type: 'post', dataType: 'json', data: { data: json },
+                            success: function (text) {
+                                //var result = eval('(' + msg + ')');
+                                if (text.Result == true) {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '解锁成功!', 'info');
+                                    $('#dg').datagrid('reload');
+                                }
+                                else {
+                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                                }
+                            }
+                        });
+                    }
+                });
+            } else {
+                $('#divModifyClientType').dialog('open').dialog('setTitle', '锁定库存');
+                $('#LockStockMemo').val('');
+            }
+        }
+        //锁定库存
+        function SaveLockStock() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要操作的数据！', 'warning');
+                return;
+            }
+            var lsmemo = $('#LockStockMemo').val();
+            if (lsmemo == "" || lsmemo == undefined) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请填写锁定原因！', 'warning');
+                return;
+            }
+            var lsdate = $('#UnLockStockDate').datebox('getValue');
+            if (lsdate == "" || lsdate == undefined) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择解锁日期！', 'warning');
+                return;
+            }
             $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定锁定该产品库存？', function (r) {
                 if (r) {
                     var json = JSON.stringify(rows)
                     $.ajax({
                         url: 'productApi.aspx?method=LockStockCargoProduct',
-                        type: 'post', dataType: 'json', data: { data: json },
+                        type: 'post', dataType: 'json', data: { data: json, LockStockMemo: lsmemo, UnLockStockDate: lsdate },
                         success: function (text) {
                             //var result = eval('(' + msg + ')');
                             if (text.Result == true) {

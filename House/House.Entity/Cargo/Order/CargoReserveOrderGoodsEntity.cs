@@ -21,6 +21,10 @@ namespace House.Entity.Cargo.Order
         public int TypeID { get; set; }
         public string TypeName { get; set; }
         public int Piece { get; set; }
+        /// <summary>
+        /// 需采购数
+        /// </summary>
+        public int ProcureMentPiece { get; set; }
         public int GoodsPiece { get; set; }
         public int InventoryPiece { get; set; }
         public int ScanPiece { get; set; }

@@ -21588,6 +21588,7 @@ namespace Cargo.Order
         {
             CargoReserveOrderGoodsEntity queryEntity = new CargoReserveOrderGoodsEntity();
             queryEntity.OrderNo = Convert.ToString(Request["OrderNo"]);
+            queryEntity.SuppClientNum = Convert.ToInt32(Request["SuppClientNum"]);
             CargoOrderBus bus = new CargoOrderBus();
             var List = bus.QueryReserveOrderGoods(queryEntity);
 
@@ -21748,10 +21749,10 @@ namespace Cargo.Order
             string orders = string.Empty;
             foreach (Hashtable row in GridRows)
             {
-                var Piece = Convert.ToInt32(row["Piece"]);
-                var GoodsPiece = Convert.ToInt32(row["GoodsPiece"]);
-                Piece = Piece - GoodsPiece;
-                if (Piece<=0)
+                var Piece = Convert.ToInt32(row["ProcureMentPiece"]);
+                //var GoodsPiece = Convert.ToInt32(row["GoodsPiece"]);
+                //Piece = Piece - GoodsPiece;
+                if (Piece <= 0)
                 {
                     continue;
                 }

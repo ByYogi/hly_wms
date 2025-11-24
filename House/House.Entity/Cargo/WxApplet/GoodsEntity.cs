@@ -91,6 +91,10 @@ namespace House.Entity.Cargo
         /// </summary>
         public decimal minPrice { get; set; }
         /// <summary>
+        /// 签约价格
+        /// </summary>
+        public decimal signingPrice { get; set; }
+        /// <summary>
         /// 划线价
         /// </summary>
         public decimal listPrice { get; set; }

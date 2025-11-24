@@ -1367,7 +1367,10 @@ namespace House.Business.Cargo
             return man.QueryBasicProdictData(pIndex, pNum, entity);
         }
 
-
+        public List<CargoAddProductShelvesEntity> QueryReserveShelves()
+        {
+            return man.QueryReserveShelves();
+        }
         #endregion
     }
 }

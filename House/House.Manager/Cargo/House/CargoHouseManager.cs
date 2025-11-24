@@ -4376,7 +4376,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                 //strSQL += " (ORDER BY a.AccessCount desc )";
             }
             strSQL += " )";
-            strSQL += " AS RowNumber,* from (select ROW_NUMBER() over (partition by a.HouseID,a.ProductCode order by a.OP_DATE asc) as RN, SUM(a.ProductPrice) over (partition by a.HouseID,a.ProductCode) as Piece, a.TypeID, c.TypeName, c.ParentID as TypeParentID, d.Specs, d.GoodsCode, d.Figure, d.LoadIndex, d.SpeedLevel, d.ProductName, a.ProductCode, a.HouseID, a.ProductPrice,a.minPurchase, d.Thumbnail, ISNULL(e.AccessCount, 0) as AccessCount, ISNULL(f.NextDayLogisFee, 0) AS NextDayLogisFee, f.Name as HouseName from Tbl_Cargo_Shelves as a inner join Tbl_Cargo_ProductType as c on c.TypeID = a.TypeID inner join Tbl_Cargo_ProductSpec as d on a.ProductCode = d.ProductCode left join Tbl_Cargo_ProductAccessCount as e on a.HouseID = e.HouseID and a.ProductCode = e.ProductCode INNER JOIN Tbl_Cargo_House AS f ON a.HouseID = f.HouseID where SaleType=5 ";
+            strSQL += " AS RowNumber,* from (select ROW_NUMBER() over (partition by a.HouseID,a.ProductCode order by a.OP_DATE asc) as RN, SUM(a.ProductPrice) over (partition by a.HouseID,a.ProductCode) as Piece, a.TypeID, c.TypeName, c.ParentID as TypeParentID, d.Specs, d.GoodsCode, d.Figure, d.LoadIndex, d.SpeedLevel, d.ProductName, a.ProductCode, a.HouseID, a.ProductPrice,a.SigningPrice,a.minPurchase, d.Thumbnail, ISNULL(e.AccessCount, 0) as AccessCount, ISNULL(f.NextDayLogisFee, 0) AS NextDayLogisFee, f.Name as HouseName from Tbl_Cargo_Shelves as a inner join Tbl_Cargo_ProductType as c on c.TypeID = a.TypeID inner join Tbl_Cargo_ProductSpec as d on a.ProductCode = d.ProductCode left join Tbl_Cargo_ProductAccessCount as e on a.HouseID = e.HouseID and a.ProductCode = e.ProductCode INNER JOIN Tbl_Cargo_House AS f ON a.HouseID = f.HouseID where SaleType=5 ";
             if (!string.IsNullOrWhiteSpace(entity.Specs))
             {
                 string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "").Replace("L", "").Replace("T", "");
@@ -4436,6 +4436,7 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                             SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
                             Piece = Convert.ToInt32(idr["Piece"]),
                             SalePrice = Convert.ToDecimal(idr["ProductPrice"]),//小程序价
+                            SigningPrice = Convert.ToDecimal(idr["SigningPrice"]),//签约价格
                             ProductCode = Convert.ToString(idr["ProductCode"]),
                             Thumbnail = Convert.ToString(idr["Thumbnail"]),
                             Star = Convert.ToInt32(idr["AccessCount"]),
@@ -5530,7 +5531,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
 
                         int allCurNum = (curNum + moveNum);
                         //如果最小库存配置大于 安全库存配置 则使用最小库存配置 计算补货数
-                        if (minStock > stockNum)
+                        if (minStock >= stockNum)
                         {
                             lessNum = maxStock - allCurNum;
                             excessNum = allCurNum - maxStock;
@@ -5541,7 +5542,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
                             excessNum = allCurNum - stockNum;
                         }
                         lessNum = (lessNum < 0 || allCurNum >= minStock) ? 0 : lessNum;
-                        excessNum = excessNum < 0 ? 0 : excessNum;
+                        //excessNum = excessNum < 0 ? 0 : excessNum;
 
                         result.Add(new CargoSafeStockEntity
                         {
@@ -5585,7 +5586,7 @@ ORDER BY s.HouseID ASC, s.StockNum - ISNULL(cs.Piece, 0) DESC;");
                             //PendingStock = idr.Field<int?>("PendingStock"), //待处理库存数
                             IsolatedStock = idr.Field<int?>("IsolatedStock"),   //待处理库存数
                             ControlStock = idr.Field<int?>("ControlStock"), //待处理库存数
-                            ExcessNum = excessNum,
+                            ExcessNum = excessNum, //可调拨数
                             DOI = doi   //库存度天数
                         });
                     }
@@ -5934,8 +5935,9 @@ OUTPUT
                     }
 
                     int safeNum = entity.OEStock.GetValueOrDefault() + entity.HCYCStock.GetValueOrDefault() + entity.REStock.GetValueOrDefault();
-                    entity.MaxStock = maxStock;
-                    entity.MinStock = minStock;
+                    //如果最大库存数或者最小库存数小于安全库存。则这使用安全库存数当做最大、最小库存数
+                    entity.MaxStock = maxStock >= safeNum ? maxStock : safeNum;
+                    entity.MinStock = minStock >= safeNum ? minStock : safeNum;
                     entity.StockNum = safeNum;
                     entity.OP_DATE = DateTime.Now;
                 }
@@ -9801,7 +9803,7 @@ WHERE
             }
             return hashtable;
         }
-
+        
         public CargoStockDownloadEntity GetFileData(string ID)
         {
             CargoStockDownloadEntity result = new CargoStockDownloadEntity();

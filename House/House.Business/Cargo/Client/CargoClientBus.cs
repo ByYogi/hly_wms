@@ -49,7 +49,7 @@ namespace House.Business.Cargo
                 man.DelCargoClient(entity);
                 foreach (var it in entity)
                 {
-                    log.Memo = "删除客户：客户ID：" + it.ClientID.ToString() + "，客户编码：" + it.ClientNum.ToString() + "，客户简称：" + it.ClientShortName.Trim() + "，客户名称：" + it.ClientName.Trim() + "，客户类型：" + it.ClientType.Trim() + "，负责人：" + it.Boss.Trim() + "，联系手机：" + it.Cellphone.Trim();
+                    log.Memo = "修改客户：客户ID：" + it.ClientID.ToString() + "，客户编码：" + it.ClientNum.ToString() + "，客户简称：" + it.ClientShortName.Trim() + "，客户名称：" + it.ClientName.Trim() + "，客户类型：" + it.ClientType.Trim() + "，负责人：" + it.Boss.Trim() + "，联系手机：" + it.Cellphone.Trim();
                     lw.WriteLog(log);
                 }
             }
@@ -57,6 +57,30 @@ namespace House.Business.Cargo
             {
                 log.Status = "1";
                 log.Memo = "删除客户，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 修改客户类型
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void SaveClientType(List<CargoClientEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoClientEntity> lw = new LogWrite<CargoClientEntity>();
+            try
+            {
+                man.SaveClientType(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "修改客户：客户ID：" + it.ClientID.ToString() + "，客户编码：" + it.ClientNum.ToString() + "，客户类型：" + it.ClientType.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
                 lw.WriteLog(log);
             }
         }
@@ -275,14 +299,14 @@ namespace House.Business.Cargo
                 {
                     foreach (var it in entity)
                     {
-                        if (!string.IsNullOrEmpty(it.RecordType) )
+                        if (!string.IsNullOrEmpty(it.RecordType))
                         {
                             man.AddClientPreRecord(it);
                             man.UpdateCargoClientPreReceiveMoney(new CargoClientEntity { ClientID = it.ClientID });
                             log.Memo = "品牌：" + it.TypeID.ToString() + ",马牌代码：" + it.TryeClientCode + ",返利月份:" + it.RebateMonth + ",返利类型：" + it.RebateType + ",返利金额:" + it.Money.ToString();
                             lw.WriteLog(log);
                         }
-                       
+
                     }
                     scope.Complete();
                 }
@@ -430,7 +454,7 @@ namespace House.Business.Cargo
             return man.QueryAcceptAddress(entity);
         }
 
-        public List<CargoUpClientEntity>  QueryBusinessID(int ClientID)
+        public List<CargoUpClientEntity> QueryBusinessID(int ClientID)
         {
             return man.QueryBusinessID(ClientID);
         }
@@ -439,7 +463,7 @@ namespace House.Business.Cargo
         {
             return man.QueryBusinessIDDefault(entity);
         }
-        
+
         public List<CargoUpClientEntity> QueryUpClientDep(CargoUpClientEntity entity)
         {
             return man.QueryUpClientDep(entity);
@@ -448,7 +472,7 @@ namespace House.Business.Cargo
         {
             return man.QueryUpClientDepName(DepName);
         }
-        
+
         /// <summary>
         /// 查询收货人信息
         /// </summary>
@@ -838,7 +862,7 @@ namespace House.Business.Cargo
                 lw.WriteLog(log);
             }
         }
-        
+
         #endregion
         #region 客户预收款操作方法集合
         /// <summary>
@@ -1500,15 +1524,15 @@ namespace House.Business.Cargo
         {
             return man.QueryDeliveryAddressByPurchaserID(entity);
         }
-            /// <summary>
-            /// 客户查询
-            /// </summary>
-            /// <param name="pIndex">当前页数</param>
-            /// <param name="pNum">每页多少条数据</param>
-            /// <param name="strWhere">查询条件</param>
-            /// <param name="strCountWhere">查询总数的查询条件</param>
-            /// <returns></returns>
-            public Hashtable QueryCargoPurchaser(int pIndex, int pNum, CargoPurchaserEntity entity)
+        /// <summary>
+        /// 客户查询
+        /// </summary>
+        /// <param name="pIndex">当前页数</param>
+        /// <param name="pNum">每页多少条数据</param>
+        /// <param name="strWhere">查询条件</param>
+        /// <param name="strCountWhere">查询总数的查询条件</param>
+        /// <returns></returns>
+        public Hashtable QueryCargoPurchaser(int pIndex, int pNum, CargoPurchaserEntity entity)
         {
             return man.QueryCargoPurchaser(pIndex, pNum, entity);
         }
@@ -1783,20 +1807,20 @@ namespace House.Business.Cargo
                 try
                 {
                     man.AddCargoSuppAccount(entity);
-                    
-                        foreach (var it in entity.SuppBillGoods)
-                        {
-                            //新增明细
-                            man.AddCargoSuppAccountGoods(it, entity.AccountNO); 
 
-                            //更改订单信息
-                            man.UpdateSuppOrderAccountNo(new CargoSuppClientAccountGoodsEntity { IsSupplierType=1, IsHouseType=1, OrderNo = it.OrderNo });
-                        }
-                    
+                    foreach (var it in entity.SuppBillGoods)
+                    {
+                        //新增明细
+                        man.AddCargoSuppAccountGoods(it, entity.AccountNO);
+
+                        //更改订单信息
+                        man.UpdateSuppOrderAccountNo(new CargoSuppClientAccountGoodsEntity { IsSupplierType = 1, IsHouseType = 1, OrderNo = it.OrderNo });
+                    }
+
                     log.Memo = "新增客户账单,账单号:" + entity.AccountID + ",账单名称:" + entity.AccountTitle;
                     lw.WriteLog(log);
                     scope.Complete();
-                   
+
                 }
                 catch (ApplicationException ex)
                 {
@@ -1815,7 +1839,7 @@ namespace House.Business.Cargo
             {
                 //更改订单信息
                 man.UpdateSuppOrderAccountNo(new CargoSuppClientAccountGoodsEntity { IsSupplierType = 1, IsHouseType = 1, OrderNo = entity.OrderNo });
-                log.Memo = "修改订单账单状态:"+ entity.OrderNo;
+                log.Memo = "修改订单账单状态:" + entity.OrderNo;
                 lw.WriteLog(entity, log);
             }
             catch (ApplicationException ex)
@@ -1853,12 +1877,13 @@ namespace House.Business.Cargo
             LogWrite<CargoSuppClientAccountEntity> lw = new LogWrite<CargoSuppClientAccountEntity>();
             try
             {
-                
+
                 foreach (var it in entity)
                 {
-                    List<CargoSuppClientAccountGoodsEntity> goods=man.QueryCargoSuppClientAccountGoods(new CargoSuppClientAccountGoodsEntity { AccountNO= it.AccountNO});
+                    List<CargoSuppClientAccountGoodsEntity> goods = man.QueryCargoSuppClientAccountGoods(new CargoSuppClientAccountGoodsEntity { AccountNO = it.AccountNO });
                     List<CargoSuppClientAccountGoodsEntity> goodsOpenOrderNo = goods.Where(w => !string.IsNullOrEmpty(w.OpenOrderNo)).ToList();
-                    if (it.AType == 0) {
+                    if (it.AType == 0)
+                    {
                         man.UpdateIsSupplierTypeOrder(
                             new CargoSuppClientAccountGoodsEntity
                             {
@@ -1867,7 +1892,8 @@ namespace House.Business.Cargo
                             });
 
                         //更改共享订单的状态
-                        if (goodsOpenOrderNo.Count()>0) {
+                        if (goodsOpenOrderNo.Count() > 0)
+                        {
                             man.UpdateIsSupplierTypeOrder(
                                new CargoSuppClientAccountGoodsEntity
                                {
@@ -1877,11 +1903,12 @@ namespace House.Business.Cargo
                         }
 
                     }
-                    if (it.AType == 1) {
+                    if (it.AType == 1)
+                    {
                         man.UpdateIsHouseTypeAccountNo(
                             new CargoSuppClientAccountGoodsEntity
                             {
-                                IsHouseType = 0 ,
+                                IsHouseType = 0,
                                 OrderNoList = goods.Select(x => x.OrderNo).ToList()
                             });
                         //更改共享订单的状态
@@ -1895,8 +1922,8 @@ namespace House.Business.Cargo
                                });
                         }
                     }
-                    
-                    log.Memo = "修改账单：账单ID：" + it.AccountID.ToString() + "，账单编码：" + it.AccountNO.ToString() ;
+
+                    log.Memo = "修改账单：账单ID：" + it.AccountID.ToString() + "，账单编码：" + it.AccountNO.ToString();
                     lw.WriteLog(log);
                 }
 
@@ -1962,7 +1989,7 @@ namespace House.Business.Cargo
         /// <param name="pNum"></param>
         /// <param name="entity"></param>
         /// <returns></returns>
-        public Hashtable GetClientPreRecordList(int page,int pageSize, CargoClientPreRecordEntity entity)
+        public Hashtable GetClientPreRecordList(int page, int pageSize, CargoClientPreRecordEntity entity)
         {
             return man.GetClientPreRecordList(page, pageSize, entity);
         }

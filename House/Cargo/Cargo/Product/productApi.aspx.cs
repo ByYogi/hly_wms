@@ -1,9 +1,11 @@
 ﻿using Cargo.QY;
+using DocumentFormat.OpenXml.Spreadsheet;
 using House.Business;
 using House.Business.Cargo;
 using House.Entity;
 using House.Entity.Cargo;
 using House.Entity.Cargo.Product;
+using Newtonsoft.Json;
 using NPOI.HSSF.Record.Formula.Functions;
 using NPOI.POIFS.Properties;
 using System;
@@ -20,6 +22,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Web;
 using System.Web.Script.Serialization;
+using System.Web.Services.Description;
 using System.Web.UI;
 using System.Web.UI.WebControls;
 using static Cargo.Order.orderApi;
@@ -274,8 +277,6 @@ namespace Cargo.Product
             {
                 try
                 {
-                    CargoHouseBus hou = new CargoHouseBus();
-                    CargoOrderBus order = new CargoOrderBus();
                     foreach (Hashtable row in rows)
                     {
                         list.Add(new CargoProductEntity
@@ -288,7 +289,11 @@ namespace Cargo.Product
                             TypeID = Convert.ToInt32(row["TypeID"]),
                             Numbers = Convert.ToInt32(row["Numbers"]),
                             IsLockStock = Convert.ToString(row["IsLockStock"]).Equals("0") ? "1" : "0",
-                            UnitPrice = Convert.ToDecimal(row["UnitPrice"])
+                            UnitPrice = Convert.ToDecimal(row["UnitPrice"]),
+                            LockStockName = UserInfor.UserName,
+                            LockStockDate = DateTime.Now,
+                            LockStockMemo = Convert.ToString(Request["LockStockMemo"]),
+                            UnLockStockDate = Convert.ToDateTime(Request["UnLockStockDate"])
                         });
                     }
                     if (msg.Result)
@@ -1202,10 +1207,11 @@ namespace Cargo.Product
                 //类型
                 string SaleType = Convert.ToString(Request["ASaleType"]);
                 //固定金额
-                decimal FixedAmount =string.IsNullOrEmpty(Request["FixedAmount"])?0:Convert.ToDecimal(Request["FixedAmount"]);
+                decimal FixedAmount = string.IsNullOrEmpty(Request["FixedAmount"]) ? 0 : Convert.ToDecimal(Request["FixedAmount"]);
                 //特价率
                 decimal SpecialRate = 1 - (string.IsNullOrEmpty(Request["SpecialRate"]) ? 0 : Convert.ToDecimal(Request["SpecialRate"]));
-                if (FixedAmount.Equals(0) && SpecialRate.Equals(1)) {
+                if (FixedAmount.Equals(0) && SpecialRate.Equals(1))
+                {
                     msg.Result = false;
                     msg.Message = "请输入正确的特价信息";
                     goto Error;
@@ -1227,7 +1233,8 @@ namespace Cargo.Product
                     {
                         ent.ProductPrice = FixedAmount;
                     }
-                    else {
+                    else
+                    {
                         ent.ProductPrice = string.IsNullOrEmpty(Convert.ToString(row["TradePrice"])) ? 0 : Math.Ceiling(Convert.ToDecimal(row["TradePrice"]) * SpecialRate);
                     }
                     ent.ShelveStatus = "0";
@@ -3110,7 +3117,7 @@ namespace Cargo.Product
                     }
                     queryEntity.TreadWidth = string.IsNullOrEmpty(Request["TreadWidth"]) ? 0 : Convert.ToInt32(Request["TreadWidth"]);
                     queryEntity.FlatRatio = string.IsNullOrEmpty(Request["FlatRatio"]) ? 0 : Convert.ToInt32(Request["FlatRatio"]);
-                   
+
                     queryEntity.Figure = Convert.ToString(Request["Figure"]);//花纹
                     queryEntity.HubDiameter = string.IsNullOrEmpty(Request["HubDiameter"]) ? 0 : Convert.ToInt32(Request["HubDiameter"]);
 
@@ -3149,7 +3156,7 @@ namespace Cargo.Product
                     }
 
                 }
-                list = list.GroupBy(w =>new { w.ProductCode, w.TypeID })
+                list = list.GroupBy(w => new { w.ProductCode, w.TypeID })
            .Select(g => new CargoProductShelvesEntity  // 替换为你的实体类型
            {
                OnSaleNum = g.Sum(item => item.OnSaleNum),  // 对每组的Piece求和
@@ -3191,6 +3198,391 @@ namespace Cargo.Product
             string res = JSON.Encode(msg);
             Response.Write(res);
             //Response.End();
+        }
+
+        /// <summary>
+        /// 导入Excel文件
+        /// </summary>
+        public void saveFile()
+        {
+            System.Web.HttpFileCollection files = this.Request.Files;
+            if (files == null || files.Count == 0) return;
+            string attachmentId = Guid.NewGuid().ToString();
+            DataTable data = ToExcel.ImportExcelData(files);
+
+            CargoImportEntity import = new CargoImportEntity();
+            import.Result = true;
+            import.Data = "";
+            import.Message = "";
+            import.Type = 0;
+            import.ExistCount = 0;
+
+            List<CargoContainerShowEntity> ent = new List<CargoContainerShowEntity>();
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+
+            //验证上传excel文件列数是否有效
+            if (data.Columns.Count != 12)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "模板有误或缺少列，请使用指定模板";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+            //清空table中的空行
+            removeEmpty(data);
+            if (data.Rows.Count <= 0)
+            {
+                import.Result = false;
+                import.Type = 1;
+                import.Message = "Excel无有效数据，请检查导入数据";
+                String abnormalJson = JSON.Encode(import);
+                Response.Clear();
+                Response.Write(abnormalJson);
+                Response.End();
+                return;
+            }
+
+            //获取所有可用品牌用于表格显示品牌
+            List<CargoProductTypeEntity> allSpesc = new List<CargoProductTypeEntity>();
+            allSpesc = bus.QueryAllBrand();
+            Dictionary<string, int> dic = new Dictionary<string, int>();
+            foreach (var item in allSpesc)
+            {
+                dic.Add(item.TypeName, item.TypeID);
+            }
+
+            //获取所有仓库用于表格显示品牌
+            List<CargoProductBasicPriceEntity> allHouse = new List<CargoProductBasicPriceEntity>();
+            Dictionary<string, int> dicHouse = new Dictionary<string, int>();
+            //allHouse = bus.QueryAllHouse();
+            //foreach (var item in allHouse)
+            //{
+            //    dicHouse.Add(item.HouseName, item.HouseID);
+            //}
+            foreach (var item in UserInfor.CargoList)
+            {
+                dicHouse.Add(item.Name, item.ID);
+            }
+
+            //int month = 0;
+            int abnormalCount = 0;
+            //int monthAbnormalCount = 0;
+
+            string msg = "";
+            //获取基础规格信息
+            DataTable ProductBasicDt = new DataTable();
+            ProductBasicDt = bus.QueryProductSpecDate(new CargoProductEntity { });
+
+            for (int i = 0; i < data.Rows.Count; i++)
+            {
+                //var ddt = data.Rows[i];
+                //验证Excel表格指定列是否缺少数据
+                bool isContinue = false;
+                for (int j = 0; j < data.Columns.Count - 1; j++)
+                {
+                    if (string.IsNullOrEmpty((data.Rows[i][j]).ToString()))
+                    {
+                        //if (j != 3)
+                        //{
+                        //    isContinue = true;
+                        //    break;
+                        //}
+                    }
+                }
+                if (isContinue)
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行数据有空值\r\n";
+                    continue;
+                }
+
+                //验证导入仓库是否在数据库中有效，无效则跳过
+                int houseID = 0;
+                if (!string.IsNullOrEmpty(Convert.ToString(data.Rows[i][0]).Trim()))
+                {
+                    if (!dicHouse.ContainsKey(Convert.ToString(data.Rows[i][0]).Trim()))
+                    {
+                        abnormalCount++;
+                        msg += "第" + (i + 2) + "行所属仓库不存在\r\n";
+                        continue;
+                    }
+                    else
+                    {
+                        dicHouse.TryGetValue(Convert.ToString(data.Rows[i][0]).Trim(), out houseID);
+                    }
+                }
+
+                //验证导入品牌是否在数据库中有效，无效则跳过
+                int typeID = 0;
+                if (!string.IsNullOrEmpty(Convert.ToString(data.Rows[i][1]).Trim()))
+                {
+                    if (!dic.ContainsKey(Convert.ToString(data.Rows[i][1]).Trim()))
+                    {
+                        abnormalCount++;
+                        msg += "第" + (i + 2) + "行数据品牌不存在\r\n";
+                        continue;
+                    }
+                    else
+                    {
+                        dic.TryGetValue(Convert.ToString(data.Rows[i][1]).Trim(), out typeID);
+                    }
+                }
+
+               
+                //验证产品编码
+                if (!string.IsNullOrEmpty(data.Rows[i][2].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][2].ToString()))
+                    {
+                        string str = data.Rows[i][2].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][2] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][2] = 0;
+                }
+
+                //验证销售价
+                if (!string.IsNullOrEmpty(data.Rows[i][3].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][3].ToString()))
+                    {
+                        string str = data.Rows[i][3].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][3] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][3] = 0;
+                }
+
+                //验证签约价
+                if (!string.IsNullOrEmpty(data.Rows[i][4].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][4].ToString()))
+                    {
+                        string str = data.Rows[i][4].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][4] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][4] = 0;
+                }
+
+                //验证最低起购
+                if (!string.IsNullOrEmpty(data.Rows[i][5].ToString().Trim()))
+                {
+                    if (!isNumeric(data.Rows[i][5].ToString()))
+                    {
+                        string str = data.Rows[i][5].ToString().Trim();
+                        str = str.Replace("_", "");
+                        str = str.Replace("*", "");
+                        data.Rows[i][5] = str;
+                    }
+                }
+                else
+                {
+                    data.Rows[i][5] = 0;
+                }
+
+                string ProductCode = Convert.ToString(data.Rows[i][2]);
+
+                //获取基础规格信息
+                DataRow[] prows = ProductBasicDt.Select("ProductCode='" + ProductCode + "'");
+                if (prows.Count() <= 0)
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行数据产品编码不存在\r\n";
+                    continue;
+                }
+                string dtSQL = "Specs='" + Convert.ToString(data.Rows[i][6]) + "' and Figure='" + Convert.ToString(data.Rows[i][7]).Trim() + "' and LoadIndex='" + Convert.ToString(data.Rows[i][9]).Trim() + "' and SpeedLevel='" + Convert.ToString(data.Rows[i][10]).Trim() + "' and GoodsCode='" + Convert.ToString(data.Rows[i][8]).Trim() + "' and TypeID=" + typeID;
+
+                //根据品牌，规格，花纹，载重，速度，货品代码查询产品编码进行验证
+                DataRow[] rowss = ProductBasicDt.Select(dtSQL);
+                bool isOK = false;
+                for (int j = 0; j < rowss.Length; j++)
+                {
+                    //Convert.ToString(rowss[j]["ProductCode"])
+                    if (Convert.ToString(rowss[j]["ProductCode"]).Equals(ProductCode))
+                    {
+                        isOK = true;
+                        break;
+                    }
+
+                }
+                if (!isOK)
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行数据产品编码有误\r\n";
+                    continue;
+                }
+
+                ent.Add(new CargoContainerShowEntity
+                {
+                    HouseID = houseID,
+                    HouseName = Convert.ToString(data.Rows[i][0]),
+                    TypeID = typeID,
+                    TypeName = Convert.ToString(data.Rows[i][1]),
+                    ProductName = $@"{Convert.ToString(data.Rows[i][1])} {Convert.ToString(data.Rows[i][6])} {Convert.ToString(data.Rows[i][7])} {Convert.ToString(data.Rows[i][9])+ Convert.ToString(data.Rows[i][10])}",
+                    ProductPrice = Convert.ToDecimal(Math.Round(Convert.ToDouble(data.Rows[i][3]), 2)),
+                    SigningPrice = Convert.ToDecimal(Math.Round(Convert.ToDouble(data.Rows[i][4]), 2)),
+                    ProductCode = Convert.ToString(data.Rows[i][2]),
+                    minPurchase = Convert.ToDecimal(Math.Round(Convert.ToDouble(data.Rows[i][5]), 2)),
+
+                    GoodsCode = Convert.ToString(data.Rows[i][8]),
+                    Specs = Convert.ToString(data.Rows[i][6]),
+                    Figure = Convert.ToString(data.Rows[i][7]),
+                    LoadIndex = Convert.ToString(data.Rows[i][9]),
+                    SpeedLevel = Convert.ToString(data.Rows[i][10]),
+                    Remark= Convert.ToString(data.Rows[i][11]),
+                });
+            }
+            ////验证当前导入数据是否为本年度
+            //int year = Convert.ToInt32(DateTime.Now.Year);
+            //if (Convert.ToInt32(data.Rows[0][10]) == 1)
+            //{
+            //    int quarter = Convert.ToInt32((DateTime.Now.Month + 2) / 3);
+            //    if (quarter == 4)
+            //    {
+            //        year = Convert.ToInt32(DateTime.Now.Year + 1);
+            //    }
+            //}
+            ////查询当前年月已存在的数据
+            //int existCount=bus.IsExistInputData(year.ToString(), month.ToString());
+            //if (existCount > 0) 
+            //{
+            //    import.ExistCount = existCount;
+            //}
+            UploadContainerShowList = ent;
+            String json = JSON.Encode(ent);
+
+            if (abnormalCount > 0)
+            {
+                import.Type = 1;
+                import.Message = msg;
+            }
+            //if (monthAbnormalCount > 0)
+            //{
+            //    import.Type = 1;
+            //    import.Message += "有" + monthAbnormalCount + "条数据订单月与首条不同，已跳过导入";
+            //}
+
+            import.Result = true;
+            import.Data = json;
+            json = JSON.Encode(import);
+
+            Response.Clear();
+            Response.Write(json);
+            Response.Flush(); // 刷新输出流
+            Response.SuppressContent = true; // 禁止后续输出
+            HttpContext.Current.ApplicationInstance.CompleteRequest(); // 正常结束请求
+            return;
+        }
+
+        public List<CargoContainerShowEntity> UploadContainerShowList
+        {
+            get
+            {
+                if (Session["UploadContainerShowList"] == null) { Session["UploadContainerShowList"] = new List<CargoContainerShowEntity>(); }
+                return (List<CargoContainerShowEntity>)(Session["UploadContainerShowList"]);
+            }
+            set
+            {
+                Session["UploadContainerShowList"] = value;
+            }
+        }
+
+
+        /// <summary>
+        /// 保存导入的数据
+        /// </summary>
+        public void SavePriceBasicData()
+        {
+
+            CargoImportEntity import = new CargoImportEntity();
+            import.Result = true;
+            import.Data = "";
+            import.Message = "";
+            import.Type = 0;
+            import.ExistCount = 0;
+            if (UploadContainerShowList.Count == 0) return;
+            List<CargoContainerShowEntity> list = UploadContainerShowList;
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            CargoProductBasicPriceBus bus = new CargoProductBasicPriceBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "产品管理";
+            log.Status = "0";
+            log.NvgPage = "集采上架导入";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "A";
+            try
+            {
+                CargoClientBus clientBus = new CargoClientBus();
+                CargoProductBus productBus = new CargoProductBus();
+                //获取上架数据
+                var shelves = productBus.QueryReserveShelves();
+                string BelongDepart = "0";
+                List<CargoAddProductShelvesEntity> entSave = new List<CargoAddProductShelvesEntity>();
+                List<CargoAddProductShelvesEntity> entUpdate = new List<CargoAddProductShelvesEntity>();
+                foreach (var item in list)
+                {
+                    CargoAddProductShelvesEntity ent = new CargoAddProductShelvesEntity();
+                    ent.TypeID = item.TypeID;
+                    ent.HouseID = item.HouseID;
+                    ent.ProductName = item.ProductName;
+                    ent.ProductCode =item.ProductCode;
+                    ent.Title = item.ProductName;
+                    ent.OnSaleNum = 0;
+                    ent.ProductPrice = item.ProductPrice;
+                    ent.SigningPrice = item.SigningPrice;
+                    ent.minPurchase = item.minPurchase;
+                    ent.SaleType = 5;//预订单
+                    ent.Consume =0;
+                    ent.ShelveStatus = 0;
+                    ent.Memo = item.Remark;
+                    ent.OP_DATE = DateTime.Now ;
+
+                    var data = shelves.FirstOrDefault(a => a.HouseID == item.HouseID && a.ProductCode == item.ProductCode && a.TypeID == item.TypeID);
+                    if (data != null)
+                    {
+                        ent.ID = data.ID;
+                        entUpdate.Add(ent);
+                    }
+                    else
+                    {
+                        entSave.Add(ent);
+                    }
+                }
+                if (msg.Result && (entSave.Count > 0|| entUpdate.Count > 0))
+                {
+                    bus.SaveShelvesPriceData(entSave, entUpdate, log);
+                    msg.Result = true;
+                    msg.Message = "成功";
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            UploadContainerShowList = new List<CargoContainerShowEntity>();
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
         }
 
         #endregion

@@ -15,7 +15,15 @@ namespace House.Entity.Cargo
     [Serializable]
     public class CargoProductEntity
     {
-        
+        [Description("锁定人")]
+        public string LockStockName { get; set; }
+        [Description("锁定日期")]
+        public DateTime LockStockDate { get; set; }
+        [Description("锁定原因")]
+        public string LockStockMemo { get; set; }
+        [Description("解锁日期")]
+        public DateTime UnLockStockDate { get; set; }
+
         [Description("轮胎类型")]
         public string TyreModel { get; set; }
         [Description("质量描述")]
@@ -105,7 +113,7 @@ namespace House.Entity.Cargo
         public decimal NextDayPrice { get; set; }
         [Description("批发价")]
         public decimal WholesalePrice { get; set; }
-        
+
         [Description("成本价")]
         public decimal CostPrice { get; set; }
         [Description("进仓价")]
@@ -426,7 +434,7 @@ namespace House.Entity.Cargo
         即日达 = 22,
         次日达 = 23,
         特价 = 26,
-        预订单=27
+        预订单 = 27
     }
     /// <summary>
     /// 产品来源数据实体

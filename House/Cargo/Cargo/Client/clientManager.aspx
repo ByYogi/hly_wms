@@ -434,6 +434,7 @@
         <a href="#" class="easyui-linkbutton" iconcls="icon-basket_add" plain="false" onclick="ClientIncome()" id="btnClientIn">&nbsp;客户来款记录&nbsp;</a>&nbsp;
         <a href="#" class="easyui-linkbutton" iconcls="icon-printer" plain="false" onclick="QueryInvoice()" id="btnInvoice">&nbsp;开票资料&nbsp;</a>
         <a href="#" class="easyui-linkbutton" iconcls="icon-basket_add" plain="false" onclick="SettleHouse()" id="settleHouse">&nbsp;入驻仓库&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="ModifyClientType()" id="btnClientType">&nbsp;设置客户类型&nbsp;</a>&nbsp;
         <form runat="server" id="fm1">
             <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived_Click" />
         </form>
@@ -1225,6 +1226,7 @@
         <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgSettleHouse').dialog('close')">&nbsp;关闭&nbsp;</a>
     </div>
 
+    <!--入驻仓库-->
     <div id="dlgAddSettleHouse" class="easyui-dialog" style="width: 400px; height: 250px;" closed="true" buttons="#dlgAddSettleHouse-buttons">
         <div id="saPanel" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
             <form id="fmSettleHouse" class="easyui-form" method="post">
@@ -1252,9 +1254,74 @@
         <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveSettleHouse()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
         <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgAddSettleHouse').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
     </div>
-    <!--客户来款操作-->
+
+    <!--设置客户类型-->
+    <div id="divModifyClientType" class="easyui-dialog" style="width: 400px; height: 200px;" closed="true" buttons="#divModifyClientType-buttons">
+        <table>
+            <tr>
+                <td style="text-align: right;">客户类型:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="MClientType" name="ClientType" data-options="" style="width: 100px;"
+                        panelheight="auto" required="true">
+                        <option value="0">个人客户</option>
+                        <option value="1">月结客户</option>
+                        <option value="2">VIP客户</option>
+                        <option value="3">逾期客户</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="divModifyClientType-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="SaveClientType()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+     <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#divModifyClientType').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+    <!--设置客户类型-->
     <script src="../JS/easy/js/ajaxfileupload.js" type="text/javascript"></script>
     <script type="text/javascript">
+
+        //设置客户类型
+        function SaveClientType() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定保存？', function (r) {
+                if (r) {
+                    var MClientType = $('#MClientType').combobox('getValue');
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=SaveClientType',
+                        type: 'post', dataType: 'json', data: { data: json, MClientType: MClientType },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                                $('#dg').datagrid('reload');
+                                $('#dg').datagrid('unselectAll');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        function ModifyClientType() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            $('#divModifyClientType').dialog('open').dialog('setTitle', '修改客户类型');
+            $('#MClientType').combobox('clear');
+        }
+
+
 
         $('#ShopCode').textbox({
             onChange: function (value) {
@@ -1720,7 +1787,7 @@
                 $('#fmAddAcceptAddress').form('clear');
                 $('#dlgAddAcceptAddress').dialog('open').dialog('setTitle', '修改客户收货地址信息');
                 $('#fmAddAcceptAddress').form('load', rows[0]);
-          
+
                 $('#AClientNum').combobox('readonly', true);
             }
         }
@@ -2925,14 +2992,14 @@
             var rows = $('#' + tableName).datagrid('getRows'); // 获取当前页数据
 
             for (var i = 0; i < rows.length; i++) {
-                var str = (rows[i].ExID+'').toString();
+                var str = (rows[i].ExID + '').toString();
                 // 确保它不是 null 或 undefined，并且是字符串
                 rows[i].ExID = str.replace(/,+$/, '');
                 str = (rows[i].ExID).toString();
                 rows[i].ExID = str.replace(/,/g, '，');
 
-                if (rows[i].RecordType=="0") {
-                    rows[i].RecordType="收入"
+                if (rows[i].RecordType == "0") {
+                    rows[i].RecordType = "收入"
                 } else if (rows[i].RecordType == "1") {
                     rows[i].RecordType = "支出"
                 } else if (rows[i].RecordType == "2") {

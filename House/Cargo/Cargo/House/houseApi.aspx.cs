@@ -5087,6 +5087,20 @@ namespace Cargo.House
     .ToArray();
             var productDataList = prdctBus.QueryProductByCodes(productCodes);
 
+            // 将AreaList转换为字典，按HouseID索引，避免重复查询
+            var dicArea = AreaList
+                .GroupBy(a => a.HouseID)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            // 将productDataList转换为字典，按ProductCode索引
+            var dicProduct = productDataList
+                .Where(p => !string.IsNullOrEmpty(p.ProductCode))
+                .GroupBy(p => p.ProductCode.Trim())
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+            // 使用HashSet检查重复
+            var existingKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             DataTable newData = new DataTable();
             newData.Columns.Add("HouseID", typeof(int));
             newData.Columns.Add("HouseName", typeof(string));
@@ -5139,14 +5153,13 @@ namespace Cargo.House
                 string houseName = Convert.ToString(curRow[0]).Trim();
                 string ProductCode = curRow[1].ToString().Trim();
 
-                //筛除重复配置数据
-                bool exists = newData.AsEnumerable()
-    .Any(row => row.Field<string>("HouseName") == houseName
-             && row.Field<string>("ProductCode") == ProductCode);
-                if (exists)
+                //筛除重复配置数据 - ✅ 使用HashSet，O(1)复杂度
+                string uniqueKey = $"{houseName}|{ProductCode}";
+                if (existingKeys.Contains(uniqueKey))
                 {
                     continue;
                 }
+                existingKeys.Add(uniqueKey);
 
                 //验证导入仓库是否在数据库中有效，无效则跳过
                 int HouseID = 0;
@@ -5214,31 +5227,36 @@ namespace Cargo.House
                 string GoodsCode = string.Empty;
                 string TypeID = string.Empty;
                 string TypeName = string.Empty;
-                var Area = AreaList.FirstOrDefault(a => a.HouseID == HouseID);
+
+                // ✅ 使用字典查找Area，O(1)复杂度
+                if (!dicArea.TryGetValue(HouseID, out var Area))
+                {
+                    abnormalCount++;
+                    msg += "第" + (i + 2) + "行仓库对应的区域不存在\r\n";
+                    continue;
+                }
                 var AreaID = Area.AreaID;
                 var AreaName = Area.Name;
 
                 //DataRow[] rows = ProductBasicDt.Select("ProductCode='" + ProductCode + "'");
 
-                var productMatched = productDataList.FirstOrDefault(p => p.ProductCode == ProductCode);
-                if (productMatched == null)
+                // ✅ 使用字典查找Product，O(1)复杂度
+                if (!dicProduct.TryGetValue(ProductCode, out var productMatched))
                 {
                     abnormalCount++;
                     msg += "第" + (i + 2) + $"行数据产品编码({ProductCode})不存在\r\n";
                     continue;
                 }
-                else
-                {
-                    ProductName = productMatched.ProductName.Trim();
-                    TypeID = productMatched.TypeID.ToString();
-                    TypeName = productMatched.TypeName;
-                    GoodsCode = productMatched.GoodsCode;
-                    Specs = productMatched.Specs;
-                    Figure = productMatched.Figure;
-                    LoadIndex = productMatched.LoadIndex;
-                    SpeedLevel = productMatched.SpeedLevel;
-                    Model = productMatched.Model;
-                }
+
+                ProductName = productMatched.ProductName.Trim();
+                TypeID = productMatched.TypeID.ToString();
+                TypeName = productMatched.TypeName;
+                GoodsCode = productMatched.GoodsCode;
+                Specs = productMatched.Specs;
+                Figure = productMatched.Figure;
+                LoadIndex = productMatched.LoadIndex;
+                SpeedLevel = productMatched.SpeedLevel;
+                Model = productMatched.Model;
 
                 DataRow drNew = newData.NewRow();
 
@@ -5289,10 +5307,10 @@ namespace Cargo.House
                 });
             }
 
-            //if (abnormalCount > 0)
-            //{
-            //    throw new ApplicationException(msg);
-            //}
+            if (abnormalCount > 0)
+            {
+                //throw new ApplicationException(msg);
+            }
 
             var avgMthSals = orderBuz.GetAvgMonthSales(avgMonthSalesData_QryParams);
 

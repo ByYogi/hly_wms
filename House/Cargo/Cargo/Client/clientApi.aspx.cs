@@ -2112,6 +2112,50 @@ namespace Cargo.Client
             Response.Write(json);
             Response.End();
         }
+
+        public void SaveClientType()
+        {
+            String json = Request["data"];
+            if (String.IsNullOrEmpty(json)) return;
+            List<CargoClientEntity> list = new List<CargoClientEntity>();
+            ArrayList rows = (ArrayList)JSON.Decode(json);
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = false;
+            CargoClientBus bus = new CargoClientBus();
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "客户管理";
+            log.Status = "0";
+            log.NvgPage = "客户管理";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "U";
+            try
+            {
+                foreach (Hashtable row in rows)
+                {
+                    list.Add(new CargoClientEntity
+                    {
+                        ClientID = Convert.ToInt64(row["ClientID"]),
+                        ClientNum = Convert.ToInt32(row["ClientNum"]),
+                        ClientType = Convert.ToString(Request["MClientType"]),
+                    });
+                }
+                bus.SaveClientType(list, log);
+                msg.Result = true;
+                msg.Message = "成功";
+            }
+            catch (ApplicationException ex)
+            {
+                msg.Message = ex.Message;
+                msg.Result = false;
+            }
+            //返回处理结果
+            string res = JSON.Encode(msg);
+            Response.Write(res);
+            Response.End();
+
+        }
+
         #endregion
         #region 收货地址操作方法集合
         /// <summary>

@@ -276,5 +276,38 @@ namespace House.Business.Cargo
         {
             return man.QueryBasicPriceData(priceEntity);
         }
+
+        public void SaveShelvesPriceData(List<CargoAddProductShelvesEntity> entities,List<CargoAddProductShelvesEntity> Updates, LogEntity log)
+        {
+            LogWrite<CargoAddProductShelvesEntity> lw = new LogWrite<CargoAddProductShelvesEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                   
+                   
+                    log.Memo = "集采上架导入";
+                    if (entities.Count>0)
+                    {
+                        man.SaveShelvesPriceData(entities);
+                        lw.WriteLog(entities.FirstOrDefault(), log);
+                    }
+                    if (Updates.Count>0)
+                    {
+                        man.UpdateShelvesPriceData(Updates);
+                        lw.WriteLog(Updates.FirstOrDefault(), log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "新增入驻仓库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
     }
 }

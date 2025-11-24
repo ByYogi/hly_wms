@@ -1,5 +1,6 @@
 ﻿using House.DataAccess;
 using House.Entity.Cargo;
+using House.Entity.Dto;
 using House.Manager.Common;
 using System;
 using System.Collections;
@@ -1601,6 +1602,57 @@ order by OP_DATE desc";
             return priceEntity;
         }
 
+        public void SaveShelvesPriceData(List<CargoAddProductShelvesEntity> entities)
+        {
+            try
+            {
+                conn.BulkInsertData(entities, "Tbl_Cargo_Shelves");
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        public void UpdateShelvesPriceData(List<CargoAddProductShelvesEntity> entities)
+        {
+            try
+            {
+                if (entities == null || entities.Count == 0) return;
+                // Step 1: 创建临时表（和正式表字段保持一致）
+                string createTempTableSql = @"
+CREATE TABLE ##TempShelvesPriceBatch (
+    ID BIGINT,
+    ProductPrice NUMERIC(12, 2),
+    SigningPrice NUMERIC(12, 2),
+    minPurchase NUMERIC(12, 2)
+)";
+                using (var cmd = conn.GetSqlStringCommond(createTempTableSql))
+                {
+                    conn.ExecuteScalar(cmd);
+                }
 
+                List<CargoAddProductShelvesEntityDto> tempEntity = entities.Select(p => new CargoAddProductShelvesEntityDto
+                {
+                    ID = p.ID,
+                    ProductPrice = p.ProductPrice,
+                    SigningPrice = p.SigningPrice,
+                    minPurchase = p.minPurchase
+                }).ToList();
+                conn.BulkInsertData(tempEntity, "##TempShelvesPriceBatch");
+
+                // 批量更新 Tbl_Cargo_Product
+                string updateProduct = @"
+                       UPDATE p
+                SET p.ProductPrice = tp.ProductPrice,
+                    p.minPurchase = tp.minPurchase,
+                    p.SigningPrice = tp.SigningPrice,
+                    p.OP_DATE = getdate()
+                FROM Tbl_Cargo_Shelves p
+                JOIN ##TempShelvesPriceBatch tp ON p.ID = tp.ID;";
+
+                using (var cmd = conn.GetSqlStringCommond(updateProduct))
+                {
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
     }
 }

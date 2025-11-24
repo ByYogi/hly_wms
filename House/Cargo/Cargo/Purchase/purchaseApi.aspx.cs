@@ -260,6 +260,57 @@ namespace Cargo.Purchase
                 new DataColumn("采购价格", typeof(int))
             });
 
+            var ownershipDicts = new Dictionary<byte, string>
+            {
+                { 1, "昆明云仓" },
+                { 2, "龙华云仓" },
+                { 3, "东平云仓" },
+                { 4, "沙井云仓" },
+                { 5, "星沙云仓" },
+                { 6, "增城云仓" },
+                { 7, "西安云仓" },
+                { 8, "汉口云仓" },
+                { 9, "顺捷云仓" },
+                { 10, "汕头云仓" },
+                { 11, "渭南云仓" },
+                { 12, "北辰云仓" },
+                { 13, "南沙云仓" },
+                { 14, "从化云仓" },
+                { 15, "南海云仓" },
+                { 16, "大兴云仓" },
+                { 17, "经开云仓" },
+                { 18, "香坊云仓" },
+                { 19, "栾城云仓" },
+                { 20, "铁西云仓" },
+                { 21, "济南云仓" },
+                { 22, "太原云仓" },
+                { 23, "衡阳云仓" },
+                { 24, "嘉定云仓" },
+                { 25, "常熟云仓" },
+                { 26, "杭州云仓" },
+                { 27, "南山云仓" },
+                { 28, "双流云仓" },
+                { 29, "江宁云仓" },
+                { 30, "连江云仓" },
+                { 31, "兰州云仓" },
+                { 32, "银川云仓" },
+                { 33, "新疆云仓" },
+                { 34, "南开云仓" },
+                { 35, "兴宁云仓" },
+                { 36, "花都云仓" },
+                { 37, "蔡甸云仓" },
+                { 38, "光明云仓" },
+                { 39, "秀英云仓" },
+                { 40, "贵阳云仓" },
+                { 41, "揭阳云仓" },
+                { 42, "南宁云仓" },
+                { 43, "韶关云仓" },
+                { 44, "肇庆云仓" },
+                { 45, "广州狄乐OE" },
+                { 46, "广州狄乐RE" },
+                { 47, "湖北狄乐RE" },
+                { 48, "湖南狄乐RE" }
+            };
 
             int i = 0;
             foreach (var it in result.Data)
@@ -271,7 +322,7 @@ namespace Cargo.Purchase
                 newRows["采购单号"] = it.PurOrderNo;
                 newRows["开单时间"] = it.CreateDate?.ToString("yyyy-MM-dd");
                 newRows["需求部门"] = it.PurDepart;
-                newRows["物权方"] = it.OwnerShip;
+                newRows["物权方"] =  ownershipDicts.TryGetValue(it.OwnerShip.GetValueOrDefault(), out string ownershipStr) ? ownershipStr : "";
                 newRows["是否含税"] = it.WhetherTax;
                 newRows["供应商"] = it.PurchaserName;
                 newRows["采购单类型"] = it.PurchaseType;
@@ -289,9 +340,6 @@ namespace Cargo.Purchase
                 newRows["速度级别"] = it.SpeedLevel;
                 newRows["采购数量"] = it.Piece;
                 newRows["采购价格"] = it.PurchasePrice;
-
-
-
 
                 switch (it.WhetherTax)
                 {

@@ -134,20 +134,33 @@ namespace House.Entity.Cargo
 
     [Serializable]
     public class CargoAddProductShelvesEntity {
+        public Int64 ID { get; set; }
         public int ProductID { get; set; }
         public int TypeID { get; set; }
         public string ProductName { get; set; }
         public int OnSaleNum { get; set; }
         public decimal ProductPrice { get; set; }
+        public decimal SigningPrice { get; set; }
         public string Title { get; set; }
         public string Memo { get; set; }
         public string FileName { get; set; }
         public int SaleType { get; set; }
         public int ShelveStatus { get; set; }
+        public decimal minPurchase { get; set; }
+        public int HouseID { get; set; }
+        public int Consume { get; set; }
         public DateTime OP_DATE { get; set; }
         public string ProductCode { get; set; }
-        public DateTime AdvertStartDate { get; set; }
-        public DateTime AdvertEndDate { get; set; }
+        public DateTime? AdvertStartDate { get; set; }
+        public DateTime? AdvertEndDate { get; set; }
+
+    }
+    [Serializable]
+    public class CargoAddProductShelvesEntityDto {
+        public Int64 ID { get; set; }
+        public decimal ProductPrice { get; set; }
+        public decimal SigningPrice { get; set; }
+        public decimal minPurchase { get; set; }
 
     }
 

@@ -685,7 +685,7 @@
                     if (isSelected) {
                         $('#dg').datagrid('selectRow', index);
                     } else {
-                        $('#dg').datagrid('unselectRow', index);
+                        $('#dg').datagrid('selectRow', index);
                     }
 
 
@@ -798,7 +798,7 @@
                         }
                     },
                     {
-                        title: '支付类型', field: 'PaymentType', width: '100px',
+                        title: '支付类型', field: 'PaymentType', width: '70px',
                         formatter: function (val, row, index) {
                             if (val == "0") { return "未支付"; }
                             else if (val == "1") { return "定金"; }
@@ -806,7 +806,12 @@
                             else if (val == "3") { return "全款"; }
                             else { return "未支付"; }
                         }
-                    },
+                        },
+                        {
+                            title: '支付金额', field: 'PaymentAmount', width: '70px', formatter: function (value) {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        },
                     {
                         title: '收银宝平台流水', field: 'Trxid', width: '150px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
@@ -1120,11 +1125,11 @@
                         <td>
                             <input id="DeliveryName" name="DeliveryName" style="width: 200px;" />
                         </td>
-                        <td style="text-align: right;">库存不足:
+                 <%--       <td style="text-align: right;">库存不足:
                         </td>
                         <td>
                             <input type="checkbox" class="easyui-checkbox" id="AStock" name="AStock" onclick="StockClick(this)" />
-                        </td>
+                        </td>--%>
                     </tr>
                 </table>
             </form>
@@ -1148,7 +1153,7 @@
         <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgDetail').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
     </div>
 
-        <div id="dlgOutHouse" class="easyui-dialog" data-options="modal:true" style="width: 300px; height: 120px; padding: 0px"
+    <div id="dlgOutHouse" class="easyui-dialog" data-options="modal:true" style="width: 300px; height: 120px; padding: 0px"
         closed="true" buttons="#dlg-buttons-out">
         <div id="saPanel2">
             <form id="fmOut" class="easyui-form" method="post">
@@ -1160,7 +1165,7 @@
                             <input id="CHouseID" name="HouseID" class="easyui-combobox" style="width: 200px" data-options="required:true" panelheight="auto" />
                         </td>
                     </tr>
- 
+
                 </table>
             </form>
         </div>
@@ -1477,6 +1482,11 @@
                 $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择预订单数据！', 'warning');
                 return;
             }//控件初始化
+            row = row.filter(a => !(a.Piece == a.OutPiece))
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择未出库预订单数据！', 'warning');
+                return;
+            }//控件初始化
 
             reset()
 
@@ -1486,8 +1496,9 @@
 
             showProCurementGrid({
                 orderNos: JSON.stringify(row.map(a => a.OrderNo)),
-                AStock: $("#AStock").prop('checked') ? 1 : 0,
-                SuppClientNum:'551098' //写死
+                //AStock: $("#AStock").prop('checked') ? 1 : 0,
+                AStock: 0,
+                SuppClientNum: '551098' //写死
             });
             //$('#cgTbl').datagrid('clearSelections');
             //var gridOpts = $('#cgTbl').datagrid('options');
@@ -1547,7 +1558,8 @@
             var row = $('#dg').datagrid('getSelections');
             $('#cgTbl').datagrid('load', {
                 orderNos: JSON.stringify(row.map(a => a.OrderNo)),
-                AStock: $("#AStock").prop('checked') ? 1 : 0,
+                //AStock: $("#AStock").prop('checked') ? 1 : 0,
+                AStock: 0,
                 SuppClientNum: '551098' //写死
             });
         }
@@ -1716,7 +1728,7 @@
             $('#PurchaserID').combobox('textbox').bind('focus', function () { $('#PurchaserID').combobox('showPanel'); });
             $('#BusinessID').combobox('setValue', '12');
 
-            $("#AStock").prop('checked', 'checked');
+            //$("#AStock").prop('checked', 'checked');
         }
         //标签数据列表
         function showProCurementGrid(item) {
@@ -1752,6 +1764,12 @@
                 {
                     title: '库存', field: 'InventoryPiece', width: '80px', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                },
+                {
+                    title: '需采购数', field: 'ProcureMentPiece', width: '80px', editor: 'numberbox',
+                    styler: function (value, row, index) {
+                        return 'background-color:#ffee00;color:red;';
                     }
                 },
                 {
@@ -1798,7 +1816,110 @@
                 onClickRow: function (index, row) {
 
                 }
+                , onClickCell: onClickCell2
+                , onAfterEdit: function (index, row, changes) {
+                    // 输入框自动消失，表格恢复普通文本
+                    if (999 < parseInt(row.ProcureMentPiece)) {
+                        $('#cgTbl').datagrid('updateRow', {
+                            index: index,
+                            row: {
+                                ProcureMentPiece: parseInt(row.Piece),
+                            }
+                        });
+                    }
+                },
+                onCancelEdit: function (index, row) {
+                    //console.log('取消编辑:', index, row);
+                }
             });
+        }
+
+        $.extend($.fn.datagrid.methods, {
+            editCell: function (jq, param) {
+                return jq.each(function () {
+                    var opts = $(this).datagrid('options');
+                    var fields = $(this).datagrid('getColumnFields', true).concat(
+                        $(this).datagrid('getColumnFields'));
+                    for (var i = 0; i < fields.length; i++) {
+                        var col = $(this).datagrid('getColumnOption', fields[i]);
+                        col.editor1 = col.editor;
+                        if (fields[i] != param.field) {
+                            col.editor = null;
+                        }
+                    }
+                    $(this).datagrid('beginEdit', param.index);
+                    for (var i = 0; i < fields.length; i++) {
+                        var col = $(this).datagrid('getColumnOption', fields[i]);
+                        col.editor = col.editor1;
+                    }
+                });
+            }
+        })
+
+
+        var editIndex = undefined;
+        function onClickCell2(index, field) {
+            if (endEditing()) {
+                $('#cgTbl').datagrid('selectRow', index).datagrid('editCell', {
+                    index: index,
+                    field: field
+                });
+                editIndex = index;
+                var ed = $(this).datagrid('getEditor', { index: index, field: field });
+                if (ed) {
+                    console.log(ed, ed.target.next())
+                    // 监听输入变化
+                    $(ed.target.next()).numberbox({
+                        onChange: function (newValue, oldValue) {
+                            // 获取当前行数据
+                            var rows = $('#cgTbl').datagrid('getRows');
+                            var row = rows[index];
+                            if (field === 'ProcureMentPiece') {
+                                if (999 < parseInt(newValue)) {
+                                    $('#cgTbl').datagrid('updateRow', {
+                                        index: index,
+                                        row: {
+                                            ProcureMentPiece: parseInt(row.Piece),
+                                        }
+                                    });
+                                } else {
+                                    $('#cgTbl').datagrid('updateRow', {
+                                        index: index,
+                                        row: {
+                                            ProcureMentPiece: parseInt(newValue),
+                                        }
+                                    });
+                                }
+                            }
+
+                            //// 举例：输入数量时，自动计算金额 = 数量 * 单价
+                            //if (field === 'Quantity') {
+                            //    row.Amount = (parseFloat(newValue) || 0) * (row.Price || 0);
+
+                            //    // 更新整行
+                            //    $('#dg').datagrid('updateRow', {
+                            //        index: index,
+                            //        row: row
+                            //    });
+                            //}
+                        }
+                    });
+                }
+            }
+
+        }
+        //结束编辑 
+        function endEditing() {
+            if (editIndex == undefined) {
+                return true
+            }
+            if ($('#cgTbl').datagrid('validateRow', editIndex)) {
+                $('#cgTbl').datagrid('endEdit', editIndex);
+                editIndex = undefined;
+                return true;
+            } else {
+                return false;
+            }
         }
 
         function showStockDetailGrid() {
@@ -2039,6 +2160,13 @@
             var rows_ = $('#dg').datagrid('getSelections');
             var json = JSON.stringify(rows);
             var orders = (rows_.map(a => a.OrderNo).join(','));
+
+            rows = rows.filter(a => parseInt(a.ProcureMentPiece) > 0)
+            if (rows.length==0) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '采购总数量不能小于0！', 'warning');
+                return;
+            }
+
             $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定保存？', function (r) {
                 if (r) {
                     $('#fm').form('submit', {
@@ -2235,7 +2363,8 @@
             var gridOpts = $('#dg2').datagrid('options');
             gridOpts.url = 'orderApi.aspx?method=QueryReserveOrderGoods&OrderNo=' + row.OrderNo;
             $('#dg2').datagrid('load', {
-                OrderNo: row.OrderNo
+                OrderNo: row.OrderNo,
+                SuppClientNum: '551098' //写死
             });
 
             var gridOpts = $('#dg3').datagrid('options');
@@ -2374,510 +2503,7 @@
             });
         }
 
-        $.extend($.fn.datagrid.methods, {
-            editCell: function (jq, param) {
-                return jq.each(function () {
-                    var fields = $(this).datagrid('getColumnFields');
-                    for (var i = 0; i < fields.length; i++) {
-                        var col = $(this).datagrid('getColumnOption', fields[i]);
-                        col.editor1 = col.editor;
-                        if (fields[i] != param.field) {
-                            col.editor = null;
-                        }
-                    }
-                    $(this).datagrid('beginEdit', param.index);
-                    for (var i = 0; i < fields.length; i++) {
-                        var col = $(this).datagrid('getColumnOption', fields[i]);
-                        col.editor = col.editor1;
-                    }
-                });
-            }
-        });
         var IsModifyOrder = false;
-        var editIndex = undefined;
-        function endEditing() {
-            if (editIndex == undefined) { return true }
-            if ($('#dgSave').datagrid('validateRow', editIndex)) {
-                var rows = $("#dgSave").datagrid('getData').rows[editIndex];
-                var ed = $('#dgSave').datagrid('getEditors', editIndex);
-                var cg = ed[0];
-                if (cg == undefined) { return false; }
-                var sum = 0;
-                if (cg.field == "Piece") {
-                    //修改数量
-                    var oldPiece = Number(rows.Piece);
-                    var salePrice = Number(rows.ActSalePrice);
-                    var newPiece = Number(cg.target.val());
-                    if (oldPiece == newPiece) {
-                        $('#dgSave').datagrid('endEdit', editIndex);
-                        editIndex = undefined;
-                        return;
-                    }
-
-                    var row = $('#dgSave').datagrid('getRows').length;
-                    var count = 0;
-                    for (var i = 0; i < row; i++) {
-                        if (i == editIndex) {
-                            count = Number(count) + newPiece;
-                        } else {
-                            count = Number(count) + Number($("#dgSave").datagrid('getData').rows[i].Piece);
-                        }
-                    }
-                    if (count == 0) {
-                        rows.Piece = oldPiece;
-                        $('#dgSave').datagrid('refreshRow', editIndex);
-                        $('#dgSave').datagrid('endEdit', editIndex);
-                        editIndex = undefined;
-                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '订单出库总数量必须大于0!', 'info');
-                        return;
-                    }
-                    //修改数量
-                    rows.Piece = newPiece;
-                    rows.oldPiece = oldPiece;
-                    rows.OrderNo = $('#OrderNo').val();
-                    if (rows.RuleType.indexOf('4') != "-1") {
-                        var clientNum = $('#ClientNum').val();
-                        $.ajax({
-                            url: "orderApi.aspx?method=QueryPriceRuleBankInfoToID&RuleID=" + rows.RuleID + "&HouseID=" + rows.HouseID + "&TypeID=" + rows.TypeID + "&Specs=" + encodeURIComponent(rows.Specs) + "&Figure=" + encodeURIComponent(rows.Figure) + "&Batch=" + rows.Batch + "&ClientNum=" + clientNum + "&OrderNo=" + rows.OrderNo + "&RuleType=4",
-                            cache: false,
-                            async: false,
-                            dataType: "json",
-                            success: function (text) {
-                                if (text.Result == true) {
-                                    if (text.RuleContent < rows.Piece) {
-                                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '当前收货人此产品限购' + text.RuleContent + '条', 'warning');
-                                        rows.Piece = oldPiece;
-                                        rows.oldPiece = oldPiece;
-                                        $('#dgSave').datagrid('updateRow', { index: editIndex, row: rows });
-                                        return;
-                                    } else {
-                                        var json = JSON.stringify([rows])
-                                        $.messager.progress({ msg: '请稍后,正在保存中...' });
-                                        $.ajax({
-                                            url: 'orderApi.aspx?method=UpdateOrderPiece',
-                                            type: 'post', dataType: 'json', data: { data: json },
-                                            success: function (text) {
-                                                //var result = eval('(' + msg + ')');
-                                                $.messager.progress("close");
-                                                if (text.Result == true) {
-                                                    IsModifyOrder = true;
-                                                    var ModifyPiece = 0, ModifyPrice = 0;
-                                                    //说明是增加了数量
-                                                    if (newPiece > oldPiece) {
-                                                        ModifyPiece = newPiece - oldPiece;
-                                                        ModifyPrice = ModifyPiece * salePrice;
-                                                        var TPiece = Number($('#APiece').numberbox('getValue'));
-                                                        $('#APiece').numberbox('setValue', Number(TPiece + ModifyPiece));
-                                                        var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                                        $('#TransportFee').numberbox('setValue', Number(TFee + ModifyPrice).toFixed(2));
-                                                        qh();
-                                                    } else {
-                                                        ModifyPiece = oldPiece - newPiece;
-                                                        ModifyPrice = ModifyPiece * salePrice;
-
-                                                        var TPiece = Number($('#APiece').numberbox('getValue'));
-                                                        $('#APiece').numberbox('setValue', Number(TPiece - ModifyPiece));
-                                                        var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                                        $('#TransportFee').numberbox('setValue', Number(TFee - ModifyPrice).toFixed(2));
-                                                        qh();
-                                                    }
-                                                    alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
-                                                }
-                                                else {
-                                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
-                                                    $('#dgSave').datagrid('rejectChanges');
-                                                    editIndex = undefined;
-                                                }
-                                            }
-                                        });
-                                    }
-                                } else {
-                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.RuleContent + '！', 'warning');
-                                    rows.Piece = oldPiece;
-                                    rows.oldPiece = oldPiece;
-                                    return;
-                                }
-                            }
-                        });
-                    } else {
-                        var json = JSON.stringify([rows])
-                        $.messager.progress({ msg: '请稍后,正在保存中...' });
-                        $.ajax({
-                            url: 'orderApi.aspx?method=UpdateOrderPiece',
-                            type: 'post', dataType: 'json', data: { data: json },
-                            success: function (text) {
-                                //var result = eval('(' + msg + ')');
-                                $.messager.progress("close");
-                                if (text.Result == true) {
-                                    IsModifyOrder = true;
-                                    var ModifyPiece = 0, ModifyPrice = 0;
-                                    //说明是增加了数量
-                                    if (newPiece > oldPiece) {
-                                        ModifyPiece = newPiece - oldPiece;
-                                        ModifyPrice = ModifyPiece * salePrice;
-                                        var TPiece = Number($('#APiece').numberbox('getValue'));
-                                        $('#APiece').numberbox('setValue', Number(TPiece + ModifyPiece));
-                                        var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                        $('#TransportFee').numberbox('setValue', Number(TFee + ModifyPrice).toFixed(2));
-                                        qh();
-                                    } else {
-                                        ModifyPiece = oldPiece - newPiece;
-                                        ModifyPrice = ModifyPiece * salePrice;
-
-                                        var TPiece = Number($('#APiece').numberbox('getValue'));
-                                        $('#APiece').numberbox('setValue', Number(TPiece - ModifyPiece));
-                                        var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                        $('#TransportFee').numberbox('setValue', Number(TFee - ModifyPrice).toFixed(2));
-                                        qh();
-                                    }
-                                    alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
-                                }
-                                else {
-                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
-                                    $('#dgSave').datagrid('rejectChanges');
-                                    editIndex = undefined;
-                                }
-                            }
-                        });
-                    }
-                }
-                if (cg.field == "ActSalePrice") {
-                    var oldPrice = Number(rows.ActSalePrice);//旧价格
-                    var piece = Number(rows.Piece);//新数量
-                    var newPrice = Number(cg.target.val());//新价格
-                    if (oldPrice == newPrice) {
-                        $('#dgSave').datagrid('endEdit', editIndex);
-                        editIndex = undefined;
-                        return;
-                    }
-
-                    var row = $('#dgSave').datagrid('getRows').length;
-                    var count = 0;
-                    for (var i = 0; i < row; i++) {
-                        count = Number(count) + Number($("#dgSave").datagrid('getData').rows[i].Piece);
-                    }
-                    if (count == 0) {
-                        rows.Piece = oldPiece;
-                        $('#dgSave').datagrid('refreshRow', editIndex);
-                        $('#dgSave').datagrid('endEdit', editIndex);
-                        editIndex = undefined;
-                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '订单出库总数量必须大于0!', 'info');
-                        return;
-                    }
-                    var salePrice = Number(rows.SalePrice);
-                    var IsModifyPrice = "<%=UserInfor.IsModifyPrice%>";
-                    if (IsModifyPrice == undefined || IsModifyPrice == "0") {
-                        if (rows.houseID == 64) {
-                            if (newPrice * 1 < Number(rows.CostPrice) * 1) {
-                                $('#dgSave').datagrid('endEdit', editIndex);
-                                editIndex = undefined;
-                                rows.ActSalePrice = oldPrice;
-                                $('#dgSave').datagrid('refreshRow', index);
-                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', "业务员价格不能低于成本价!", 'warning');
-                                return;
-                            }
-                        } else {
-                            if (newPrice * 1 < salePrice * 1) {
-                                $('#dgSave').datagrid('endEdit', editIndex);
-                                editIndex = undefined;
-                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', "业务员价格不能低于销售价格!", 'warning');
-                                return;
-                            }
-                        }
-                    }
-                    rows.SalePrice = oldPrice;
-                    rows.ActSalePrice = cg.target.val();
-                    rows.OrderNo = $('#OrderNo').val();
-                    var json = JSON.stringify([rows])
-                    $.messager.progress({ msg: '请稍后,正在保存中...' });
-                    $.ajax({
-                        url: 'orderApi.aspx?method=UpdateOrderSalePrice',
-                        type: 'post', dataType: 'json', data: { data: json },
-                        success: function (text) {
-                            $.messager.progress("close");
-                            //var result = eval('(' + msg + ')');
-                            if (text.Result == true) {
-                                IsModifyOrder = true;
-                                var ModifyPiece = 0, ModifyPrice = 0;
-                                //说明是增加价格
-                                if (newPrice > oldPrice) {
-                                    ModifyPrice = newPrice - oldPrice;
-                                    ModifyPiece = ModifyPrice * piece;
-                                    var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                    $('#TransportFee').numberbox('setValue', Number(TFee + ModifyPiece).toFixed(2));
-                                    qh();
-                                } else {
-                                    ModifyPrice = oldPrice - newPrice;
-                                    ModifyPiece = ModifyPrice * piece;
-
-                                    var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                    $('#TransportFee').numberbox('setValue', Number(TFee - ModifyPiece).toFixed(2));
-                                    qh();
-                                }
-                                alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
-                            }
-                            else {
-                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
-                                $('#dgSave').datagrid('rejectChanges');
-                                editIndex = undefined;
-                            }
-                        }
-                    });
-                }
-                $('#dgSave').datagrid('endEdit', editIndex);
-                editIndex = undefined;
-                return true;
-            } else {
-                return false;
-            }
-        }
-        function onClickCell(index, field) {
-            var rows = $("#dgSave").datagrid('getData').rows[index];
-            if (TrafficType == "2") { return; }
-            if ($('#dgSaveAwbStatus').val() * 1 < 1 && field == "Piece" || field == "ActSalePrice") {
-                if (endEditing()) {
-                    $('#dgSave').datagrid('selectRow', index)
-                        .datagrid('editCell', { index: index, field: field });
-                    editIndex = index;
-                }
-            } else {
-                if (editIndex == undefined) { return true }
-                var ed = $('#dgSave').datagrid('getEditors', editIndex);
-                var cg = ed[0];
-                if (cg == undefined) {
-                    return true;
-                }
-                var sum = 0;
-                if (cg.field == "Piece") {
-                    var oldPiece = Number(rows.Piece);
-                    var salePrice = Number(rows.ActSalePrice);
-                    var newPiece = Number(cg.target.val());
-                    if (oldPiece == newPiece) {
-                        $('#dgSave').datagrid('endEdit', editIndex);
-                        editIndex = undefined;
-                        return;
-                    }
-                    //修改数量
-                    rows.Piece = newPiece;
-                    rows.oldPiece = oldPiece;
-                    rows.OrderNo = $('#OrderNo').val();
-
-                    var row = $('#dgSave').datagrid('getRows').length;
-                    var count = 0;
-                    for (var i = 0; i < row; i++) {
-                        count = Number(count) + Number($("#dgSave").datagrid('getData').rows[i].Piece);
-                    }
-                    if (count == 0) {
-                        rows.Piece = oldPiece;
-                        $('#dgSave').datagrid('refreshRow', index);
-                        $('#dgSave').datagrid('endEdit', editIndex);
-                        editIndex = undefined;
-                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '订单出库总数量必须大于0!', 'info');
-                        return;
-                    }
-                    if (rows.RuleType.indexOf('4') != "-1") {
-                        var clientNum = $('#ClientNum').val();
-                        $.ajax({
-                            url: "orderApi.aspx?method=QueryPriceRuleBankInfoToID&RuleID=" + rows.RuleID + "&HouseID=" + rows.HouseID + "&TypeID=" + rows.TypeID + "&Specs=" + encodeURIComponent(rows.Specs) + "&Figure=" + encodeURIComponent(rows.Figure) + "&Batch=" + rows.Batch + "&ClientNum=" + clientNum + "&OrderNo=" + $('#OrderNo').val() + "&RuleType=4",
-                            cache: false,
-                            async: false,
-                            dataType: "json",
-                            success: function (text) {
-                                if (text.Result == true) {
-                                    if (text.RuleContent < newPiece) {
-                                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '当前收货人此产品限购' + text.RuleContent + '条', 'warning');
-                                        rows.Piece = oldPiece;
-                                        rows.oldPiece = oldPiece;
-                                        //$('#dgSave').datagrid('updateRow', {
-                                        //    index: index
-                                        //});
-                                        $('#dgSave').datagrid('updateRow', { index: index, row: rows });
-                                        return;
-                                    } else {
-                                        var json = JSON.stringify([rows])
-                                        $.messager.progress({ msg: '请稍后,正在保存中...' });
-                                        $.ajax({
-                                            url: 'orderApi.aspx?method=UpdateOrderPiece',
-                                            type: 'post', dataType: 'json', data: { data: json },
-                                            success: function (text) {
-                                                $.messager.progress("close");
-                                                //var result = eval('(' + msg + ')');
-                                                if (text.Result == true) {
-                                                    IsModifyOrder = true;
-                                                    var ModifyPiece = 0, ModifyPrice = 0;
-                                                    //说明是增加了数量
-                                                    if (newPiece > oldPiece) {
-                                                        ModifyPiece = newPiece - oldPiece;
-                                                        ModifyPrice = ModifyPiece * salePrice;
-                                                        var TPiece = Number($('#APiece').numberbox('getValue'));
-                                                        $('#APiece').numberbox('setValue', Number(TPiece + ModifyPiece));
-                                                        var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                                        $('#TransportFee').numberbox('setValue', Number(TFee + ModifyPrice).toFixed(2));
-                                                        qh();
-                                                    } else {
-
-                                                        ModifyPiece = oldPiece - newPiece;
-                                                        ModifyPrice = ModifyPiece * salePrice;
-
-                                                        var TPiece = Number($('#APiece').numberbox('getValue'));
-                                                        $('#APiece').numberbox('setValue', Number(TPiece - ModifyPiece));
-                                                        var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                                        $('#TransportFee').numberbox('setValue', Number(TFee - ModifyPrice).toFixed(2));
-                                                        qh();
-                                                    }
-                                                    alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
-                                                }
-                                                else {
-                                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
-                                                    $('#dgSave').datagrid('rejectChanges');
-                                                    editIndex = undefined;
-                                                }
-                                            }
-                                        });
-                                    }
-                                } else {
-                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.RuleContent + '！', 'warning');
-                                    rows.Piece = oldPiece;
-                                    rows.oldPiece = oldPiece;
-                                    return;
-                                }
-                            }
-                        });
-                    } else {
-                        var json = JSON.stringify([rows])
-                        $.messager.progress({ msg: '请稍后,正在保存中...' });
-                        $.ajax({
-                            url: 'orderApi.aspx?method=UpdateOrderPiece',
-                            type: 'post', dataType: 'json', data: { data: json },
-                            success: function (text) {
-                                $.messager.progress("close");
-                                //var result = eval('(' + msg + ')');
-                                if (text.Result == true) {
-                                    IsModifyOrder = true;
-                                    var ModifyPiece = 0, ModifyPrice = 0;
-                                    //说明是增加了数量
-                                    if (newPiece > oldPiece) {
-                                        ModifyPiece = newPiece - oldPiece;
-                                        ModifyPrice = ModifyPiece * salePrice;
-                                        var TPiece = Number($('#APiece').numberbox('getValue'));
-                                        $('#APiece').numberbox('setValue', Number(TPiece + ModifyPiece));
-                                        var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                        $('#TransportFee').numberbox('setValue', Number(TFee + ModifyPrice).toFixed(2));
-                                        qh();
-                                    } else {
-
-                                        ModifyPiece = oldPiece - newPiece;
-                                        ModifyPrice = ModifyPiece * salePrice;
-
-                                        var TPiece = Number($('#APiece').numberbox('getValue'));
-                                        $('#APiece').numberbox('setValue', Number(TPiece - ModifyPiece));
-                                        var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                        $('#TransportFee').numberbox('setValue', Number(TFee - ModifyPrice).toFixed(2));
-                                        qh();
-                                    }
-                                    alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
-                                }
-                                else {
-                                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
-                                    $('#dgSave').datagrid('rejectChanges');
-                                    editIndex = undefined;
-                                }
-                            }
-                        });
-                    }
-                }
-                if (cg.field == "ActSalePrice") {
-                    //修改销售价
-                    var oldPrice = Number(rows.ActSalePrice);//旧价格
-                    var piece = Number(rows.Piece);//新数量
-                    var newPrice = Number(cg.target.val());//新价格
-                    if (oldPrice == newPrice) {
-                        $('#dgSave').datagrid('endEdit', editIndex);
-                        editIndex = undefined;
-                        return;
-                    }
-
-                    if (count == 0) {
-                        rows.Piece = oldPiece;
-                        $('#dgSave').datagrid('refreshRow', index);
-                        $('#dgSave').datagrid('endEdit', editIndex);
-                        editIndex = undefined;
-                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '订单出库总数量必须大于0!', 'info');
-                        return;
-                    }
-
-                    var row = $('#dgSave').datagrid('getRows').length;
-                    var count = 0;
-                    for (var i = 0; i < row; i++) {
-                        count = Number(count) + Number($("#dgSave").datagrid('getData').rows[i].Piece);
-                    }
-                    var salePrice = Number(rows.SalePrice);
-                    var IsModifyPrice = "<%=UserInfor.IsModifyPrice%>";
-                    if (IsModifyPrice == undefined || IsModifyPrice == "0") {
-                        if (rows.HouseID == 64) {
-                            if (newPrice * 1 < Number(rows.CostPrice) * 1) {
-                                $('#dgSave').datagrid('endEdit', editIndex);
-                                editIndex = undefined;
-                                rows.ActSalePrice = oldPrice;
-                                $('#dgSave').datagrid('refreshRow', index);
-                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', "业务员价格不能低于成本价!", 'warning');
-                                return;
-                            }
-                        } else {
-                            if (newPrice * 1 < salePrice * 1) {
-                                $('#dgSave').datagrid('endEdit', editIndex);
-                                editIndex = undefined;
-                                rows.ActSalePrice = oldPrice;
-                                $('#dgSave').datagrid('refreshRow', index);
-                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', "业务员价格不能低于销售价格!", 'warning');
-                                return;
-                            }
-                        }
-                    }
-                    rows.SalePrice = oldPrice;
-                    rows.ActSalePrice = cg.target.val();
-                    rows.OrderNo = $('#OrderNo').val();
-                    var json = JSON.stringify([rows])
-                    $.messager.progress({ msg: '请稍后,正在保存中...' });
-                    $.ajax({
-                        url: 'orderApi.aspx?method=UpdateOrderSalePrice',
-                        type: 'post', dataType: 'json', data: { data: json },
-                        success: function (text) {
-                            $.messager.progress("close");
-                            //var result = eval('(' + msg + ')');
-                            if (text.Result == true) {
-                                IsModifyOrder = true;
-                                var ModifyPiece = 0, ModifyPrice = 0;
-                                //说明是增加价格
-                                if (newPrice > oldPrice) {
-                                    ModifyPrice = newPrice - oldPrice;
-                                    ModifyPiece = ModifyPrice * piece;
-                                    var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                    $('#TransportFee').numberbox('setValue', Number(TFee + ModifyPiece).toFixed(2));
-                                    qh();
-                                } else {
-                                    ModifyPrice = oldPrice - newPrice;
-                                    ModifyPiece = ModifyPrice * piece;
-
-                                    var TFee = Number($('#TransportFee').numberbox('getValue'));
-                                    $('#TransportFee').numberbox('setValue', Number(TFee - ModifyPiece).toFixed(2));
-                                    qh();
-                                }
-                                alert_autoClose('<%= Cargo.Common.GetSystemNameAndVersion()%>', '修改成功!', 'info');
-                            }
-                            else {
-                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
-                                $('#dgSave').datagrid('rejectChanges');
-                                editIndex = undefined;
-                            }
-                        }
-                    });
-                }
-
-                $('#dgSave').datagrid('endEdit', editIndex);
-                editIndex = undefined;
-            }
-        }
         //绑定费用框
         function bindMethod() {
             $("#TransitFee").numberbox({ "onChange": function (newValue, oldValue) { qh(); } });

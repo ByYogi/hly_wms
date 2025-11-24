@@ -339,6 +339,7 @@
         <a href="#" class="easyui-linkbutton" iconcls="icon-cart_put" plain="false" onclick="Unshelves()">&nbsp;下&nbsp;架&nbsp;</a>&nbsp;&nbsp;
         <%--<a href="#" class="easyui-linkbutton" iconcls="icon-out_cargo" plain="false" onclick="BatchShelves()">&nbsp;批量上架&nbsp;</a>&nbsp;&nbsp;--%>
         <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="Export()">&nbsp;导出&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="Import()">&nbsp;导入&nbsp;</a>&nbsp;&nbsp;
         <form runat="server" id="fm1">
             <asp:Button ID="btnExport" runat="server" Style="display: none;" Text="导出" OnClick="btnExport_Click" />
         </form>
@@ -379,12 +380,12 @@
                         </td>
                     </tr>
                     <tr>
-                        <td style="text-align: right;" id="sj">上架数量
+                        <%--  <td style="text-align: right;" id="sj">上架数量
                         </td>
                         <td>
-                            <input name="OnSaleNum" id="OnSaleNum" class="easyui-numberbox" data-options="prompt:'请输入上架数量',required:true"
+                            <input name="OnSaleNum" id="OnSaleNum" disabled readonly class="easyui-numberbox" data-options="prompt:'请输入上架数量',required:true"
                                 style="width: 60px;" />
-                        </td>
+                        </td>--%>
 
 
 
@@ -409,6 +410,7 @@
                                 style="width: 60px;" />
                         </td>
 
+
                         <%--                 <td style="text-align: right;">促销有效期</td>
                         <td>
                             <input id="AdvertStartDate" name="AdvertStartDate" class="easyui-datebox" style="width: 100px" />~
@@ -416,31 +418,29 @@
                         </td>--%>
                     </tr>
                     <tr>
-                        <td style="text-align: right; color: gray;">在库数量
+                        <td style="text-align: right;">仓库
+                        </td>
+                        <td>
+                            <input id="HouseID" name="HouseID" class="easyui-combobox" style="width: 100px;" />
+                        </td>
+                        <%--  <td style="text-align: right; color: gray;">在库数量
                         </td>
                         <td>
                             <input name="Piece" id="Piece" class="easyui-textbox" style="width: 60px;" />
-                        </td>
+                        </td>--%>
                         <%--  <td>
                             <input type="checkbox" id="SaleType4" name="SaleType" value="4" /><label for="SaleType4">积分兑换</label></td>--%>
-                        <td style="text-align: right;" id="jf">积分数量
+                        <%-- <td style="text-align: right;" id="jf">积分数量
                         </td>
                         <td>
-                            <input name="Consume" id="Consume" class="easyui-numberbox" data-options="prompt:'请输入兑换所需积分数量'"
+                            <input name="Consume" id="Consume" class="easyui-numberbox" readonly disabled data-options="prompt:'请输入兑换所需积分数量'"
                                 style="width: 60px;" />
-                        </td>
+                        </td>--%>
                         <td style="text-align: right;" id="qg">最低起购
                         </td>
                         <td>
                             <input name="minPurchase" id="minPurchase" class="easyui-numberbox" data-options="prompt:'请输入最低起购数量'"
                                 style="width: 60px;" />
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="text-align: right; ">仓库
-                        </td>
-                        <td>
-                           <input id="HouseID"  name="HouseID"  class="easyui-combobox" style="width: 100px;" />
                         </td>
                     </tr>
                     <tr>
@@ -486,6 +486,26 @@
         <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItemBatch1()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
     <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#Batchdlg').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
     </div>
+
+
+    <div id="ImportDlg" class="easyui-dialog" style="width: 1000px; height: 550px; padding: 2px 2px" closed="true">
+    <table id="dgImport" class="easyui-datagrid">
+    </table>
+    <div id="dginporttoolbar">
+        <input type="file" id="fileT" name="file" accept=".xls,.xlsx" onchange="saveFile()" style="width: 250px;" />
+        <input type="hidden" id="ExistCount" />
+        <a href="#" id="btnload" class="easyui-linkbutton" iconcls="icon-out_cargo" plain="false" onclick="saveFile()">&nbsp;重新上传&nbsp;</a>&nbsp;&nbsp;
+        <a href="../upload/sFile/上架导入模板251120.xls" id="dowload" class="easyui-linkbutton" iconcls="icon-application_put" plain="false">&nbsp;下载模板&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" plain="false" onclick="btnSaveData()">&nbsp;保存数据&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="closeDlgStatus()">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+
+<%--            <div id="dlg-buttonsImport">
+        <a href="#" class="easyui-linkbutton" id="btnSave" iconcls="icon-ok" onclick="btnSaveData()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#ImportDlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>--%>
+</div>
+        <script src="../JS/easy/js/ajaxfileupload.js" type="text/javascript"></script>
     <script type="text/javascript">
         //导出
         function Export() {
@@ -521,6 +541,212 @@
                 }
             });
         }
+        function Import() {
+            $('#ImportDlg').dialog('open').dialog('setTitle', '导入上架数据');
+            showData();
+            $('#dgImport').datagrid('loadData', { total: 0, rows: [] });
+        }
+        //显示DataGrid数据列表
+        function showData() {
+            $('#dgImport').datagrid({
+                width: '100%',
+                height: '450px',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                pagination: true, //分页是否显示
+                rownumbers: true,//显示序号
+                pageSize: 500, //每页多少条
+                pageList: [500, 1000, 1500],
+                fitColumns: true, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: true, //设置为 true，则只允许选中一行。
+                checkOnSelect: false, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                url: null,
+                toolbar: '#dginporttoolbar',
+                columns: [[
+                    { title: '所属仓库', field: 'HouseName', width: '70px' },
+                    { title: '品牌', field: 'TypeName', width: '70px' },
+                    { title: '产品编码', field: 'ProductCode', width: '70px' },
+                    { title: '货品代码', field: 'GoodsCode', width: '70px' },
+                    { title: '规格', field: 'Specs', width: '70px' },
+                    //{ title: '尺寸', field: 'HubDiameter', width: '35px' },
+                    { title: '花纹', field: 'Figure', width: '100px' },
+                    { title: '载重', field: 'LoadIndex', width: '35px' },
+                    { title: '速度', field: 'SpeedLevel', width: '35px' },
+                    { title: '销售价', field: 'ProductPrice', width: '60px', align: 'right' },
+                    { title: '签约价', field: 'SigningPrice', width: '60px', align: 'right' },
+                    { title: '最低起购', field: 'minPurchase', width: '60px', align: 'right' },
+                    { title: '备注', field: 'Remark', width: '150px', align: 'right' },
+                    //{
+                    //    title: '云仓类型', field: 'CloudHouseType', width: '40px', formatter: function (val, row, index) {
+                    //        if (val == "0") { return "非云仓"; } else { return "云仓"; }
+                    //    }
+                    //}
+                ]]
+            });
+            const pager = $('#dgImport').datagrid('getPager');
+            pager.pagination({
+                beforePageText: '第',
+                afterPageText: '页 共 {pages} 页',
+                displayMsg: '显示 {from} 到 {to} 条记录，共 {total} 条',
+                onSelectPage: function (pageNumber, pageSize) {
+                    $(this).pagination('loading');
+                    console.log(pageNumber, pageSize)
+                    // 模拟网络延迟
+                    setTimeout(() => {
+                        const opts = $(this).pagination('options');
+                        const data = AllExportData.slice(
+                            (pageNumber - 1) * pageSize,
+                            pageNumber * pageSize
+                        );
+
+                        $('#dgImport').datagrid('loadData', {
+                            total: AllExportData.length,
+                            rows: data
+                        });
+
+                        $(this).pagination('loaded');
+                    }, 300);
+                }
+            });
+        }
+
+        //保存数据
+        function btnSaveData() {
+            var rows = $("#dgImport").datagrid('getData').rows;
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请先导入需要保存的数据！', 'warning');
+                return;
+            }
+            var msg = "确定保存？";
+            //var existCount = $('#ExistCount').val();
+            //if (existCount > 0) {
+            //    msg = "当前系统已存在" + existCount + "条本次导入同期数据，保存将覆盖所有数据，确定保存？";
+            //}
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', msg, function (r) {
+                if (r) {
+                    $.messager.progress({ msg: '请稍后,正在保存中...' });
+                    //var json = JSON.stringify(rows)
+                    var json = ''
+                    $.ajax({
+                        url: 'productApi.aspx?method=SavePriceBasicData',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            $.messager.progress("close");
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '导入成功!', 'info');
+                                $('#ImportDlg').dialog('close');
+                                dosearch();
+                                $("#fileT").val("");
+                                $('#dgImport').datagrid('loadData', { total: 0, rows: [] });
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        //关闭数据导入弹出框
+        function closeDlgStatus() {
+            $('#ImportDlg').dialog('close');
+            $('#dgImport').datagrid('loadData', { total: 0, rows: [] });
+            $('#fileT').val("");
+        }
+        //保存上传的文件
+        function saveFile(item) {
+            var file = $("#fileT").val();
+            if (file == null || file == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择导入文件!', 'info');
+                return;
+            }
+            $('#dgImport').datagrid('loadData', { total: 0, rows: [] });
+            //console.log(item,this)
+            ajaxFileUpload();
+        }
+
+        //文件上传
+        function ajaxFileUpload() {
+            $('#ExistCount').val('');
+            $.ajaxFileUpload({
+                url: 'productApi.aspx?method=saveFile',
+                secureuri: false,
+                fileElementId: 'fileT',
+                dataType: 'json',
+                success: function (data) {
+                    var val = JSON.parse(data.responseText);
+                    var result = val.Result;
+                    if (result == true) {
+                        var type = val.Type;
+                        if (type == 1) {
+
+                            var reg = new RegExp("\r\n", "g");
+                            var message = val.Message.replace(reg, "<br>");
+                            $.messager.alert('以下Excel数据有误已跳过导入', message, 'warning');
+                        }
+                        var value = eval(val.Data);
+                        AllExportData = value;
+
+                        const data = AllExportData.slice(
+                            (options.pageNumber) * options.pageSize,
+                            (options.pageNumber + 1) * options.pageSize
+                        );
+                        $('#dgImport').datagrid('loadData', {
+                            total: AllExportData.length,
+                            rows: data
+                        });
+
+                        if (val.ExistCount > 0) {
+                            $('#ExistCount').val(val.ExistCount);
+                        }
+                    }
+                    else {
+                        var message = val.Message;
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', message, 'warning');
+                    }
+                },
+                error: function (data) {
+                    var val = JSON.parse(data.responseText);
+                    var result = val.Result;
+                    if (result == true) {
+                        var type = val.Type;
+                        if (type == 1) {
+
+                            var reg = new RegExp("\r\n", "g");
+                            var message = val.Message.replace(reg, "<br>");
+                            $.messager.alert('以下Excel数据有误已跳过导入', message, 'warning');
+                        }
+                        var value = eval(val.Data);
+                        AllExportData = value;
+                        const pager = $('#dgImport').datagrid('getPager');
+                        const options = pager.pagination('options');
+
+
+                        const data = AllExportData.slice(
+                            (options.pageNumber) * options.pageSize,
+                            (options.pageNumber + 1) * options.pageSize
+                        );
+
+                        $('#dgImport').datagrid('loadData', {
+                            total: AllExportData.length,
+                            rows: data
+                        });
+                        if (val.ExistCount > 0) {
+                            $('#ExistCount').val(val.ExistCount);
+                        }
+                    }
+                    else {
+                        var message = val.Message;
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', message, 'warning');
+                    }
+                }
+            })
+            return false;
+        }
+
         //下架
         function Unshelves() {
             var rows = $('#dg').datagrid('getSelections');
@@ -553,7 +779,7 @@
         }
         //保存
         function saveItem() {
-            var onNum = Number($('#OnSaleNum').numberbox('getValue'));
+            //var onNum = Number($('#OnSaleNum').numberbox('getValue'));
 
             $.messager.progress({ msg: '请稍后,正在保存中...' });
             $('#fm').form('submit', {

@@ -227,7 +227,7 @@ namespace Cargo.HuiCai
                 ClickConversionRate=totalUniqueClientCount>0&&totalclickCount>0? Math.Round(Convert.ToDouble((totalUniqueClientCount)) / Convert.ToDouble(totalclickCount) * 100, 1):0,
                 LocalSkuOutOfStockRate=(totalProCountAll-totalProCount)>0?Math.Round((Convert.ToDouble((totalProCountAll-totalProCount)/totalProCountAll) * 100), 1):0,
                 GlobalSkuOosRate=(totalGlobalProCountAll-totalGlobalProCount)>0?Math.Round((Convert.ToDouble((totalGlobalProCountAll-totalGlobalProCount)/totalGlobalProCountAll) * 100), 1):0,
-                OverdueProCountRate=(totalPiece)>0&&totalOverduePiece>0?Math.Round((Convert.ToDouble((totalOverduePiece)/totalPiece) * 100), 1):0,
+                OverdueProCountRate=(totalPiece)>0&&totalOverduePiece>0?Math.Round((Convert.ToDouble(Convert.ToDouble(totalOverduePiece)/(totalProPiece)) * 100), 1):0,
             }
             };
             //if (list.Count > 0) { CargoDailyReportType = "出库"; }
