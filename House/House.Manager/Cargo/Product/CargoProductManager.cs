@@ -5752,6 +5752,37 @@ WHERE (1=1) ";
 
         #endregion
 
+        /// <summary>
+        /// 获取基础产品
+        /// </summary>
+        /// <returns></returns>
+        public List<CargoProductSpecEntity> QueryProductSpecs(CargoProductEntity entity)
+        {
+            List<CargoProductSpecEntity> result = new List<CargoProductSpecEntity>();
+            string strSQL = "select * from Tbl_Cargo_ProductSpec where (1=1)";
+            if (!string.IsNullOrEmpty(entity.ProductCodeStr))
+            {
+                strSQL += $@" and ProductCode in({entity.ProductCodeStr}) ";
+            }
+
+
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dd = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow row in dd.Rows)
+                    {
+                        result.Add(new CargoProductSpecEntity
+                        {
+                            ProductCode = row.Field<string>("ProductCode") ?? "",
+                            TypeID = row.Field<int>("TypeID"),
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
         //        public void UpdateContainerGoodsTakeDate(int StockID)
         //        {
         //            string strSQL = @"

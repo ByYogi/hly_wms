@@ -1,5 +1,6 @@
 ﻿using Cargo.Extensions;
 using Cargo.QY;
+using DocumentFormat.OpenXml.Office2010.ExcelAc;
 using DocumentFormat.OpenXml.Bibliography;
 using House.Business;
 using House.Business.Cargo;
@@ -4204,6 +4205,105 @@ namespace Cargo.Purchase
 
         }
 
+        #endregion
+
+        #region 采购账单管理
+        /// <summary>
+        /// 查询采购单
+        /// </summary>
+        public void QueryCargoRealPurchaseAccount()
+        {
+            CargoRealFactoryPurchaseOrderEntity queryEntity = new CargoRealFactoryPurchaseOrderEntity();
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
+            if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
+            queryEntity.PurOrderNo = Convert.ToString(Request["PurOrderNo"]);
+            if (!string.IsNullOrEmpty(Request["PurchaserID"]))
+            {
+                queryEntity.PurchaserID = Convert.ToInt32(Request["PurchaserID"]);
+            }
+            queryEntity.CheckStatus = "0";//未结算
+            queryEntity.ApplyStatus= "3";//已结束
+            //分页
+            int pageIndex = 1;
+            int pageSize = 10000;
+            CargoRealFactoryPurchaseOrderBus bus = new CargoRealFactoryPurchaseOrderBus();
+            Hashtable list = bus.QueryCargoRealPurchase(pageIndex, pageSize, queryEntity);
+
+            //JSON
+            String json = JSON.Encode(list);
+            Response.Clear();
+            Response.Write(json);
+
+        }
+        /// <summary>
+        /// 保存分账账单
+        /// </summary>
+        public void savePurchaseBillAccount() {
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
+            string json = Request["submitData"];
+            ArrayList GridRows = (ArrayList)JSON.Decode(json);
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "采购账单管理";
+            log.NvgPage = "保存分账账单";
+            log.UserID = UserInfor.LoginName.Trim();
+            log.Operate = "A";
+            log.Status = "0";
+
+            try
+            {
+                List<CargoRealPurchaseAccountGoodsEntity> accountGoods = new List<CargoRealPurchaseAccountGoodsEntity>();
+                //账单明细
+                int PurchaserID = 0;
+                string PurchaserName ="";
+                foreach (Hashtable grid in GridRows)
+                {
+                    PurchaserID= Convert.ToInt32(grid["PurchaserID"]);
+                    PurchaserName = Convert.ToString(grid["PurchaserName"]);
+                    CargoRealPurchaseAccountGoodsEntity goods = new CargoRealPurchaseAccountGoodsEntity();
+                    goods.PurOrderID = Convert.ToInt32(grid["PurOrderID"]);
+                    goods.PurOrderNo = Convert.ToString(grid["PurOrderNo"]);
+                    goods.TransportFee = Convert.ToDecimal(grid["TransportFee"]);
+                    goods.OtherFee = Convert.ToDecimal(grid["OtherFee"]);
+                    goods.TotalCharge = Convert.ToDecimal(grid["TotalCharge"]);
+                    goods.AccountType = 0;
+                    accountGoods.Add(goods);
+                }
+
+
+                CargoRealPurchaseAccountEntity bill = new CargoRealPurchaseAccountEntity();
+                bill.AccountNO= Common.GetMaxAccountNoNum("BP");
+                bill.AccountTitle = $"{PurchaserName}{DateTime.Now.ToString("yyyyMM")}采购分账账单-手工";
+                bill.CreateDate = DateTime.Now;
+                bill.PurchaserID = PurchaserID;
+                bill.PurchaserName = PurchaserName;
+                bill.ARMoney = accountGoods.Sum(w => w.TotalCharge);//本期订总金额
+                bill.TransportFee = accountGoods.Sum(w => w.TransportFee);//本期订总金额
+                bill.OtherFee = accountGoods.Sum(w => w.OtherFee);//其他费用
+                bill.Total = accountGoods.Sum(w => w.TotalCharge);//账单金额
+                
+                bill.Memo = Convert.ToString(Request["Memo"]);
+                bill.CheckStatus = 0;
+                bill.OPID = UserInfor.LoginName;
+                bill.OPDATE = DateTime.Now;
+                bill.goodsList = accountGoods;
+                
+                //添加账单信息
+                CargoRealFactoryPurchaseOrderBus bus = new CargoRealFactoryPurchaseOrderBus();
+                bus.AddPurchaseBillAccount(bill, log);
+                if (msg.Result)
+                {
+                    msg.Result = true;
+                    msg.Message = "新增账单成功";
+                }
+            }
+            catch (ApplicationException ex) { msg.Message = ex.Message; msg.Result = false; }
+        ERROR:
+            //返回处理结果
+            string ress = JSON.Encode(msg);
+            Response.Write(ress);
+        }
         #endregion
     }
 }

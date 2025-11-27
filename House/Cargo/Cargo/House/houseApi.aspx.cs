@@ -2956,6 +2956,142 @@ namespace Cargo.House
             Response.Write(result);
 
         }
+
+        /// <summary>
+        /// 导出安全库存数据Excel到本地
+        /// </summary>
+        public void ExportSafeStockToLocExcel()
+        {
+            CargoSafeStockEntity queryEntity = new CargoSafeStockEntity();
+            var today = DateTime.Today;
+            // 上个月的最后一天
+            var lastMonthEnd = new DateTime(today.Year, today.Month, 1).AddDays(-1);
+            // 上个月往前推 3 个月的第一天
+            var startDate = new DateTime(lastMonthEnd.Year, lastMonthEnd.Month, 1).AddMonths(-2);
+
+            queryEntity.StartDate = startDate;
+            queryEntity.EndDate = lastMonthEnd;
+
+            // 查询安全库存数据
+            CargoHouseBus houseBus = new CargoHouseBus();
+            List<CargoSafeStockEntity> dataList = houseBus.QuerySafeStockData(queryEntity);
+
+            if (dataList == null || dataList.Count == 0)
+            {
+                Response.Clear();
+                Response.Write(JSON.Encode("没有数据可以进行导出，请重新查询！"));
+                return;
+            }
+
+            // 创建DataTable（同SafeStock.aspx.cs的列结构）
+            DataTable table = new DataTable("安全库存数据");
+            table.Columns.Add("序号", typeof(int));
+            table.Columns.Add("区域大仓", typeof(string));
+            table.Columns.Add("所属仓库", typeof(string));
+            table.Columns.Add("品牌", typeof(string));
+            table.Columns.Add("产品编码", typeof(string));
+            table.Columns.Add("规格", typeof(string));
+            table.Columns.Add("花纹", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
+            table.Columns.Add("载重指数", typeof(string));
+            table.Columns.Add("速度级别", typeof(string));
+            table.Columns.Add("月均销量", typeof(int));
+            table.Columns.Add("最小库存", typeof(int));
+            table.Columns.Add("最大库存", typeof(int));
+            table.Columns.Add("安全库存", typeof(int));
+            table.Columns.Add("在库库存", typeof(int));
+            table.Columns.Add("采购在途", typeof(int));
+            table.Columns.Add("移库在途", typeof(int));
+            table.Columns.Add("合计在途", typeof(int));
+            table.Columns.Add("可调拨数", typeof(int));
+            table.Columns.Add("库存度天数", typeof(int));
+            table.Columns.Add("补货数量", typeof(int));
+            table.Columns.Add("全国在库库存", typeof(int));
+            table.Columns.Add("云仓销售数量", typeof(int));
+            table.Columns.Add("本仓全渠道销量", typeof(int));
+            table.Columns.Add("全国销售数量", typeof(int));
+            table.Columns.Add("最小库存度天数", typeof(int));
+            table.Columns.Add("最大库存度天数", typeof(int));
+            table.Columns.Add("OE安全库存数", typeof(int));
+            table.Columns.Add("YC安全库存数", typeof(int));
+            table.Columns.Add("RE安全库存数", typeof(int));
+            table.Columns.Add("品控库存数", typeof(int));
+            table.Columns.Add("隔离库存数", typeof(int));
+
+            // 填充数据
+            int i = 0;
+            foreach (var item in dataList)
+            {
+                i++;
+                DataRow row = table.NewRow();
+                row["序号"] = i;
+                row["区域大仓"] = item.HouseName;
+                row["所属仓库"] = item.AreaName;
+                row["品牌"] = item.TypeName;
+                row["产品编码"] = item.ProductCode;
+                row["规格"] = item.Specs?.Trim();
+                row["花纹"] = item.Figure?.Trim();
+                row["货品代码"] = item.GoodsCode?.Trim();
+                row["载重指数"] = item.LoadIndex;
+                row["速度级别"] = item.SpeedLevel;
+                row["最小库存"] = item.MinStock ?? (object)DBNull.Value;
+                row["最大库存"] = item.MaxStock ?? (object)DBNull.Value;
+                row["补货数量"] = item.LessNum;
+                row["安全库存"] = item.StockNum;
+                row["在库库存"] = item.CurNum;
+                row["采购在途"] = item.PurchaseMoveNum ?? (object)DBNull.Value;
+                row["移库在途"] = item.TransferMoveNum ?? (object)DBNull.Value;
+                row["合计在途"] = item.MoveNum ?? (object)DBNull.Value;
+                row["可调拨数"] = item.ExcessNum ?? (object)DBNull.Value;
+                row["全国在库库存"] = item.TotalNum ?? (object)DBNull.Value;
+                row["云仓销售数量"] = item.WXSaleNum ?? (object)DBNull.Value;
+                row["本仓全渠道销量"] = item.SaleNum;
+                row["全国销售数量"] = item.TotalSaleNum ?? (object)DBNull.Value;
+                row["月均销量"] = item.AvgSaleNum ?? (object)DBNull.Value;
+                row["库存度天数"] = item.DOI ?? (object)DBNull.Value;
+                row["最小库存度天数"] = item.MinStockDay ?? (object)DBNull.Value;
+                row["最大库存度天数"] = item.MaxStockDay ?? (object)DBNull.Value;
+                row["品控库存数"] = item.ControlStock ?? (object)DBNull.Value;
+                row["隔离库存数"] = item.IsolatedStock ?? (object)DBNull.Value;
+                row["OE安全库存数"] = item.OEStock ?? (object)DBNull.Value;
+                row["YC安全库存数"] = item.HCYCStock ?? (object)DBNull.Value;
+                row["RE安全库存数"] = item.REStock ?? (object)DBNull.Value;
+
+                table.Rows.Add(row);
+            }
+
+            // Excel文件保存逻辑（同SyncStockData）
+            var fileName = "安全库存数据-" + DateTime.Now.ToString("yyyyMMddHHmm") + ".xlsx";
+            var filePath = string.Empty;
+            var fileFolder = GetStockFile();
+            if (Debugger.IsAttached)
+            {
+                fileFolder = "D:\\Work\\WareHouse2\\Files\\新建文件夹";
+            }
+            filePath = Path.Combine(fileFolder, fileName);
+            ToExcel.DataTableToExcel(table, filePath);
+
+            if (File.Exists(filePath))
+            {
+                // 记录文件日志到数据库
+                houseBus.saveFileLog(new CargoStockDownloadEntity { FileName = fileName, FilePath = filePath });
+
+                // 清理超过一个月的旧文件
+                if (Directory.Exists(fileFolder))
+                {
+                    string[] files = Directory.GetFiles(fileFolder);
+                    foreach (string file in files)
+                    {
+                        DateTime createTime = File.GetCreationTime(file);
+                        if (createTime < DateTime.Now.AddMonths(-1))
+                        {
+                            File.Delete(file);
+                        }
+                    }
+                }
+
+            }
+        }
         public void SaveSafeStockData()
         {
             CargoSafeStockEntity ent = new CargoSafeStockEntity();
@@ -5843,6 +5979,9 @@ namespace Cargo.House
                     }
                 }
             }
+
+            //导出安全库存数据到本地
+            ExportSafeStockToLocExcel();
         }
         private string GetStockFile()
         {

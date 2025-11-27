@@ -3093,6 +3093,7 @@ select WXID, SUM(Cash) as FX From dbo.Tbl_Taobao_CashBack where WXID=" + entity.
         /// <returns></returns>
         public List<MiniProOrderEntity> QueryMyMiniProOrder(int pIndex, int pNum, WXOrderEntity entity)
         {
+            //--订金视为未支付
             List<MiniProOrderEntity> result = new List<MiniProOrderEntity>();
             string strSQL = "SELECT TOP " + pNum + " * from (select * from (SELECT ROW_NUMBER() OVER (ORDER BY b.CreateDate desc) AS RowNumber, c.Address as SupplierAddress, c.ClientShortName as SupperName, b.SuppClientNum, b.Name, b.Cellphone, b.ID, b.OrderNo, b.Piece, isnull((re.ActualAmounts), 0) as ActualAmounts, b.TotalCharge, b.CreateDate, iif(isnull(a2.PaymentAmount, 0)>0 and isnull(a2.PaymentAmount, 0)>=isnull((re.ActualAmounts), 0),1,iif(isnull(a2.PaymentAmount, 0)>0,0,b.PayStatus)) as PayStatus, b.OrderStatus, b.WXPayOrderNo, a.CompanyName, b.ThrowGood, b.RefundCheckStatus, b.SendType, (case when (select count(1) from Tbl_Cargo_ReserveOrder re where re.WXOrderNo = b.OrderNo) > 0 then 1 else 0 end) IsReserve, isnull((select max(PaymentType) from Tbl_Cargo_ReserveOrderPaymentRecord as re where re.WXOrderNo = b.OrderNo), 0) PaymentType, isnull(a2.PaymentAmount, 0) as PaymentAmountSum From Tbl_WX_Client as a inner join Tbl_WX_Order as b on a.ID = b.WXID inner join Tbl_Cargo_Client as c on b.SuppClientNum = c.ClientNum left join (select OrderNo,WxOrderNo,sum(PaymentAmount) as PaymentAmount from Tbl_Cargo_ReserveOrderPaymentRecord group by OrderNo,WxOrderNo) as a2 on b.OrderNo=a2.WxOrderNo left join (select max(ActualAmounts) as ActualAmounts,re.WXOrderNo from Tbl_Cargo_ReserveOrder re inner join Tbl_Cargo_ReserveOrderPaymentRecord as rep on re.OrderNo = rep.OrderNo and re.WXOrderNo = rep.WxOrderNo group by re.WXOrderNo having max(rep.PaymentType) = 1)re on re.WXOrderNo = b.OrderNo where (1 = 1)  ";
             //left join tbl_Cargo_order as d on b.OrderNo=d.WXOrderNo,d.DeliveryType
@@ -3132,15 +3133,25 @@ select WXID, SUM(Cash) as FX From dbo.Tbl_Taobao_CashBack where WXID=" + entity.
                         //}
                         var TotalCharge = Convert.ToDecimal(idr["TotalCharge"]);
                         var ActualAmounts = Convert.ToDecimal(idr["ActualAmounts"]);
+                        var PaymentAmountSum = Convert.ToDecimal(idr["PaymentAmountSum"]);
                         if (ActualAmounts > 0)
                         {
-                            var PaymentAmountSum = Convert.ToDecimal(idr["PaymentAmountSum"]);
                             TotalCharge = ActualAmounts - PaymentAmountSum;
-                            if (TotalCharge<=0)
+                            if (TotalCharge <= 0)
                             {
                                 TotalCharge = Convert.ToDecimal(idr["TotalCharge"]);
                             }
                         }
+                        var PayStatus = Convert.ToString(idr["PayStatus"]);
+                        //if (PaymentAmountSum > 0 && PaymentAmountSum >= ActualAmounts)
+                        //{
+                        //    PayStatus = "1";
+                        //}
+                        //else
+                        //{
+                        //    if (PaymentAmountSum > 0)
+                        //        PayStatus = "0";
+                        //}
                         result.Add(new MiniProOrderEntity
                         {
                             OrderID = Convert.ToInt64(idr["ID"]),
@@ -3150,7 +3161,7 @@ select WXID, SUM(Cash) as FX From dbo.Tbl_Taobao_CashBack where WXID=" + entity.
                             TotalNum = Convert.ToInt32(idr["Piece"]),
                             TotalCharge = TotalCharge,
                             CreateDate = Convert.ToDateTime(idr["CreateDate"]),
-                            PayStatus = Convert.ToString(idr["PayStatus"]),
+                            PayStatus = PayStatus,
                             OrderStatus = Convert.ToString(idr["OrderStatus"]),
                             RefundCheckStatus = Convert.ToString(idr["RefundCheckStatus"]),
                             WXPayOrderNo = Convert.ToString(idr["WXPayOrderNo"]),
@@ -3162,7 +3173,7 @@ select WXID, SUM(Cash) as FX From dbo.Tbl_Taobao_CashBack where WXID=" + entity.
                             DeliveryType = Convert.ToString(idr["SendType"]),
                             IsReserve = Convert.ToInt32(idr["IsReserve"]),
                             PaymentType = Convert.ToInt32(idr["PaymentType"]),
-                            goods = QueryMiniProGoodsList(new WXOrderEntity { OrderID = Convert.ToInt64(idr["ID"]) })
+                            goods = Convert.ToInt32(idr["IsReserve"]) == 1 ? QueryMiniProGoodsList_Reserve(new WXOrderEntity { OrderID = Convert.ToInt64(idr["ID"]) }) : QueryMiniProGoodsList(new WXOrderEntity { OrderID = Convert.ToInt64(idr["ID"]) })
                         });
                     }
                 }
@@ -3174,6 +3185,37 @@ select WXID, SUM(Cash) as FX From dbo.Tbl_Taobao_CashBack where WXID=" + entity.
         {
             List<MiniProOrderGoodsEntity> result = new List<MiniProOrderGoodsEntity>();
             string strSQL = @"select a.OrderID,a.OrderNum,a.OrderPrice,a.ProductCode,a.BatchYear,a.Batch,b.Specs,b.Figure,b.LoadIndex,b.SpeedLevel,b.Thumbnail,c.TypeName from Tbl_WX_OrderProduct as a inner join Tbl_Cargo_ProductSpec as b on a.ProductCode=b.ProductCode inner join Tbl_Cargo_ProductType as c on b.TypeID=c.TypeID where a.OrderID=@OrderID";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@OrderID", DbType.Int64, entity.OrderID);
+                using (DataTable dd = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idr in dd.Rows)
+                    {
+                        string Thumbnail = "";
+                        if (string.IsNullOrEmpty(Convert.ToString(idr["Thumbnail"]))) { Thumbnail = "https://dlt.neway5.com/DefaultImg.jpg"; } else { Thumbnail = Convert.ToString(idr["Thumbnail"]).Replace("../", "https://dlt.neway5.com/"); }
+                        result.Add(new MiniProOrderGoodsEntity
+                        {
+                            OrderID = Convert.ToInt64(idr["OrderID"]),
+                            OrderNum = Convert.ToInt32(idr["OrderNum"]),
+                            OrderPrice = Convert.ToDecimal(idr["OrderPrice"]),
+                            ProductCode = Convert.ToString(idr["ProductCode"]),
+                            Batch = Convert.ToString(idr["Batch"]),
+                            BatchYear = Convert.ToInt32(idr["BatchYear"]),
+                            name = Convert.ToString(idr["TypeName"]) + " " + Convert.ToString(idr["Specs"]) + " " + Convert.ToString(idr["Figure"]) + " " + Convert.ToString(idr["LoadIndex"]) + Convert.ToString(idr["SpeedLevel"]) + " " + Convert.ToString(idr["BatchYear"]) + "年",
+                            TypeName = Convert.ToString(idr["TypeName"]),
+                            pic = Thumbnail,
+                        });
+                    }
+                }
+            }
+            return result;
+        }
+
+        private List<MiniProOrderGoodsEntity> QueryMiniProGoodsList_Reserve(WXOrderEntity entity)
+        {
+            List<MiniProOrderGoodsEntity> result = new List<MiniProOrderGoodsEntity>();
+            string strSQL = @"select a.OrderID,a.OrderNum,a.OrderPrice,a.ProductCode,a.BatchYear,a.Batch,b.Specs,b.Figure,b.LoadIndex,b.SpeedLevel,b.Thumbnail,c.TypeName from Tbl_WX_ReserveOrderProduct as a inner join Tbl_Cargo_ProductSpec as b on a.ProductCode=b.ProductCode inner join Tbl_Cargo_ProductType as c on b.TypeID=c.TypeID where a.OrderID=@OrderID";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
                 conn.AddInParameter(cmd, "@OrderID", DbType.Int64, entity.OrderID);

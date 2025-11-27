@@ -454,5 +454,41 @@ namespace House.Business.Cargo
             return man.QueryCargoRealFactoryData(entity);
         }
         #endregion
+
+        #region 采购账单管理操作方法集合
+        public void AddPurchaseBillAccount(CargoRealPurchaseAccountEntity entity, LogEntity log)
+        {
+            LogWrite<CargoClientAccountEntity> lw = new LogWrite<CargoClientAccountEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.AddPurchaseBillAccount(entity);
+
+                    foreach (var it in entity.goodsList)
+                    {
+                        //新增明细
+                        man.AddPurchaseBillAccountGoods(it, entity.AccountNO);
+
+                        //更改采购订单信息
+                        man.UpdatePurchaseOrderApproval(new CargoRealFactoryPurchaseOrderEntity { ApplyStatus="3",CheckStatus = "2",PurOrderID= it.PurOrderID });
+                    }
+
+                    log.Memo = "新增采购账单,账单号:" + entity.AccountID + ",账单名称:" + entity.AccountTitle;
+                    lw.WriteLog(log);
+                    scope.Complete();
+
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+        #endregion
     }
 }

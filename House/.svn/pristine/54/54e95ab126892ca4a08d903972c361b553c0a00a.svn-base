@@ -1,0 +1,1383 @@
+﻿using House.Entity;
+using House.Entity.Cargo;
+using House.Entity.Cargo.Product;
+using House.Manager;
+using House.Manager.Cargo;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Reflection;
+using System.Text;
+using System.Transactions;
+
+namespace House.Business.Cargo
+{
+    /// <summary>
+    /// 产品管理业务逻辑类
+    /// </summary>
+    public class CargoProductBus
+    {
+        private CargoProductManager man = new CargoProductManager();
+        #region 新增产品访问明细
+        /// <summary>
+        /// 新增产品访问记录及更新浏览量
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddProductAccessCount(CargoProductAccessDetailsEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductAccessDetailsEntity> lw = new LogWrite<CargoProductAccessDetailsEntity>();
+            try
+            {
+                man.AddProductAccessCount(entity);
+                log.Memo = "更新产品访问计数" + "，供应商编码：" + entity.SuppClientNum + "，仓库ID：" + entity.HouseID + "产品编码：" + entity.ProductCode + "，微信opendid：" + entity.wxOpenID + ",访问时间：" + entity.AccessTime.ToString();
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "更新产品访问计数，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 修改客户回访状态
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateProductAccessFeedBackStatus(CargoProductAccessDetailsEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductAccessDetailsEntity> lw = new LogWrite<CargoProductAccessDetailsEntity>();
+            try
+            {
+                man.UpdateProductAccessFeedBackStatus(entity);
+                log.Memo = "更新客户回访状态：ID：" + entity.ID.ToString() + "，已回访";
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+        #endregion
+        #region 次日库存操作方法集合
+        /// <summary>
+        /// 分页查询实时库存
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <param name="isNextDay">为true时查询次日达库存</param>
+        /// <returns></returns>
+        public Hashtable QueryAllPageNextDayStockInfo(int pIndex, int pNum, CargoProductEntity entity, bool isNextDay)
+        {
+            return man.QueryAllPageNextDayStockInfo(pIndex, pNum, entity, isNextDay);
+        }
+
+        #endregion   
+        #region 实时库存操作方法集合
+        /// <summary>
+        /// 分页查询实时库存
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryAllPageProductStockInfo(int pIndex, int pNum, CargoProductEntity entity)
+        {
+            return man.QueryAllPageProductStockInfo(pIndex, pNum, entity);
+        }
+
+        #endregion
+
+        #region 产品操作方法集合
+        /// <summary>
+        /// 查询产品
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryProduct(int pIndex, int pNum, CargoProductEntity entity)
+        {
+            return man.QueryProduct(pIndex, pNum, entity);
+        }
+
+        /// <summary>
+        /// 新增产品
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoProduct(CargoProductEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                man.AddCargoProduct(entity);
+                log.Memo = "新增产品";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增产品，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// [导入次日达产品库存]批量新增产品及在库库存信息
+        /// </summary>
+        /// <param name="list"></param>
+        /// <param name="log"></param>
+        public void SaveProductData(List<CargoProductEntity> list, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    var ProdList = man.GetProductList();
+                    foreach (var item in list)
+                    {
+                        //周期处理
+                        item.BatchYear = 0;
+                        item.BatchWeek = 0;
+                        if (!string.IsNullOrEmpty(item.Batch) && item.Batch.Length == 4)
+                        {
+                            item.BatchYear = Convert.ToInt32(item.Batch.Substring(2, 2));
+                            if (Convert.ToInt32(item.Batch.Substring(0, 1)) != 0)
+                            {
+                                item.BatchWeek = Convert.ToInt32(item.Batch.Substring(0, 2));
+                            }
+                            else
+                            {
+                                item.BatchWeek = Convert.ToInt32(item.Batch.Substring(1, 1));
+                            }
+                        }
+                        else if (item.Batch.Length == 2)
+                        {
+                            item.BatchYear = Convert.ToInt32(item.Batch);
+                        }
+
+                        //1、产品编码关联查询规格为空则抛异常
+                        CargoProductSpecEntity specEntity = man.GetProductSpecByProductCode(item.ProductCode);
+                        if (specEntity == null || specEntity.SID.Equals(0) || string.IsNullOrEmpty(specEntity.ProductCode))
+                        {
+                            log.Status = "1";
+                            log.Memo = "产品编码：" + item.ProductCode + "有误";
+                            break;
+                        }
+                        else
+                        {
+                            var SProd = ProdList.Where(a => a.ProductCode == item.ProductCode && ((item.BatchYear == 0 && a.Batch == item.Batch) || (item.BatchYear != 0 && a.BatchYear == item.BatchYear)) && a.TypeID == item.TypeID && a.HouseID == item.HouseID).ToList();
+                            if (SProd.Count > 0)
+                            {
+                                var data = SProd.FirstOrDefault();
+                                data.BatchWeek = item.BatchWeek;
+                                data.BatchYear = item.BatchYear;
+                                data.Batch = item.Batch;
+                                data.InHousePrice = item.InHousePrice;
+                                data.SalePrice = item.SalePrice;
+                                data.Numbers = item.Numbers;
+                                //2.修改产品数据
+                                man.UpdateProductData(data);
+
+                                CargoHouseBus house = new CargoHouseBus();
+                                //根据HouseID查询CargoContainer货位表或容器表的货位ID[ContainerID]
+                                int ContainerID = house.QueryCargoContainerGoodsContainerID(data.HouseID);
+                                CargoContainerGoodsEntity containerGoodsEntity = new CargoContainerGoodsEntity()
+                                {
+                                    ContainerID = ContainerID,
+                                    TypeID = data.TypeID,
+                                    ProductID = data.ProductID,
+                                    Piece = item.Numbers,
+                                };
+                                //3.修改在库库存
+                                man.UpdateContainerGoodsData(containerGoodsEntity);
+                                log.Memo = "导入次日达库存(覆盖)，产品编码：" + data.ProductCode + "，数量：" + data.Numbers + "，销售价：" + data.SalePrice + "，供应商名称：" + data.Supplier + "，供应商编码：" + data.SuppClientNum + "，产品ID：" + data.ProductID + "，产品类型ID：" + data.TypeID + "，仓库：" + data.HouseID + "，批次：" + data.Batch;
+                            }
+                            else
+                            {
+                                //2、新增产品信息表，拿到ProductID
+                                long ProductID = man.SaveProductData(item, specEntity);
+                                //3、新增产品在库库存表
+                                CargoHouseBus house = new CargoHouseBus();
+                                //根据HouseID查询CargoContainer货位表或容器表的货位ID[ContainerID]
+                                int ContainerID = house.QueryCargoContainerGoodsContainerID(item.HouseID);
+                                CargoContainerGoodsEntity containerGoodsEntity = new CargoContainerGoodsEntity()
+                                {
+                                    ContainerID = ContainerID,
+                                    TypeID = item.TypeID,
+                                    ProductID = ProductID,
+                                    Piece = item.Numbers,
+                                    Weight = 0,
+                                    IsPrintInCargo = false,
+                                    InCargoID = item.InCargoID,//当前月份日 + 随机生成的六位数字（通过product传递）
+                                };
+                                CargoHouseManager houseManager = new CargoHouseManager();
+                                houseManager.AddContainerGoods(containerGoodsEntity);
+                                log.Memo = "导入次日达库存(新增)，产品编码：" + item.ProductCode + "，数量：" + item.Numbers + "，销售价：" + item.SalePrice + "，供应商名称：" + item.Supplier + "，供应商编码：" + item.SuppClientNum + "，产品ID：" + ProductID + "，产品类型ID：" + item.TypeID + "，仓库：" + item.HouseID + "，批次：" + item.Batch;
+                            }
+                        }
+                        lw.WriteLog(item, log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "导入次日达库存，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                    throw;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 修改产品
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoProduct(CargoProductEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                man.UpdateCargoProduct(entity);
+                log.Memo = "修改产品";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 删除产品
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoProduct(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                man.DelCargoProduct(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除产品：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，类型ID：" + it.TypeID.ToString() + "，型号：" + it.Model.Trim() + "，货品代码：" + it.GoodsCode.Trim() + "，花纹：" + it.Figure + "，数量：" + it.Numbers.ToString() + "，单价：" + it.UnitPrice.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除产品，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 锁定产品库存
+        /// </summary>
+        /// <param name="entity"></param>
+        public void LockStockCargoProduct(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.LockStockCargoProduct(entity);
+                    string locks = "解锁库存：";
+                    foreach (var it in entity)
+                    {
+                        if (it.IsLockStock.Equals("1"))
+                        {
+                            locks = "锁定产品:";
+                        }
+                        log.Memo = locks + "产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，类型ID：" + it.TypeID.ToString() + "，型号：" + it.Model.Trim() + "，货品代码：" + it.GoodsCode.Trim() + "，花纹：" + it.Figure + "，数量：" + it.Numbers.ToString() + "，单价：" + it.UnitPrice.ToString();
+                        lw.WriteLog(log);
+                    }
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 复制产品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void CopyProduct(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    man.CopyProduct(it);
+                    log.Memo = "复制产品：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，型号：" + it.Model.Trim() + "，花纹：" + it.Figure + "，数量：" + it.Numbers.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "复制产品，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 产品是否存在  以产品ID判断
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns>True:表示已经存在，False：表示不存在</returns>
+        public bool IsExistCargoProduct(CargoProductEntity entity)
+        {
+            return man.IsExistCargoProduct(entity);
+        }
+        /// <summary>
+        /// 修改产品信息 比如：批次
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoProductInfo(CargoProductEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            try
+            {
+                man.UpdateCargoProductInfo(entity);
+                log.Memo = "修改产品：产品批次：" + entity.Batch + "，产品ID：" + entity.ProductID.ToString();
+                lw.WriteLog(log);
+
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 撤销产品入库
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void CancleInCargo(List<CargoProductEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+            CargoHouseManager house = new CargoHouseManager();
+            try
+            {
+                foreach (var it in entity)
+                {
+                    CargoContainerGoodsEntity containerEntity = house.IsExistCargoContainerGoods(new CargoContainerGoodsEntity { ProductID = it.ProductID, TypeID = it.TypeID });
+                    //1.删除入库单
+                    house.DeleteInCargoData(containerEntity.InCargoID, containerEntity.ContainerID, containerEntity.ProductID, "0");
+                    //2.删除在库库存数据
+                    house.DelCargoContainerGoods(new CargoContainerGoodsEntity { ID = containerEntity.ID });
+                    //3.修改货位在库库存 减去数量
+                    house.UpdateContainerInPiece(new CargoContainerEntity { InPiece = it.Numbers, ContainerID = containerEntity.ContainerID, IsAdd = false });
+                    //4.修改产品入库状态
+                    man.UpdateCargoProductStatus(new CargoProductEntity { ProductID = it.ProductID, InCargoStatus = "0" });
+                    //5.删除条码标签
+                    man.DelCargoProductTag(new CargoProductTagEntity { ProductID = it.ProductID });
+                    //6.修改订单导入入库状态
+                    CargoFactoryOrderManager foMan = new CargoFactoryOrderManager();
+                    CargoProductEntity foEntity = new CargoProductEntity();
+                    foEntity.ProductID = it.ProductID;
+                    foEntity.InCargoStatus = "0";
+                    foMan.UpdateCargoStatus(foEntity);
+                    log.Memo = "撤销产品入库：产品ID：" + it.ProductID.ToString() + "，产品名称：" + it.ProductName.Trim() + "，类型ID：" + it.TypeID.ToString() + "，型号：" + it.Model.Trim() + "，货品代码：" + it.GoodsCode.Trim() + "，花纹：" + it.Figure + "，数量：" + it.Numbers.ToString() + "，产品库存ID：" + containerEntity.ID.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "撤销产品入库，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+
+        }
+        /// <summary>
+        /// 根据产品ID查询产品数据
+        /// </summary>
+        /// <param name="productID"></param>
+        /// <returns></returns>
+        public CargoProductEntity QueryProductInfoByID(long productID)
+        {
+            return man.QueryProductInfoByID(productID);
+        }
+        public CargoProductEntity QueryProductInfoByProductID(long productID)
+        {
+            return man.QueryProductInfoByProductID(productID);
+        }
+        public CargoAreaEntity QueryProductAreaInfo(long productID)
+        {
+            return man.QueryProductAreaInfo(productID);
+        }
+        /// <summary>
+        /// 查询在库数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryInHouseProductData(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.QueryInHouseProductData(pIndex, pNum, entity);
+        }
+        public List<CargoContainerShowEntity> QueryInHouseProductDataList(CargoContainerShowEntity entity)
+        {
+            return man.QueryInHouseProductDataList(entity);
+        }
+        /// <summary>
+        /// 查询所有在库数据用于导出
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerShowEntity> QueryInHouseProductDataForExport(CargoContainerShowEntity entity)
+        {
+            return man.QueryInHouseProductDataForExport(entity);
+        }
+        public List<CargoContainerShowEntity> QueryInHouseProductData(CargoContainerShowEntity entity)
+        {
+            return man.QueryInHouseProductData(entity);
+        }
+        /// <summary>
+        /// 商品上架
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoProductShelves(CargoProductShelvesEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductShelvesEntity> lw = new LogWrite<CargoProductShelvesEntity>();
+            try
+            {
+                man.AddCargoProductShelves(entity);
+                log.Memo = "商品上架：商品名称：" + entity.ProductName + "，标题：" + entity.Title + "，上架数量：" + entity.OnSaleNum.ToString() + "，产品ID：" + entity.ProductID.ToString() + "，销售类型：" + entity.SaleType;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "商品上架，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+
+        }
+        /// <summary>
+        /// 修改商品上架信息
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoProductShelves(CargoProductShelvesEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductShelvesEntity> lw = new LogWrite<CargoProductShelvesEntity>();
+            try
+            {
+                man.UpdateCargoProductShelves(entity);
+                log.Memo = "修改商品上架：商品名称：" + entity.ProductName + "，标题：" + entity.Title + "，上架数量：" + entity.OnSaleNum.ToString() + "，产品ID：" + entity.ProductID.ToString() + "，销售类型：" + entity.SaleType;
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改商品上架，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// 批量上架新增
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void CargoAddBatchProductShelves(List<CargoProductShelvesEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductShelvesEntity> lw = new LogWrite<CargoProductShelvesEntity>();
+            try
+            {
+                using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+                {
+                    //批量新增
+                    man.BulkAddCargoProductShelves(entity);
+                    scope.Complete();
+                }
+                log.Memo = "商品批量上架新增：产品id：" + string.Join(",", entity.Select(w => w.ProductID+"-"+w.ProductPrice).ToList());
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "商品批量上架新增，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+
+        }
+        /// <summary>
+        /// 批量上架修改
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void CargoUpdateBatchProductShelves(List<CargoProductShelvesEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductShelvesEntity> lw = new LogWrite<CargoProductShelvesEntity>();
+            try
+            {
+                using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+                {
+                    //批量修改
+                    man.BatchUpdateCargoProductShelves(entity);
+                    scope.Complete();
+                }
+                log.Memo = "商品批量上架修改：产品id：" + string.Join(",", entity.Select(w => w.ProductID).ToList());
+                lw.WriteLog(log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "商品批量上架修改，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+
+        }
+        /// <summary>
+        /// 商品下架
+        /// </summary>
+        /// <param name="entity"></param>
+        public void Unshelves(List<CargoProductShelvesEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductShelvesEntity> lw = new LogWrite<CargoProductShelvesEntity>();
+            try
+            {
+                man.Unshelves(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "下架商品：商品ID：" + it.ID.ToString() + "，销售类型：" + it.SaleType.Trim()+ "，产品名称：" + it.ProductName.Trim() + "，类型ID：" + it.TypeID.ToString() + "，型号：" + it.Model.Trim() + "，货品代码：" + it.GoodsCode.Trim() + "，花纹：" + it.Figure + "，数量：" + it.OnSaleNum.ToString() + "，产品ID：" + it.ProductID.ToString();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "下架商品，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 查询在库数据 用于微信商城显示
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryWeixinInHouseProduct(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            return man.QueryWeixinInHouseProduct(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 修改入库 单 状态
+        /// </summary>
+        /// <param name="entity"></param>
+        public void updateInCargoPrintStatus(List<CargoContainerShowEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoContainerShowEntity> lw = new LogWrite<CargoContainerShowEntity>();
+            try
+            {
+                man.updateInCargoPrintStatus(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "修改入库状态：ID：" + it.ID.ToString() + "，入库单号：" + it.InCargoID.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改入库状态，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 查询特价胎数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoContainerShowEntity> QuerySpecialSaleData(CargoContainerShowEntity entity)
+        {
+            return man.QuerySpecialSaleData(entity);
+        }
+        #endregion
+        #region 产品分类操作方法集合
+        /// <summary>
+        /// 是否存在相同的分类名称 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns>True:表示已经存在，False：表示不存在</returns>
+        public bool IsExistCargoProductType(CargoProductTypeEntity entity)
+        {
+            return man.IsExistCargoProductType(entity);
+        }
+        /// <summary>
+        /// 查询产品分类 可以查所有分类，可以按父ID查，可以按分类ID查
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductTypeEntity> QueryProductType(CargoProductTypeEntity entity)
+        {
+            return man.QueryProductType(entity);
+        }
+        /// <summary>
+        /// 产品分类查询
+        /// </summary>
+        /// <param name="pIndex">当前页数</param>
+        /// <param name="pNum">每页多少条数据</param>
+        /// <param name="strWhere">查询条件</param>
+        /// <param name="strCountWhere">查询总数的查询条件</param>
+        /// <returns></returns>
+        public Hashtable QueryProductTypeEx(int pIndex, int pNum, CargoProductTypeEntity entity)
+        {
+            return man.QueryProductTypeEx(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 新增产品分类数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoProductType(CargoProductTypeEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductTypeEntity> lw = new LogWrite<CargoProductTypeEntity>();
+            try
+            {
+                man.AddCargoProductType(entity);
+                log.Memo = "新增产品分类";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "新增产品分类，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 修改产品分类数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateCargoProductType(CargoProductTypeEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductTypeEntity> lw = new LogWrite<CargoProductTypeEntity>();
+            try
+            {
+                man.UpdateCargoProductType(entity);
+                log.Memo = "修改产品分类";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "修改产品分类，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 删除产品分类
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoProductType(List<CargoProductTypeEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductTypeEntity> lw = new LogWrite<CargoProductTypeEntity>();
+            try
+            {
+                man.DelCargoProductType(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除分类：分类ID：" + it.TypeID.ToString() + "，分类名称：" + it.TypeName.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "删除分类，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 根据产品类型ID查询 该产品分类下还有没有产品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoProductByProductType(CargoProductTypeEntity entity)
+        {
+            return man.IsExistCargoProductByProductType(entity);
+        }
+        #endregion
+        #region 车辆品牌适配轮胎规格
+        /// <summary>
+        /// 查询适配轮胎规格
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductCarTyreEntity> QueryCarTyreMatch(CargoProductCarTyreEntity entity)
+        {
+            return man.QueryCarTyreMatch(entity);
+        }
+        #endregion
+        #region 产品标签操作方法集合
+        /// <summary>
+        /// 判断产品编码是否存在 True:存在 False:不存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistCargoProductTag(CargoProductTagEntity entity)
+        {
+            return man.IsExistCargoProductTag(entity);
+        }
+        /// <summary>
+        /// 查询产品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoProductEntity QueryProductInfo(CargoProductEntity entity)
+        {
+            return man.QueryProductInfo(entity);
+        }
+        /// <summary>
+        /// 通过产品ID查询产品标签数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductTagEntity> QueryTagByProductID(CargoProductTagEntity entity)
+        {
+            return man.QueryTagByProductID(entity);
+        }
+        /// <summary>
+        /// 通过标签代码查询标签信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoProductTagEntity QueryTagByTagCode(CargoProductTagEntity entity)
+        {
+            return man.QueryTagByTagCode(entity);
+        }
+        /// <summary>
+        /// 设置标签为未出库
+        /// </summary>
+        /// <param name="entity"></param>
+        public void SetTagUnOutCargo(List<CargoProductTagEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductTagEntity> lw = new LogWrite<CargoProductTagEntity>();
+            try
+            {
+                man.SetTagUnOutCargo(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "设置标签未出库：标签码：" + it.TagCode.Trim();
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "设置标签未出库，失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 扫描退回仓库
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void ScanTagUnOutCargo(List<CargoProductTagEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductTagEntity> lw = new LogWrite<CargoProductTagEntity>();
+            CargoHouseManager house = new CargoHouseManager();
+            CargoOrderBus orderbus = new CargoOrderBus();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    man.SetTagUnOutCargo(entity);
+                    log.Memo = "扫描退回仓库：";
+                    foreach (var it in entity)
+                    {
+                        CargoProductEntity good = man.QueryProductInfoByTagCode(it);
+                        //根据货位号ID修改货位在库数量
+                        house.UpdateContainerInPiece(new CargoContainerEntity { IsAdd = true, ContainerID = good.ContainerID, InPiece = 1 });
+                        //根据货位ID和产品ID判断是否存在此货位
+                        CargoContainerGoodsEntity cgood = house.IsExistCargoContainerGoods(new CargoContainerGoodsEntity { ContainerID = good.ContainerID, ProductID = good.ProductID });
+                        //说明是全部出库 需要重新入库
+                        CargoContainerGoodsEntity inGood = new CargoContainerGoodsEntity
+                        {
+                            ContainerID = good.ContainerID,
+                            ProductID = good.ProductID,
+                            Piece = 1,
+                            InHouseTime = DateTime.Now,
+                            IsPrintInCargo = false,
+                            Weight = 0,
+                            TypeID = good.TypeID,
+                            InHouseType = "1",
+                            InCargoID = DateTime.Now.ToString("yyMMdd") + orderbus.GetRandomFourNumString()//入库单号 
+                        };
+                        if (cgood != null && !cgood.ID.Equals(0))//说明数据库中还存在此货位数据
+                        {
+                            house.UpdateCargoContainerGoodsPieceByID(new CargoContainerGoodsEntity { IsAdd = true, Piece = 1, ContainerID = good.ContainerID, ProductID = good.ProductID });
+                        }
+                        else
+                        {
+                            house.AddCargoContainerGoods(inGood);
+                        }
+                        house.AddInContainerGoods(inGood);
+
+                        log.Memo += "标签码：" + it.TagCode.Trim() + "，货位ID：" + good.ContainerID.ToString() + "，产品ID：" + good.ProductID.ToString() + "||";
+                    }
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "扫描退回仓库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 撤销标签入库
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="log"></param>
+        public void CancelTagInCargo(List<CargoProductTagEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductTagEntity> lw = new LogWrite<CargoProductTagEntity>();
+            CargoHouseManager house = new CargoHouseManager();
+            //使用事务
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
+            {
+                try
+                {
+                    log.Memo = "撤销标签入库：";
+                    foreach (var it in entity)
+                    {
+                        //1.产品数量减1
+                        man.UpdateCargoProductPiece(new CargoProductEntity { ProductID = it.ProductID, Numbers = it.BundleNum, IsAdd = false });
+                        //2.库存表库存减1
+                        CargoContainerGoodsEntity cgood = house.IsExistCargoContainerGoods(new CargoContainerGoodsEntity { ProductID = it.ProductID, ContainerID = it.ContainerID });
+                        if (!cgood.ID.Equals(0))
+                        {
+                            house.UpdateCargoContainerGoodsPiece(new CargoContainerGoodsEntity { ID = cgood.ID, IsAdd = false, Piece = it.BundleNum });
+                        }
+                        //3.入库表数量减1
+                        CargoContainerGoodsEntity InGoods = house.IsExistCargoInContainerCode(new CargoContainerGoodsEntity { ProductID = it.ProductID, ContainerID = it.ContainerID, InHouseTime = it.InCargoTime });
+                        if (!InGoods.ID.Equals(0))
+                        {
+                            house.UpdateInCargoGoodsPiece(new CargoContainerGoodsEntity { ProductID = it.ProductID, InCargoID = InGoods.InCargoID, IsAdd = false, Piece = it.BundleNum });
+                        }
+                        //4.删除产品标签表该标签数据
+                        man.DelCargoProductTag(it);
+                        log.Memo += "标签码：" + it.TagCode.Trim() + "，货位ID：" + it.ContainerID.ToString() + "，产品ID：" + it.ProductID.ToString() + "，规格：" + it.Specs + "，花纹：" + it.Figure + "，轮胎码：" + it.TyreCode + "||";
+                        //5.修改订单导入表入库数量
+                        CargoFactoryOrderManager fo = new CargoFactoryOrderManager();
+                        fo.CancelTagInCargo(new CargoFactoryOrderEntity { ProductID = it.ProductID.ToString(), InPiece = it.BundleNum });
+                    }
+
+                    lw.WriteLog(log);
+                    scope.Complete();
+                }
+                catch (ApplicationException ex)
+                {
+                    log.Status = "1";
+                    log.Memo = "撤销标签入库，失败信息：" + ex.Message;
+                    lw.WriteLog(log);
+                }
+            }
+        }
+        /// <summary>
+        /// 删除 好来运系统标签数据
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelHlyProductTagData(List<CargoProductTagEntity> entity)
+        {
+            man.DelHlyProductTagData(entity);
+        }
+        /// <summary>
+        /// 查询产品标签数据 
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoProductEntity QueryProductInfoByTagCode(CargoProductTagEntity entity)
+        {
+            return man.QueryProductInfoByTagCode(entity);
+        }
+        #endregion
+        #region 处理上架产品数据
+        /// <summary>
+        /// 查询所有上架的产品数据
+        /// </summary>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryShelveProductData()
+        {
+            return man.QueryShelveProductData();
+        }
+        /// <summary>
+        ///  查询同一周期的产品
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoProductEntity QueryInCargoProduct(CargoProductEntity entity)
+        {
+            return man.QueryInCargoProduct(entity);
+        }
+        /// <summary>
+        ///  查询同一周期的产品 特价
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductShelvesEntity> QueryInCargoProductSpecial()
+        {
+            return man.QueryInCargoProductSpecial();
+        }
+        /// <summary>
+        /// 修改上架产品的ID
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateShelvesProductID(CargoProductEntity entity)
+        {
+            man.UpdateShelvesProductID(entity);
+        }
+        /// <summary>
+        /// 自动处理所有已上架的推广商品
+        /// </summary>
+        public void AutoUnShelveAdvertProduct()
+        {
+            man.AutoUnShelveAdvertProduct();
+        }
+        /// <summary>
+        /// 处理商城 特价销售商品数量与库存统一
+        /// </summary>
+        public void HandleWxMallOnSaleNum()
+        {
+            man.HandleWxMallOnSaleNum();
+        }
+        /// <summary>
+        /// 查询今天入库的所有产品
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryCurDayInHouseProduct(CargoProductEntity entity)
+        {
+            return man.QueryCurDayInHouseProduct(entity);
+        }
+        /// <summary>
+        /// 判断该 规格花纹 产品是否已上架
+        /// True：已经存在上架的  False:不存在
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public bool IsExistShelveProduct(CargoProductEntity entity)
+        {
+            return man.IsExistShelveProduct(entity);
+        }
+        /// <summary>
+        /// 根据花纹查询对应的花纹轮胎照片
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoProductShelvesEntity QueryTryePic(CargoProductShelvesEntity entity)
+        {
+            return man.QueryTryePic(entity);
+        }
+        #endregion
+
+        #region 查询所有产品来源
+        public bool IsExistGtmcProduct(CargoGtmcProductBasicEntity entity)
+        {
+            return man.IsExistGtmcProduct(entity);
+        }
+        /// <summary>
+        /// 查询所有产品来源
+        /// </summary>
+        /// <returns></returns>
+        public List<CargoProductSourceEntity> QueryAllProductSource()
+        {
+            return man.QueryAllProductSource();
+        }
+        public List<CargoProductSourceEntity> QueryAllProductSource(CargoProductSourceEntity entity)
+        {
+            return man.QueryAllProductSource(entity);
+        }
+        public Hashtable QueryGtmcProductData(int pIndex, int pNum, CargoGtmcProductBasicEntity entity)
+        {
+            return man.QueryGtmcProductData(pIndex, pNum, entity);
+        }
+        public void DelGtmcProductBasic(List<CargoGtmcProductBasicEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoGtmcProductBasicEntity> lw = new LogWrite<CargoGtmcProductBasicEntity>();
+            try
+            {
+                man.DelGtmcProductBasic(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除品番：产品ID：" + it.PID.ToString() + "，名称：" + it.SupplierName.Trim() + "，代码：" + it.SupplierCode.ToString() + "，供应商品番：" + it.SupplierPinfan + "，广丰品番：" + it.GtmcPinfan.Trim() + "，广丰背番：" + it.GtmcBeifan;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        public void AddGtmcProductBasic(CargoGtmcProductBasicEntity entity, LogEntity log)
+        {
+            LogWrite<CargoGtmcProductBasicEntity> lw = new LogWrite<CargoGtmcProductBasicEntity>();
+            try
+            {
+                man.AddGtmcProductBasic(entity);
+                log.Memo = "新增品番";
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        public CargoProductEntity QueryTopOneProduct(CargoProductEntity entity)
+        {
+            return man.QueryTopOneProduct(entity);
+        }
+        public void AddChangeStock(CargoProductEntity entity)
+        {
+            //只处理广州仓、华纳枢纽仓以及广东仓下的深圳仓
+            CargoHouseBus cargoHouseBus = new CargoHouseBus();
+            if ((entity.HouseID == 45 && entity.FirstAreaID == 3241) || entity.HouseID == 9 || entity.HouseID == 84)
+            {
+                //只处理马牌，维京，韩泰，锦湖这几个品牌
+                if (entity.TypeID == 31 || entity.TypeID == 34 || entity.TypeID == 163 || entity.TypeID == 345)
+                {
+                    List<CargoProductEntity> ProudctID = man.QueryProductID(new CargoProductEntity
+                    {
+                        Model = entity.Model,
+                        GoodsCode = entity.GoodsCode,
+                        TypeID = entity.TypeID,
+                        HouseID = entity.HouseID,
+                        Specs = entity.Specs,
+                        Figure = entity.Figure,
+                        ProductID = entity.ProductID,
+                    });
+                    var maxBatch = "";
+                    decimal maxSalePrice = 0;
+                    foreach (var item in ProudctID)
+                    {
+                        if (string.IsNullOrEmpty(item.ProductCode))
+                        {
+                            LogWrite<CargoProductEntity> lw = new LogWrite<CargoProductEntity>();
+                            LogEntity log = new LogEntity()
+                            {
+                                Moudle = "订单管理",
+                                NvgPage = "新增变更产品ID",
+                                Operate = "A",
+                                Status = "0",
+                                Memo = "变动产品ID:" + item.ProductID + ",所对应的ProductCode（产品Code为空）",
+                                UserID = "I",
+                                IPAddress = "."
+                            };
+                            lw.WriteLog(log);
+                            continue;
+                        }
+                        maxBatch = ProudctID.Max(m => m.Batch);
+                        maxSalePrice = ProudctID.Max(c => c.SalePrice);
+                        if (man.IsProductCodeExist(item.ProductCode))
+                        {
+                            man.UpdateChangeStock(new CargoProductEntity { RealStockNum = item.RealStockNum, ProductCode = item.ProductCode, Batch = maxBatch, SalePrice = maxSalePrice });
+                        }
+                        else
+                        {
+                            man.AddChangeStock(new CargoProductEntity { RealStockNum = item.RealStockNum, ProductCode = item.ProductCode, Batch = maxBatch, SalePrice = maxSalePrice });
+                        }
+                    }
+                }
+
+            }
+
+        }
+        public CargoGtmcProductBasicEntity QueryGtmcProductInfo(CargoGtmcProductBasicEntity entity)
+        {
+            return man.QueryGtmcProductInfo(entity);
+        }
+        #endregion
+
+        #region 产品价格操作方法
+
+
+        /// <summary>
+        /// 查询当前客户的所有产品
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryAllSupplierProductPrice(int pIndex, int pNum, CargoSupplierProductPriceEntity entity)
+        {
+            return man.QueryAllSupplierProductPrice(pIndex, pNum, entity);
+        }
+
+        /// <summary>
+        /// 查询供应商的所有产品数据用于导出
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoSupplierProductPriceEntity> QuerySupplierProductALLExport(CargoSupplierProductPriceEntity entity)
+        {
+            return man.QuerySupplierProductALLExport(entity);
+        }
+
+        /// <summary>
+        /// 修改供应商产品单价
+        /// </summary>
+        /// <param name="entity"></param>
+        public void UpdateSupplierProductPrice(List<CargoSupplierProductPriceEntity> entities, LogEntity log)
+        {
+            LogWrite<CargoSupplierProductPriceEntity> lw = new LogWrite<CargoSupplierProductPriceEntity>();
+            try
+            {
+                man.UpdateSupplierProductPrice(entities);
+                foreach (var entity in entities)
+                {
+                    log.Memo = "修改成本价,所属仓库：" + entity.HouseName + "：供应商编码：" + entity.ToString() + "，产品编码:" + entity.ProductCode + ",改后成本价:" + entity.UnitPrice.ToString("F2");
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+
+        #endregion
+        #region 查询产品规格方法集合
+        /// <summary>
+        /// 根据产品编码查询产品规格
+        /// </summary>
+        /// <param name="productCode"></param>
+        /// <returns></returns>
+        public CargoProductSpecEntity GetProductSpecByProductCode(string productCode)
+        {
+            return man.GetProductSpecByProductCode(productCode);
+        }
+        /// <summary>
+        /// 根据查询产品信息
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public CargoProductSpecEntity GetProductSpecEntity(CargoProductSpecEntity entity)
+        {
+            return man.GetProductSpecEntity(entity);
+        }
+        public Hashtable QueryProductMapping(int pIndex, int pNum, CargoProductMappingEntity entity)
+        {
+            return man.QueryProductMapping(pIndex, pNum, entity);
+        }
+        /// <summary>
+        /// 新增产品映射 
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddCargoProductMapping(CargoProductMappingEntity entity, LogEntity log)
+        {
+            LogWrite<CargoProductMappingEntity> lw = new LogWrite<CargoProductMappingEntity>();
+            try
+            {
+                man.AddCargoProductMapping(entity);
+                log.Memo = "新增产品映射：产品编码：" + entity.ProductCode + "，共享编码：" + entity.ShareCode + "，外部编码：" + entity.CassCode + ",外部公司：" + entity.CorpClass;
+                lw.WriteLog(entity, log);
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+                throw;
+            }
+        }
+        /// <summary>
+        /// 删除产品映射
+        /// </summary>
+        /// <param name="entity"></param>
+        public void DelCargoProductMapping(List<CargoProductMappingEntity> entity, LogEntity log)
+        {
+            LogWrite<CargoProductMappingEntity> lw = new LogWrite<CargoProductMappingEntity>();
+            try
+            {
+                man.DelCargoProductMapping(entity);
+                foreach (var it in entity)
+                {
+                    log.Memo = "删除产品映射：ID：" + it.MID.ToString() + "，产品编码：" + it.ProductCode + "，共享编码：" + it.ShareCode + "，外部编码：" + it.CassCode;
+                    lw.WriteLog(log);
+                }
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+        /// <summary>
+        /// 根据货品代码查询产品共享编码数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductMappingEntity> QueryProductShareCode(CargoProductMappingEntity entity)
+        {
+            return man.QueryProductShareCode(entity);
+        }
+
+        /// <summary>
+        /// 批量修改产品基础规格的轮胎照片
+        /// </summary>
+        /// <param name="entity"></param>
+        public void PLSaveTyreFigurePic(List<CargoProductEntity> entities)
+        {
+            man.PLSaveTyreFigurePic(entities);
+        }
+
+        /// <summary>
+        /// 判断供应商品牌数据中是否存在该基础数据  以产品ID判断
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns>True:表示已经存在，False：表示不存在</returns>
+        public bool IsExistSupplierProductPrice(CargoSupplierProductPrice entity)
+        {
+            return man.IsExistSupplierProductPrice(entity);
+        }
+        public void InsertSupplierProductPrice(CargoSupplierProductPrice entity, LogEntity log)
+        {
+
+            LogWrite<CargoSupplierProductPrice> lw = new LogWrite<CargoSupplierProductPrice>();
+            try
+            {
+                man.InsertSupplierProductPrice(entity);
+
+                log.Memo = "同步基础数据至供应商系统：基础规格表ID：" + entity.SID.ToString() + "，产品编码：" + entity.ProductCode + "，仓库ID：" + entity.HouseID.ToString() + "，供应商编码：" + entity.SupplierNum.ToString();
+                lw.WriteLog(log);
+
+            }
+            catch (ApplicationException ex)
+            {
+                log.Status = "1";
+                log.Memo = "失败信息：" + ex.Message;
+                lw.WriteLog(log);
+            }
+        }
+
+
+        #endregion
+        #region 开思仓库同步缓存
+
+
+        #endregion
+
+        /// <summary>
+        /// 查询标签产品
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryProductTag(int pIndex, int pNum, CargoProductEntity entity)
+        {
+            return man.QueryProductTag(pIndex, pNum, entity);
+        }
+
+        /// <summary>
+        /// 查询标签产品 移库数据
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryProductMoveOrder(int pIndex, int pNum, CargoMoveOrderGoodsEntity entity)
+        {
+            return man.QueryProductMoveOrder(pIndex, pNum, entity);
+        }
+
+        /// <summary>
+        /// 查询标签产品 销售(退货)订单
+        /// </summary>
+        /// <param name="pIndex"></param>
+        /// <param name="pNum"></param>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Hashtable QueryProductSalesOrder(int pIndex, int pNum, CargoOrderGoodsEntity entity)
+        {
+            return man.QueryProductSalesOrder(pIndex, pNum, entity);
+        }
+
+        /// <summary>
+        /// 查询产品数据
+        /// </summary>
+        /// <param name="productIDs">产品ID数组</param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryProductByIDs(long[] productIDs)
+        {
+            return man.QueryProductByIDs(productIDs);
+        }
+
+        /// <summary>
+        /// 查询产品数据
+        /// </summary>
+        /// <param name="productIDs">产品Code数组</param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryProductByCodes(string[] productCodes)
+        {
+            return man.QueryProductByCodes(productCodes);
+        }
+        #region 集采上架
+
+        public Hashtable QueryBasicProdictData(int pIndex, int pNum, CargoContainerShowEntity entity)
+        {
+            //return man.QueryInHouseProductData(pIndex, pNum, entity);
+            return man.QueryBasicProdictData(pIndex, pNum, entity);
+        }
+
+        public List<CargoAddProductShelvesEntity> QueryReserveShelves()
+        {
+            return man.QueryReserveShelves();
+        }
+
+
+        #endregion
+
+        public List<CargoProductSpecEntity> QueryProductSpecs(CargoProductEntity entity)
+        {
+            return man.QueryProductSpecs(entity);
+        }
+    }
+}

@@ -319,7 +319,7 @@ namespace House.Manager.Cargo
                                 PickStatus = string.IsNullOrEmpty(Convert.ToString(idr["PickStatus"])) ? 0 : Convert.ToInt32(idr["PickStatus"]),
                                 ShopCode = Convert.ToString(idr["ShopCode"]),
                                 HouseName = Convert.ToString(idr["HouseName"]),
-                                OverDueFee= string.IsNullOrEmpty(Convert.ToString(idr["OverDueFee"])) ? 0 : Convert.ToInt32(idr["OverDueFee"]),
+                                OverDueFee = string.IsNullOrEmpty(Convert.ToString(idr["OverDueFee"])) ? 0 : Convert.ToInt32(idr["OverDueFee"]),
                             });
                             #endregion
                         }
@@ -942,7 +942,7 @@ namespace House.Manager.Cargo
             return true;
         }
 
-       
+
         /// <summary>
         /// 查询订单数据
         /// </summary>
@@ -971,7 +971,7 @@ namespace House.Manager.Cargo
                     {
                         strSQL += " and (a.AwbStatus='0' or a.AwbStatus='1')";
                     }
-                    else if (entity.AwbStatus.Equals("-5")) 
+                    else if (entity.AwbStatus.Equals("-5"))
                     {
                         strSQL += " and a.AwbStatus<>'5'";
                     }
@@ -1179,12 +1179,12 @@ namespace House.Manager.Cargo
                                 DriverCellphone = Convert.ToString(idr["DriverCellphone"]),
                                 DriverIDNum = Convert.ToString(idr["DriverIDNum"]),
                                 Trxid = Convert.ToString(idr["Trxid"]),
-                                BateAmount = string.IsNullOrEmpty(Convert.ToString(idr["BateAmount"]))?0: Convert.ToDecimal(idr["BateAmount"]),
-                                OnlinePaidAmount = string.IsNullOrEmpty(Convert.ToString(idr["OnlinePaidAmount"]))?0: Convert.ToDecimal(idr["OnlinePaidAmount"]),
+                                BateAmount = string.IsNullOrEmpty(Convert.ToString(idr["BateAmount"])) ? 0 : Convert.ToDecimal(idr["BateAmount"]),
+                                OnlinePaidAmount = string.IsNullOrEmpty(Convert.ToString(idr["OnlinePaidAmount"])) ? 0 : Convert.ToDecimal(idr["OnlinePaidAmount"]),
                                 ClientName = Convert.ToString(idr["ClientName"]),
-                                ShareHouseID= Convert.ToInt32(idr["ShareHouseID"]),
+                                ShareHouseID = Convert.ToInt32(idr["ShareHouseID"]),
                                 ShareHouseName = Convert.ToString(idr["ShareHouseNames"]),
-                                
+
                             });
                             #endregion
                         }
@@ -3000,8 +3000,9 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
             {
                 strSQL += ",OutCargoTime";
             }
-            if (!string.IsNullOrEmpty(entity.MarketType)) {
-                strSQL += ",MarketType"; 
+            if (!string.IsNullOrEmpty(entity.MarketType))
+            {
+                strSQL += ",MarketType";
             }
             strSQL += ") VALUES (@OrderNo,@OrderNum,@HAwbNo,@LogisAwbNo,@LogisID,@Dep,@Dest,@Piece,@Weight,@Volume,@InsuranceFee,@TransitFee,@TransportFee,@DeliveryFee,@OtherFee,@TotalCharge,@Rebate,@CheckOutType,@TrafficType,@DeliveryType,@AcceptUnit,@AcceptPeople,@AcceptTelephone,@AcceptCellphone,@AcceptAddress,@CreateAwb,@CreateDate,@OP_ID,@OP_DATE,@AwbStatus,@Remark,@SaleManID,@SaleManName,@SaleCellPhone,@HouseID,@CreateAwbID,@OrderType,@OrderModel,@ClientNum,@ThrowGood,@TranHouse,@OutHouseName,@ModifyPriceStatus,@PayClientNum,@PayClientName,@BelongHouse,@IsPrintPrice,@PostponeShip,@DeliverySettlement,@LineID,@LineName,@SuppClientNum,@WXOrderNo,@CollectMoney,@OpenOrderNo,@OpenOrderSource,@BusinessID,@OverDueFee,@CouponType,@ShareHouseID,@ShareHouseName,@OrignHouseID,@OrignHouseName,@CheckStatus,@BateAmount,@OnlinePaidAmount";
             if (!string.IsNullOrEmpty(entity.FinanceSecondCheck))
@@ -3234,8 +3235,9 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
 
                 return did;
             }
-            catch (Exception ex) { 
-                throw new ApplicationException(ex.Message); 
+            catch (Exception ex)
+            {
+                throw new ApplicationException(ex.Message);
             }
 
         }
@@ -3318,8 +3320,9 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
 
                 return did;
             }
-            catch (Exception ex) { 
-                throw new ApplicationException(ex.Message); 
+            catch (Exception ex)
+            {
+                throw new ApplicationException(ex.Message);
             }
 
         }
@@ -3892,7 +3895,7 @@ VALUES (
                         conn.AddInParameter(cmd, "@houseid", DbType.Int32, it.HouseID);
                         conn.AddInParameter(cmd, "@piece", DbType.Int32, it.Piece);          // 假设为整数
                         conn.AddInParameter(cmd, "@actsaleprice", DbType.Decimal, it.ActSalePrice); // 假设为金额/Decimal
-                        conn.AddInParameter(cmd, "@born", DbType.Int64, string.IsNullOrEmpty(it.Born)?0: Convert.ToInt64(it.Born));
+                        conn.AddInParameter(cmd, "@born", DbType.Int64, string.IsNullOrEmpty(it.Born) ? 0 : Convert.ToInt64(it.Born));
                         conn.AddInParameter(cmd, "@assort", DbType.String, it.Assort);
                         conn.AddInParameter(cmd, "@productname", DbType.String, it.ProductName);
                         conn.AddInParameter(cmd, "@op_id", DbType.String, it.OP_ID);            // 假设为操作员ID，整数
@@ -3975,7 +3978,8 @@ VALUES (
         /// <returns></returns>
         public bool IsModelOrderInfo(string orderNo)
         {
-            if (string.IsNullOrEmpty(orderNo)) {
+            if (string.IsNullOrEmpty(orderNo))
+            {
                 return false;
             }
             string strSQL = "Select OrderModel from Tbl_Cargo_Order where (1=1) AND OrderNo=@OrderNo";
@@ -5620,7 +5624,7 @@ CREATE TABLE
 		No NVARCHAR(50)
 	);
 ";
-            string strSQL = @"select a.OrderNo,a.ProductID,a.Piece,a.ActSalePrice,
+                string strSQL = @"select a.OrderNo,a.ProductID,a.Piece,a.ActSalePrice,
 ISNULL(a.SupplySalePrice,0) as originalPrice,b.TypeID,b.ProductName,c.TypeName,b.Model,
 b.GoodsCode,b.Specs,b.Figure,b.LoadIndex,b.SpeedLevel,b.Batch,b.BatchWeek,b.BatchYear,a.HouseID,b.TradePrice,
 b.SalePrice,b.TreadWidth,b.HubDiameter,InHouseTime,InCargoStatus,
@@ -5823,7 +5827,7 @@ Values {0}
             try
             {
                 string strSQL = @"select a.OrderID,a.OrderNo,a.Piece as TotalPiece,a.TransportFee,a.TotalCharge,a.AcceptPeople,a.AcceptCellphone,a.ClientNum,
-a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.HouseID,b.AreaID,b.ContainerCode,b.Piece,b.ActSalePrice,b.OutCargoID,c.ContainerID,d.Supplier,d.UnitPrice,d.SalePrice,d.CostPrice,d.TradePrice,d.Figure,d.Specs,d.GoodsCode,d.SpeedLevel,d.LoadIndex,d.Model,d.Batch,d.BatchYear,d.Born,d.ProductName,d.TypeID,d.ProductCode,d.SuppClientNum,d.SupplierAddress,d.InHousePrice,d.SpecsType,d.BelongDepart,e.TypeName,f.Name as AreaName,g.Name as HouseName,g.HouseCode,f.ParentID from Tbl_Cargo_Order as a inner join Tbl_Cargo_OrderGoods as b on a.OrderNo=b.OrderNo inner join Tbl_Cargo_Container as c on b.ContainerCode=c.ContainerCode and c.AreaID=b.AreaID inner join Tbl_Cargo_Product as d on b.ProductID=d.ProductID left join Tbl_Cargo_ProductType as e on d.TypeID=e.TypeID left join Tbl_Cargo_Area as f on c.AreaID=f.AreaID left join Tbl_Cargo_House as g on b.HouseID=g.HouseID Where (1=1) ";
+a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.HouseID,b.AreaID,b.ContainerCode,b.Piece,b.ActSalePrice,b.OutCargoID,c.ContainerID,d.Supplier,d.UnitPrice,d.SalePrice,d.CostPrice,d.TradePrice,d.Figure,d.Specs,d.GoodsCode,d.SpeedLevel,d.LoadIndex,d.Model,d.Batch,d.BatchYear,d.Born,d.ProductName,d.TypeID,d.ProductCode,d.SuppClientNum,d.SupplierAddress,d.InHousePrice,d.SpecsType,d.BelongDepart,e.TypeName,f.Name as AreaName,g.Name as HouseName,g.HouseCode,f.ParentID,b.SupplySalePrice from Tbl_Cargo_Order as a inner join Tbl_Cargo_OrderGoods as b on a.OrderNo=b.OrderNo inner join Tbl_Cargo_Container as c on b.ContainerCode=c.ContainerCode and c.AreaID=b.AreaID inner join Tbl_Cargo_Product as d on b.ProductID=d.ProductID left join Tbl_Cargo_ProductType as e on d.TypeID=e.TypeID left join Tbl_Cargo_Area as f on c.AreaID=f.AreaID left join Tbl_Cargo_House as g on b.HouseID=g.HouseID Where (1=1) ";
                 //下单方式
                 if (!string.IsNullOrEmpty(entity.OrderType)) { strSQL += " and a.OrderType = '" + entity.OrderType + "'"; }
                 //收货单位,人
@@ -5965,6 +5969,7 @@ a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.H
                                     SuppClientNum = string.IsNullOrEmpty(Convert.ToString(idr["SuppClientNum"])) ? 0 : Convert.ToInt32(idr["SuppClientNum"]),
                                     SupplierAddress = Convert.ToString(idr["SupplierAddress"]),
                                     SpecsType = Convert.ToString(idr["SpecsType"]),
+                                    SupplySalePrice = Convert.ToDecimal(idr["SupplySalePrice"])
                                 });
                                 #endregion
                             }
@@ -5985,12 +5990,13 @@ a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.H
 
             CargoClientManager client = new CargoClientManager();
             Int64 did = 0;
-            string strSQL = @"INSERT INTO Tbl_Cargo_Order(OrderNo,OrderNum,HAwbNo,Dep,Dest,Piece,TransportFee,TotalCharge,CheckOutType,TrafficType,DeliveryType,AcceptUnit,AcceptPeople,AcceptTelephone,AcceptCellphone,AcceptAddress,CreateAwb,CreateDate,OP_ID,OP_DATE,AwbStatus,Remark,SaleManID,SaleManName,HouseID,CreateAwbID,OrderType,OrderModel,ClientNum,ThrowGood,PayClientNum,PayClientName,BelongHouse,OutHouseName,LogisID";
-            if (entity.CheckStatus== "1" && entity.FinanceSecondCheck== "1")
+            //string strSQL = @"INSERT INTO Tbl_Cargo_Order(OrderNo,OrderNum,HAwbNo,Dep,Dest,Piece,TransportFee,TotalCharge,CheckOutType,TrafficType,DeliveryType,AcceptUnit,AcceptPeople,AcceptTelephone,AcceptCellphone,AcceptAddress,CreateAwb,CreateDate,OP_ID,OP_DATE,AwbStatus,Remark,SaleManID,SaleManName,HouseID,CreateAwbID,OrderType,OrderModel,ClientNum,ThrowGood,PayClientNum,PayClientName,BelongHouse,OutHouseName,LogisID) VALUES (@OrderNo,@OrderNum,@HAwbNo,@Dep,@Dest,@Piece,@TransportFee,@TotalCharge,@CheckOutType,@TrafficType,@DeliveryType,@AcceptUnit,@AcceptPeople,@AcceptTelephone,@AcceptCellphone,@AcceptAddress,@CreateAwb,@CreateDate,@OP_ID,@OP_DATE,@AwbStatus,@Remark,@SaleManID,@SaleManName,@HouseID,@CreateAwbID,@OrderType,@OrderModel,@ClientNum,@ThrowGood,@PayClientNum,@PayClientName,@BelongHouse,@OutHouseName,@LogisID) SELECT @@IDENTITY";
+            string strSQL = @"INSERT INTO Tbl_Cargo_Order(OrderNo,OrderNum,HAwbNo,Dep,Dest,Piece,TransportFee,TotalCharge,CheckOutType,TrafficType,DeliveryType,AcceptUnit,AcceptPeople,AcceptTelephone,AcceptCellphone,AcceptAddress,CreateAwb,CreateDate,OP_ID,OP_DATE,AwbStatus,Remark,SaleManID,SaleManName,HouseID,CreateAwbID,OrderType,OrderModel,ClientNum,ThrowGood,PayClientNum,PayClientName,BelongHouse,OutHouseName,LogisID,SuppClientNum";
+            if (entity.CheckStatus == "1" && entity.FinanceSecondCheck == "1")
             {
                 strSQL += $@",CheckStatus,CheckDate,FinanceSecondCheck,FinanceSecondCheckName,FinanceSecondCheckDate";
             }
-            strSQL += $@") VALUES (@OrderNo,@OrderNum,@HAwbNo,@Dep,@Dest,@Piece,@TransportFee,@TotalCharge,@CheckOutType,@TrafficType,@DeliveryType,@AcceptUnit,@AcceptPeople,@AcceptTelephone,@AcceptCellphone,@AcceptAddress,@CreateAwb,@CreateDate,@OP_ID,@OP_DATE,@AwbStatus,@Remark,@SaleManID,@SaleManName,@HouseID,@CreateAwbID,@OrderType,@OrderModel,@ClientNum,@ThrowGood,@PayClientNum,@PayClientName,@BelongHouse,@OutHouseName,@LogisID";
+            strSQL += $@") VALUES (@OrderNo,@OrderNum,@HAwbNo,@Dep,@Dest,@Piece,@TransportFee,@TotalCharge,@CheckOutType,@TrafficType,@DeliveryType,@AcceptUnit,@AcceptPeople,@AcceptTelephone,@AcceptCellphone,@AcceptAddress,@CreateAwb,@CreateDate,@OP_ID,@OP_DATE,@AwbStatus,@Remark,@SaleManID,@SaleManName,@HouseID,@CreateAwbID,@OrderType,@OrderModel,@ClientNum,@ThrowGood,@PayClientNum,@PayClientName,@BelongHouse,@OutHouseName,@LogisID,@SuppClientNum";
             if (entity.CheckStatus == "1" && entity.FinanceSecondCheck == "1")
             {
                 strSQL += $@",@CheckStatus,@CheckDate,@FinanceSecondCheck,@FinanceSecondCheckName,@FinanceSecondCheckDate";
@@ -6036,6 +6042,7 @@ a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.H
                     conn.AddInParameter(cmd, "@PayClientNum", DbType.Int32, entity.PayClientNum);
                     conn.AddInParameter(cmd, "@BelongHouse", DbType.String, entity.BelongHouse);
                     conn.AddInParameter(cmd, "@OutHouseName", DbType.String, entity.OutHouseName);
+                    //conn.AddInParameter(cmd, "@LogisID", DbType.String, entity.LogisID);
                     conn.AddInParameter(cmd, "@LogisID", DbType.Int32, entity.LogisID);
                     if (entity.CheckStatus == "1" && entity.FinanceSecondCheck == "1")
                     {
@@ -6045,6 +6052,7 @@ a.SaleManID,a.SaleManName,a.CreateAwbID,a.CreateAwb,a.CreateDate,b.ProductID,b.H
                         conn.AddInParameter(cmd, "@FinanceSecondCheckName", DbType.String, entity.FinanceSecondCheckName);
                         conn.AddInParameter(cmd, "@FinanceSecondCheckDate", DbType.DateTime, entity.FinanceSecondCheckDate);
                     }
+                    conn.AddInParameter(cmd, "@SuppClientNum", DbType.Int32, entity.SuppClientNum);
                     //conn.ExecuteNonQuery(cmd);
                     did = Convert.ToInt64(conn.ExecuteScalar(cmd));
                 }
@@ -7493,7 +7501,7 @@ VALUES (@MoveNo,@OldHouseName,@OldHouseID,@NewHouseName,@NewHouseID,@MoveNum,@Mo
                     conn.AddInParameter(cmd, "@Memo", DbType.String, entity.Memo);
                     conn.AddInParameter(cmd, "@OPID", DbType.String, entity.OPID);
                     conn.AddInParameter(cmd, "@LogisID", DbType.Int32, entity.LogisID.Equals(0) ? 34 : entity.LogisID);
-                    
+
                     using (DataTable dt = conn.ExecuteDataTable(cmd))
                     {
                         if (dt.Rows.Count > 0)
@@ -10907,141 +10915,141 @@ WHERE
     [conditions2]
 ORDER BY ss.MaxStock - (ISNULL(p.InPiece, 0) + ISNULL(iti.Piece, 0)) DESC
 ";
-                try
+            try
+            {
+                int index = 1;
+                List<string> productValues = new List<string>();
+                List<SqlParameter> sqlParameters = new List<SqlParameter>();
+                string mainInsertSql = "";
+                if (byHouseID)
                 {
-                    int index = 1;
-                    List<string> productValues = new List<string>();
-                    List<SqlParameter> sqlParameters = new List<SqlParameter>();
-                    string mainInsertSql = "";
-                    if (byHouseID)
+                    sqlParameters.Add(new SqlParameter("@HouseID", entity.HouseID));
+                }
+                else
+                {
+                    foreach (var goods in goodslist)
                     {
-                        sqlParameters.Add(new SqlParameter("@HouseID", entity.HouseID));
-                    }
-                    else
-                    {
-                        foreach (var goods in goodslist)
-                        {
-                            productValues.Add($"(@ProductCode{index}, @HouseID{index})");
-                            sqlParameters.AddRange(new List<SqlParameter>
+                        productValues.Add($"(@ProductCode{index}, @HouseID{index})");
+                        sqlParameters.AddRange(new List<SqlParameter>
                         {
                             new SqlParameter($"@ProductCode{index}", goods.ProductCode),
                             new SqlParameter($"@HouseID{index}", goods.HouseID),
                         });
-                            index++;
-                        }
-                        if (productValues.Any())
-                        {
-                            insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", string.Join("," + Environment.NewLine, productValues));
-                        }
-                        else
-                        {
-                            insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", "");
-                        }
-                        mainInsertSql = createPrdctTempSql + insertPrdctTempSql;
+                        index++;
                     }
-                        
-
-                    List<CargoOOSLogGoodsDto> toAddRows = new List<CargoOOSLogGoodsDto>();
-                    List<CargoOOSLogDtlDto> toAddEntities = new List<CargoOOSLogDtlDto>();
-                    //插入临时表数据
-                    using (DbCommand command = conn.GetSqlStringCommond(""))
+                    if (productValues.Any())
                     {
-                        command.Parameters.AddRange(sqlParameters.ToArray());
-                        if (!byHouseID)
-                        {
-                            command.CommandText = mainInsertSql;
-                            command.Connection.Open();
-                            command.ExecuteNonQuery();
-                            queryOutofStockSql = queryOutofStockSql.Replace("[conditions]", "");
-                            queryOutofStockSql = queryOutofStockSql.Replace("[conditions2]", "");
-                        }
-                        else
-                        {
-                            queryOutofStockSql = queryOutofStockSql.Replace("[conditions]", $"AND HouseID = {entity.HouseID}");
-                            queryOutofStockSql = queryOutofStockSql.Replace("[conditions2]", $"AND ss.HouseID = {entity.HouseID}");
-                        }
-
-                        command.CommandText = queryOutofStockSql;
-                        //获取库存低于安全库存的产品
-                        using (var dt = conn.ExecuteDataTable(command))
-                        {
-                            if (dt.Rows.Count == 0) return result;
-                            foreach (DataRow dr in dt.Rows)
-                            {
-                                toAddRows.Add(new CargoOOSLogGoodsDto()
-                                {
-                                    //ProductID = dr.Field<long>("ProductID"),
-                                    ProductName = dr.Field<string>("ProductName"),
-                                    ProductCode = dr.Field<string>("ProductCode"),
-                                    GoodsCode = dr.Field<string>("GoodsCode"),
-                                    TypeCate = dr.Field<int>("ParentID"),
-                                    TypeCateName = dr.Field<string>("ParentName"),
-                                    TypeID = dr.Field<int>("TypeID"),
-                                    TypeName = dr.Field<string>("TypeName"),
-                                    Specs = dr.Field<string>("Specs"),
-                                    Figure = dr.Field<string>("Figure"),
-                                    LoadIndex = dr.Field<string>("LoadIndex"),
-                                    SpeedLevel = dr.Field<string>("SpeedLevel"),
-                                    Piece = dr.Field<int>("Piece"),
-                                    SysPiece = dr.Field<int>("Piece"),
-                                    HouseID = dr.Field<int>("HouseID"),
-                                    //AreaID = dr.Field<int>("AreaID"),
-                                    HouseName = dr.Field<string>("HouseName"),
-                                    ParentHouseID = dr.Field<int?>("HouseParentID"),
-                                    ParentHouseName = dr.Field<string>("HouseParentName"),
-
-                                    MinStockDay = dr.Field<int>("MinStockDay"),
-                                    MaxStockDay = dr.Field<int>("MaxStockDay"),
-                                    MinStock = dr.Field<int>("MinStock"),
-                                    MaxStock = dr.Field<int>("MaxStock"),
-                                    SrcPiece = dr.Field<int>("InPiece"),
-                                    InTransitQty = dr.Field<int>("InTransitPiece"),
-                                    RestockingQty = dr.Field<int>("RestockingPiece"),
-                                    AvgSalSUM = dr.Field<int>("WeightedMonthSale"),
-                                    SID = dr.Field<long>("SID"),
-                                });
-                            }
-                            toAddRows.Where(c => c.Piece < 0).ToList().ForEach(c => c.Piece = 0);
-                        }
-                        //按照大仓分组
-                        foreach (var item in toAddRows.GroupBy(x => x.HouseID))
-                        {
-                            HouseID = item.Key.Value;
-                            var firstData = item.FirstOrDefault();
-                            int totalReplPiece = item.Select(x => x.Piece).OfType<int>().Sum();
-                            CargoOOSLogDtlDto toAddEntity = new CargoOOSLogDtlDto()
-                            {
-                                HouseID = HouseID,
-                                HouseName = firstData.HouseName,
-                                FromHouse = firstData.ParentHouseID,
-                                FromHouseName = firstData.ParentHouseName,
-                                ReqBy = entity.UserID,
-                                ReqByName = entity.UserName,
-                                SrcType = entity.SrcType,
-                                ReasonTag = entity.ReasonTag,
-                                SrcCode = entity.SrcCode,
-                                SrcID = entity.SrcID,
-                                Piece = totalReplPiece,
-                                Reason = "",
-                                Remark = "",
-                                Rows = item.ToList()
-                            };
-                            toAddEntities.Add(toAddEntity);
-                        }
-
+                        insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", string.Join("," + Environment.NewLine, productValues));
                     }
-
-                    //将分组后的数据创建补货单
-                    foreach (var toAddEntity in toAddEntities)
+                    else
                     {
-                        var resultAddedData = byHouseID ? UpdateOutOfStockWithLogLarge(toAddEntity) : UpdateOutOfStockWithLog(toAddEntity);
-                        result.Add(resultAddedData);
+                        insertPrdctTempSql = insertPrdctTempSql.Replace("@{productValues}", "");
                     }
+                    mainInsertSql = createPrdctTempSql + insertPrdctTempSql;
                 }
-                catch (Exception)
+
+
+                List<CargoOOSLogGoodsDto> toAddRows = new List<CargoOOSLogGoodsDto>();
+                List<CargoOOSLogDtlDto> toAddEntities = new List<CargoOOSLogDtlDto>();
+                //插入临时表数据
+                using (DbCommand command = conn.GetSqlStringCommond(""))
                 {
-                    throw;
+                    command.Parameters.AddRange(sqlParameters.ToArray());
+                    if (!byHouseID)
+                    {
+                        command.CommandText = mainInsertSql;
+                        command.Connection.Open();
+                        command.ExecuteNonQuery();
+                        queryOutofStockSql = queryOutofStockSql.Replace("[conditions]", "");
+                        queryOutofStockSql = queryOutofStockSql.Replace("[conditions2]", "");
+                    }
+                    else
+                    {
+                        queryOutofStockSql = queryOutofStockSql.Replace("[conditions]", $"AND HouseID = {entity.HouseID}");
+                        queryOutofStockSql = queryOutofStockSql.Replace("[conditions2]", $"AND ss.HouseID = {entity.HouseID}");
+                    }
+
+                    command.CommandText = queryOutofStockSql;
+                    //获取库存低于安全库存的产品
+                    using (var dt = conn.ExecuteDataTable(command))
+                    {
+                        if (dt.Rows.Count == 0) return result;
+                        foreach (DataRow dr in dt.Rows)
+                        {
+                            toAddRows.Add(new CargoOOSLogGoodsDto()
+                            {
+                                //ProductID = dr.Field<long>("ProductID"),
+                                ProductName = dr.Field<string>("ProductName"),
+                                ProductCode = dr.Field<string>("ProductCode"),
+                                GoodsCode = dr.Field<string>("GoodsCode"),
+                                TypeCate = dr.Field<int>("ParentID"),
+                                TypeCateName = dr.Field<string>("ParentName"),
+                                TypeID = dr.Field<int>("TypeID"),
+                                TypeName = dr.Field<string>("TypeName"),
+                                Specs = dr.Field<string>("Specs"),
+                                Figure = dr.Field<string>("Figure"),
+                                LoadIndex = dr.Field<string>("LoadIndex"),
+                                SpeedLevel = dr.Field<string>("SpeedLevel"),
+                                Piece = dr.Field<int>("Piece"),
+                                SysPiece = dr.Field<int>("Piece"),
+                                HouseID = dr.Field<int>("HouseID"),
+                                //AreaID = dr.Field<int>("AreaID"),
+                                HouseName = dr.Field<string>("HouseName"),
+                                ParentHouseID = dr.Field<int?>("HouseParentID"),
+                                ParentHouseName = dr.Field<string>("HouseParentName"),
+
+                                MinStockDay = dr.Field<int>("MinStockDay"),
+                                MaxStockDay = dr.Field<int>("MaxStockDay"),
+                                MinStock = dr.Field<int>("MinStock"),
+                                MaxStock = dr.Field<int>("MaxStock"),
+                                SrcPiece = dr.Field<int>("InPiece"),
+                                InTransitQty = dr.Field<int>("InTransitPiece"),
+                                RestockingQty = dr.Field<int>("RestockingPiece"),
+                                AvgSalSUM = dr.Field<int>("WeightedMonthSale"),
+                                SID = dr.Field<long>("SID"),
+                            });
+                        }
+                        toAddRows.Where(c => c.Piece < 0).ToList().ForEach(c => c.Piece = 0);
+                    }
+                    //按照大仓分组
+                    foreach (var item in toAddRows.GroupBy(x => x.HouseID))
+                    {
+                        HouseID = item.Key.Value;
+                        var firstData = item.FirstOrDefault();
+                        int totalReplPiece = item.Select(x => x.Piece).OfType<int>().Sum();
+                        CargoOOSLogDtlDto toAddEntity = new CargoOOSLogDtlDto()
+                        {
+                            HouseID = HouseID,
+                            HouseName = firstData.HouseName,
+                            FromHouse = firstData.ParentHouseID,
+                            FromHouseName = firstData.ParentHouseName,
+                            ReqBy = entity.UserID,
+                            ReqByName = entity.UserName,
+                            SrcType = entity.SrcType,
+                            ReasonTag = entity.ReasonTag,
+                            SrcCode = entity.SrcCode,
+                            SrcID = entity.SrcID,
+                            Piece = totalReplPiece,
+                            Reason = "",
+                            Remark = "",
+                            Rows = item.ToList()
+                        };
+                        toAddEntities.Add(toAddEntity);
+                    }
+
                 }
+
+                //将分组后的数据创建补货单
+                foreach (var toAddEntity in toAddEntities)
+                {
+                    var resultAddedData = byHouseID ? UpdateOutOfStockWithLogLarge(toAddEntity) : UpdateOutOfStockWithLog(toAddEntity);
+                    result.Add(resultAddedData);
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
 
             return result;
         }
@@ -11077,7 +11085,7 @@ SELECT
 FROM Tbl_Cargo_RplOrderGoods
 GROUP BY RplID
 )
-"); 
+");
                 if (queryParams.TypeID.HasValue)
                 {
                     conditions.Add("TypeID = @TypeID");
@@ -11276,7 +11284,7 @@ ORDER BY RowNumber ASC
 ");
                 conditions = new List<string>();
 
-                if(entity.IsPaging)
+                if (entity.IsPaging)
                 {
                     strbld.Replace("@{pagesize}", "TOP " + entity.PageSize.ToString());
                     strbld.Replace("@{startindex}", "RowNumber > " + entity.PageSize.ToString());
@@ -11316,7 +11324,7 @@ ORDER BY RowNumber ASC
                         foreach (DataRow idr in dt.Rows)
                         {
                             if (isFirst)
-                            {   
+                            {
                                 result.DataTotal = idr.Field<int>("TotalCount");
                                 isFirst = false;
                             }
@@ -11494,7 +11502,7 @@ INNER JOIN Tbl_Cargo_Product p ON rog.ProductID = p.ProductID
                 }
             }
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
-            
+
             return result;
         }
         public CargoRplOrderDtlDto AddRplOrder(CargoRplOrderDtlDto entity)
@@ -11610,7 +11618,7 @@ WHERE OOSID IN (@{OOSIDs})
                                 {
                                     int oosID = dr.Field<int>("OOSID");
                                     var matchedPassRow = passRowsData.FirstOrDefault(c => c.OOSID == oosID);
-                                    if(matchedPassRow == null)
+                                    if (matchedPassRow == null)
                                     {
                                         throw new ApplicationException($"未找到到相关补库清单; 清单ID{oosID}");
                                     }
@@ -11646,7 +11654,7 @@ WHERE OOSID IN (@{OOSIDs})
                                         ContainerGoodsID = dr.Field<long?>("ContainerGoodsID"),
                                         Remark = matchedPassRow.Remark
                                     };
-                                    
+
                                     if (matchedPassRow.ConfirmPiece > 0)
                                     {
                                         //检查上级仓库是否有库存
@@ -11671,7 +11679,7 @@ WHERE OOSID IN (@{OOSIDs})
                                 throw new ApplicationException("查询缺货单原数据失败");
                             }
                         }
-                        
+
                         //如果上级仓库不足 则只补够的量
                         foreach (var item in rowsData.Where(c => c.InPiece.GetValueOrDefault() < c.Piece.GetValueOrDefault()))
                         {
@@ -11967,7 +11975,7 @@ VALUES
                     string updateOOSRplDateSQL = @"
 UPDATE Tbl_Cargo_OutOfStock SET LatestRplDate = GETDATE()
 WHERE OOSID IN (@{OOSIDs});";
-                    
+
                     updateOOSRplDateSQL = updateOOSRplDateSQL.Replace("@{OOSIDs}", string.Join(", ", oosIDs));
 
                     List<string> sqlvaluesStrList = new List<string>();
@@ -12082,7 +12090,7 @@ WHERE OOSID IN (@{OOSIDs});";
                         using (DataTable dt = conn.ExecuteDataTable(command, trns))
                         {
                             var rtRows = new List<CargoRplOrderGoodsDto>();
-                            if (dt.Rows.Count > 0) 
+                            if (dt.Rows.Count > 0)
                             {
                                 foreach (DataRow dr in dt.Rows)
                                 {
@@ -12193,7 +12201,7 @@ VALUES
                     trns.Commit();
                     return rtData;
                 }
-                catch 
+                catch
                 {
                     trns.RollBack();
                     throw;
@@ -12953,7 +12961,7 @@ SELECT
                     }
 
                     //------------ 插入审计行数据 ------------
-                    
+
 
                     int batchSize = 1000;
                     List<SqlParameter> rowssqlParameters = new List<SqlParameter>();
@@ -13278,7 +13286,8 @@ WHERE NOT EXISTS (
                     var batches3 = oosList.Select((row, index) => new { row, index })
                                          .GroupBy(x => x.index / batchSize)
                                          .Select(g => g.Select(x => x.row).ToList());
-                    foreach (var batchRows3 in batches3) {
+                    foreach (var batchRows3 in batches3)
+                    {
                         string insertOOSChange = @"
 INSERT INTO
 	Tbl_Cargo_OutOfStockChange (
@@ -13341,7 +13350,7 @@ VALUES
                             }
                         }
                     }
-                       
+
 
 
                     //------------ 提交所有变更 ------------
@@ -13657,7 +13666,7 @@ ORDER BY RowNumber ASC
         {
             //验证仓库是否有效
             if (!HouseID.HasValue) throw new ApplicationException("请传入仓库ID");
-            if(HouseID > 0)
+            if (HouseID > 0)
             {
                 CargoHouseManager houseMan = new CargoHouseManager();
                 var houseData = houseMan.QueryCargoHouseByID(HouseID.Value);
@@ -16407,7 +16416,7 @@ group by TypeID,HouseID,Piece,TotalCharge,throwgood,OrderModel,Year,Month,Day,op
 
                  */
 
-                                string strSQL = $@"
+                string strSQL = $@"
                     --先删除现有数据
 delete from Tbl_Cargo_OrderDayStatistics where DayStatisticsTime>='{st}' and DayStatisticsTime<='{et}'
                     --再新增
@@ -17032,10 +17041,10 @@ order by TypeID
                             IsHouseType = string.IsNullOrEmpty(Convert.ToString(idr["IsHouseType"])) ? 0 : Convert.ToInt32(idr["IsHouseType"]),
                             IsTransitFee = string.IsNullOrEmpty(Convert.ToString(idr["IsTransitFee"])) ? 0 : Convert.ToInt32(idr["IsTransitFee"]),
                             WXOrderNo = Convert.ToString(idr["WXOrderNo"]),
-                            PayClientNum = string.IsNullOrEmpty(Convert.ToString(idr["PayClientNum"])) ?0: Convert.ToInt32(idr["PayClientNum"]),
+                            PayClientNum = string.IsNullOrEmpty(Convert.ToString(idr["PayClientNum"])) ? 0 : Convert.ToInt32(idr["PayClientNum"]),
                             PayClientName = Convert.ToString(idr["PayClientName"]),
                             FinanceSecondCheckName = Convert.ToString(idr["FinanceSecondCheckName"]),
-                            FinanceSecondCheckDate =string.IsNullOrEmpty(Convert.ToString(idr["FinanceSecondCheckDate"]))?DateTime.MinValue: Convert.ToDateTime(idr["FinanceSecondCheckDate"]),
+                            FinanceSecondCheckDate = string.IsNullOrEmpty(Convert.ToString(idr["FinanceSecondCheckDate"])) ? DateTime.MinValue : Convert.ToDateTime(idr["FinanceSecondCheckDate"]),
                             LogisticName = Convert.ToString(idr["LogisticName"]),
                             HouseName = Convert.ToString(idr["HouseName"]),
                             HouseCellphone = Convert.ToString(idr["HouseCellphone"]),
@@ -17390,8 +17399,6 @@ order by TypeID
 select DISTINCT ROW_NUMBER() OVER (ORDER BY a.TypeID, a.HouseID,a.OrderNo DESC) AS RowNumber, a.OrderGoodsID, a.OrderNo, a.ProductCode, a.TypeID, a.Model, a.GoodsCode, a.Specs, a.Figure, a.LoadIndex, a.SpeedLevel, a.HouseID, a.Piece, a.ActSalePrice, a.Born, a.Assort, a.ProductName, a.OP_ID, a.OP_DATE, b.TypeName, c.Name as HouseName, isnull(d.Piece, 0) as InventoryPiece, isnull(f2.Piece, 0) GoodsPiece, isnull(aa.SuppClientNum, 0) as SuppClientNum, ct.ClientName as SuppClientName from Tbl_Cargo_ReserveOrderGoods as a inner join Tbl_Cargo_ReserveOrder as aa on a.OrderNo = aa.OrderNo inner join Tbl_Cargo_ProductType as b on a.TypeID = b.TypeID inner join Tbl_Cargo_House as c on a.HouseID = c.HouseID left join (select a.TypeID, a.GoodsCode, a.Specs, a.Figure, ProductCode, a.SuppClientNum, sum(b.Piece) as Piece from Tbl_Cargo_Product as a inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID left join Tbl_Cargo_Container as c on b.ContainerID = c.ContainerID Where a.InCargoStatus = '1' and a.IsLockStock = 0 and b.Piece <> 0 and SpecsType = '4' and SuppClientNum='{entity.SuppClientNum}' group by Specs, GoodsCode, ProductCode, Figure, a.TypeID, a.SuppClientNum) as d on a.Specs = d.Specs and a.GoodsCode = d.GoodsCode and a.TypeID = d.TypeID and a.Figure = d.Figure and a.ProductCode = d.ProductCode and d.SuppClientNum = aa.SuppClientNum left join (select sum(f.Piece) Piece, f1.OpenOrderNo, Specs, ProductCode, GoodsCode, TypeID, f.HouseID from Tbl_Cargo_Order as f1 inner join Tbl_Cargo_OrderGoods as f on f1.OrderNo=f.OrderNo inner join Tbl_Cargo_Product as g on f.ProductID = g.ProductID where f1.OpenOrderSource = 3 group by f1.OpenOrderNo, Specs, ProductCode, GoodsCode, TypeID, f.HouseID) as f2 on f2.OpenOrderNo = a.OrderNo and a.Specs = f2.Specs and a.ProductCode = f2.ProductCode and a.GoodsCode = f2.GoodsCode and a.TypeID = f2.TypeID and a.HouseID = f2.HouseID left join Tbl_Cargo_Client as ct on ct.ClientNum = aa.SuppClientNum and ClientType = '4' and UpClientID = 1
 where a.OrderNo='{entity.OrderNo}'
                 ";
-
-
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(command))
@@ -17486,7 +17493,7 @@ select a2.*, isnull(d.Piece, 0) as InventoryPiece from (select a.ProductCode, a.
             string strSQL = $@"
                 select * from Tbl_Cargo_ReserveOrderPaymentRecord where OrderNo='{entity.OrderNo}'
                 ";
-            
+
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(command))
@@ -17628,7 +17635,7 @@ where b.OrderNo='{entity.OrderNo}' ";
         {
             SqlHelper conn = new SqlHelper();
             List<AvgMonthSalesData> rsltData = new List<AvgMonthSalesData>();
-string queryRODataStr = @"
+            string queryRODataStr = @"
 SELECT 
     mss.ProductCode,
     mss.HouseID,

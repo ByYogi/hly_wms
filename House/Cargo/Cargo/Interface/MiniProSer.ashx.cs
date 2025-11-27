@@ -338,7 +338,7 @@ namespace Cargo.Interface
             string code = context.Request["code"];
             openidandsessionkey oiask = decodeopenidandsessionkey(new wechatlogininfo { code = code });
             //openidandsessionkey oiask = new openidandsessionkey();
-            //oiask.openid = "oUu146_OQJU610-7cbK64dl9XCU8";
+            //oiask.openid = "oUu1465s96PL2THhzOKrqK6824Mg";
             CargoHouseBus houseBus = new CargoHouseBus();
             CargoWeiXinBus bus = new CargoWeiXinBus();
             WXUserEntity wxUser = bus.QueryWeixinUserByOpendID(new WXUserEntity { wxOpenID = oiask.openid });
@@ -348,7 +348,6 @@ namespace Cargo.Interface
                 //第一次进入小程序，需要注册 自动添加一条用户数据，显示主界面，前往登记门店
                 weiChat.code = 1000;
                 weiChat.msg = "前往登记门店";
-
 
                 LogEntity log = new LogEntity();
                 log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
@@ -1863,6 +1862,12 @@ namespace Cargo.Interface
                 {
                     PName = product.ProductName;
                 }
+
+                if (wxUser.ClientType.Equals("5"))
+                {
+                    //云仓二批客户 急送和次日达均显示签约价格
+                    product.SalePrice = product.SigningPrice.Equals(0) ? product.SalePrice : product.SigningPrice;
+                }
                 Random rd = new Random();
 
                 lstCategory.Add(new GoodsInfo
@@ -1877,7 +1882,7 @@ namespace Cargo.Interface
                     RuleID = RuleID,
                     minBuyNumber = Convert.ToInt32(product.minPurchase),//最小购买数量
                     minPrice = product.SalePrice - CutEntry,//取产品的销售价 即供应商的小程序价
-                    signingPrice = product.SigningPrice - CutEntry,//取产品的销售价 即供应商的小程序价
+                    signingPrice = product.SigningPrice - CutEntry,//取产品的签约价 即供应商的小程序价
                     listPrice = product.SalePrice + rd.Next(5, 20),//划线价
                     originalPrice = product.InHousePrice,//原价 取产品的进仓价 即供应商的进仓价
                     name = PName,//标题
@@ -1891,11 +1896,13 @@ namespace Cargo.Interface
                     notes = PName,//商品详情
                     pic = Thumbnail,//商品图片
                     HouseID = product.HouseID,
+                    TypeID = product.TypeID,
                     HouseName = product.HouseName,//仓库名称
                     PickUpAddress = wxUser.HouseAddress,//自提地址也就是仓库地址
                     DeliveryAddress = product.SupplierAddress,//配送地址即供应商的地址
                     IsMyHouseStock = product.HouseID.Equals(wxUser.HouseID) ? 0 : 1,//是否是本仓库存 0是 1否
                     PromotionType = 1,
+                    Proportion = 0.7M,
                 });
             }
 
@@ -1969,6 +1976,12 @@ namespace Cargo.Interface
             {
                 name = product.ProductName;
             }
+
+            if (wxUser.ClientType.Equals("5"))
+            {
+                //云仓二批客户 急送和次日达均显示签约价格
+                product.SalePrice = product.SigningPrice.Equals(0) ? product.SalePrice : product.SigningPrice;
+            }
             GoodsInfo BasicInfo = (new GoodsInfo
             {
                 ProductCode = product.ProductCode,//商品唯一编码
@@ -1982,6 +1995,7 @@ namespace Cargo.Interface
                 //minPrice = product.SpecsType.Equals("4") ? Math.Round(product.SalePrice + Common.GetHCYCTodayOrderTransitFee() + (product.SalePrice * 0.009M), MidpointRounding.AwayFromZero) : Math.Round(product.SalePrice + (product.SalePrice * 0.009M), MidpointRounding.AwayFromZero),//现价销售价价
                 //originalPrice = product.SalePrice,//原价
                 minPrice = product.SalePrice - CutEntry,//取产品的销售价 即供应商的小程序价
+                signingPrice = product.SigningPrice - CutEntry,//取产品的签约价 即供应商的小程序价
                 listPrice = product.SalePrice,//划线价
                 originalPrice = product.InHousePrice,//原价 取产品的成本价 即供应商的进仓价
                 name = name,//标题
@@ -3638,7 +3652,7 @@ namespace Cargo.Interface
             CargoWeiXinBus wbus = new CargoWeiXinBus();
             CargoPriceBus price = new CargoPriceBus();
             CargoProductBus productBus = new CargoProductBus();
-            wxUser.HouseID = string.IsNullOrEmpty(Convert.ToString(context.Request["HouseID"])) ? wxUser.HouseID : Convert.ToInt32(context.Request["HouseID"]);
+            wxUser.HouseID = string.IsNullOrEmpty(Convert.ToString(context.Request["HouseID"])) || Convert.ToString(context.Request["HouseID"])== "undefined" ? wxUser.HouseID : Convert.ToInt32(context.Request["HouseID"]);
             int PromotionType = Convert.ToInt32(context.Request["PromotionType"]);//0:正价1:特价促销2：预订单
             CargoHouseEntity houseEnt = house.QueryCargoHouseByID(wxUser.HouseID);
             string YPSendType = string.IsNullOrEmpty(Convert.ToString(context.Request["YPSendType"])) ? "0" : Convert.ToString(context.Request["YPSendType"]);//配送方式 0：急送，1：自提2：快递
@@ -3962,7 +3976,7 @@ namespace Cargo.Interface
                     //Dictionary<String, String> rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "");
                     Dictionary<String, String> rsp = new Dictionary<string, string>();
                     if (IsDebug)
-                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://14314ed5.r9.cpolar.cn/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
+                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://14aa9a64.r9.cpolar.cn/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     else
                         rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     Dictionary<String, String> payinfoDic = payinfo(rsp);
@@ -4047,7 +4061,7 @@ namespace Cargo.Interface
             CargoWeiXinBus wbus = new CargoWeiXinBus();
             CargoPriceBus price = new CargoPriceBus();
             CargoProductBus productBus = new CargoProductBus();
-            wxUser.HouseID = string.IsNullOrEmpty(Convert.ToString(context.Request["HouseID"])) ? wxUser.HouseID : Convert.ToInt32(context.Request["HouseID"]);
+            wxUser.HouseID = string.IsNullOrEmpty(Convert.ToString(context.Request["HouseID"])) || Convert.ToString(context.Request["HouseID"]) == "undefined" ? wxUser.HouseID : Convert.ToInt32(context.Request["HouseID"]);
             int PromotionType = Convert.ToInt32(context.Request["PromotionType"]);//0:正价1:特价促销2：预订单
             CargoHouseEntity houseEnt = house.QueryCargoHouseByID(wxUser.HouseID);
             string YPSendType = string.IsNullOrEmpty(Convert.ToString(context.Request["YPSendType"])) ? "0" : Convert.ToString(context.Request["YPSendType"]);//配送方式 0：急送，1：自提2：快递
@@ -4078,6 +4092,7 @@ namespace Cargo.Interface
             string YPOrderMoney = Convert.ToString(context.Request["YPOrderMoney"]);//订单总金额
             string actualAmounts = Convert.ToString(context.Request["YPOrderMoney"]);//订单总金额
             string YPLogisMoney = Convert.ToString(context.Request["YPLogisMoney"]);//物流费
+            string Deposit = Convert.ToString(context.Request["YPTotalMoney"]);//订金 前端计算后的价格
             string YPTotalMoney = Convert.ToString(context.Request["YPTotalMoney"]);//总金额
             string YPTotalPiece = Convert.ToString(context.Request["YPTotalPiece"]);//总数量 总条数
             decimal YPProportion = Convert.ToDecimal(context.Request["Proportion"]);//总数量 总条数
@@ -4086,7 +4101,7 @@ namespace Cargo.Interface
             string SuppClientNum = "551098";//供应商编码 供应商默认狄乐汽服OE
             string RuleID = Convert.ToString(context.Request["RuleID"]);//促销规则ID    第一道防线
             string PaymentType = Convert.ToString(context.Request["PaymentType"]);// (1:定金, 2:尾款 3:全款) 
-            int TypeID = Convert.ToInt32(context.Request["TypeID"]);//品牌
+            
             if (String.IsNullOrEmpty(YPOrderType)) { weiChat.code = 2; weiChat.msg = "订单类型有误"; goto ERROR; }
             if (String.IsNullOrEmpty(YPName)) { weiChat.code = 2; weiChat.msg = "购买人不能为空"; goto ERROR; }
             if (String.IsNullOrEmpty(YPCellphone)) { weiChat.code = 2; weiChat.msg = "购买手机号不能为空"; goto ERROR; }
@@ -4110,6 +4125,7 @@ namespace Cargo.Interface
             ArrayList rows = (ArrayList)JSON.Decode(json);
             List<CargoProductShelvesEntity> pro = new List<CargoProductShelvesEntity>();
             List<CargoInterfaceEntity> goodList = new List<CargoInterfaceEntity>();
+
             int oNum = 0;
             decimal hzj = 0.00M;
             decimal originalPrice = 0M;
@@ -4120,6 +4136,9 @@ namespace Cargo.Interface
                 if (string.IsNullOrEmpty(Convert.ToString(ht["BuyPrice"]))) { weiChat.code = 2; weiChat.msg = "购买单价有误"; goto ERROR; }
                 if (Convert.ToDecimal(ht["BuyPrice"]) <= 0) { weiChat.code = 2; weiChat.msg = "购买单价有误"; goto ERROR; }
                 if (string.IsNullOrEmpty(Convert.ToString(ht["BatchYear"]))) { weiChat.code = 2; weiChat.msg = "商品周期有误"; goto ERROR; }
+
+                int TypeID = Convert.ToInt32(ht["typeID"]);//品牌
+                //int TypeID = Convert.ToInt32(context.Request["TypeID"]);//品牌
 
                 var pData = productBus.GetProductSpecEntity(new CargoProductSpecEntity { TypeID = TypeID, ProductCode = Convert.ToString(ht["ProductCode"]) });
 
@@ -4165,7 +4184,7 @@ namespace Cargo.Interface
                 weiChat.code = 2; weiChat.msg = "订单总金额有误"; goto ERROR;
             }
             //订单总金额=商品明细总金额+物流运费-优惠券
-            if (!Convert.ToDecimal(YPTotalMoney).Equals(Convert.ToDecimal(YPOrderMoney) + Convert.ToDecimal(YPLogisMoney) - InsuranceFee))
+            if (!Convert.ToDecimal(YPTotalMoney).Equals(Convert.ToDecimal(YPOrderMoney) - InsuranceFee))
             {
                 weiChat.code = 2; weiChat.msg = "订单总金额有误"; goto ERROR;
             }
@@ -4362,18 +4381,18 @@ namespace Cargo.Interface
                 if (!CheckOutType.Equals("6") && !CheckOutType.Equals("10"))
                 {
 
-                    if (YPProportion > 0)
-                    {
-                        YPTotalMoney = (Convert.ToDecimal(YPTotalMoney) - (Convert.ToDecimal(YPTotalMoney) * YPProportion)).ToString();
-                    }
+                    //if (YPProportion > 0)
+                    //{
+                    //    YPTotalMoney = (Convert.ToDecimal(YPTotalMoney) - (Convert.ToDecimal(YPTotalMoney) * YPProportion)).ToString();
+                    //}
                     SybWxPayService sybService = new SybWxPayService();
                     orderno = orderno + "_" + PaymentType;
                     //Dictionary<String, String> rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "");
                     Dictionary<String, String> rsp = new Dictionary<string, string>();
                     if (IsDebug)
-                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://14314ed5.r9.cpolar.cn/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
+                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(Deposit) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://14aa9a64.r9.cpolar.cn/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     else
-                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
+                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(Deposit) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     Dictionary<String, String> payinfoDic = payinfo(rsp);
                     string jsonString = String.Join(",", rsp.Select(kvp => kvp.Key + "=" + kvp.Value));
                     Common.WriteTextLog("慧采云仓小程序 预付款 通联支付回调信息：" + jsonString);
@@ -4841,7 +4860,7 @@ namespace Cargo.Interface
             if (PayMentType == "1" && IsReserve == 1)
             {
                 //订金
-                result[0].TotalCharge = result[0].TotalCharge * 0.3M;
+                result[0].TotalCharge = Math.Round(result[0].TotalCharge * 0.3M,2, MidpointRounding.AwayFromZero);
             }
             int wxZJ = (int)(result[0].TotalCharge * 100);
 
@@ -4853,11 +4872,11 @@ namespace Cargo.Interface
                 if (IsReserve == 1)
                 {
                     OrderNo = OrderNo + "_" + PayMentType;
-                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://14314ed5.r9.cpolar.cn/Interface/AdvanceUnionPaySuccess.aspx", "");
+                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://14aa9a64.r9.cpolar.cn/Interface/AdvanceUnionPaySuccess.aspx", "");
                 }
                 else
                 {
-                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://14314ed5.r9.cpolar.cn/Interface/UnionPaySuccess.aspx", "");
+                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://14aa9a64.r9.cpolar.cn/Interface/UnionPaySuccess.aspx", "");
                 }
             }
             else
@@ -5762,6 +5781,13 @@ namespace Cargo.Interface
 
 
         #region 小程序购物车 Redis
+        public static long GetCurrentUnixTimeSeconds()
+        {
+            var epoch = new DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero);
+            var now = DateTimeOffset.UtcNow;
+            long milliseconds = (long)(now - epoch).TotalMilliseconds; // 直接取总毫秒数（13位）
+            return milliseconds;
+        }
         /// <summary>
         /// 新增 OR 修改
         /// </summary>
@@ -5773,8 +5799,9 @@ namespace Cargo.Interface
             NoticeEntity result = new NoticeEntity();
             string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
             string json = Convert.ToString(context.Request["json"]);
+            string isAccumulation =string.IsNullOrEmpty(context.Request["IsAccumulation"])?"0": Convert.ToString(context.Request["IsAccumulation"]);//是否累加  0 否 1是
             String returnString = string.Empty;
-            long timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            long timestampMs = GetCurrentUnixTimeSeconds();
             var data = JsonConvert.DeserializeObject<MiniApplicationParam>(json);
             if (data != null)
             {
@@ -5785,22 +5812,31 @@ namespace Cargo.Interface
                     result.msg = "未获取到订单类型";
                     json = JSON.Encode(result);
                     context.Response.Write(json);
-                    context.Response.Write(returnString);
                     return;
                 }
                 if (!Enum.IsDefined(typeof(CargoProductThrowGoodEnum), data.ThrowGood))
                 {
                     result.code = -1;
                     result.msg = "传入类型有误";
-                    context.Response.Write(returnString);
+                    json = JSON.Encode(result);
+                    context.Response.Write(json);
                     return;
                 }
                 CargoProductThrowGoodEnum goodEnum = (CargoProductThrowGoodEnum)data.ThrowGood;
-                //查询现有数据
+                //查询当前用户总下单数量
+                var PlaceOrderList = RedisHelper.GetKeys($@"MiniProgram:ShoppingCartItem:{wxOpenId}:", _DbIndex: 4);
+                if (PlaceOrderList.Count > 99)
+                {
+                    result.code = -1;
+                    result.msg = "超出所限下单数量[99]，请清理购物车！";
+                    json = JSON.Encode(result);
+                    context.Response.Write(json);
+                    return;
+                }
+                //查询现有数据购物车
                 var redisList = RedisHelper.GetKeys($@"MiniProgram:ShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:", _DbIndex: 4);
                 if (redisList.Count > 0)
                 {
-
                     foreach (var rowStr in redisList)
                     {
                         var item = RedisHelper.GetStringDbIndex(rowStr, false, 4);
@@ -5809,23 +5845,29 @@ namespace Cargo.Interface
                         dataList.Add(list);
                     }
                 }
-
+                //有数据
                 if (dataList.Count > 0)
                 {
                     var dataItem = dataList.Where(a => a.BatchYear == data.BatchYear && a.HouseID == data.HouseID && a.ProductCode == data.ProductCode && a.SuppClientNum == data.SuppClientNum).FirstOrDefault();
                     if (dataItem != null)
                     {
+                        //修改
                         data.CreateTimestampId = dataItem.CreateTimestampId;
+                        if (isAccumulation=="1") {
+                            data.CartNumber += dataItem.CartNumber;
+                        }
                         RedisHelper.SetStringDbIndex($@"MiniProgram:ShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{dataItem.CreateTimestampId}", JsonConvert.SerializeObject(data), DbIndex_: 4);
                     }
                     else
                     {
+                        //新增
                         data.CreateTimestampId = timestampMs;
                         RedisHelper.SetStringDbIndex($@"MiniProgram:ShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{timestampMs}", JsonConvert.SerializeObject(data), DbIndex_: 4);
                     }
                 }
                 else
                 {
+                    //无数据
                     data.CreateTimestampId = timestampMs;
                     RedisHelper.SetStringDbIndex($@"MiniProgram:ShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{timestampMs}", JsonConvert.SerializeObject(data), DbIndex_: 4);
                 }
@@ -5834,7 +5876,8 @@ namespace Cargo.Interface
             {
                 result.code = -1;
                 result.msg = "未获取到传入数据";
-                context.Response.Write(returnString);
+                json = JSON.Encode(result);
+                context.Response.Write(json);
                 return;
             }
             returnString = JSON.Encode(new
@@ -5852,14 +5895,36 @@ namespace Cargo.Interface
         /// <param name="json"></param>
         private void UpdateShoppingCartItem(HttpContext context)
         {
-            string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
-            string json = Convert.ToString(context.Request["json"]);
             String returnString = string.Empty;
-            long timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var data = JsonConvert.DeserializeObject<MiniApplicationParam>(json);
-            if (data != null)
+            string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
+            //string json = Convert.ToString(context.Request["json"]);
+
+            string requestJson = string.Empty;
+            // 关键：使用 InputStream 而非 Body
+            using (Stream stream = context.Request.InputStream)
             {
-                var dataList = new List<MiniApplicationParam>();
+                // 重置流位置到开头（防止被提前读取）
+                stream.Position = 0;
+                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                {
+                    requestJson = reader.ReadToEnd();
+                }
+            }
+            if (string.IsNullOrEmpty(requestJson))
+            {
+                returnString = JsonConvert.SerializeObject(new { code = -1, msg = "无可更改数据" });
+                context.Response.Write(returnString);
+                return;
+            }
+            long timestampMs = GetCurrentUnixTimeSeconds();
+            List<MiniApplicationParam> dataList = JsonConvert.DeserializeObject<List<MiniApplicationParam>>(requestJson);
+            if (dataList == null || dataList.Count == 0)
+            {
+                // 处理空列表的情况
+                context.Response.Write(JSON.Encode(new { code = -1, msg = "未获取到有效数据" }));
+                return;
+            }
+            foreach (var data in dataList) {
                 if (data.CreateTimestampId == null)
                 {
                     returnString = JSON.Encode(new
@@ -5910,16 +5975,7 @@ namespace Cargo.Interface
                     return;
                 }
             }
-            else
-            {
-                returnString = JSON.Encode(new
-                {
-                    code = -1,
-                    msg = "未获取到传入数据"
-                });
-                context.Response.Write(returnString);
-                return;
-            }
+
             returnString = JSON.Encode(new
             {
                 code = 0,
@@ -5935,18 +5991,38 @@ namespace Cargo.Interface
         /// <param name="CreateTimestampId">详情ID 可空。</param>
         private void DeleteShoppingCartItem(HttpContext context)
         {
-            string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
-            string json = Convert.ToString(context.Request["json"]);
             String returnString = string.Empty;
+            string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
+            //string json = Convert.ToString(context.Request["json"]);
+            
 
-            if (json == null)
+            string requestJson = string.Empty;
+            // 关键：使用 InputStream 而非 Body
+            using (Stream stream = context.Request.InputStream)
+            {
+                // 重置流位置到开头（防止被提前读取）
+                stream.Position = 0;
+                using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                {
+                    requestJson = reader.ReadToEnd();
+                }
+            }
+
+            if (string.IsNullOrEmpty(requestJson))
             {
                 //删除客户所有购物车数据
-                RedisHelper.DeleteKeys($@"MiniProgram:ShoppingCartItem:{wxOpenId}:", _DbIndex: 4);
+                //RedisHelper.DeleteKeys($@"MiniProgram:ShoppingCartItem:{wxOpenId}:", _DbIndex: 4);
+                returnString = JSON.Encode(new
+                {
+                    code = -1,
+                    msg = "无可删除数据"
+                });
+                context.Response.Write(returnString);
+                return;
             }
             else
             {
-                List<MiniApplicationParam> dataList = JsonConvert.DeserializeObject<List<MiniApplicationParam>>(json);
+                List<MiniApplicationParam> dataList = JsonConvert.DeserializeObject<List<MiniApplicationParam>>(requestJson);
                 foreach (var item in dataList)
                 {
                     CargoProductThrowGoodEnum goodEnum = (CargoProductThrowGoodEnum)item.ThrowGood;
@@ -5957,7 +6033,7 @@ namespace Cargo.Interface
             returnString = JSON.Encode(new
             {
                 code = 0,
-                msg = ""
+                msg = "删除购物车成功"
             });
             context.Response.Write(returnString);
         }
@@ -5999,21 +6075,21 @@ namespace Cargo.Interface
             string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
             string json = Convert.ToString(context.Request["json"]);
             String returnString = string.Empty;
-            long timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            long timestampMs = GetCurrentUnixTimeSeconds();
             var data = JsonConvert.DeserializeObject<MiniApplicationParam>(json);
             if (data != null)
             {
                 var dataList = new List<MiniApplicationParam>();
-                if (data.CreateTimestampId == null)
-                {
-                    returnString = JSON.Encode(new
-                    {
-                        code = -1,
-                        msg = "未获取到订单ID"
-                    });
-                    context.Response.Write(returnString);
-                    return;
-                }
+                //if (data.CreateTimestampId == null)
+                //{
+                //    returnString = JSON.Encode(new
+                //    {
+                //        code = -1,
+                //        msg = "未获取到订单ID"
+                //    });
+                //    context.Response.Write(returnString);
+                //    return;
+                //}
                 if (data.ThrowGood == null)
                 {
                     returnString = JSON.Encode(new
@@ -6072,6 +6148,7 @@ namespace Cargo.Interface
             });
             context.Response.Write(returnString);
         }
+
         #endregion
 
         #region 预订单
@@ -6167,7 +6244,7 @@ namespace Cargo.Interface
                 context.Response.Write(returnString);
                 return;
             }
-            long timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            long timestampMs = GetCurrentUnixTimeSeconds();
             var data = JsonConvert.DeserializeObject<MiniApplicationParam>(json);
             if (data != null)
             {
@@ -6243,7 +6320,7 @@ namespace Cargo.Interface
                 context.Response.Write(returnString);
                 return;
             }
-            long timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            long timestampMs = GetCurrentUnixTimeSeconds();
             var data = JsonConvert.DeserializeObject<MiniApplicationParam>(json);
             if (data != null)
             {
@@ -6489,5 +6566,8 @@ namespace Cargo.Interface
         public string StoresStr { get; set; }
 
         public int CartNumber { get; set; }
-    }
+
+        public decimal Proportion { get; set; }
+        public bool Checked { get; set; }
+}
 }

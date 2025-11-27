@@ -78,6 +78,7 @@ namespace House.Entity.Cargo
         public int SuppClientNum { get; set; }
         public decimal InHousePrice { get; set; }
         public string SpecsType { get; set; }
+        public decimal SupplySalePrice { get; set; }
 
 
     }

@@ -114,14 +114,40 @@ namespace House.Manager.Cargo
         /// <param name="entity"></param>
         public void UpdatePurchaseOrderApproval(CargoRealFactoryPurchaseOrderEntity entity)
         {
-            string strSQL = @"UPDATE Tbl_Cargo_RealFactoryPurchaseOrder Set CheckTime=@CheckTime,CheckResult=@CheckResult,ApplyStatus=@ApplyStatus Where PurOrderID=@PurOrderID";
+            string strSQL = @"UPDATE Tbl_Cargo_RealFactoryPurchaseOrder Set CheckTime=@CheckTime ";
+            
+            if (!entity.ApplyStatus.Equals(-1)) {
+                strSQL += ",ApplyStatus=@ApplyStatus ";
+            }
+            if (!string.IsNullOrEmpty(entity.CheckResult))
+            {
+                strSQL += ",CheckResult=@CheckResult ";
+            }
+
+            if (!string.IsNullOrEmpty(entity.CheckStatus))
+            {
+                strSQL += ",CheckStatus=@CheckStatus ";
+            }
+            strSQL += " Where PurOrderID=@PurOrderID";
+
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
 
                 conn.AddInParameter(cmd, "@PurOrderID", DbType.Int64, entity.PurOrderID);
-                conn.AddInParameter(cmd, "@ApplyStatus", DbType.Int32, entity.ApplyStatus);
-                conn.AddInParameter(cmd, "@CheckResult", DbType.String, entity.CheckResult);
+                if (!entity.ApplyStatus.Equals(-1))
+                {
+                    conn.AddInParameter(cmd, "@ApplyStatus", DbType.Int32, entity.ApplyStatus);
+                    
+                }
                 conn.AddInParameter(cmd, "@CheckTime", DbType.DateTime, DateTime.Now);
+                if (!string.IsNullOrEmpty(entity.CheckResult))
+                {
+                    conn.AddInParameter(cmd, "@CheckResult", DbType.String, entity.CheckResult);
+                }
+                if (!string.IsNullOrEmpty(entity.CheckStatus))
+                {
+                    conn.AddInParameter(cmd, "@CheckStatus", DbType.String, entity.CheckStatus);
+                }
                 conn.ExecuteNonQuery(cmd);
             }
 
@@ -320,6 +346,7 @@ WHERE (1=1)";
             if (!string.IsNullOrEmpty(entity.PurOrderNo)) { strSQL += " and a.PurOrderNo='" + entity.PurOrderNo + "'"; }
             if (!string.IsNullOrEmpty(entity.PurchaserName)) { strSQL += " and b.PurchaserName like '%" + entity.PurchaserName + "%'"; }
             if (!string.IsNullOrEmpty(entity.ApplyStatus)) { strSQL += " and a.ApplyStatus='" + entity.ApplyStatus + "'"; }
+            if(!string.IsNullOrEmpty(entity.CheckStatus)) { strSQL += " and a.CheckStatus='" + entity.CheckStatus + "'"; }
             if (!string.IsNullOrEmpty(entity.PurchaseType)) { strSQL += " and a.PurchaseType='" + entity.PurchaseType + "'"; }
             if (!string.IsNullOrEmpty(entity.PurchaseInStoreType)) { strSQL += " and a.PurchaseInStoreType='" + entity.PurchaseInStoreType + "'"; }
 
@@ -1186,7 +1213,79 @@ g.*
             //result.purchaseOrderGoodsEntities = QueryRealPurchaseOrderGoods(new CargoFactoryOrderEntity { });
             return result;
         }
+        #region 采购账单管理操作方法集合
+        /// <summary>
+        /// 新增账单
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void AddPurchaseBillAccount(CargoRealPurchaseAccountEntity entity) 
+        {
+            string strSQL = @"INSERT INTO Tbl_Cargo_RealPurchaseAccount
+(AccountNO,AccountTitle,CreateDate,PurchaserID,PurchaserName,ARMoney,Total,TransportFee,OtherFee,Memo,Status,NextCheckID,NextCheckName,CheckStatus,OPID,OPDATE,AType)
+VALUES(@AccountNO,@AccountTitle,@CreateDate,@PurchaserID,@PurchaserName,@ARMoney,@Total,@TransportFee,@OtherFee,@Memo,@Status,@NextCheckID,@NextCheckName,@CheckStatus,@OPID,@OPDATE,@AType)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@AccountNO", DbType.String, entity.AccountNO);
+                    conn.AddInParameter(cmd, "@AccountTitle", DbType.String, entity.AccountTitle);
+                    conn.AddInParameter(cmd, "@CreateDate", DbType.DateTime, entity.CreateDate);
+                    conn.AddInParameter(cmd, "@PurchaserID", DbType.Int32, entity.PurchaserID);
+                    conn.AddInParameter(cmd, "@PurchaserName", DbType.String, entity.PurchaserName);
 
+                    conn.AddInParameter(cmd, "@ARMoney", DbType.Decimal, entity.ARMoney);
+                    conn.AddInParameter(cmd, "@Total", DbType.Decimal, entity.Total);
+                    conn.AddInParameter(cmd, "@TransportFee", DbType.Decimal, entity.TransportFee);
+                    conn.AddInParameter(cmd, "@OtherFee", DbType.Decimal, entity.OtherFee);
 
+                    conn.AddInParameter(cmd, "@Memo", DbType.String, entity.Memo);
+                    conn.AddInParameter(cmd, "@Status", DbType.String, entity.Status);
+                    conn.AddInParameter(cmd, "@NextCheckID", DbType.String, entity.NextCheckID);
+                    conn.AddInParameter(cmd, "@NextCheckName", DbType.String, entity.NextCheckName);
+                    conn.AddInParameter(cmd, "@CheckStatus", DbType.Int32, entity.CheckStatus);
+                    conn.AddInParameter(cmd, "@OPID", DbType.String, entity.OPID);
+                    conn.AddInParameter(cmd, "@OPDATE", DbType.String, DateTime.Now);
+                    conn.AddInParameter(cmd, "@AType", DbType.String, entity.AType);
+
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+
+        }
+        /// <summary>
+        /// 新增账单明细
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="AccountNO"></param>
+        /// <exception cref="ApplicationException"></exception>
+        public void AddPurchaseBillAccountGoods(CargoRealPurchaseAccountGoodsEntity entity,string AccountNO)
+        {
+            string strSQL = @"INSERT INTO Tbl_Cargo_RealPurchaseAccountGoods
+(AccountNO,PurOrderID,PurOrderNo,TransportFee,OtherFee,TotalCharge,AccountType)
+VALUES(@AccountNO,@PurOrderID,@PurOrderNo,@TransportFee,@OtherFee,@TotalCharge,@AccountType)";
+            try
+            {
+                entity.EnSafe();
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@AccountNO", DbType.String, AccountNO);
+                    conn.AddInParameter(cmd, "@PurOrderID", DbType.String, entity.PurOrderID);
+                    conn.AddInParameter(cmd, "@PurOrderNo", DbType.String, entity.PurOrderNo);
+
+                    conn.AddInParameter(cmd, "@TransportFee", DbType.Decimal, entity.TransportFee);
+                    conn.AddInParameter(cmd, "@OtherFee", DbType.Decimal, entity.OtherFee);
+                    conn.AddInParameter(cmd, "@TotalCharge", DbType.Decimal, entity.TotalCharge);
+
+                    conn.AddInParameter(cmd, "@AccountType", DbType.Int32, entity.AccountType);
+                    conn.ExecuteNonQuery(cmd);
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+        }
+        //重新账单明细
+        #endregion
     }
 }

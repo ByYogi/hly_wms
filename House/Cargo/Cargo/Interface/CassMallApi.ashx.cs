@@ -35,11 +35,12 @@ namespace Cargo.Interface
                     {"4400014726","43b87acafffe4919926ec17de7b6f930" },//东平狄乐轮胎专营店
                 };
         private Dictionary<string, int> HouseDic = new Dictionary<string, int>() {
-                    {"4400000959",101 },//汕头狄乐汽配
-                    {"4400004100",91 },//深圳狄乐轮胎专营店
-                    {"4500001699",136 },//南宁狄乐轮胎专营店
-                    {"4400018175",135 },//揭阳狄乐轮胎专营店
-                    {"4400014726",93 },//东平狄乐轮胎专营店
+                    {"4400000959_WH033",101 },//汕头狄乐汽配
+                    {"4400004100_WH034",91 },//深圳狄乐轮胎专营店
+                    {"4500001699_CN_NNXXTC",136 },//南宁狄乐轮胎专营店
+                    {"4400018175_CN_JYRCC",135 },//揭阳狄乐轮胎专营店
+                    {"4400014726_CN_GZBYYPC",93 },//东平狄乐轮胎专营店
+                    {"4400014726_CN_GZCHC",107 },//从化狄乐轮胎专营店
                 };
 #if DEBUG
         //private const string CassApi = "https://api-demo.casstime.com/api";
@@ -168,7 +169,8 @@ namespace Cargo.Interface
                 {
                     item.ThirdPartySystemStr = JsonConvert.SerializeObject(item.ThirdPartySystem);
                 }
-                datas.OrderHeader.OrderHouseID = HouseDic[notice.token.productStoreId];
+                var cassHouseStr = datas.OrderPostalAddress.OrderWayDetails[0].FacilityId;
+                datas.OrderHeader.OrderHouseID = HouseDic[$@"{notice.token.productStoreId}_{cassHouseStr}"];
                 if (nwBus.AddCassMallDto(datas))
                 {
                     Broadcast(datas);

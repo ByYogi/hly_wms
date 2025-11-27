@@ -76,8 +76,8 @@ namespace House.Entity.Cargo
         public string WhetherTax { get; set; }
 
         /// <summary>
-        /// 审批状态
-        /// 0未审批1已审批2审批中
+        /// 结束状态
+        /// 0未结算1已结算2未结清
         /// </summary>
         [Description("审批状态")]
         public string CheckStatus { get; set; }
@@ -240,6 +240,7 @@ namespace House.Entity.Cargo
         public DateTime ETATimeEnd { get; set; }
         public long TID { get; set; }
         public string BusinessID { get; set; }
+        public int InWarehouse { get; set; }
         /// <summary>
         /// 付款方式 0:月结 1:周结 2:现结
         /// </summary>

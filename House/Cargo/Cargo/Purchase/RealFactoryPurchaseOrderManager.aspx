@@ -259,6 +259,15 @@
                 }
             });
             columns.push({
+                title: '结算状态', field: 'CheckStatus', width: '60px',
+                formatter: function (val, row, index) {
+                    if (val == "0") { return "<span title='未结算'>未结算</span>"; }
+                    else if (val == "1") { return "<span title='已结清'>已结清</span>"; }
+                    else if (val == "2") { return "<span title='未结清'>未结清</span>"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({
                 title: '付款方式', field: 'PaymentMethod', width: '60px',
                 formatter: function (val, row, index) {
                     if (val == "0") { return "<span title='月结'>月结</span>"; }

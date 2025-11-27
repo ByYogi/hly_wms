@@ -1371,6 +1371,13 @@ namespace House.Business.Cargo
         {
             return man.QueryReserveShelves();
         }
+
+
         #endregion
+
+        public List<CargoProductSpecEntity> QueryProductSpecs(CargoProductEntity entity)
+        {
+            return man.QueryProductSpecs(entity);
+        }
     }
 }

@@ -74,16 +74,16 @@ namespace Cargo
                 dutyRosterJson = JsonConvert.SerializeObject(initialDutyRoster);
                 RedisHelper.SetString(DUTY_ROSTER_REDIS_KEY, dutyRosterJson);
             }
-            else
-            {
-                var root = JsonConvert.DeserializeObject<Root>(dutyRosterJson);
-                if (root?.DutyRoster != null && root.DutyRoster.CurrWeeks != currentWeek)
-                {
-                    AdjustDutyRosterForNewWeek(root.DutyRoster, currentWeek);
-                    dutyRosterJson = JsonConvert.SerializeObject(root);
-                    RedisHelper.SetString(DUTY_ROSTER_REDIS_KEY, dutyRosterJson);
-                }
-            }
+            //else
+            //{
+            //    var root = JsonConvert.DeserializeObject<Root>(dutyRosterJson);
+            //    if (root?.DutyRoster != null && root.DutyRoster.CurrWeeks != currentWeek)
+            //    {
+            //        AdjustDutyRosterForNewWeek(root.DutyRoster, currentWeek);
+            //        dutyRosterJson = JsonConvert.SerializeObject(root);
+            //        RedisHelper.SetString(DUTY_ROSTER_REDIS_KEY, dutyRosterJson);
+            //    }
+            //}
         }
 
         /// <summary>

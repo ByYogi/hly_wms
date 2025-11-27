@@ -1,0 +1,313 @@
+﻿using Cargo.QY;
+using Cargo.systempage;
+using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using House.Entity.Cargo.Order;
+using House.Entity.Dto;
+using iText.Layout.Element;
+using Newtonsoft.Json;
+using NPOI.HSSF.Record.Formula.Functions;
+using Senparc.Weixin.HttpUtility;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Security.Policy;
+using System.ServiceModel.Channels;
+using System.Text;
+using System.Web;
+
+namespace Cargo.Interface
+{
+    /// <summary>
+    /// CassMallApi 的摘要说明
+    /// </summary>
+    public class CassMallApi : IHttpHandler
+    {
+        private Dictionary<string, string> sessionDic = new Dictionary<string, string>() {
+                    {"4400000959","67d89f8d06ca4360ae0358279b7d283c" },//汕头狄乐汽配
+                    {"4400004100","1f7bd12607104fd3a152daf7c1896bb0" },//深圳狄乐轮胎专营店
+                    {"4500001699","2b2b36889e304645b28f94bfdd2ead9e" },//南宁狄乐轮胎专营店
+                    {"4400018175","a027b23d19f941a59a361268fb94ab10" },//揭阳狄乐轮胎专营店
+                    {"4400014726","43b87acafffe4919926ec17de7b6f930" },//东平狄乐轮胎专营店
+                };
+        private Dictionary<string, int> HouseDic = new Dictionary<string, int>() {
+                    {"4400000959_WH033",101 },//汕头狄乐汽配
+                    {"4400004100_WH034",91 },//深圳狄乐轮胎专营店
+                    {"4500001699_CN_NNXXTC",136 },//南宁狄乐轮胎专营店
+                    {"4400018175_CN_JYRCC",135 },//揭阳狄乐轮胎专营店
+                    {"4400014726_CN_GZBYYPC",93 },//东平狄乐轮胎专营店
+                    {"4400014726_CN_GZCHC",93 },//从化狄乐轮胎专营店
+                };
+#if DEBUG
+        //private const string CassApi = "https://api-demo.casstime.com/api";
+        //private const string CassSecret = "38476BFFE6274DBCAB38647884D467C6";
+
+        private const string CassApi = "https://api.cassmall.com/api";
+        private const string CassSecret = "38476BFFE6274DBCAB38647884D467C6";
+#else
+        private const string CassApi = "https://api.cassmall.com/api";
+        private const string CassSecret = "38476BFFE6274DBCAB38647884D467C6";
+#endif
+        public void ProcessRequest(HttpContext context)
+        {
+            //context.Response.ContentType = "text/plain";
+            //context.Response.Write("Hello World");
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+            //string appKey = context.Request.Headers["appKey"];
+            //string apiName = context.Request.Headers["apiName"];
+            //string session = context.Request.Headers["session"];
+            //string timestamp = context.Request.Headers["timestamp"];
+            //string sign = context.Request.Headers["sign"];
+
+            // 读取请求体
+            using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8))
+            {
+                var requestBody = reader.ReadToEnd();
+
+                // 解析 JSON 数据
+                var callbackData = JsonConvert.DeserializeObject<CassMallDTO>(requestBody);
+                if (callbackData != null)
+                {
+                    callbackData.requestParam = new RequestParam
+                    {
+                        appKey = "gzshly60be866dbe52",
+                        session = sessionDic[callbackData.pushTargetId],
+                    };
+                    //保存 推送记录
+                    nwBus.AddCassMallData(new CargoCassMallEntity { SourceType = 0, SourceAction = "API", orderId = callbackData.data.orderId, ResJson = requestBody });
+
+                    // TODO: 根据 callbackData 执行相应的业务逻辑
+                    TaskExecution(callbackData);
+
+                    // 返回 200 状态码
+                    context.Response.StatusCode = 200;
+                    context.Response.Write("{\"status\": \"success\"}");
+                }
+                else
+                {
+                    // 返回 -1 失败 状态码
+                    context.Response.StatusCode = -1;
+                    context.Response.Write("{\"status\": \"error\"}");
+                }
+
+            }
+
+        }
+
+        #region Notice处理映射
+        private const string Notice_OrderPayed = "cassec.push.order.payed";
+        private const string Notice_OrderModified = "cassec.push.order.modified";
+        private const string Notice_OrderCancelled = "cassec.push.order.cancelled";
+
+        private static readonly IDictionary<string, Action<CassMallApi, CassMallDTO>> _noticeHandlers =
+            new Dictionary<string, Action<CassMallApi, CassMallDTO>>(StringComparer.OrdinalIgnoreCase)
+            {
+                { Notice_OrderPayed, (api, dto) => api.AddMassCallOrder(dto) },
+                { Notice_OrderModified, (api, dto) => api.UpdateMassCallOrder(dto) },
+                { Notice_OrderCancelled, (api, dto) => api.MassCallOrderCancelled(dto) }
+            };
+        #endregion
+
+        public void TaskExecution(CassMallDTO notice)
+        {
+            if (notice == null)
+            {
+                Common.WriteTextLog("CassMall notice 为空");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(notice.noticeName))
+            {
+                Common.WriteTextLog("CassMall noticeName 为空");
+                return;
+            }
+
+            Action<CassMallApi, CassMallDTO> handler;
+            if (_noticeHandlers.TryGetValue(notice.noticeName, out handler))
+            {
+                try
+                {
+                    handler(this, notice);
+                }
+                catch (Exception ex)
+                {
+                    Common.WriteTextLog("CassMall 处理通知失败:" + notice.noticeName + " => " + ex);
+                }
+            }
+            else
+            {
+                Common.WriteTextLog("CassMall 未知通知类型:" + notice.noticeName);
+            }
+        }
+        /// <summary>
+        /// 创建订单
+        /// </summary>
+        /// <param name="notice"></param>
+        public void AddMassCallOrder(CassMallDTO notice)
+        {
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+            try
+            {
+
+                //获取订单信息
+                string url = CassApi + "?orderId=" + notice.data.orderId;
+                var dataStr = PostHttpRequest(url, "", "cassec.order.detail.get"
+                    , sessionDic[notice.pushTargetId]
+                    , notice.requestParam.appKey);
+                var dataString = JsonConvert.DeserializeObject<CassMallStr>(dataStr);
+                var datas = dataString.result;
+                //保存日志
+                if (datas != null)
+                {
+                    nwBus.AddCassMallData(new CargoCassMallEntity { SourceType = 1, SourceAction = "AddMassCallOrder", orderId = notice.data.orderId, ResJson = dataStr });
+                }
+                //开思数据同步保存到系统
+                foreach (var item in datas.OrderItems)
+                {
+                    item.ThirdPartySystemStr = JsonConvert.SerializeObject(item.ThirdPartySystem);
+                }
+                var cassHouseStr = datas.OrderPostalAddress.OrderWayDetails[0].FacilityId;
+                datas.OrderHeader.OrderHouseID = HouseDic[$@"{notice.token.productStoreId}_{cassHouseStr}"];
+                if (nwBus.AddCassMallDto(datas))
+                {
+                    Broadcast(datas);
+                }
+            }
+            catch (Exception ex)
+            {
+                Common.WriteTextLog("CassMall Synchronization 订单数据失败：" + ex.ToString());
+            }
+        }
+        public void UpdateMassCallOrder(CassMallDTO notice)
+        {
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+            //获取订单信息
+            string url = CassApi + "?orderId=" + notice.data.orderId;
+            var dataStr = PostHttpRequest(url, "", "cassec.order.detail.get"
+                     , sessionDic[notice.pushTargetId]
+                     , (!string.IsNullOrEmpty(notice.requestParam.appKey) ? notice.requestParam.appKey : "gzshly60be866dbe52"));
+            var dataString = JsonConvert.DeserializeObject<CassMallStr>(dataStr);
+            var datas = dataString.result;
+            //保存日志
+            if (datas != null)
+            {
+                nwBus.AddCassMallData(new CargoCassMallEntity { SourceType = 2, SourceAction = "UpdateMassCallOrder", orderId = notice.data.orderId, ResJson = dataStr });
+            }
+        }
+        /// <summary>
+        /// 订单已取消
+        /// </summary>
+        /// <param name="notice"></param>
+        public void MassCallOrderCancelled(CassMallDTO notice)
+        {
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.Status = "0";
+            log.NvgPage = "订单管理";
+            log.UserID = "";
+            log.Operate = "D";
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+            CargoOrderBus bus = new CargoOrderBus();
+
+            //订单取消
+            //1.更新开思表状态
+            nwBus.MassCallOrderCancelled(notice, log);
+
+        }
+        public string PostHttpRequest(string url, string Data, string apiName, string APISession, string appKey)
+        {
+            string result = string.Empty;
+            HttpWebRequest request = (HttpWebRequest)HttpWebRequest.Create(url);
+            TimeSpan timeSpan = DateTime.UtcNow.AddMinutes(-5) - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+            DateTime dateTime = DateTime.Now;
+            long timestamp = (long)(dateTime.Subtract(new DateTime(1970, 1, 1))).TotalMilliseconds;
+            string sign = CassSecret
+                + apiName
+                + (!string.IsNullOrEmpty(appKey) ? appKey : "gzshly60be866dbe52")
+                + APISession
+                + timestamp;
+            using (MD5 md5 = MD5.Create())
+            {
+                byte[] inputBytes = Encoding.UTF8.GetBytes(sign);
+                byte[] hashBytes = md5.ComputeHash(inputBytes);
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < hashBytes.Length; i++)
+                {
+                    sb.Append(hashBytes[i].ToString("x2"));
+                }
+                sign = sb.ToString().ToUpper();
+            }
+            request.Headers.Add("apiName", apiName);
+            request.Headers.Add("appKey", appKey);
+            request.Headers.Add("sign", sign);
+            request.Headers.Add("session", APISession);
+            request.Headers.Add("timestamp", timestamp.ToString());
+            request.Method = "GET";
+            request.ContentType = "application/json";
+            using (WebResponse response = request.GetResponse())
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd();
+                        }
+                    }
+
+                }
+            }
+            return result;
+        }
+        /// <summary>
+        /// 添加播报
+        /// </summary>
+        public void Broadcast(OrderDto dto)
+        {
+            CargoHouseBus house = new CargoHouseBus();
+            var cassHouses = house.GetCassHouses();
+            var cassProducts = house.GetCassProDucts();
+            foreach (var item in dto.OrderItems)
+            {
+                //获取对应仓库
+                var cHouses = item.ItemInventories.Select(a => a.FacilityId).Distinct();
+                var cassHouse = cassHouses.FirstOrDefault(a => cHouses.Contains(a.CassHouseCode));
+                var cassProduct = cassProducts.FirstOrDefault(a => item.PartsNum == a.CassCode);
+                CargoHouseEntity houseEnt = house.QueryCargoHouseByID(cassHouse.HouseID);
+
+                string proStr = cassProduct?.TypeName + " " + cassProduct?.Specs + " " + cassProduct?.Figure + " " + cassProduct?.LoadIndex + cassProduct?.SpeedLevel;
+
+                //添加播报
+                CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
+                cargoNewOrder.HouseName = "开思订单-" + houseEnt.Name;
+                cargoNewOrder.OrderNo = dto.OrderHeader.OrderId;
+                cargoNewOrder.OrderNum = item.Quantity.ToString();
+                cargoNewOrder.ClientInfo = dto.OrderHeader.Buyer.CompanyDisplayName + " " + dto.OrderPostalAddress.ContactNumber + " " + (dto.OrderPostalAddress.ProvinceGeoName + " " + dto.OrderPostalAddress.CityGeoName + " " + dto.OrderPostalAddress.Address);// "泰乐 华笙 广东省广州市白云区东平加油站左侧";
+                cargoNewOrder.ProductInfo = proStr;// "马牌 215/55R16 CC6 98V";
+                cargoNewOrder.DeliveryName = "急送";// "自提";
+                cargoNewOrder.ReceivePeople = "";
+                string hcno = JSON.Encode(cargoNewOrder);
+                //Common.WriteTextLog(hcno);
+                List<CargoVoiceBroadEntity> voiceBroadList = house.GetVoiceBroadList(new CargoVoiceBroadEntity { HouseID = houseEnt.HouseID });
+                foreach (var voice in voiceBroadList)
+                {
+                    RedisHelper.SetString("NewOrderNotice_" + voice.LoginName, hcno);
+                    //mc.Add("NewOrderNotice_" + voice.LoginName, hcno);
+                }
+            }
+
+        }
+        public bool IsReusable
+        {
+            get
+            {
+                return false;
+            }
+        }
+    }
+}
