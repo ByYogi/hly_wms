@@ -1,5 +1,6 @@
 ﻿
 using Cargo.QY;
+using DocumentFormat.OpenXml.Wordprocessing;
 using House.Business.Cargo;
 using House.Entity;
 using House.Entity.Cargo;
@@ -410,37 +411,16 @@ namespace Cargo
             }
         }
 
-        private void CheckConfiguration()
-        {
-            try
-            {
-                // 直接读取配置文件
-                string webConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "web.config");
-                var config = WebConfigurationManager.OpenWebConfiguration("~");
-
-                // 检查 httpRuntime
-                var httpRuntime = config.GetSection("system.web/httpRuntime") as HttpRuntimeSection;
-                if (httpRuntime != null)
-                {
-                    Response.Write($"MaxRequestLength: {httpRuntime.MaxRequestLength} KB<br>");
-                    Response.Write($"ExecutionTimeout: {httpRuntime.ExecutionTimeout}<br>");
-                }
-
-                // 检查其他相关配置
-                var compilation = config.GetSection("system.web/compilation") as CompilationSection;
-                if (compilation != null)
-                {
-                    Response.Write($"Debug: {compilation.Debug}<br>");
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Configuration check error: {ex.Message}");
-            }
-        }
         protected void Page_Load(object sender, EventArgs e)
         {
-            CheckConfiguration();
+
+            //CargoInterfaceBus bus = new CargoInterfaceBus();
+            //    List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 93, TypeID = 9, ProductCode = "LTYH215501704" });
+            //if (entities.Count > 0)
+            //{
+            //    bus.SaveNextDayProductData(entities, false);
+            //}
+
             return;
             CargoHouseBus houseBus = new CargoHouseBus();
             CargoClientBus clientBus = new CargoClientBus();

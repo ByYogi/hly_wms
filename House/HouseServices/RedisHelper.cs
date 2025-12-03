@@ -372,6 +372,18 @@ namespace HouseServices
         }
 
         /// <summary>
+        /// 从 hash 返回全部的哈希值
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static HashEntry[] HashGetAll(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.HashGetAll(redisKey);
+        }
+
+        /// <summary>
         /// 从 hash 返回全部的字段值
         /// </summary>
         /// <param name="redisKey"></param>

@@ -1669,6 +1669,9 @@ namespace Cargo.Interface
             {
                 RedisHelper.HashSet("HCYCHouseStockSyc", HouseID + "_" + TypeID + "_" + ProductCode, ProductCode);
             }
+            
+            RedisHelper.HashSet("TuhuStockSyc", HouseID + "_" + TypeID + "_" + ProductCode, ProductCode);
+
             string GoodsClass = "2";
             if (!SuppClientNum.Equals(0))
             {
@@ -3541,6 +3544,7 @@ namespace Cargo.Interface
             {
                 RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
             }
+            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
 
             inter.ScanMoveOrderInCargo(entity, log);
 

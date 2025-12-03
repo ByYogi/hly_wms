@@ -1,0 +1,214 @@
+﻿using Microsoft.Win32;
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Management;
+using System.Text;
+
+namespace House.Business.Log
+{
+    public static class BusStackTraceHelper
+    {
+        private static string GetFormattedStackTraceStr(Exception ex)
+        {
+            if (ex == null) return string.Empty;
+
+            var result = new StringBuilder();
+            var currentException = ex;
+            var exceptionIndex = 1;
+
+            while (currentException != null)
+            {
+                // 输出异常标题（对于内层异常）
+                if (exceptionIndex > 1)
+                {
+                    result.AppendLine();
+                    result.AppendLine("├─────────────────────────────────────────────");
+                    result.AppendLine(string.Format("│ 内层异常 #{0}", exceptionIndex - 1));
+                    result.AppendLine("├─────────────────────────────────────────────");
+                }
+
+                result.AppendLine(string.Format("异常类型: {0}", currentException.GetType().Name));
+                result.AppendLine(string.Format("异常消息: {0}", currentException.Message));
+                result.AppendLine("业务堆栈跟踪:");
+                result.AppendLine("┌─────────────────────────────────────────────");
+
+                var stackTrace = new System.Diagnostics.StackTrace(currentException, true);
+                var frames = stackTrace.GetFrames();
+
+                // 兼容 .NET 4.6: 使用 new StackFrame[0] 替代 Array.Empty<StackFrame>()
+                if (frames == null)
+                {
+                    frames = new System.Diagnostics.StackFrame[0];
+                }
+
+                // 过滤掉System和Microsoft命名空间的框架，只保留业务代码
+                var businessFrames = frames
+                    .Where(frame =>
+                    {
+                        var method = frame.GetMethod();
+                        if (method == null) return false;
+                        var declaringType = method.DeclaringType;
+                        if (declaringType == null) return false;
+                        var namespaceName = declaringType.Namespace;
+                        return namespaceName != null &&
+                               !namespaceName.StartsWith("System.") &&
+                               !namespaceName.StartsWith("Microsoft.") &&
+                               !namespaceName.StartsWith("MS.") &&
+                               !namespaceName.StartsWith("Internal.");
+                    })
+                    .Reverse() // 倒序排列
+                    .ToList();
+
+                if (businessFrames.Count == 0)
+                {
+                    // 如果没有业务相关的堆栈帧，显示所有堆栈帧（倒序）
+                    var allFrames = frames.Reverse().Take(10).ToList(); // 限制显示数量
+                    if (allFrames.Count == 0)
+                    {
+                        result.AppendLine("│ 无堆栈跟踪信息");
+                    }
+                    else
+                    {
+                        for (int i = 0; i < allFrames.Count; i++)
+                        {
+                            var frame = allFrames[i];
+                            var method = frame.GetMethod();
+                            var fileName = frame.GetFileName();
+                            var lineNumber = frame.GetFileLineNumber();
+                            var declaringType = method != null ? method.DeclaringType : null;
+                            var parameters = method != null ? method.GetParameters() : null;
+
+                            var paramNames = parameters != null && parameters.Length > 0
+                                ? string.Join(", ", parameters.Select(p => string.Format("{0} {1}", p.ParameterType.Name, p.Name)))
+                                : "";
+
+                            var typeName = declaringType != null ? declaringType.FullName : "Unknown";
+                            var methodName = method != null ? method.Name : "Unknown";
+                            result.AppendLine(string.Format("│ [{0}] {1}.{2}({3})", i + 1, typeName, methodName, paramNames));
+
+                            if (!string.IsNullOrEmpty(fileName) && lineNumber > 0)
+                            {
+                                var shortFileName = System.IO.Path.GetFileName(fileName);
+                                result.AppendLine(string.Format("│    文件: {0} 行号: {1}", shortFileName, lineNumber));
+                            }
+
+                            if (i < allFrames.Count - 1)
+                            {
+                                result.AppendLine("│");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < businessFrames.Count; i++)
+                    {
+                        var frame = businessFrames[i];
+                        var method = frame.GetMethod();
+                        var fileName = frame.GetFileName();
+                        var lineNumber = frame.GetFileLineNumber();
+                        var declaringType = method != null ? method.DeclaringType : null;
+                        var parameters = method != null ? method.GetParameters() : null;
+
+                        var paramNames = parameters != null && parameters.Length > 0
+                            ? string.Join(", ", parameters.Select(p => string.Format("{0} {1}", p.ParameterType.Name, p.Name)))
+                            : "";
+
+                        var typeName = declaringType != null ? declaringType.FullName : "Unknown";
+                        var methodName = method != null ? method.Name : "Unknown";
+                        result.AppendLine(string.Format("│ [{0}] {1}.{2}({3})", i + 1, typeName, methodName, paramNames));
+
+                        if (!string.IsNullOrEmpty(fileName) && lineNumber > 0)
+                        {
+                            var shortFileName = System.IO.Path.GetFileName(fileName);
+                            result.AppendLine(string.Format("│    文件: {0} 行号: {1}", shortFileName, lineNumber));
+                        }
+
+                        if (i < businessFrames.Count - 1)
+                        {
+                            result.AppendLine("│");
+                        }
+                    }
+                }
+
+                result.AppendLine("└─────────────────────────────────────────────");
+
+                // 处理下一个内层异常
+                currentException = currentException.InnerException;
+                exceptionIndex++;
+
+                // 防止无限循环，最多处理10层内层异常
+                if (exceptionIndex > 10)
+                {
+                    result.AppendLine();
+                    result.AppendLine("  已到达内层异常显示上限（10层）");
+                    break;
+                }
+            }
+
+            return result.ToString();
+        }
+
+        private static string Get45PlusVersion()
+        {
+            using (RegistryKey ndpKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full"))
+            {
+                if (ndpKey != null && ndpKey.GetValue("Release") != null)
+                {
+                    int releaseKey = (int)ndpKey.GetValue("Release");
+                    // 根据Release DWORD值检查版本
+                    if (releaseKey >= 533320) return "4.8.1 or later";
+                    if (releaseKey >= 528040) return "4.8";
+                    if (releaseKey >= 461808) return "4.7.2";
+                    if (releaseKey >= 461308) return "4.7.1";
+                    if (releaseKey >= 460798) return "4.7";
+                    if (releaseKey >= 394802) return "4.6.2";
+                    if (releaseKey >= 394254) return "4.6.1";
+                    if (releaseKey >= 393295) return "4.6";
+                    if (releaseKey >= 379893) return "4.5.2";
+                    if (releaseKey >= 378675) return "4.5.1";
+                    if (releaseKey >= 378389) return "4.5";
+                }
+                return "未检测到.NET FrameWork版本号";
+            }
+        }
+
+        // 扩展方法版本
+        public static string FormatErr(this Exception ex)
+        {
+            string netFrameworkVersion = "";
+            string systemInfo = "";
+            try
+            {
+                netFrameworkVersion = Get45PlusVersion();
+
+                using (ManagementObjectSearcher searcher = new ManagementObjectSearcher("SELECT * FROM Win32_OperatingSystem"))
+                {
+                    foreach (ManagementObject obj in searcher.Get())
+                    {
+                        string caption = obj["Caption"] != null ? obj["Caption"].ToString() : "Unknown";
+                        string version = obj["Version"] != null ? obj["Version"].ToString() : "Unknown";
+                        string architecture = obj["OSArchitecture"] != null ? obj["OSArchitecture"].ToString() : "Unknown";
+                        string installDate = "Unknown";
+
+                        if (obj["InstallDate"] != null)
+                        {
+                            installDate = ManagementDateTimeConverter.ToDateTime(obj["InstallDate"].ToString()).ToString("yyyy-MM-dd");
+                        }
+
+                        // 拼接所有信息
+                        systemInfo = string.Format("操作系统: {0}\r\n版本号: {1}\r\n架构: {2}\r\n安装日期: {3}",
+                            caption, version, architecture, installDate);
+                    }
+                }
+
+                return GetFormattedStackTraceStr(ex) + string.Format("\r\n.NET Framework版本：{0}; {1}", netFrameworkVersion, systemInfo);
+            }
+            catch
+            {
+                return ex.Message + "\n\t" + ex.StackTrace + string.Format("\r\n.NET Framework版本：{0}; {1}", netFrameworkVersion, systemInfo);
+            }
+        }
+    }
+}

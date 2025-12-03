@@ -1236,7 +1236,7 @@ namespace House.Manager.Cargo
                 #region 获取订单明细
                 string strSQL = @" SELECT TOP " + pNum + "* FROM (SELECT DISTINCT ROW_NUMBER() OVER(ORDER BY a.InCreateStatus asc,a.OPDATE DESC) AS RowNumber,a.*,b.Name as HouseName from dbo.Tbl_Cargo_ContiOrder as a inner join tbl_Cargo_house as b on a.HouseID=b.HouseID WHERE (1=1)";
 
-                
+
                 if (!string.IsNullOrEmpty(entity.warehouseProvince)) { strSQL += "and a.warehouseProvince='" + entity.warehouseProvince + "'"; }
                 if (!string.IsNullOrEmpty(entity.orderType)) { strSQL += "and a.orderType='" + entity.orderType + "'"; }
                 if (!string.IsNullOrEmpty(entity.orderLabel)) { strSQL += "and a.orderLabel='" + entity.orderLabel + "'"; }
@@ -1599,7 +1599,7 @@ namespace House.Manager.Cargo
                     conn.AddInParameter(cmd, "@InCreateStatus", DbType.String, entity.InCreateStatus);
                     conn.AddInParameter(cmd, "@naCustomerName", DbType.String, entity.naCustomerName);
                     conn.AddInParameter(cmd, "@warehouseProvince", DbType.String, entity.warehouseProvince);
-                    
+
                     //conn.AddInParameter(cmd, "@CreateAwbID", DbType.String, entity.CreateAwbID);
                     //conn.AddInParameter(cmd, "@CreateAwb", DbType.String, entity.CreateAwb);
                     //conn.AddInParameter(cmd, "@CreateDate", DbType.DateTime, entity.CreateDate);
@@ -2598,6 +2598,7 @@ group by  orderId
         {
             List<StockApiEntity> result = new List<StockApiEntity>();
             string strSQL = " select distinct a.*,b.CassCode from (select SUM(a.Piece)over(partition by b.ProductCode,b.Batch) as StockNum,ROW_NUMBER() over (partition by b.ProductCode,b.Batch order by a.Piece desc,b.SalePrice desc,b.Specs) as RN,c.TypeName,a.Piece,b.TypeID,b.ProductCode,b.Specs,b.Figure,b.GoodsCode,b.LoadIndex,b.SpeedLevel,b.Batch,b.HouseID,b.SalePrice From Tbl_Cargo_ContainerGoods as a inner join Tbl_Cargo_Product as b on a.ProductID=b.ProductID and b.SpecsType<>5 ";
+            if (!entity.SalePrice.Equals(0)) { strSQL += " and b.SalePrice>" + entity.SalePrice; }
             if (!entity.HouseID.Equals(0)) { strSQL += " and b.HouseID=@HouseID"; }
             if (!entity.TypeID.Equals(0)) { strSQL += " and b.TypeID=@TypeID"; }
             if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and b.ProductCode in ('" + entity.ProductCode + "')"; }
@@ -3768,6 +3769,85 @@ VALUES(@orderId,@orderItemSeqId,@adjustmentType,@adjustmentDesc,@adjustmentAmoun
             {
                 conn.ExecuteNonQuery(cmd);
             }
+        }
+        #endregion
+
+        #region 途虎同步
+
+        /// <summary>
+        /// 查询要同步给途虎的商品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryTuhuStockData(int[] typeIDs,int[] houseIDs)
+        {
+            List<CargoProductEntity> result = new List<CargoProductEntity>();
+            string strSQL = @"
+;WITH productPiece AS (
+SELECT
+	p.ProductCode,
+	MAX(p.ProductID) AS ProductID,
+	SUM(cg.Piece) AS Piece
+FROM
+	Tbl_Cargo_ContainerGoods AS cg
+	INNER JOIN Tbl_Cargo_Product AS p ON cg.ProductID = p.ProductID
+WHERE p.TypeID IN (@[TypeIDs])
+    AND p.HouseID IN (@[HouseIDs])
+	AND p.IsLockStock = 0
+	AND cg.Piece > 0
+	AND p.IsLockStock = 0
+	AND ISNULL(p.ProductCode, '') <> ''
+GROUP BY p.ProductCode
+)
+
+SELECT 
+	p.ProductID,
+	p.ProductCode,
+	p.GoodsCode,
+	pp.Piece,
+	p.SalePrice,
+	p.ProductName,
+	p.TypeID,
+	p.Model,
+	p.Specs,
+	p.Figure,
+	p.HubDiameter,
+	p.LoadIndex,
+	p.SpeedLevel,
+	p.Born
+FROM Tbl_Cargo_Product p
+INNER JOIN productPiece pp ON p.ProductID = pp.ProductID
+                ";
+            strSQL = strSQL.Replace("@[TypeIDs]", string.Join(",", typeIDs));
+            strSQL = strSQL.Replace("@[HouseIDs]", string.Join(",", houseIDs));
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow dr in dt.Rows)
+                    {
+                        result.Add(new CargoProductEntity
+                        {
+                            ProductCode = dr.Field<string>("ProductCode"),
+                            GoodsCode = dr.Field<string>("GoodsCode"),
+                            Piece = dr.Field<int>("Piece"),
+                            SalePrice = dr.Field<decimal>("SalePrice"),
+
+                            ProductName = dr.Field<string>("ProductName"),
+                            TypeID = dr.Field<int>("TypeID"),
+                            Model = dr.Field<string>("Model"),
+                            Specs = dr.Field<string>("Specs"),
+                            Figure = dr.Field<string>("Figure"),
+                            HubDiameter = dr.Field<int>("HubDiameter"),
+                            LoadIndex = dr.Field<string>("LoadIndex"),
+                            SpeedLevel = dr.Field<string>("SpeedLevel"),
+                            Born = dr.Field<byte?>("Born")?.ToString()
+
+                        });
+                    }
+                }
+            }
+            return result;
         }
         #endregion
     }

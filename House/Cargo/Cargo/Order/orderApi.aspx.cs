@@ -69,16 +69,17 @@ namespace Cargo.Order
                 LogEntity log = new LogEntity();
                 log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
                 log.Operate = "";
-                log.Moudle = "";
+                log.Moudle = "orderApi";
                 log.Status = "1";
-                log.NvgPage = "";
-                log.UserID = UserInfor == null ? "" : UserInfor.LoginName.Trim();
-                log.Memo = methodName + " " + ex.FormatErr();
+                log.NvgPage = methodName;
+                log.UserID = UserInfor.LoginName;
+                log.Memo = ex.FormatErr();
+
                 bus.InsertLog(log);
             }
             finally
             {
-                HttpContext.Current.Response.End();
+                HttpContext.Current.ApplicationInstance.CompleteRequest(); //完成请求
             }
 
         }
@@ -144,7 +145,7 @@ namespace Cargo.Order
             String json = JSON.Encode(result);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
         }
 
         /// <summary>
@@ -2393,7 +2394,7 @@ namespace Cargo.Order
             //返回处理结果
             string ress = JSON.Encode(msg);
             Response.Write(ress);
-            Response.End();
+            Response.Flush();
         }
         public void QueryOrderInfoByOrderNo()
         {
@@ -3046,6 +3047,8 @@ namespace Cargo.Order
 
                                         RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                                     }
+                                    RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
                                 }
                                 //bus.AddOrderInfo(ent, log);
                                 //house.saveOutCargoData(outHouseList, log);
@@ -7162,7 +7165,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         #endregion
         #region 改价申请审批操作方法集合
@@ -7621,7 +7624,7 @@ namespace Cargo.Order
                 String abnormalJson = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(abnormalJson);
-                Response.End();
+                Response.Flush();
                 return;
             }
             //清空table中的空行
@@ -7636,7 +7639,7 @@ namespace Cargo.Order
                 String abnormalJson = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(abnormalJson);
-                Response.End();
+                Response.Flush();
                 return;
             }
 
@@ -7651,7 +7654,7 @@ namespace Cargo.Order
 
                 Response.Clear();
                 Response.Write(JSON.Encode(import));
-                Response.End();
+                Response.Flush();
                 return;
             }
 
@@ -7835,7 +7838,7 @@ namespace Cargo.Order
                 json = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(json);
-                Response.End();
+                Response.Flush();
             }
             else if (data.Columns.Count.Equals(9))
             {
@@ -8158,7 +8161,7 @@ namespace Cargo.Order
                 json = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(json);
-                Response.End();
+                Response.Flush();
             }
             else
             {
@@ -8253,7 +8256,7 @@ namespace Cargo.Order
 
                                 Response.Clear();
                                 Response.Write(JSON.Encode(import));
-                                Response.End();
+                                Response.Flush();
                                 return;
                             }
                             int BelongMonth = Convert.ToInt32(Convert.ToString(data.Rows[i][6]).Trim());
@@ -8275,7 +8278,7 @@ namespace Cargo.Order
 
                             Response.Clear();
                             Response.Write(JSON.Encode(import));
-                            Response.End();
+                            Response.Flush();
                             return;
                         }
                     }
@@ -8308,7 +8311,7 @@ namespace Cargo.Order
 
                     //    Response.Clear();
                     //    Response.Write(JSON.Encode(import));
-                    //    Response.End();
+                    //    Response.Flush();
                     //    return;
                     //}
                     //}
@@ -8321,7 +8324,7 @@ namespace Cargo.Order
 
                     //    Response.Clear();
                     //    Response.Write(JSON.Encode(import));
-                    //    Response.End();
+                    //    Response.Flush();
                     //    return;
                     //}
                 }
@@ -9031,7 +9034,7 @@ namespace Cargo.Order
                 json = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(json);
-                Response.End();
+                Response.Flush();
             }
         }
         #region 验证
@@ -9521,7 +9524,7 @@ namespace Cargo.Order
                 String abnormalJson = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(abnormalJson);
-                Response.End();
+                Response.Flush();
                 return;
             }
             //清空table中的空行
@@ -9536,7 +9539,7 @@ namespace Cargo.Order
                 String abnormalJson = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(abnormalJson);
-                Response.End();
+                Response.Flush();
                 return;
             }
 
@@ -9915,7 +9918,7 @@ namespace Cargo.Order
 
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
 
         }
         /// <summary>
@@ -10931,6 +10934,8 @@ namespace Cargo.Order
                 {
                     RedisHelper.HashSet("HCYCHouseStockSyc", ent.OldHouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                 }
+                RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
 
                 #endregion
                 //判断处理是否自动生成来货单
@@ -11260,7 +11265,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 删除移库单
@@ -13261,7 +13266,7 @@ namespace Cargo.Order
             String abnormalJson = JSON.Encode(import);
             Response.Clear();
             Response.Write(abnormalJson);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 上传文件
@@ -13449,7 +13454,7 @@ namespace Cargo.Order
             String abnormalJson = JSON.Encode(import);
             Response.Clear();
             Response.Write(abnormalJson);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 保存开单
@@ -13767,7 +13772,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 重新保存订单
@@ -14055,7 +14060,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 查询广丰订单数据
@@ -15261,7 +15266,7 @@ namespace Cargo.Order
             String json = JSON.Encode(list);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
         }
 
         public void QueryPurchaseOrderInfoExport()
@@ -15295,7 +15300,7 @@ namespace Cargo.Order
             String json = JSON.Encode(err);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
         }
         public List<CargoOrderEntity> CargoPurchaseOrderEntityList
         {
@@ -15644,7 +15649,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
 
         }
         #endregion
@@ -15676,7 +15681,7 @@ namespace Cargo.Order
             String json = JSON.Encode(list);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
 
         }
         public void QueryShortageListInfoExport()
@@ -15704,7 +15709,7 @@ namespace Cargo.Order
             String json = JSON.Encode(err);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
 
         }
         public Hashtable QueryShortageListInfoList
@@ -15813,7 +15818,7 @@ namespace Cargo.Order
             String json = JSON.Encode(list);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
 
         }
         /// <summary>
@@ -15833,7 +15838,7 @@ namespace Cargo.Order
             String json = JSON.Encode(err);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
 
         }
         public Hashtable QueryFactoryPurchaseOrderList
@@ -15954,7 +15959,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 更新工厂进货单数量
@@ -16040,7 +16045,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 添加工厂进货单产品
@@ -16109,7 +16114,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
 
         public void UpdateFactoryPurchaseOrderInfo()
@@ -16165,7 +16170,7 @@ namespace Cargo.Order
             //返回处理结果
             string ress = JSON.Encode(msg);
             Response.Write(ress);
-            Response.End();
+            Response.Flush();
         }
         public void SubmitFactoryPurchaseOrderReview()
         {
@@ -16319,7 +16324,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         public void UpdateFactoryPurchaseFacOrderNo()
         {
@@ -16368,7 +16373,7 @@ namespace Cargo.Order
             //返回处理结果
             string ress = JSON.Encode(msg);
             Response.Write(ress);
-            Response.End();
+            Response.Flush();
         }
         public void QueryFactoryPurchaseExpenseRout()
         {
@@ -17038,7 +17043,7 @@ namespace Cargo.Order
                 String abnormalJson = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(abnormalJson);
-                Response.End();
+                Response.Flush();
                 return;
             }
             //清空table中的空行
@@ -17051,7 +17056,7 @@ namespace Cargo.Order
                 String abnormalJson = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(abnormalJson);
-                Response.End();
+                Response.Flush();
                 return;
             }
             CargoProductBus productBus = new CargoProductBus();
@@ -17244,7 +17249,7 @@ namespace Cargo.Order
             json = JSON.Encode(import);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 保存批量导入的数据
@@ -17619,7 +17624,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         #endregion
         #region 补货单方法合集
@@ -18142,7 +18147,7 @@ namespace Cargo.Order
                 String abnormalJson = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(abnormalJson);
-                Response.End();
+                Response.Flush();
                 return;
             }
             //清空table中的空行
@@ -18155,7 +18160,7 @@ namespace Cargo.Order
                 String abnormalJson = JSON.Encode(import);
                 Response.Clear();
                 Response.Write(abnormalJson);
-                Response.End();
+                Response.Flush();
                 return;
             }
             CargoHouseBus house = new CargoHouseBus();
@@ -18307,7 +18312,7 @@ namespace Cargo.Order
             json = JSON.Encode(import);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
         }
 
         /// <summary>
@@ -18921,6 +18926,8 @@ namespace Cargo.Order
 
                                     RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                                 }
+                                RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
 
                             }
 
@@ -18987,7 +18994,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
 
         /// <summary>
@@ -19077,7 +19084,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         #endregion
         public void QueryGFOrderStatus()
@@ -19168,7 +19175,7 @@ namespace Cargo.Order
             string res = JSON.Encode(msg);
             Response.Clear();
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
 
         public void QueryBundle()
@@ -19194,7 +19201,7 @@ namespace Cargo.Order
             string res = JSON.Encode(order);
             Response.Clear();
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
 
         public void QueryBundleGoods()
@@ -19208,7 +19215,7 @@ namespace Cargo.Order
             string res = JSON.Encode(order);
             Response.Clear();
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
 
         public void SaveBundleGoods()
@@ -19237,7 +19244,7 @@ namespace Cargo.Order
             string res = JSON.Encode(msg);
             Response.Clear();
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
 
         public void DelBundleGoods()
@@ -19264,7 +19271,7 @@ namespace Cargo.Order
                 string res = JSON.Encode(msg);
                 Response.Clear();
                 Response.Write(res);
-                Response.End();
+                Response.Flush();
             }
             catch (Exception)
             {
@@ -19702,6 +19709,8 @@ namespace Cargo.Order
                             {
                                 RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                             }
+                            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
                         }
                         //新增订单信息
                         bus.AddOrderInfo(orderEnt, outHouseList, log);
@@ -19754,7 +19763,7 @@ namespace Cargo.Order
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         #region 马牌订单导入
         /// <summary>
@@ -20400,7 +20409,7 @@ namespace Cargo.Order
             String json = JSON.Encode(result);
             Response.Clear();
             Response.Write(json);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 保存外部订单分配清单
@@ -20875,6 +20884,7 @@ namespace Cargo.Order
             Response.Write(res);
         }
 
+        
         #region 开思
 
         public ErrMessage CassCreateOrder(List<OrderHeader> rows, CargoOrderEntity order_, ErrMessage msg, LogEntity log)
@@ -21311,6 +21321,8 @@ namespace Cargo.Order
                     {
                         RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                     }
+                    RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
                 }
 
                 //保存生成仓库出库订单
@@ -21644,10 +21656,12 @@ namespace Cargo.Order
             }
             var Stock = Convert.ToInt32(Request.Form["AStock"]);
             var SuppClientNum = Convert.ToInt32(Request.Form["SuppClientNum"]);
+            var IsNoOutHouse = Convert.ToInt32(Request.Form["IsNoOutHouse"]);
             var OrderNos = JsonConvert.DeserializeObject<List<string>>(str);
             queryEntity.OrderNoList = OrderNos;
             queryEntity.IsStock = Stock;
             queryEntity.SuppClientNum = SuppClientNum;
+            queryEntity.IsNoOutHouse = IsNoOutHouse;
 
             CargoOrderBus bus = new CargoOrderBus();
             List<CargoReserveOrderGoodsEntity> list = bus.BatchQueryReserveOrderGoods(queryEntity);
@@ -22298,7 +22312,7 @@ namespace Cargo.Order
             string ress = JSON.Encode(msg);
             Response.Clear();
             Response.Write(ress);
-            Response.End();
+            Response.Flush();
         }
 
         public void QueryStockDetail()
@@ -22314,6 +22328,25 @@ namespace Cargo.Order
             queryEntity.SuppClientNum = Convert.ToString(Request["SuppClientNum"]);
             CargoOrderBus bus = new CargoOrderBus();
             var List = bus.QueryStockDetail(queryEntity);
+
+            String json = JSON.Encode(List);
+            Response.Clear();
+            Response.Write(json);
+        }
+
+        public void QueryStockHouse()
+        {
+            //List<CargoInterfaceEntity>
+            CargoInterfaceEntity queryEntity = new CargoInterfaceEntity();
+            queryEntity.HouseID = Convert.ToInt32(Request["HouseID"]);
+            queryEntity.TypeID = Convert.ToInt32(Request["TypeID"]);
+            queryEntity.Specs = Convert.ToString(Request["Specs"]);
+            queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);
+            queryEntity.ProductCode = Convert.ToString(Request["ProductCode"]);
+            queryEntity.Figure = Convert.ToString(Request["Figure"]);
+            queryEntity.SuppClientNum = Convert.ToString(Request["SuppClientNum"]);
+            CargoOrderBus bus = new CargoOrderBus();
+            var List = bus.QueryStockHouse(queryEntity);
 
             String json = JSON.Encode(List);
             Response.Clear();
@@ -22701,6 +22734,8 @@ namespace Cargo.Order
                         {
                             RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                         }
+                        RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
                     }
 
                     if (item.order.CheckOutType.Equals("3"))
@@ -22813,9 +22848,517 @@ namespace Cargo.Order
             string ress = JSON.Encode(msg);
             Response.Clear();
             Response.Write(ress);
-            Response.End();
+            Response.Flush();
         }
+        public void GenerateOutboundOrderV2()
+        {
+            CargoReserveOrderEntity entity = new CargoReserveOrderEntity();
+            var OrderDataStr = Convert.ToString(Request["OrderData"]);
+            List<CargoReserveOrderEntity> OrderData = JsonConvert.DeserializeObject<List<CargoReserveOrderEntity>>(OrderDataStr);
+            CargoOrderBus bus = new CargoOrderBus();
+            var OrderInfo = bus.QueryReserveOrderInfoV3(new CargoReserveOrderEntity { OrderNo= OrderData.FirstOrDefault().OrderNo}).FirstOrDefault();
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            CargoHouseBus house = new CargoHouseBus();
+            CargoProductBus productBus = new CargoProductBus();
+            CargoInterfaceBus interBus = new CargoInterfaceBus();
+            List<ReserveParam> param = new List<ReserveParam>();
 
+            if (OrderData.Count == 0)
+            {
+                msg.Result = false;
+                msg.Message = "未获取到传入参数";
+                goto ERROR;
+            }
+
+            var isFinalPayment = bus.OrderIsFinalPayment(new CargoReserveOrderEntity { OrderNo = OrderInfo.OrderNo });
+            if (!isFinalPayment)
+            {
+                msg.Result = false;
+                msg.Message = $@"订单[{OrderInfo.OrderNo}]未支付尾款！";
+                goto ERROR;
+            }
+
+            if (OrderInfo.OutPiece >= OrderInfo.Piece)
+            {
+                msg.Result = false;
+                msg.Message = $@"订单[{OrderInfo.OrderNo}]已全部出库！";
+                goto ERROR;
+            }
+
+            LogEntity log = new LogEntity();
+            log.IPAddress = Common.GetUserIP(HttpContext.Current.Request);
+            log.Moudle = "订单管理";
+            log.Status = "0";
+            log.NvgPage = "预订单列表";
+            log.UserID = "";
+            log.Operate = "A";
+            //已出库数量
+            Dictionary<string, int> orderOutPiece = new Dictionary<string, int>() ;
+
+            foreach (var item in OrderData)
+            {
+                decimal originalPrice = 0M;
+                decimal InsuranceFee = 0;
+                decimal OverDayFee = 0;
+                string CouponType = "0";
+
+            
+
+                //var isCreateOrder = bus.IsOrderCreate(new CargoReserveOrderEntity { OrderNo = item.OrderNo });
+                //if (!isCreateOrder)
+                //{
+                //    msg.Result = false;
+                //    msg.Message = $@"订单[{item.OrderNo}]已创建出库单,请勿重复创建！";
+                //    goto ERROR;
+                //}
+
+                CargoOrderEntity ent = new CargoOrderEntity();
+                List<CargoOrderGoodsEntity> entDest = new List<CargoOrderGoodsEntity>();
+                List<CargoContainerShowEntity> outHouseList = new List<CargoContainerShowEntity>();
+                List<QyOrderUpdateGoodsEntity> goods = new List<QyOrderUpdateGoodsEntity>();
+
+                item.HouseID = Convert.ToInt32(item.HouseID);
+
+                CargoHouseEntity houseEnt = house.QueryCargoHouseByID(item.HouseID);
+
+                int HouseID = houseEnt.HouseID;
+
+                ent.BusinessID = string.IsNullOrEmpty(OrderInfo.BusinessID) ? "0" : OrderInfo.BusinessID;
+
+                ent.MarketType = OrderInfo.MarketType;
+                ent.Dep = Convert.ToString(houseEnt.DepCity);
+                ent.Dest = OrderInfo.Dest;
+                int OrderNum = 0;
+                ent.HouseID = HouseID;
+                ent.CheckOutType = OrderInfo.CheckOutType;
+                ent.DeliveryType = OrderInfo.DeliveryType;
+                ent.AcceptAddress = OrderInfo.AcceptAddress;
+                ent.AcceptPeople = OrderInfo.AcceptPeople;
+
+                ent.AcceptUnit = OrderInfo.AcceptUnit;
+                ent.AcceptTelephone = OrderInfo.AcceptTelephone;
+                ent.AcceptCellphone = OrderInfo.AcceptCellphone;
+                ent.ShopCode = null;//待补充
+                ent.CreateAwb = UserInfor.UserName;
+                ent.CreateAwbID = UserInfor.LoginName;
+                ent.CreateDate = DateTime.Now;// Convert.ToDateTime(Request["CreateDate"]);
+                ent.OP_ID = UserInfor.LoginName.Trim();
+                ent.SaleManID = OrderInfo.SaleManID;
+                ent.SaleManName = OrderInfo.SaleManName;
+                ent.SaleCellPhone = OrderInfo.SaleCellPhone;
+                ent.Remark = null;
+
+                ent.TrafficType = "0";// 内部订单
+                ent.Rebate = 0;
+                ent.OpenOrderNo = item.OrderNo;
+                ent.OpenOrderSource = "3";
+
+                ent.ThrowGood = OrderInfo.ThrowGood;
+                ent.IsPrintPrice = 1;
+                //2021-04-14代发仓库逻辑改为订单发送为指定仓库货物
+                ent.TranHouse = "";
+                ent.PostponeShip = "1";
+                ent.LogisID = HouseID.Equals(97) || HouseID.Equals(95) || HouseID.Equals(101) ? 62 : HouseID.Equals(136) ? 383 : OrderInfo.DeliveryType.Equals("1") ? 46 : 34;
+                ent.ClientNum = OrderInfo.ClientNum;
+                ent.PayClientNum = OrderInfo.PayClientNum;
+                ent.DeliverySettlement = OrderInfo.DeliverySettlement;
+                ent.ClientID = OrderInfo.ClientID;
+                string outID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString();//出库单号
+                ent.OrderNo = Common.GetMaxOrderNumByCurrentDate(HouseID, houseEnt.HouseCode, out OrderNum); // Convert.ToString(row["OrderNo"]);//生成最新顺序订单号
+
+                item.OpenOrderNo = ent.OrderNo;//
+
+                ent.OutHouseName = houseEnt.Name;
+
+                string proStr = string.Empty;
+                int pieceSum = 0;
+                int SuppClientNum = OrderInfo.SuppClientNum;
+
+                foreach (var itt in item.goodsList)
+                {
+                    //var orderOutPiece_ = orderOutPiece.ContainsKey($@"{itt.ProductCode}_{itt.ProductCode}") ? orderOutPiece[$@"{itt.ProductCode}_{itt.ProductCode}"] : 0;
+                    //itt.Piece = itt.Piece - itt.GoodsPiece- orderOutPiece_;
+                    if (itt.Piece <= 0)
+                    {
+                        continue;
+                    }
+
+                    //if (orderOutPiece.ContainsKey($@"{itt.ProductCode}_{itt.ProductCode}"))
+                    //{
+                    //    orderOutPiece[$@"{itt.ProductCode}_{itt.ProductCode}"] += itt.Piece;
+                    //}
+                    //else
+                    //{
+                    //    orderOutPiece.Add($@"{itt.ProductCode}_{itt.ProductCode}", itt.Piece);
+                    //}
+
+                    int piece = itt.Piece;
+                    List<CargoProductEntity> productBasic = house.QueryALLProductData(new CargoProductEntity { ProductCode = itt.ProductCode, SuppClientNum = SuppClientNum });
+                    if (productBasic.Count <= 0)
+                    {
+                        msg.Result = false;
+                        msg.Message = "商品基础数据有误";
+                        goto ERROR;
+                    }
+                    ent.proStr = productBasic[0].TypeName + " " + productBasic[0].Specs + " " + productBasic[0].Figure + " " + productBasic[0].LoadIndex + productBasic[0].SpeedLevel;
+
+                    CargoInterfaceEntity queryEntity = new CargoInterfaceEntity
+                    {
+                        ProductCode = itt.ProductCode,
+                        HouseID = HouseID,
+                        TypeID = productBasic[0].TypeID,
+                        //BatchYear = itt.BatchYear,
+                        ParentID = productBasic[0].ParentID,
+                        //Regular = PromotionType,
+                        SuppClientNum = SuppClientNum.ToString(),
+                        SpecsType = "4",
+                    };
+                    List<CargoInterfaceEntity> stockList = interBus.queryCargoStock(queryEntity);
+                    if (stockList.Count <= 0)
+                    {
+                        //msg.Result = false;
+                        //msg.Message = $"订单[{item.OrderNo}]商品库存不足";
+                        //goto ERROR;
+                        continue;
+                    }
+                    //if (stockList.Sum(c => c.StockNum) < piece)
+                    //{
+                    //    msg.Result = false;
+                    //    msg.Message = productBasic[0].Specs + " " + productBasic[0].Figure + "库存不足";
+                    //    goto ERROR;
+                    //}
+
+                    //减库存规则，一周期早的先出先进先出，二数量和库存数刚好一样的先出
+                    foreach (var it in stockList)
+                    {
+                        if (it.StockNum <= 0) { continue; }
+                        if (!it.ShareHouseID.Equals(0))
+                        {
+                            if (item.ThrowGood.Equals("23"))
+                            {
+                                //次日达 慧采云仓
+                                ent.OpenOrderSource = "1";
+                            }
+                            ent.ShareHouseID = it.ShareHouseID;
+                            ent.ShareHouseName = it.ShareHouseName;
+                        }
+
+                        CargoContainerShowEntity cargo = new CargoContainerShowEntity();
+                        cargo.OrderNo = ent.OrderNo;//订单号
+                        cargo.OutCargoID = outID;
+                        cargo.ContainerID = it.ContainerID;
+                        cargo.TypeID = it.TypeID;
+                        cargo.ProductID = it.ProductID;
+
+                        cargo.ID = it.ContainerGoodsID;//库存表ID
+
+                        //cargo.TypeName = Convert.ToString(row["TypeName"]).Trim();
+                        cargo.HouseName = houseEnt.Name;
+                        //cargo.AreaName = Convert.ToString(row["AreaName"]).Trim();
+                        cargo.ProductName = it.ProductName;
+                        cargo.Model = it.Model;
+                        cargo.Specs = it.Specs;
+                        cargo.Figure = it.Figure;
+                        int inHouseDay = (int)(DateTime.Now - it.InHouseTime).TotalDays;
+                        int OverDay = 0;
+                        decimal OnlyOverDayFee = 0;
+
+                        #region 减库存逻辑
+                        if (piece < it.StockNum)
+                        {
+                            //部分出
+                            entDest.Add(new CargoOrderGoodsEntity
+                            {
+                                OrderNo = ent.OrderNo,
+                                ProductID = it.ProductID,
+                                HouseID = ent.HouseID,
+                                AreaID = it.AreaID,
+                                Piece = piece,
+                                //ActSalePrice = it.SalePrice,
+                                ActSalePrice = itt.ActSalePrice,
+                                SupplySalePrice = it.InHousePrice,
+                                ContainerCode = it.ContainerCode,
+                                OutCargoID = outID,
+                                //RuleID = mrule.ID.ToString(),
+                                //RuleTitle = mrule.Title,
+                                //RuleType = mrule.RuleType,
+                                OP_ID = UserInfor.LoginName.Trim(),
+                                OverDayNum = OverDay,
+                                OverDueFee = OnlyOverDayFee,
+
+                            });
+
+                            cargo.Piece = piece;
+                            cargo.InPiece = it.StockNum;
+                            originalPrice += piece * it.InHousePrice;//计算成本价
+                            outHouseList.Add(cargo);
+
+                            pieceSum += piece;
+                            break;
+                        }
+                        if (piece.Equals(it.StockNum))
+                        {
+                            //if (inHouseDay > wxUser.OverDayNum)
+                            //{
+                            //    //如果在库天数大于了用户设置的天数，则按照超期天数计算超期费用
+                            //    OverDay = inHouseDay - wxUser.OverDayNum;
+                            //    OnlyOverDayFee = OverDay * wxUser.OverDueUnitPrice * piece;
+                            //    OverDayFee += OnlyOverDayFee;
+                            //}
+                            //要出库件数和第一条库存件数刚刚好，则就全部出
+                            entDest.Add(new CargoOrderGoodsEntity
+                            {
+                                OrderNo = ent.OrderNo,
+                                ProductID = it.ProductID,
+                                HouseID = ent.HouseID,
+                                AreaID = it.AreaID,
+                                Piece = piece,
+                                //ActSalePrice = it.SalePrice,
+                                SupplySalePrice = it.InHousePrice,
+                                ActSalePrice = itt.ActSalePrice,
+                                ContainerCode = it.ContainerCode,
+                                OutCargoID = outID,
+                                //RuleID = mrule.ID.ToString(),
+                                //RuleTitle = mrule.Title,
+                                //RuleType = mrule.RuleType,
+                                OP_ID = UserInfor.LoginName.Trim(),
+                                OverDayNum = OverDay,
+                                OverDueFee = OnlyOverDayFee,
+                            });
+                            cargo.Piece = piece;
+                            cargo.InPiece = it.StockNum;
+                            originalPrice += piece * it.InHousePrice;//计算成本价
+
+                            outHouseList.Add(cargo);
+
+                            pieceSum += piece;
+                            break;
+                        }
+                        if (piece > it.StockNum)
+                        {
+                            //if (inHouseDay > wxUser.OverDayNum)
+                            //{
+                            //    //如果在库天数大于了用户设置的天数，则按照超期天数计算超期费用
+                            //    OverDay = inHouseDay - wxUser.OverDayNum;
+                            //    OnlyOverDayFee = OverDay * wxUser.OverDueUnitPrice * it.StockNum;
+                            //    OverDayFee += OnlyOverDayFee;
+                            //}
+                            //全部出
+                            entDest.Add(new CargoOrderGoodsEntity
+                            {
+                                OrderNo = ent.OrderNo,
+                                ProductID = it.ProductID,
+                                HouseID = ent.HouseID,
+                                AreaID = it.AreaID,
+                                Piece = it.StockNum,
+                                //ActSalePrice = it.SalePrice,
+                                SupplySalePrice = it.InHousePrice,
+                                ActSalePrice = itt.ActSalePrice,
+                                ContainerCode = it.ContainerCode,
+                                OutCargoID = outID,
+                                //RuleID = mrule.ID.ToString(),
+                                //RuleTitle = mrule.Title,
+                                //RuleType = mrule.RuleType,
+                                OP_ID = UserInfor.LoginName.Trim(),
+                                OverDayNum = OverDay,
+                                OverDueFee = OnlyOverDayFee,
+                            });
+                            cargo.Piece = it.StockNum;
+                            cargo.InPiece = it.StockNum;
+                            originalPrice += it.StockNum * it.InHousePrice;//计算成本价
+                            outHouseList.Add(cargo);
+                            piece = piece - it.StockNum;
+
+                            pieceSum += it.StockNum;
+                            continue;
+                        }
+                        #endregion
+                    }
+
+
+                }
+                if (entDest.Count == 0)
+                {
+                    continue;
+                }
+                //订单总数量
+                ent.Piece = Convert.ToInt32(pieceSum);
+                ent.Weight = 0;
+                ent.Volume = 0;
+                ent.InsuranceFee = InsuranceFee;// coupon.Money;//优惠券金额 
+                ent.TransitFee = item.TransitFee;//即日达20*数量  即日达的运输费用
+                ent.TransportFee = originalPrice;
+                ent.OverDueFee = OverDayFee;//超期费用
+                                            //ent.TransportFee = Convert.ToDecimal(YPOrderMoney);//订单的费用
+                ent.DeliveryFee = 0;
+                ent.OtherFee = Convert.ToDecimal(item.TotalCharge) - ent.TransitFee - ent.TransportFee + ent.InsuranceFee;//平台服服务费=总金额-配送费-销售金额+优惠券
+                ent.TotalCharge = Convert.ToDecimal(item.TotalCharge);
+
+                ent.CouponType = CouponType;
+                ent.AwbStatus = "0";
+                ent.OrderType = "4";
+                ent.OrderNum = OrderNum;//最新订单顺序号
+
+                ent.goodsList = entDest;
+                ent.OrderModel = "0";
+                ent.SuppClientNum = Convert.ToInt32(SuppClientNum);
+                ent.WXOrderNo = item.WXOrderNo;//微信商城订单号
+                ent.FinanceSecondCheck = "1";
+                ent.FinanceSecondCheckName = UserInfor.UserName;
+                ent.FinanceSecondCheckDate = DateTime.Now;
+                ent.CheckStatus = "1";
+                ent.CheckDate = DateTime.Now;
+
+                param.Add(new ReserveParam { order = ent, outHouseList = outHouseList });
+            }
+
+            //保存生成仓库出库订单
+            if (param.Count > 0)
+            {
+                bus.Reserve_AddOrderInfo(param, log);
+
+                foreach (var item in param)
+                {
+                    CargoHouseEntity houseEnt = house.QueryCargoHouseByID(item.order.HouseID);
+                    ////如果是次日达，并且库存是共享仓库库存，写入缓存
+                    //if (!item.ShareHouseID.Equals(0) && item.ThrowGood.Equals("23"))
+                    //{
+                    //    //goodList
+                    //    RedisHelper.HashSet("NextDayOrderShareSync", item.OpenOrderNo + "_" + item.HouseID.ToString() + "_" + item.ShareHouseID.ToString(), JSON.Encode(goodList));
+
+                    //}
+
+                    //仓库同步缓存
+                    foreach (CargoContainerShowEntity time in item.outHouseList)
+                    {
+                        CargoProductEntity syncProduct = house.SyncTypeProduct(time.ProductID.ToString());
+                        //34 马牌  1 同步马牌  2 同步全部品牌
+                        if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+                        {
+                            RedisHelper.HashSet("OpenSystemStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.GoodsCode);
+                        }
+
+                        //主仓缓存更改
+                        if (house.IsAddCaching(syncProduct.HouseID, time.TypeID))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                        }
+                        RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
+                    }
+
+                    if (item.order.CheckOutType.Equals("3"))
+                    {
+                        #region 推送好来运系统
+
+                        bus.InsertCargoOrderPush(new CargoOrderPushEntity
+                        {
+                            OrderNo = item.order.OrderNo,
+                            Dep = item.order.Dep,
+                            Dest = item.order.Dest,
+                            Piece = item.order.Piece,
+                            TransportFee = item.order.TransportFee,
+                            ClientNum = item.order.ClientNum.ToString(),
+                            AcceptAddress = item.order.AcceptAddress,
+                            AcceptCellphone = item.order.AcceptCellphone,
+                            AcceptTelephone = item.order.AcceptTelephone,
+                            AcceptPeople = item.order.AcceptPeople,
+                            AcceptUnit = item.order.AcceptUnit,
+                            HouseID = item.order.HouseID.ToString(),
+                            HouseName = item.order.OutHouseName,
+                            OP_ID = item.order.OP_ID,
+                            PushType = "0",
+                            PushStatus = "0",
+                            LogisID = item.order.HouseID.Equals(97) || item.order.HouseID.Equals(95) || item.order.HouseID.Equals(101) ? 62 : item.order.HouseID.Equals(136) ? 383 : item.order.ThrowGood.Equals("1") ? 46 : 34
+                        }, log);
+
+                        #endregion
+
+                        //string fkfs = item.order.CheckOutType.Equals("3") ? "货到付款" : item.order.CheckOutType.Equals("10") ? "预付款" : "现付";
+                        //string shf = item.order.LogisID.Equals(46) ? "自提" : item.order.ThrowGood.Equals("0") ? "急送" : "次日达";
+                        //string tit = item.order.ThrowGood.Equals("22") ? item.order.ThrowGood.Equals("2") ? "次日达" : "急速达" : "次日达";
+                        //string go = item.order.ThrowGood.Equals("22") ? (item.order.ThrowGood.Equals("2") ? "" : "") : "-不出库";
+                        //CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
+                        //cargoNewOrder.HouseName = houseEnt.Name;
+                        //cargoNewOrder.OrderNo = item.order.WXOrderNo;
+                        //cargoNewOrder.OrderNum = item.order.Piece.ToString();
+                        //cargoNewOrder.ClientInfo = item.order.AcceptPeople + " " + item.order.AcceptCellphone + " " + item.order.AcceptAddress;// "泰乐 华笙 广东省广州市白云区东平加油站左侧";
+                        //cargoNewOrder.ProductInfo = item.order.proStr;// "马牌 215/55R16 CC6 98V";
+                        //cargoNewOrder.DeliveryName = shf;// "自提";
+                        //cargoNewOrder.ReceivePeople = "";
+                        //string hcno = JSON.Encode(cargoNewOrder);
+                        ////Common.WriteTextLog(hcno);
+
+                        ////如果是次日达，并且库存不是共享仓库库存，要推送给供应商
+                        //if (item.order.ShareHouseID.Equals(0) && item.order.ThrowGood.Equals("23"))
+                        //{
+                        //    string Name = houseEnt.Name + " " + item.order.proStr;
+                        //    // 若长度小于等于20，直接返回原字符串；否则截取前20个
+                        //    Name = Name.Length <= 20 ? Name : Name.Substring(0, 20);
+                        //    //供应商名称  物流单号   订单号    商品名称   金额   数量
+                        //    Common.SendRePlaceAnOrderMsg(item.order.SuppClientNum.ToString(), item.order.LogisAwbNo, item.order.OrderNo, Name, item.order.TotalCharge, item.order.Piece);
+                        //}
+                        //else
+                        //{
+                        //    //企业微信推送
+                        //    List<CargoVoiceBroadEntity> voiceBroadList = house.GetVoiceBroadList(new CargoVoiceBroadEntity { HouseID = houseEnt.HouseID });
+                        //    foreach (var voice in voiceBroadList)
+                        //    {
+                        //        RedisHelper.SetString("NewOrderNotice_" + voice.LoginName, hcno);
+                        //        //mc.Add("NewOrderNotice_" + voice.LoginName, hcno);
+                        //    }
+                        //}
+                        ////mc.Add("NewOrderNotice_1000", hcno);
+                        ////mc.Add("NewOrderNotice_2215", hcno);
+                        ////mc.Add("NewOrderNotice_2856", hcno);
+
+                        ////RedisHelper.SetString("NewOrderNotice", hcno);
+                        ////货到付款
+                        //try
+                        //{
+                        //    QySendInfoEntity send = new QySendInfoEntity();
+                        //    send.title = tit + " 有新订单";
+                        //    //推送给提交人
+                        //    send.msgType = msgType.textcard;
+                        //    send.agentID = "1000003";//消息通知的应用
+                        //    send.AgentSecret = "VkkRCESh5hxT8FStrYa0jWjIg0ux--M670SoFFyuimM";
+                        //    //send.toUser = qup.ApplyID;<div>订单金额：" + ord.TotalCharge.ToString("F2") + "</div>
+                        //    //send.toTag = "19";
+                        //    send.toTag = houseEnt.HCYCOrderPushTagID.ToString();
+                        //    send.content = "<div></div><div>出库仓库：" + houseEnt.Name + go + "</div><div>商城订单号：" + item.order.WXOrderNo + "</div><div>出库订单号：" + item.order.OrderNo + "</div><div>订单数量：" + item.order.Piece.ToString() + "</div><div>订单金额：" + item.order.TotalCharge.ToString("F2") + "</div><div>货物信息：" + item.order.proStr + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>门店名称：" + item.order.AcceptUnit + "</div><div>收货信息：" + item.order.AcceptPeople + " " + item.order.AcceptCellphone + "</div><div>收货地址：" + item.order.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
+                        //    send.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + item.order.OrderNo;
+                        //    WxQYSendHelper.DLTQYPushInfo(send);
+
+                        //}
+                        //catch (ApplicationException ex)
+                        //{
+
+                        //}
+                        //weiChat.msg = "提交成功，请收到货后在我的订单里支付货款";
+                        msg.Result = false;
+                        msg.Message = "提交成功，请收到货后在我的订单里支付货款";
+                    }
+                    msg.Result = true;
+                    msg.Message = "保存成功";
+                }
+            }
+            else
+            {
+                msg.Result = false;
+                msg.Message = "无可出库订单！";
+                goto ERROR;
+            }
+
+
+
+
+        ERROR:
+            //返回处理结果
+            string ress = JSON.Encode(msg);
+            Response.Clear();
+            Response.Write(ress);
+            Response.Flush();
+        }
         #endregion
 
 

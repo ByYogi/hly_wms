@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>House.Entity</RootNamespace>
     <AssemblyName>House.Entity</AssemblyName>
-    <TargetFrameworkVersion>v4.6.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
   </PropertyGroup>
@@ -168,6 +168,8 @@
     <Compile Include="Cargo\Purchase\CargoRealFactoryPurchaseHouseEntity.cs" />
     <Compile Include="Cargo\Purchase\CargoRealFactoryPurchaseOrderEntity.cs" />
     <Compile Include="Cargo\Purchase\CargoRealFactoryPurchaseOrderGoodsEntity.cs" />
+    <Compile Include="Cargo\Purchase\CargoRealPurchaseAccountEntity.cs" />
+    <Compile Include="Cargo\Purchase\CargoRealPurchaseAccountGoodsEntity.cs" />
     <Compile Include="Cargo\QY\CheckinRuleEntity.cs" />
     <Compile Include="Cargo\QY\QYCheckinDataEntity.cs" />
     <Compile Include="Cargo\QY\QYCheckinDayReportEntity.cs" />
@@ -251,6 +253,7 @@
     <Compile Include="Dto\Order\CargoRpl\RplOrderGenerationParam.cs" />
     <Compile Include="Dto\Purchase\RealFactoryPODetailDto.cs" />
     <Compile Include="Dto\TempProducts.cs" />
+    <Compile Include="Dto\Tuhu\TuhuPushDto.cs" />
     <Compile Include="House\SystemOrganizeEntity.cs" />
     <Compile Include="Log\ErrMessage.cs" />
     <Compile Include="Log\LogEntity.cs" />

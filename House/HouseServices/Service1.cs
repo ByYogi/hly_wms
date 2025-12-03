@@ -1,10 +1,17 @@
-﻿using House.Business.Cargo;
+﻿using ClosedXML.Excel;
+using House.Business;
+using House.Business.Cargo;
+using House.Business.Log;
 using House.Entity;
 using House.Entity.Cargo;
+using House.Entity.Cargo.House;
 using House.Entity.Cargo.Interface;
 using House.Entity.Cargo.Product;
+using House.Entity.Dto.Tuhu;
+using HouseServices.Common;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Senparc.Weixin.Annotations;
 using Senparc.Weixin.HttpUtility;
 using Senparc.Weixin.MP.AdvancedAPIs.MerChant;
 using Senparc.Weixin.MP.AdvancedAPIs.TemplateMessage;
@@ -24,6 +31,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Mime;
+using System.Net.Security;
 using System.Runtime.CompilerServices;
 using System.Runtime.Remoting.Contexts;
 using System.Security.Cryptography;
@@ -39,9 +48,6 @@ using System.Web.Script.Serialization;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Tab;
-using ClosedXML.Excel;
-using HouseServices.Common;
-using House.Entity.Cargo.House;
 
 namespace HouseServices
 {
@@ -54,6 +60,17 @@ namespace HouseServices
         public Service1()
         {
             InitializeComponent();
+
+            System.Timers.Timer TuhuSyncTime = new System.Timers.Timer();
+            //全量同步
+            TuhuFullSync_Task();
+            //途虎商品同步
+            //TuhuSyncTime.Elapsed += TuhuSync_Task;
+            //TuhuSyncTime.Interval = 60 * 60 * 1000 * 2;//2小时跳动一次
+            //TuhuSyncTime.Enabled = true;
+            return;
+
+
             System.Timers.Timer time = new System.Timers.Timer();
             System.Timers.Timer snapTime = new System.Timers.Timer();
             System.Timers.Timer pushFiveTime = new System.Timers.Timer();
@@ -62,7 +79,6 @@ namespace HouseServices
             System.Timers.Timer checkinTime = new System.Timers.Timer();
             System.Timers.Timer OrderPushTime = new System.Timers.Timer();
             System.Timers.Timer ContiOrderPushTime = new System.Timers.Timer();
-            //System.Timers.Timer PushStockTime = new System.Timers.Timer();
             System.Timers.Timer PushNextDatTime = new System.Timers.Timer();
             System.Timers.Timer RemoveOrderQuotaTime = new System.Timers.Timer();
             System.Timers.Timer AutomaticAvoidance = new System.Timers.Timer();
@@ -136,7 +152,10 @@ namespace HouseServices
             SalePieceStaticTime.Elapsed += GenerateMonthlySalesSnapshot;
             AutomaticAvoidance.Interval = 60 * 60 * 1000 * 2;//2小时跳动一次
             AutomaticAvoidance.Enabled = true;
+
         }
+
+
         /// <summary>
         /// 1.删除超时未付款订单
         /// 2.同步订单出库标签数据至马牌系统
@@ -1804,7 +1823,7 @@ namespace HouseServices
                 ///龙华云仓Session：1f7bd12607104fd3a152daf7c1896bb0
                 try
                 {
-                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 91 });
+                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 91, SalePrice = 100 });
                     StockApiResponseEntity entity = new StockApiResponseEntity();
                     entity.Params = new Params();
                     entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
@@ -1914,7 +1933,7 @@ namespace HouseServices
                 ///汕头仓Session：67d89f8d06ca4360ae0358279b7d283c
                 try
                 {
-                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 101 });
+                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 101, SalePrice = 100 });
                     //StockApiResponseEntity STentity = new StockApiResponseEntity();
                     //STentity.Params = new Params();
                     //STentity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
@@ -2036,7 +2055,7 @@ namespace HouseServices
                 #region 南宁云仓库存同步开思
                 try
                 {
-                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 136 });
+                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 136, SalePrice = 100 });
                     StockApiResponseEntity entity = new StockApiResponseEntity();
                     entity.Params = new Params();
                     entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
@@ -2138,7 +2157,7 @@ namespace HouseServices
                 #region 揭阳云仓库存同步开思
                 try
                 {
-                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 135 });
+                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 135, SalePrice = 100 });
                     StockApiResponseEntity entity = new StockApiResponseEntity();
                     entity.Params = new Params();
                     entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
@@ -2235,11 +2254,13 @@ namespace HouseServices
                 }
                 #endregion
 
-                LogHelper.WriteLog("开始全量处理东平云仓库存数据");
-                #region 东平云仓库存同步开思
+                LogHelper.WriteLog("开始全量处理东平和从化云仓库存数据");
+                #region 东平和从化云仓库存同步开思
                 try
                 {
-                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 93 });
+                    List<StockApiEntity> resCH = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 107, SalePrice = 100 });
+                    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 93, SalePrice = 100 });
+                    res.AddRange(resCH);
                     StockApiResponseEntity entity = new StockApiResponseEntity();
                     entity.Params = new Params();
                     entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
@@ -2310,7 +2331,7 @@ namespace HouseServices
                                 CassProductCode = casscode,
                                 ProductName = res[i].ProductName,
                                 TypeName = typename,
-                                SalePrice = Convert.ToDecimal(res[i].SalePrice) + Convert.ToDecimal(12),//GetContiPrice()
+                                SalePrice = Convert.ToDecimal(res[i].SalePrice) + Convert.ToDecimal(15),//GetContiPrice()
                                 StockNum = res[i].StockNum,
                                 Batch = res[i].Batch,
                                 HouseID = res[i].HouseID,
@@ -2335,6 +2356,107 @@ namespace HouseServices
                     throw;
                 }
                 #endregion
+
+                //LogHelper.WriteLog("开始全量处理从化云仓库存数据");
+                //#region 从化云仓库存同步开思
+                //try
+                //{
+                //    List<StockApiEntity> res = bus.QueryYunCangStockSync(new CargoProductEntity { HouseID = 107, SalePrice = 100 });
+                //    StockApiResponseEntity entity = new StockApiResponseEntity();
+                //    entity.Params = new Params();
+                //    entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+                //    entity.data = new List<Data>();
+
+                //    if (res.Count > 0)
+                //    {
+                //        entity.Params.firstData = true;
+                //        entity.Params.lastData = false;
+                //        entity.Params.updateMode = "ALL";
+                //        long tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+                //        string strRes = string.Empty;
+                //        entity.Params.tpsBatchId = tpsBatchId;
+                //        int cou = 0;
+                //        for (int i = 0; i < res.Count; i++)
+                //        {
+                //            if (cou == 500)
+                //            {
+                //                cou = 0;
+                //                strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"), "43b87acafffe4919926ec17de7b6f930");
+
+                //                entity = new StockApiResponseEntity();
+                //                entity.Params = new Params();
+                //                entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+                //                entity.data = new List<Data>();
+                //                if (strRes.IndexOf("200") >= 0)
+                //                {
+                //                    //tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+                //                    entity.Params.tpsBatchId = tpsBatchId;
+                //                    entity.Params.firstData = false;
+                //                    entity.Params.lastData = false;
+                //                    entity.Params.updateMode = "ALL";
+                //                }
+                //            }
+
+                //            string casscode = res[i].CassProductCode;
+                //            if (res[i].TypeID.Equals(34) || res[i].TypeID.Equals(345) || res[i].TypeID.Equals(163))
+                //            {
+                //                casscode = res[i].GoodsCode;
+                //            }
+                //            else
+                //            {
+                //                casscode = string.IsNullOrEmpty(res[i].CassProductCode) ? res[i].ProductCode : res[i].CassProductCode;
+
+                //            }
+                //            string typename = res[i].TypeName;
+                //            if (res[i].TypeID.Equals(9))
+                //            {
+                //                typename = "横滨/优科豪马";
+                //            }
+                //            else if (res[i].TypeID.Equals(66))
+                //            {
+                //                typename = "固铂轮胎";
+                //            }
+                //            //decimal saleprice = 0.00M;
+                //            //if (GetNanNingMarkupType().Equals(0))
+                //            //{
+                //            //    //按百分比
+                //            //    saleprice = Math.Ceiling(res[i].SalePrice * (1 + GetNanNingMarkupPrice() / 100));
+
+                //            //}
+                //            //else
+                //            //{
+                //            //    saleprice = res[i].SalePrice + GetNanNingMarkupPrice();
+                //            //}
+                //            entity.data.Add(new Data
+                //            {
+                //                CassProductCode = casscode,
+                //                ProductName = res[i].ProductName,
+                //                TypeName = typename,
+                //                SalePrice = Convert.ToDecimal(res[i].SalePrice) + Convert.ToDecimal(15),//GetContiPrice()
+                //                StockNum = res[i].StockNum,
+                //                Batch = res[i].Batch,
+                //                HouseID = res[i].HouseID,
+                //            });
+                //            cou++;
+
+                //        }
+                //        entity.Params.lastData = true;
+                //        strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"), "43b87acafffe4919926ec17de7b6f930");
+
+                //        if (strRes.IndexOf("200") >= 0)
+                //        {
+                //            //bus.UpdateStatus(res);
+                //            LogHelper.WriteLog("从化云仓全量开思推送成功!共计" + res.Count + "条数据");
+                //        }
+                //    }
+
+                //}
+                //catch (Exception ex)
+                //{
+                //    LogHelper.WriteLog("从化云仓开思推送出现错误!Message" + ex.Message);
+                //    throw;
+                //}
+                //#endregion
             }
             #endregion
 
@@ -2514,6 +2636,7 @@ namespace HouseServices
         {
             return Convert.ToDecimal(ConfigurationSettings.AppSettings["MarkupPrice"]);
         }
+        
         /// <summary>
         /// 南宁云仓加价类型
         /// </summary>
@@ -2865,19 +2988,20 @@ namespace HouseServices
             //马牌仓库名称字典
             Dictionary<string, string> dicContiHouseName = new Dictionary<string, string>();
             //dicContiHouseName.Add("45", "深圳龙岗众汇前置仓");
-            dicContiHouseName.Add("135", "揭阳仓");//智能系统揭阳城配仓
-            dicContiHouseName.Add("93,9", "广州仓");
+            dicContiHouseName.Add("135", "揭阳仓");//智能系统揭阳云仓
+            //dicContiHouseName.Add("93,9", "广州仓");
+            dicContiHouseName.Add("93", "广州仓");//东平云仓
             //dicContiHouseName.Add("84", "华南二仓");
             dicContiHouseName.Add("97", "华南二仓");//增城云仓
-            dicContiHouseName.Add("91", "深圳龙华云配仓库");
+            dicContiHouseName.Add("91", "深圳龙华云配仓库");//龙华云仓
             dicContiHouseName.Add("101", "汕头仓库");
             dicContiHouseName.Add("106", "南沙仓库");
             dicContiHouseName.Add("107", "从化仓库");
-            dicContiHouseName.Add("108", "佛山南海云仓");
-            dicContiHouseName.Add("120", "深圳宝安南山仓库");
-            dicContiHouseName.Add("129", "花都仓库");
-            dicContiHouseName.Add("138", "肇庆仓库");
-            dicContiHouseName.Add("132", "深圳光明仓");
+            //dicContiHouseName.Add("108", "佛山南海云仓");
+            //dicContiHouseName.Add("120", "深圳宝安南山仓库");
+            dicContiHouseName.Add("129", "花都仓库");//花都云仓
+            dicContiHouseName.Add("138", "肇庆仓库");//肇庆云仓
+            dicContiHouseName.Add("132", "深圳光明仓");//光明云仓
 
             foreach (var conti in dicContiHouseName)
             {
@@ -2929,11 +3053,11 @@ namespace HouseServices
                     try
                     {
                         string res = wxHttpUtility.ContiSendPostHttpRequest(contiUrl, "application/json", body);
-                        LogHelper.WriteLog("众汇前置仓和深圳马牌维京库存同步成功");
+                        LogHelper.WriteLog("马牌维京库存同步成功");
                     }
                     catch (ApplicationException ex)
                     {
-                        LogHelper.WriteLog("众汇前置仓和深圳马牌维京库存同步失败");
+                        LogHelper.WriteLog("马牌维京库存同步失败");
                     }
                 }
                 else
@@ -5079,7 +5203,7 @@ namespace HouseServices
                 //}
 
                 //处理龙华仓和汕头开思库存数据
-                if (HouseID.Equals(91) || HouseID.Equals(101) || HouseID.Equals(136) || HouseID.Equals(93))
+                if (HouseID.Equals(91) || HouseID.Equals(101) || HouseID.Equals(136) || HouseID.Equals(93) || HouseID.Equals(107))
                 {
                     if (dicCass.ContainsKey(HouseID))
                     {
@@ -5107,7 +5231,7 @@ namespace HouseServices
                     ///汕头仓Session：67d89f8d06ca4360ae0358279b7d283c
                     try
                     {
-                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value });
+                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value, SalePrice = 100 });
                         //StockApiResponseEntity STentity = new StockApiResponseEntity();
                         //STentity.Params = new Params();
                         //STentity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
@@ -5229,7 +5353,7 @@ namespace HouseServices
                     #region 龙华云仓库存同步开思
                     try
                     {
-                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value });
+                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value, SalePrice = 100 });
 
                         StockApiResponseEntity entity = new StockApiResponseEntity();
                         entity.Params = new Params();
@@ -5323,7 +5447,7 @@ namespace HouseServices
                     #region 南宁云仓库存同步开思
                     try
                     {
-                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value });
+                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value, SalePrice = 100 });
                         StockApiResponseEntity entity = new StockApiResponseEntity();
                         entity.Params = new Params();
                         entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
@@ -5426,7 +5550,7 @@ namespace HouseServices
                     #region 揭阳云仓库存同步开思
                     try
                     {
-                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value });
+                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value, SalePrice = 100 });
                         StockApiResponseEntity entity = new StockApiResponseEntity();
                         entity.Params = new Params();
                         entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
@@ -5529,7 +5653,7 @@ namespace HouseServices
                     #region 东平云仓库存同步开思
                     try
                     {
-                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value });
+                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value, SalePrice = 100 });
                         StockApiResponseEntity entity = new StockApiResponseEntity();
                         entity.Params = new Params();
                         entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
@@ -5599,12 +5723,12 @@ namespace HouseServices
                                     CassProductCode = casscode,
                                     ProductName = res[i].ProductName,
                                     TypeName = typename,
-                                    SalePrice = Convert.ToDecimal(res[i].SalePrice) + Convert.ToDecimal(12),//GetContiPrice()
+                                    SalePrice = Convert.ToDecimal(res[i].SalePrice) + Convert.ToDecimal(15),//GetContiPrice()
                                     StockNum = res[i].StockNum,
                                     Batch = res[i].Batch,
                                     HouseID = res[i].HouseID,
                                 });
-                                LogHelper.WriteLog("东平云仓开思增量推送ID:" + casscode + "，库存：" + res[i].StockNum.ToString() + "，周期：" + res[i].Batch + ",本次推送金额:" + Convert.ToDecimal(res[i].SalePrice) + ",加价金额:12");
+                                LogHelper.WriteLog("东平云仓开思增量推送ID:" + casscode + "，库存：" + res[i].StockNum.ToString() + "，周期：" + res[i].Batch + ",本次推送金额:" + Convert.ToDecimal(res[i].SalePrice) + ",加价金额:15");
                                 cou++;
 
                             }
@@ -5623,6 +5747,109 @@ namespace HouseServices
                     catch (Exception ex)
                     {
                         LogHelper.WriteLog("东平云仓开思增量推送出现错误!Message" + ex.Message);
+                        continue;
+                    }
+                    #endregion
+                }
+                else if (cass.Key.Equals(107))
+                {
+                    #region 从化云仓库存同步开思
+                    try
+                    {
+                        List<StockApiEntity> res = nwBus.QueryYunCangStockSync(new CargoProductEntity { HouseID = cass.Key, ProductCode = cass.Value, SalePrice = 100 });
+                        StockApiResponseEntity entity = new StockApiResponseEntity();
+                        entity.Params = new Params();
+                        entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+                        entity.data = new List<Data>();
+
+                        if (res.Count > 0)
+                        {
+                            entity.Params.firstData = true;
+                            entity.Params.lastData = true;
+                            entity.Params.updateMode = "CHANGE";
+                            long tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+                            string strRes = string.Empty;
+                            entity.Params.tpsBatchId = tpsBatchId;
+                            int cou = 0;
+                            for (int i = 0; i < res.Count; i++)
+                            {
+                                if (cou == 500)
+                                {
+                                    cou = 0;
+                                    strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"), "43b87acafffe4919926ec17de7b6f930");
+
+                                    entity = new StockApiResponseEntity();
+                                    entity.Params = new Params();
+                                    entity.Params.thirdPartySystemParams = new ThirdPartySystemParams();
+                                    entity.data = new List<Data>();
+                                    if (strRes.IndexOf("200") >= 0)
+                                    {
+                                        tpsBatchId = Convert.ToInt64((DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
+                                        entity.Params.tpsBatchId = tpsBatchId;
+                                        entity.Params.firstData = true;
+                                        entity.Params.lastData = true;
+                                        entity.Params.updateMode = "CHANGE";
+                                    }
+                                }
+                                string casscode = res[i].CassProductCode;
+                                if (res[i].TypeID.Equals(34) || res[i].TypeID.Equals(345) || res[i].TypeID.Equals(163))
+                                {
+                                    casscode = res[i].GoodsCode;
+                                }
+                                else
+                                {
+                                    casscode = string.IsNullOrEmpty(res[i].CassProductCode) ? res[i].ProductCode : res[i].CassProductCode;
+
+                                }
+                                string typename = res[i].TypeName;
+                                if (res[i].TypeID.Equals(9))
+                                {
+                                    typename = "横滨/优科豪马";
+                                }
+                                else if (res[i].TypeID.Equals(66))
+                                {
+                                    typename = "固铂轮胎";
+                                }
+                                //decimal saleprice = 0.00M;
+                                //if (GetNanNingMarkupType().Equals(0))
+                                //{
+                                //    //按百分比
+                                //    saleprice = Math.Ceiling(res[i].SalePrice * (1 + GetNanNingMarkupPrice() / 100));
+
+                                //}
+                                //else
+                                //{
+                                //    saleprice = res[i].SalePrice + GetNanNingMarkupPrice();
+                                //}
+                                entity.data.Add(new Data
+                                {
+                                    CassProductCode = casscode,
+                                    ProductName = res[i].ProductName,
+                                    TypeName = typename,
+                                    SalePrice = Convert.ToDecimal(res[i].SalePrice) + Convert.ToDecimal(15),//GetContiPrice()
+                                    StockNum = res[i].StockNum,
+                                    Batch = res[i].Batch,
+                                    HouseID = res[i].HouseID,
+                                });
+                                LogHelper.WriteLog("从化云仓开思增量推送ID:" + casscode + "，库存：" + res[i].StockNum.ToString() + "，周期：" + res[i].Batch + ",本次推送金额:" + Convert.ToDecimal(res[i].SalePrice) + ",加价金额:15");
+                                cou++;
+
+                            }
+                            strRes = wxHttpUtility.PostHttpRequest("https://api.cassmall.com/api", "application/json", JSON.Encode(entity).Replace("Params", "params").Replace("thirdPartySystemparams", "thirdPartySystemParams"), "43b87acafffe4919926ec17de7b6f930");
+
+
+                            LogHelper.WriteLog("从化云仓开思增量推送ID:" + tpsBatchId + ",本次推送条数:" + cou);
+                            if (strRes.IndexOf("200") >= 0)
+                            {
+                                //nwBus.UpdateStatus(res);
+                                LogHelper.WriteLog("从化云仓开思增量推送成功!共计" + res.Count + "条数据");
+                            }
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        LogHelper.WriteLog("从化云仓开思增量推送出现错误!Message" + ex.Message);
                         continue;
                     }
                     #endregion
@@ -7798,6 +8025,7 @@ namespace HouseServices
         #region 狄乐库存定时导出
         public void DiLeInventoryExport()
         {
+            return;
             CargoHouseBus houseBus = new CargoHouseBus();
             var dataList = houseBus.GetInventoryList();
             CargoProductBus bus = new CargoProductBus();
@@ -7966,6 +8194,328 @@ namespace HouseServices
             return SourceName;
         }
 
+        #endregion
+
+        #region 途虎商品推送 推送在库数量与价格
+        public static class TuhuConfig
+        {
+            // 通用配置
+            public static string Platform => Get("Tuhu.com.platform");
+            public static string AuthCode => Get("Tuhu.com.authCode");
+            public static Dictionary<int, string> Brands =>
+                Get("Tuhu.com.brands")
+                    .Split(',')
+                    .Select(x => x.Trim())
+                    .Select(x => x.Split('-'))
+                    .Where(parts => parts.Length == 2)
+                    .ToDictionary(
+                        parts => int.Parse(parts[0]),
+                        parts => parts[1]
+                    );
+            public static Dictionary<int, string> Houses =>
+                Get("Tuhu.com.houses")
+                    .Split(',')
+                    .Select(x => x.Trim())
+                    .Select(x => x.Split('-'))
+                    .Where(parts => parts.Length == 2)
+                    .ToDictionary(
+                        parts => int.Parse(parts[0]),
+                        parts => parts[1]
+                    );
+
+            // API 资源路径
+            public static string UrlPushSku => Get("Tuhu.urlpath.pushSku");
+            public static string UrlPushStock => Get("Tuhu.urlpath.pushStock");
+            public static string UrlPushPrice => Get("Tuhu.urlpath.pushPrice");
+            public static string UrlSkuDelete => Get("Tuhu.urlpath.skuDelete");
+            public static string UrlSkuDeleteAll => Get("Tuhu.urlpath.skuDeleteAll");
+
+            // 测试环境
+            public static string TestUrl => Get("Tuhu.test.url");
+            public static string TestAppId => Get("Tuhu.test.appid");
+            public static string TestAppSecret => Get("Tuhu.test.appsecret");
+
+            // 正式环境
+            public static string ProdUrl => Get("Tuhu.prod.url");
+            public static string ProdAppId => Get("Tuhu.prod.appid");
+            public static string ProdAppSecret => Get("Tuhu.prod.appsecret");
+
+            // 内部方法
+            private static string Get(string key)
+            {
+                return ConfigurationManager.AppSettings[key] ?? "";
+            }
+        }
+        public static string Sha256(string input)
+        {
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                var bytes = System.Text.Encoding.UTF8.GetBytes(input);
+                var hash = sha.ComputeHash(bytes);
+                return BitConverter.ToString(hash).Replace("-", "").ToLower();
+            }
+        }
+
+        /// <summary>
+        /// 限制每秒最多 50 次请求（QPS = 50）
+        /// </summary>
+        public static class RateLimiter
+        {
+            private static readonly object _lock = new object();
+            private static readonly Queue<long> _timestamps = new Queue<long>();
+            private const int MAX_QPS = 50;
+
+            public static void Wait()
+            {
+                lock (_lock)
+                {
+                    long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    long oneSecondAgo = now - 1000;
+
+                    // 移除 1 秒前的请求时间戳
+                    while (_timestamps.Count > 0 && _timestamps.Peek() < oneSecondAgo)
+                    {
+                        _timestamps.Dequeue();
+                    }
+
+                    // 如果当前已经达到了 50 QPS，则等待
+                    if (_timestamps.Count >= MAX_QPS)
+                    {
+                        long waitMs = _timestamps.Peek() - oneSecondAgo;
+                        if (waitMs > 0)
+                            Thread.Sleep((int)waitMs);
+                    }
+
+                    // 记录本次请求时间戳
+                    _timestamps.Enqueue(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// 途虎全量推送商品数据
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        //void TuhuPush_Task(object sender, System.Timers.ElapsedEventArgs e)
+        void TuhuFullSync_Task()
+        {
+            //机器人账号
+            LogEntity log = new LogEntity();
+            log.IPAddress = "";
+            log.Moudle = "服务管理";
+            log.Status = "0";
+            log.NvgPage = "途虎推送定时任务";
+            log.UserID = RobotID;
+            log.Operate = "A";
+
+            //获取途虎Url连接信息
+            string tuhuUrl = TuhuConfig.TestUrl;
+
+
+
+            LogBus logbus = new LogBus();
+            CargoInterfaceBus bus = new CargoInterfaceBus();
+            // 记录途虎响应信息
+            List<string> skuPushResList = new List<string>();
+            List<string> pushStockResList = new List<string>();
+            List<string> pushPriceResList = new List<string>();
+            string skuDelAllRes = null;
+            try
+            {
+                //获取商品信息
+                var brandIDs = TuhuConfig.Brands.Keys.ToArray();
+                var houseIDs = TuhuConfig.Houses.Keys.ToArray();
+                var prductData = bus.QueryTuhuStockData(brandIDs, houseIDs);
+
+                // 公共：构建请求头
+                Dictionary<string, string> BuildHeaders()
+                {
+                    string timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+                    string nonceStr = Guid.NewGuid().ToString("N");
+
+                    string sign = Sha256(
+                        $"appId={TuhuConfig.TestAppId}&nonceStr={nonceStr}&signType=sha256&timestamp={timestampMs}{TuhuConfig.TestAppSecret}"
+                    );
+
+                    return new Dictionary<string, string>
+                    {
+                        ["appid"] = TuhuConfig.TestAppId,
+                        ["noncestr"] = nonceStr,
+                        ["signType"] = "sha256",
+                        ["sign"] = sign,
+                        ["authType"] = "openapi",
+                        ["timestamp"] = timestampMs
+                    };
+                }
+
+                // 公共：发送 POST JSON
+                string PostJson(string url, object body, Dictionary<string, string> headers)
+                {
+                    //使用匿名方法跳过 SSL/TLS 证书校验
+                    ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+                    ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+
+                    var req = (HttpWebRequest)WebRequest.Create(url);
+                    req.Method = "POST";
+                    req.ContentType = "application/json";
+
+                    foreach (var h in headers)
+                        req.Headers[h.Key] = h.Value;
+
+                    string bodyJson = JsonConvert.SerializeObject(body);
+                    var bytes = Encoding.UTF8.GetBytes(bodyJson);
+                    req.ContentLength = bytes.Length;
+
+                    using (var stream = req.GetRequestStream())
+                        stream.Write(bytes, 0, bytes.Length);
+
+                    using (var res = req.GetResponse())
+                    using (var stream = res.GetResponseStream())
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                        return reader.ReadToEnd();
+                }
+
+                // ==================== 业务调用 ====================
+
+                // 构建通用头
+                var comheaders = BuildHeaders();
+
+                //删除指定商品
+                //var skuDelRes = PostJson(
+                //    TuhuConfig.TestUrl + TuhuConfig.UrlSkuDeleteAll,
+                //    new TuhuPushDto(TuhuConfig.Platform, TuhuConfig.AuthCode)
+                //    {
+                //        erpSkuCodes = prductData.Select(x => x.ProductCode).Take(50).ToList()
+                //    },
+                //    comheaders
+                //);
+
+                //删除所有商品
+                skuDelAllRes = PostJson(
+                    TuhuConfig.TestUrl + TuhuConfig.UrlSkuDeleteAll,
+                    new TuhuPushDto(TuhuConfig.Platform, TuhuConfig.AuthCode),
+                    comheaders
+                );
+
+                // 开始推送商品数据
+                // 每批 50 条
+                var batches = prductData
+                    .Select((x, i) => new { x, i })
+                    .GroupBy(x => x.i / 50)
+                    .Select(g => g.Select(x => x.x).ToList());
+
+                foreach (var batch in batches)
+                {
+                    // 1. 推送商品信息
+                    //var tuhuPushSkuBody = new TuhuPushDto()
+                    //{
+                    //    platform = TuhuConfig.Platform,
+                    //    authCode = TuhuConfig.AuthCode,
+                    //    skuInfos = batch.Select(x => new Tuhu_Sku
+                    //    {
+                    //        version = 1,
+                    //        erpSkuCode = x.ProductCode,
+                    //        ProductCode = x.ProductCode,
+                    //        GoodsCode = x.GoodsCode,
+                    //        TypeID = x.TypeID,
+                    //        TypeName = x.TypeName,
+                    //        Model = x.Model,
+                    //        Specs = x.Specs,
+                    //        Figure = x.Figure,
+                    //        HubDiameter = x.HubDiameter,
+                    //        LoadIndex = x.LoadIndex,
+                    //        SpeedLevel = x.SpeedLevel,
+                    //        Born = x.Born
+                    //    }).ToList()
+                    //};
+
+                    //RateLimiter.Wait();
+                    //var skuRes = PostJson(
+                    //    TuhuConfig.TestUrl + TuhuConfig.UrlPushSku,
+                    //    tuhuPushSkuBody,
+                    //    comheaders
+                    //);
+                    //skuPushResList.Add(skuRes);
+                    //continue;
+
+                    // 2. 推送库存
+                    RateLimiter.Wait();
+                    var tuhuPushStockBody = new TuhuPushDto()
+                    {
+                        platform = TuhuConfig.Platform,
+                        authCode = TuhuConfig.AuthCode,
+                        skuInfos = batch.Select(x => new Tuhu_Sku
+                        {
+                            version = 1,
+                            erpSkuCode = x.ProductCode,
+                            ProductCode = x.ProductCode,
+                            Piece = x.Piece,
+                        }).ToList()
+                    };
+                    var stockRes = PostJson(
+                        TuhuConfig.TestUrl + TuhuConfig.UrlPushStock,
+                        tuhuPushStockBody,
+                        comheaders
+                    );
+                    pushStockResList.Add(stockRes);
+
+                    // 3. 推送价格
+                    RateLimiter.Wait();
+                    var tuhuPushPriceBody = new TuhuPushDto()
+                    {
+                        platform = TuhuConfig.Platform,
+                        authCode = TuhuConfig.AuthCode,
+                        skuInfos = batch.Select(x => new Tuhu_Sku
+                        {
+                            version = 1,
+                            erpSkuCode = x.ProductCode,
+                            SalePrice = x.SalePrice,
+                        }).ToList()
+                    };
+                    var priceRes = PostJson(
+                        TuhuConfig.TestUrl + TuhuConfig.UrlPushPrice,
+                        tuhuPushPriceBody,
+                        comheaders
+                    );
+                    pushPriceResList.Add(priceRes);
+                }
+
+                //记录日志
+                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品响应集：{string.Join(",", skuPushResList)}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                log.Memo = $"途虎商品同步成功。同步数量：{prductData.Count()}。{tuhuRes}";
+                logbus.InsertLog(log);
+                LogHelper.WriteLog("途虎商品同步成功");
+            }
+            catch (Exception ex)
+            {
+                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品响应集：{string.Join(",", skuPushResList)}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                log.Status = "1";
+                log.Memo = $"途虎商品同步失败。{tuhuRes}" + ex.FormatErr();
+                LogHelper.WriteLog("途虎商品同步失败\r\n\t" + ex.FormatErr());
+            }
+        }
+#pragma warning disable IDE0051
+        void TuhuIncrementalSync_Task()
+        {
+            string StProductCode = string.Empty;
+            HashEntry[] HCYCredisValues = RedisHelper.HashGetAll("TuhuStockSyc");
+            var dict = HCYCredisValues.ToDictionary(x => x.Name.ToString(), x => x.Value.ToString());
+
+
+
+            foreach (RedisValue redisValue in HCYCredisValues)
+            {
+                string key = redisValue.ToString();//93_34_LTCT245452005
+                string ProductCodeV = Convert.ToString(RedisHelper.HashGet("HCYCHouseStockSyc", key));
+                int HouseID = Convert.ToInt32(key.Split('_')[0]);
+                //品牌ID
+                int TypeID = Convert.ToInt32(key.Split('_')[1]);
+                //产品编码
+                string ProductCode = Convert.ToString(key.Split('_')[2]);
+            }
+        }
         #endregion
     }
 }

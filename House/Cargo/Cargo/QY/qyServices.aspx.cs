@@ -1137,7 +1137,7 @@ namespace Cargo.QY
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 保存上传的签收照片
@@ -1254,7 +1254,7 @@ namespace Cargo.QY
             //返回处理结果
             string res = JSON.Encode(msg);
             Response.Write(res);
-            Response.End();
+            Response.Flush();
         }
         /// <summary>
         /// 查询微信 商城 未确认的订单
@@ -3528,6 +3528,8 @@ namespace Cargo.QY
             {
                 RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
             }
+            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
             inter.ScanMoveOrderInCargo(entity, log);
 
             //判断移库扫描的状态
@@ -4549,6 +4551,8 @@ namespace Cargo.QY
             {
                 RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
             }
+            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
             inter.scanTagInCargo(new CargoProductEntity { ProductName = ProductName, GoodsCode = GoodsCode, HouseID = HouseID, TypeID = TypeID, Specs = Specs, Figure = Figure, Model = Model, Batch = Batch, ContainerCode = ContainerCode, TagCode = TagCode, BatchYear = bYear, BatchWeek = bWeek, InCargoID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString(), OPID = UserID, LoadIndex = LoadIndex, SpeedLevel = SpeedLevel, Meridian = "R", TreadWidth = TreadWidth, FlatRatio = flatRadio, HubDiameter = HubDiameter, InCargoStatus = "1", InHouseTime = DateTime.Now, OperaType = "1", Born = Born, Assort = Assort, TyreCode = TyreCode, Numbers = Convert.ToInt32(InCargoNum), ParentID = parentID, Source = Source, SourceOrderNo = SourceOrderNo, BelongMonth = BelongMonth, UnitPrice = unitPrice, FinalCostPrice = finalCostPrice, CostPrice = costPrice, TaxCostPrice = taxCostPrice, NoTaxCostPrice = noTaxCostPrice, TradePrice = tradePrice, SalePrice = salePrice, HLYReturnID = HLYReturnID, BelongDepart = BelongDepart, SpecsType = SpecsType, Company = "0", Supplier = Supplier, SuppClientNum = SuppClientNum, ProductCode = ProductCode, SupplierAddress = SupplierAddress, InHousePrice = InHousePrice, NextDayPrice = NextDayPrice, WholesalePrice= WholesalePrice, GoodsClass="0" }, log);
             msg.Message = Batch;
         ERR:

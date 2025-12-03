@@ -1299,25 +1299,25 @@ namespace House.Business.Cargo
             CargoHouseBus house = new CargoHouseBus();
 
             var allProduct = new List<CargoProductEntity>();
-            if (isFull)
-            {
+            //if (isFull)
+            //{
                 //全量
                 var houseIDs = list.Select(x => x.HouseID).Distinct().ToList();
                 allProduct = prodctMan.QueryProductByHousIDs(houseIDs);
-            }
-            else
-            {
-                //增量
-                var dataItem = list.FirstOrDefault();
-                var prodList= list.Select(x => x.ProductCode).Distinct().ToList();
-                allProduct = prodctMan.QueryProductByHousIDs(
-                    new CargoProductEntity
-                    {
-                        HouseID = dataItem.HouseID,
-                        TypeID = dataItem.TypeID,
-                        ProductCodeStr = $@"'{string.Join("','", prodList)}'"
-                    });
-            }
+            //}
+            //else
+            //{
+            //    //增量
+            //    var dataItem = list.FirstOrDefault();
+            //var prodList = list.Select(x => x.ProductCode).Distinct().ToList();
+            //allProduct = prodctMan.QueryProductByHousIDs(
+            //    new CargoProductEntity
+            //    {
+            //        HouseID = dataItem.HouseID,
+            //        TypeID = dataItem.TypeID,
+            //        ProductCodeStr = $@"'{string.Join("','", prodList)}'"
+            //    });
+            //}
             var toUpdateContainerGoods = new List<CargoContainerGoodsEntity>();
             var toAddProductDict = new Dictionary<string, CargoProductEntity>();
 
@@ -1338,7 +1338,7 @@ namespace House.Business.Cargo
                     item.SpecsType = "5";
                     item.BelongMonth = DateTime.Now.ToString("yyyyMM");
                     item.InCargoStatus = "1";
-                    //1.判断是否存在产品数据，如果存在就修改库存。或者新增进来
+                    //1.通过构建的唯一key比较判断是否存在前置仓产品，如果存在就修改库存数，否则新增
                     string key = GetKey(item);
                     if (productDict.TryGetValue(key, out CargoProductEntity matchedItem))
                     {
@@ -1645,6 +1645,19 @@ namespace House.Business.Cargo
             return man.GetProductMapping(order);
         }
 
+        #endregion
+
+        #region 途虎商品同步
+
+        /// <summary>
+        /// 查询途虎商品数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoProductEntity> QueryTuhuStockData(int[] typeIDs, int[] houseIDs)
+        {
+            return man.QueryTuhuStockData(typeIDs, houseIDs);
+        }
         #endregion
     }
 }

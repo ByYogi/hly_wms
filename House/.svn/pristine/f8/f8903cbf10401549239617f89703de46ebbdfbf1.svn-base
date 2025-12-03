@@ -1,0 +1,567 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
+namespace House.Entity.Cargo
+{
+    /// <summary>
+    /// 货位仓库产品显示实体
+    /// </summary>
+    [Serializable]
+    public class CargoContainerShowEntity
+    {
+        
+        public string LockStockName { get; set; }
+        public DateTime LockStockDate { get; set; }
+        public string LockStockMemo { get; set; }
+        public DateTime UnLockStockDate { get; set; }
+        public string QalityRemark { get; set; }
+        public string TyreModel { get; set; }
+        public string OwnerShip { get; set; }
+        public string GoodsClass { get; set; }
+        public string GoodsName { get; set; }
+        public int TotalRowNum { get; set; }
+        public int TotalPiece { get; set; }
+
+        public decimal TotalOnlyOverDayFee { get; set; }
+        public decimal OverDueFee { get; set; }
+        public int UpClientID { get; set; }
+
+        public string UpClientShortName { get; set; }
+        public string ShowTypeName { get; set; }
+        public string ShowGoodsCode { get; set; }
+        /// <summary>
+        /// 是否显示库存 0：显示1：不显示
+        /// </summary>
+        public string IsShowStock { get; set; }
+        /// <summary>
+        /// 供应商名称
+        /// </summary>
+        public string Supplier { get; set; }
+        /// <summary>
+        /// 供应商编码
+        /// </summary>
+        public int SuppClientNum { get; set; }
+        public int ContainerIDCount { get; set; }
+        public int SourceOrderNoCount { get; set; }
+        /// <summary>
+        /// 供应商地址
+        /// </summary>
+        public string SupplierAddress { get; set; }
+        /// <summary>
+        /// 货位产品关联表ID
+        /// </summary>
+        public Int64 ID { get; set; }
+        /// <summary>
+        /// 表主键货位ID
+        /// </summary>
+        public int ContainerID { get; set; }
+        /// <summary>
+        /// 货位代码
+        /// </summary>
+        public string ContainerCode { get; set; }
+        /// <summary>
+        /// 货位号
+        /// </summary>
+        public int ContainerNum { get; set; }
+        /// <summary>
+        /// 货位类型
+        /// </summary>
+        public string ContainerType { get; set; }
+        /// <summary>
+        /// 所在区域ID
+        /// </summary>
+        public int AreaID { get; set; }
+        /// <summary>
+        /// 可放最大件数
+        /// </summary>
+        public int MaxPiece { get; set; }
+        /// <summary>
+        /// 可放最大重量
+        /// </summary>
+        public decimal MaxWeight { get; set; }
+        /// <summary>
+        /// 可放最大体积
+        /// </summary>
+        public decimal MaxVolume { get; set; }
+        /// <summary>
+        /// 预警件数
+        /// </summary>
+        public int WarnPiece { get; set; }
+        /// <summary>
+        /// 在货位上件数
+        /// </summary>
+        public int InPiece { get; set; }
+        /// <summary>
+        /// 拉上件数
+        /// </summary>
+        public int Piece { get; set; }
+        /// <summary>
+        /// 原有数量
+        /// </summary>
+        public int OldPiece { get; set; }
+        /// <summary>
+        /// 货位备注
+        /// </summary>
+        public string Remark { get; set; }
+        /// <summary>
+        /// 操作时间
+        /// </summary>
+        public DateTime OP_DATE { get; set; }
+        /// <summary>
+        /// 所在仓库ID
+        /// </summary>
+        public int HouseID { get; set; }
+        public string HouseIDStr { get; set; }
+        public string HouseIDASC { get; set; }
+        public string OrderByHouseID { get; set; }
+        /// <summary>
+        /// 所在仓库
+        /// </summary>
+        public string HouseName { get; set; }
+        /// <summary>
+        /// 所在区域
+        /// </summary>
+        public string AreaName { get; set; }
+        /// <summary>
+        /// 所在仓库代码
+        /// </summary>
+        public string HouseCode { get; set; }
+        /// <summary>
+        /// 一级区域ID
+        /// </summary>
+        public int FirstAreaID { get; set; }
+        public string ParamFirstAreaID { get; set; }
+        /// <summary>
+        /// 一级区域名称
+        /// </summary>
+        public string FirstAreaName { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public int ParentAreaID { get; set; }
+        public string ParamParentAreaID { get; set; }
+        /// <summary>
+        /// 一级区域名称 
+        /// </summary>
+        public string ParentAreaName { get; set; }
+        /// <summary>
+        /// 排放顺序ID
+        /// </summary>
+        public string EmOrderID { get; set; }
+        /// <summary>
+        /// 排放顺序名称
+        /// </summary>
+        public string EmOrder { get; set; }
+        /// <summary>
+        /// 产品分类ID
+        /// </summary>
+        public int TypeID { get; set; }
+        /// <summary>
+        /// 分类名称
+        /// </summary>
+        public string TypeName { get; set; }
+        /// <summary>
+        /// 星级
+        /// </summary>
+        public int Star { get; set; }
+        /// <summary>
+        /// 允许拉上件数
+        /// </summary>
+        public int allowPiece { get; set; }
+        /// <summary>
+        /// 产品ID
+        /// </summary>
+        public Int64 ProductID { get; set; }
+
+        /// <summary>
+        /// 产品名称
+        /// </summary>
+        public string ProductName { get; set; }
+        /// <summary>
+        /// 型号
+        /// </summary>
+        public string Model { get; set; }
+        /// <summary>
+        /// 货品代码
+        /// </summary>
+        public string GoodsCode { get; set; }
+        /// <summary>
+        /// 规格
+        /// </summary>
+        public string Specs { get; set; }
+        /// <summary>
+        /// 花纹
+        /// </summary>
+        public string Figure { get; set; }
+        /// <summary>
+        /// 胎面宽度
+        /// </summary>
+        public int TreadWidth { get; set; }
+        /// <summary>
+        /// 轮胎扁平比
+        /// </summary>
+        public int FlatRatio { get; set; }
+        /// <summary>
+        /// 子午线
+        /// </summary>
+        public string Meridian { get; set; }
+        /// <summary>
+        /// 轮毂直径
+        /// </summary>
+        public int HubDiameter { get; set; }
+        /// <summary>
+        /// 载重指数
+        /// </summary>
+        public string LoadIndex { get; set; }
+        /// <summary>
+        /// 速度级别
+        /// </summary>
+        public string SpeedLevel { get; set; }
+        /// <summary>
+        /// 最高速度
+        /// </summary>
+        public int SpeedMax { get; set; }
+        /// <summary>
+        /// 尺寸
+        /// </summary>
+        public string Size { get; set; }
+        /// <summary>
+        /// 入库时间
+        /// </summary>
+        public DateTime InHouseTime { get; set; }
+        /// <summary>
+        /// 在库天数
+        /// </summary>
+        public string InHouseDay { get; set; }
+        /// <summary>
+        /// 入库状态
+        /// 0：False，未入库
+        /// 1：True，已入库
+        /// </summary>
+        public string InCargoStatus { get; set; }
+        /// <summary>
+        /// 是否打印入库单
+        /// 0：False，未打印
+        /// 1：True，已打印
+        /// </summary>
+        public bool IsPrintInCargo { get; set; }
+        /// <summary>
+        /// 入库单
+        /// </summary>
+        public string InCargoID { get; set; }
+        /// <summary>
+        /// 父类型ID
+        /// </summary> 
+        public int TypeParentID { get; set; }
+        /// <summary>
+        /// 父类型ID--给微信小程序用
+        /// </summary> 
+        public string WXTypeParentID { get; set; }
+        /// <summary>
+        /// 父类型名称
+        /// </summary>
+        public string TypeParentName { get; set; }
+        /// <summary>
+        /// 单个重量
+        /// </summary>
+        public decimal Weight { get; set; }
+        /// <summary>
+        /// 单价
+        /// </summary>
+        public decimal UnitPrice { get; set; }
+        public decimal OldUnitPrice { get; set; }
+        /// <summary>
+        /// 数量
+        /// </summary>
+        public int Numbers { get; set; }
+        /// <summary>
+        /// 销售价
+        /// </summary>
+        public decimal SalePrice { get; set; }
+        /// <summary>
+        /// 成本价
+        /// </summary>
+        public decimal CostPrice { get; set; }
+        /// <summary>
+        /// 进仓价
+        /// </summary>
+        public decimal InHousePrice { get; set; }
+        /// <summary>
+        /// 批发价
+        /// </summary>
+        public decimal TradePrice { get; set; }
+        /// <summary>
+        /// 供应商销售价
+        /// </summary>
+        public decimal SupplySalePrice { get; set; }
+        /// <summary>
+        /// 包装
+        /// </summary>
+        public string Package { get; set; }
+        /// <summary>
+        /// 包装数量
+        /// </summary>
+        public int PackageNum { get; set; }
+        /// <summary>
+        /// 包装重量
+        /// </summary>
+        public decimal PackageWeight { get; set; }
+        /// <summary>
+        /// 出库单号
+        /// </summary>
+        public string OutCargoID { get; set; }
+        /// <summary>
+        /// 是否打印出库单
+        /// </summary>
+        public bool IsPrintOutCargo { get; set; }
+        /// <summary>
+        /// 是否打印入库单
+        /// </summary>
+        public string PrintInCargo { get; set; }
+        /// <summary>
+        /// 出库时间
+        /// </summary>
+        public DateTime OutHouseTime { get; set; }
+        /// <summary>
+        /// 查询条件是否打开 
+        /// </summary>
+        public string IsPrint { get; set; }
+        /// <summary>
+        /// 实际销售价业务员价
+        /// </summary>
+        public decimal ActSalePrice { get; set; }
+        /// <summary>
+        /// 配送费
+        /// </summary>
+        public decimal TransitFee { get; set; }
+        /// <summary>
+        /// 批次
+        /// </summary>
+        public string Batch { get; set; }
+        /// <summary>
+        /// 批次年
+        /// </summary>
+        public int BatchYear { get; set; }
+        /// <summary>
+        /// 批次周
+        /// </summary>
+        public int BatchWeek { get; set; }
+        public int BatchWeekStart { get; set; }
+        public int BatchWeekEnd { get; set; }
+        /// <summary>
+        /// 查询所属仓库ID
+        /// </summary>
+        public string CargoPermisID { get; set; }
+        /// <summary>
+        /// 订单号
+        /// </summary>
+        public string OrderNo { get; set; }
+        public long OrderID { get; set; }
+        /// <summary>
+        /// 关联订单
+        /// </summary>
+        public string RelateOrderNo { get; set; }
+        /// <summary>
+        /// 是否增加件数
+        /// True：增加
+        /// False：减少
+        /// </summary>
+        public bool IsAdd { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public DateTime SnapStartDate { get; set; }
+        public DateTime SnapEndDate { get; set; }
+        /// <summary>
+        /// 入库类型
+        /// </summary>
+        public string InHouseType { get; set; }
+        public string AcceptUnit { get; set; }
+        public string AcceptAddress { get; set; }
+        public string AcceptPeople { get; set; }
+        public string AcceptTelephone { get; set; }
+        public string AcceptCellphone { get; set; }
+        public string LogisAwbNo { get; set; }
+        public string Dep { get; set; }
+        public string Dest { get; set; }
+        public int ShelvesNum { get; set; }
+        public string OnShelves { get; set; }
+        public string Title { get; set; }
+        public string FileName { get; set; }
+        public Int64 OnSaleID { get; set; }
+        /// <summary>
+        /// 出库类型
+        /// </summary>
+        public string OutHouseType { get; set; }
+        public string SourceOrderNo { get; set; }
+        public string Source { get; set; }
+        public string SourceName { get; set; }
+        public string SourceCode { get; set; }
+
+        public string Memo { get; set; }
+        public string SaleType { get; set; }
+        public string Born { get; set; }
+        public string Assort { get; set; }
+        public string TagCode { get; set; }
+        public string OutCargoOperID { get; set; }
+        public DateTime InCargoTime { get; set; }
+        public DateTime OutCargoTime { get; set; }
+        public int Consume { get; set; }
+        public decimal ProductPrice { get; set; }
+        public decimal SigningPrice { get; set; }
+        public decimal minPurchase { get; set; }
+        public string TyreCode { get; set; }
+        /// <summary>
+        /// 是否是直减
+        /// </summary>
+        public bool IsCut { get; set; }
+        /// <summary>
+        /// 直减金额
+        /// </summary>
+        public decimal CutEntry { get; set; }
+        /// <summary>
+        /// 规则类型
+        /// </summary>
+        public string RuleType { get; set; }
+        /// <summary>
+        /// 规则ID
+        /// </summary>
+        public string RuleID { get; set; }
+        /// <summary>
+        /// 规则标题
+        /// </summary>
+        public string RuleTitle { get; set; }
+        /// <summary>
+        /// 适用客户
+        /// </summary>
+        public string SuitClientNum { get; set; }
+        /// <summary>
+        /// 仓库订单代码 
+        /// </summary>
+        public string OrderCode { get; set; }
+        /// <summary>
+        /// 订单出发站
+        /// </summary>
+        public string OrderDep { get; set; }
+        public string Distance { get; set; }
+        public string Duration { get; set; }
+        /// <summary>
+        /// 价格类型
+        /// </summary>
+        public int PriceType { get; set; }
+        /// <summary>
+        /// 对店销售价
+        /// </summary>
+        public decimal CostPriceStore { get; set; }
+        /// <summary>
+        /// 对客销售价
+        /// </summary>
+        public decimal SalePriceClient { get; set; }
+        /// <summary>
+        /// 归属部门
+        /// </summary>
+        public string BelongDepart { get; set; }
+        public string BelongHouse { get; set; }
+        /// <summary>
+        /// 所属公司
+        /// </summary>
+        public string Company { get; set; }
+        /// <summary>
+        /// 规格类型
+        /// </summary>
+        public string SpecsType { get; set; }
+        public string PayClientName { get; set; }
+        public string TypeIDs { get; set; }
+        public string PurchaserID { get; set; }
+        public string PurchaserName { get; set; }
+        public string PurchaserBoss { get; set; }
+        public string PurchaserAddress { get; set; }
+        public string PurchaserCellphone { get; set; }
+
+        public int PayClientNum { get; set; }
+        /// <summary>
+        /// 确认销售价
+        /// </summary>
+        public decimal ConfirmSalePrice { get; set; }
+        /// <summary>
+        /// 锁定库存
+        /// </summary>
+        public string IsLockStock { get; set; }
+        public string ThrowGood { get; set; }
+        public decimal DeliveryFee { get; set; }
+        public string LogisID { get; set; }
+        public string Thumbnail { get; set; }
+        public string DetailDrawing { get; set; }
+        public decimal TotalCharge { get; set; }
+        public string Longitude { get; set; }
+        public string Latitude { get; set; }
+        /// <summary>
+        /// 进12个月销售数量
+        /// </summary>
+        public int a12Piece { get; set; }
+        /// <summary>
+        /// 进6个月销售数量
+        /// </summary>
+        public int a6Piece { get; set; }
+        /// <summary>
+        /// 进3个月销售数量
+        /// </summary>
+        public int a3Piece { get; set; }
+        /// <summary>
+        /// 进1个月销售数量
+        /// </summary>
+        public int a1Piece { get; set; }
+        /// <summary>
+        /// 排序类型
+        /// </summary>
+        public string SortType { get; set; }
+        public string ShopCode { get; set; }
+        public string ClientName { get; set; }
+        /// <summary>
+        /// 产品编码
+        /// </summary>
+        public string ProductCode { get; set; }
+        public string MoveOrderNo { get; set; }
+        public string MoveStatus { get; set; }
+        /// <summary>
+        /// 次日达运费
+        /// </summary>
+        public decimal NextDayLogisFee { get; set; }
+
+        /// <summary>
+        /// 养护品标签
+        /// </summary>
+        public List<string> TagCodeList { get; set; }
+        /// <summary>
+        /// 二批客户次日达价
+        /// </summary>
+        public decimal NextDayPrice { get; set; }
+        public decimal WholesalePrice { get; set; }
+        /// <summary>
+        /// 限制品牌
+        /// </summary>
+        public string NoType { get; set; }
+        public int IsReserve { get; set; }
+        /// <summary>
+        /// 去NULL,替换危险字符
+        /// </summary>
+        public void EnSafe()
+        {
+            PropertyInfo[] pSource = this.GetType().GetProperties();
+
+            foreach (PropertyInfo s in pSource)
+            {
+                if (s.PropertyType.Name.ToUpper().Contains("STRING"))
+                {
+                    if (s.GetValue(this, null) == null)
+                        s.SetValue(this, "", null);
+                    else
+                        s.SetValue(this, s.GetValue(this, null).ToString().Replace("'", "’"), null);
+                }
+            }
+        }
+    }
+}

@@ -54,6 +54,8 @@ using static System.Net.WebRequestMethods;
 
 namespace Cargo.Interface
 {
+    //这是是声明告诉编译器以下的方法没有引用也没事，不要把方法代码变暗，影响可读性。 pragma warning disable IDE0051
+#pragma warning disable IDE0051
     /// <summary>
     /// MiniProSer 的摘要说明
     /// </summary>
@@ -70,7 +72,7 @@ namespace Cargo.Interface
 #if DEBUG
         public bool IsDebug = true;
 #else
-     public bool IsDebug = false;
+        public bool IsDebug = false;
 #endif
 
         private static string Acctoken = string.Empty;
@@ -3514,6 +3516,8 @@ namespace Cargo.Interface
                 {
                     RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                 }
+                RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+
             }
 
             if (CheckOutType.Equals("3"))
@@ -3652,7 +3656,7 @@ namespace Cargo.Interface
             CargoWeiXinBus wbus = new CargoWeiXinBus();
             CargoPriceBus price = new CargoPriceBus();
             CargoProductBus productBus = new CargoProductBus();
-            wxUser.HouseID = string.IsNullOrEmpty(Convert.ToString(context.Request["HouseID"])) || Convert.ToString(context.Request["HouseID"])== "undefined" ? wxUser.HouseID : Convert.ToInt32(context.Request["HouseID"]);
+            wxUser.HouseID = string.IsNullOrEmpty(Convert.ToString(context.Request["HouseID"])) || Convert.ToString(context.Request["HouseID"]) == "undefined" ? wxUser.HouseID : Convert.ToInt32(context.Request["HouseID"]);
             int PromotionType = Convert.ToInt32(context.Request["PromotionType"]);//0:正价1:特价促销2：预订单
             CargoHouseEntity houseEnt = house.QueryCargoHouseByID(wxUser.HouseID);
             string YPSendType = string.IsNullOrEmpty(Convert.ToString(context.Request["YPSendType"])) ? "0" : Convert.ToString(context.Request["YPSendType"]);//配送方式 0：急送，1：自提2：快递
@@ -3976,7 +3980,7 @@ namespace Cargo.Interface
                     //Dictionary<String, String> rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "");
                     Dictionary<String, String> rsp = new Dictionary<string, string>();
                     if (IsDebug)
-                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://14aa9a64.r9.cpolar.cn/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
+                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://39822c74.r15.cpolar.top/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     else
                         rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     Dictionary<String, String> payinfoDic = payinfo(rsp);
@@ -4101,7 +4105,7 @@ namespace Cargo.Interface
             string SuppClientNum = "551098";//供应商编码 供应商默认狄乐汽服OE
             string RuleID = Convert.ToString(context.Request["RuleID"]);//促销规则ID    第一道防线
             string PaymentType = Convert.ToString(context.Request["PaymentType"]);// (1:定金, 2:尾款 3:全款) 
-            
+
             if (String.IsNullOrEmpty(YPOrderType)) { weiChat.code = 2; weiChat.msg = "订单类型有误"; goto ERROR; }
             if (String.IsNullOrEmpty(YPName)) { weiChat.code = 2; weiChat.msg = "购买人不能为空"; goto ERROR; }
             if (String.IsNullOrEmpty(YPCellphone)) { weiChat.code = 2; weiChat.msg = "购买手机号不能为空"; goto ERROR; }
@@ -4390,7 +4394,7 @@ namespace Cargo.Interface
                     //Dictionary<String, String> rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(YPTotalMoney) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "");
                     Dictionary<String, String> rsp = new Dictionary<string, string>();
                     if (IsDebug)
-                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(Deposit) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://14aa9a64.r9.cpolar.cn/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
+                        rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(Deposit) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "http://39822c74.r15.cpolar.top/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     else
                         rsp = sybService.pay(Convert.ToInt64(Convert.ToDecimal(Deposit) * 100), orderno, "W06", wxUser.HouseName + "-小程序支付", YPRemark, wxUser.wxOpenID, "", "https://dlt.neway5.com/Interface/AdvanceUnionPaySuccess.aspx", "", paymenttype: PaymentType);
                     Dictionary<String, String> payinfoDic = payinfo(rsp);
@@ -4860,7 +4864,7 @@ namespace Cargo.Interface
             if (PayMentType == "1" && IsReserve == 1)
             {
                 //订金
-                result[0].TotalCharge = Math.Round(result[0].TotalCharge * 0.3M,2, MidpointRounding.AwayFromZero);
+                result[0].TotalCharge = Math.Round(result[0].TotalCharge * 0.3M, 2, MidpointRounding.AwayFromZero);
             }
             int wxZJ = (int)(result[0].TotalCharge * 100);
 
@@ -4872,11 +4876,11 @@ namespace Cargo.Interface
                 if (IsReserve == 1)
                 {
                     OrderNo = OrderNo + "_" + PayMentType;
-                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://14aa9a64.r9.cpolar.cn/Interface/AdvanceUnionPaySuccess.aspx", "");
+                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://39822c74.r15.cpolar.top/Interface/AdvanceUnionPaySuccess.aspx", "");
                 }
                 else
                 {
-                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://14aa9a64.r9.cpolar.cn/Interface/UnionPaySuccess.aspx", "");
+                    rsp = sybService.pay(Convert.ToInt64(wxZJ), OrderNo, "W06", "慧采云仓小程序支付", "再次支付", wxUser.wxOpenID, "", "http://39822c74.r15.cpolar.top/Interface/UnionPaySuccess.aspx", "");
                 }
             }
             else
@@ -5737,48 +5741,6 @@ namespace Cargo.Interface
         }
         #endregion
 
-        public void ProcessRequest(HttpContext context)
-        {
-            #region 缓存
-            string[] serverlist = ConfigurationSettings.AppSettings["memcachedServer"].Split('/');
-            SockIOPool pool = SockIOPool.GetInstance(ConfigurationSettings.AppSettings["PoolName"]);
-            pool.SetServers(serverlist);
-            pool.InitConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["InitConnections"]);//连接池初始容量
-            pool.MinConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MinConnections"]);//最小容量
-            pool.MaxConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MaxConnections"]);//最大容量
-            pool.SocketConnectTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketConnectTimeout"]);//数据读取超时时间
-            pool.SocketTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketTimeout"]);//Socket连接超时时间
-            pool.MaintenanceSleep = Convert.ToInt64(ConfigurationSettings.AppSettings["MaintenanceSleep"]);//线程池维护线程之间的休眠时间
-            pool.Failover = Convert.ToBoolean(ConfigurationSettings.AppSettings["Failover"]);//使用缓存服务器自动切换功能，当一台服务器死了可以自动切换到另外一台查找缓存
-
-            pool.Nagle = Convert.ToBoolean(ConfigurationSettings.AppSettings["Nagle"]);//禁用Nagle算法
-            pool.Initialize();
-            mc.PoolName = ConfigurationSettings.AppSettings["PoolName"];
-            mc.EnableCompression = true;
-            mc.CompressionThreshold = 10240;
-            #endregion
-
-            context.Response.ContentType = "text/plain";
-            string cmd = context.Request["cmd"];
-            MethodInfo Method = this.GetType().GetMethod(cmd, BindingFlags.NonPublic | BindingFlags.Instance);//通过反射机制,直接对应到相应的方法
-            if (Method != null)
-            {
-                Method.Invoke(this, new object[] { context });
-            }
-            else
-            {
-                context.Response.Write("传入参数不正确");
-            }
-        }
-
-        public bool IsReusable
-        {
-            get
-            {
-                return false;
-            }
-        }
-
 
         #region 小程序购物车 Redis
         public static long GetCurrentUnixTimeSeconds()
@@ -5799,7 +5761,7 @@ namespace Cargo.Interface
             NoticeEntity result = new NoticeEntity();
             string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
             string json = Convert.ToString(context.Request["json"]);
-            string isAccumulation =string.IsNullOrEmpty(context.Request["IsAccumulation"])?"0": Convert.ToString(context.Request["IsAccumulation"]);//是否累加  0 否 1是
+            string isAccumulation = string.IsNullOrEmpty(context.Request["IsAccumulation"]) ? "0" : Convert.ToString(context.Request["IsAccumulation"]);//是否累加  0 否 1是
             String returnString = string.Empty;
             long timestampMs = GetCurrentUnixTimeSeconds();
             var data = JsonConvert.DeserializeObject<MiniApplicationParam>(json);
@@ -5853,7 +5815,8 @@ namespace Cargo.Interface
                     {
                         //修改
                         data.CreateTimestampId = dataItem.CreateTimestampId;
-                        if (isAccumulation=="1") {
+                        if (isAccumulation == "1")
+                        {
                             data.CartNumber += dataItem.CartNumber;
                         }
                         RedisHelper.SetStringDbIndex($@"MiniProgram:ShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{dataItem.CreateTimestampId}", JsonConvert.SerializeObject(data), DbIndex_: 4);
@@ -5924,7 +5887,8 @@ namespace Cargo.Interface
                 context.Response.Write(JSON.Encode(new { code = -1, msg = "未获取到有效数据" }));
                 return;
             }
-            foreach (var data in dataList) {
+            foreach (var data in dataList)
+            {
                 if (data.CreateTimestampId == null)
                 {
                     returnString = JSON.Encode(new
@@ -5994,7 +5958,7 @@ namespace Cargo.Interface
             String returnString = string.Empty;
             string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
             //string json = Convert.ToString(context.Request["json"]);
-            
+
 
             string requestJson = string.Empty;
             // 关键：使用 InputStream 而非 Body
@@ -6515,6 +6479,51 @@ namespace Cargo.Interface
 
 
         #endregion
+
+
+        public void ProcessRequest(HttpContext context)
+        {
+            #region 缓存
+            string[] serverlist = ConfigurationSettings.AppSettings["memcachedServer"].Split('/');
+            SockIOPool pool = SockIOPool.GetInstance(ConfigurationSettings.AppSettings["PoolName"]);
+            pool.SetServers(serverlist);
+            pool.InitConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["InitConnections"]);//连接池初始容量
+            pool.MinConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MinConnections"]);//最小容量
+            pool.MaxConnections = Convert.ToInt32(ConfigurationSettings.AppSettings["MaxConnections"]);//最大容量
+            pool.SocketConnectTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketConnectTimeout"]);//数据读取超时时间
+            pool.SocketTimeout = Convert.ToInt32(ConfigurationSettings.AppSettings["SocketTimeout"]);//Socket连接超时时间
+            pool.MaintenanceSleep = Convert.ToInt64(ConfigurationSettings.AppSettings["MaintenanceSleep"]);//线程池维护线程之间的休眠时间
+            pool.Failover = Convert.ToBoolean(ConfigurationSettings.AppSettings["Failover"]);//使用缓存服务器自动切换功能，当一台服务器死了可以自动切换到另外一台查找缓存
+
+            pool.Nagle = Convert.ToBoolean(ConfigurationSettings.AppSettings["Nagle"]);//禁用Nagle算法
+            pool.Initialize();
+            mc.PoolName = ConfigurationSettings.AppSettings["PoolName"];
+            mc.EnableCompression = true;
+            mc.CompressionThreshold = 10240;
+            #endregion
+
+            context.Response.ContentType = "text/plain";
+            string cmd = context.Request["cmd"];
+            MethodInfo Method = this.GetType().GetMethod(cmd, BindingFlags.NonPublic | BindingFlags.Instance);//通过反射机制,直接对应到相应的方法
+            if (Method != null)
+            {
+                Method.Invoke(this, new object[] { context });
+            }
+            else
+            {
+                context.Response.Write("传入参数不正确");
+            }
+        }
+
+        public bool IsReusable
+        {
+            get
+            {
+                return false;
+            }
+        }
+
+
     }
     public class MiniApplicationParam : CargoProductEntity
     {
@@ -6569,5 +6578,5 @@ namespace Cargo.Interface
 
         public decimal Proportion { get; set; }
         public bool Checked { get; set; }
-}
+    }
 }
