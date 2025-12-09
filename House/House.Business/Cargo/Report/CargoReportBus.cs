@@ -988,6 +988,7 @@ namespace House.Business.Cargo
             StoresKey.Add("DayCount", Users.Where(c => c.CreateDate >= startOfDay && c.CreateDate <= endOfDay).GroupBy(c => c.ClientNum).ToList().Count());
             result.Add("Stores", StoresKey);
             #endregion
+    
             #region 统计订单
             List<CargoDLTDataStatisEntity> Order = man.HCYC_Order_Statistics(new CargoDLTDataStatisEntity() { HouseID = entity.HouseID, ThrowGood = entity.ThrowGood, StartDate = entity.StartDate, EndDate = entity.EndDate });
             if (Order.Count > 0)
@@ -1050,7 +1051,10 @@ namespace House.Business.Cargo
             var OrderStatistics = Order.GroupBy(a => a.CreateDate.ToString("yyyy-MM-dd")).Select(y => new { Date = Convert.ToDateTime(y.Key).ToString("MM-dd"), OrderNum = y.Count(), OrderRevenue = y.Sum(t => t.OrderCharge), OrderSalesVolume = y.Sum(i => i.OrderPiece) }).Where(r => Convert.ToDateTime(r.Date) >= firstDayOfMonth && Convert.ToDateTime(r.Date) < lastDayOfMonth).OrderBy(r => r.Date);
             Statistics.Add("Order", OrderStatistics);
 
-
+            #region 统计浏览量
+            List<CargoDLTDataStatisEntity> PageViews = man.HCYC_PageViews_Statistics(new CargoDLTDataStatisEntity {HouseID=entity.HouseID,StartDate=firstDayOfMonth,EndDate=lastDayOfMonth });
+            result.Add("PageViews", PageViews.Select(a=>new {a.HouseID,a.clickCount,a.YearMonth}));
+            #endregion
 
             result.Add("Statistics", Statistics);
             return result;

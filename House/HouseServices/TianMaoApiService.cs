@@ -1,0 +1,174 @@
+﻿using House.Entity.Cargo;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+using System.Web;
+
+namespace HouseServices
+{
+    public class TianMaoApiService
+    {
+        private readonly string _appKey;
+        private readonly string _appSecret;
+        private readonly string _apiUrl;
+
+        public TianMaoApiService(string appKey, string appSecret, string apiUrl)
+        {
+            _appKey = appKey;
+            _appSecret = appSecret;
+            _apiUrl = apiUrl;
+        }
+
+        /// <summary>
+        /// 发送请求到天猫养车API (同步版本)
+        /// </summary>
+        public string SendRequest(Dictionary<string, string> data)
+        {
+            // 1. 准备参数
+            var timestamp = GetCurrentTimestamp();
+            var parameters = new Dictionary<string, string>
+            {
+                { "app_key", _appKey },
+                { "timestamp", timestamp }
+            };
+            //合并
+            Dictionary<string, string> target = new Dictionary<string, string>(parameters); // 复制dictA作为目标
+            MergeAndOverwrite(target, data);
+
+            // 2. 生成签名
+            target["sign"] = GenerateSign(target);
+
+            // 3. 将参数构建为 Form-Data 格式的字符串
+            var formDataBuilder = new StringBuilder();
+            foreach (var param in target)
+            {
+                formDataBuilder.AppendFormat("{0}={1}&", HttpUtility.UrlEncode(param.Key, Encoding.UTF8), HttpUtility.UrlEncode(param.Value, Encoding.UTF8));
+            }
+            string requestData = formDataBuilder.ToString().TrimEnd('&');
+
+            // --- 同步实现 ---
+            // 4. 创建 HttpWebRequest
+            var request = (HttpWebRequest)WebRequest.Create(_apiUrl);
+            request.Method = "POST";
+            request.ContentType = "application/x-www-form-urlencoded;";
+
+            // 5. 将请求体数据写入流
+            byte[] postBytes = Encoding.UTF8.GetBytes(requestData);
+            request.ContentLength = postBytes.Length;
+            using (Stream outstream = request.GetRequestStream()) // 改为同步方法
+            {
+                outstream.Write(postBytes, 0, postBytes.Length); // 改为同步方法
+            }
+
+            // 6. 获取响应并读取结果
+            string result = string.Empty;
+            using (WebResponse response = request.GetResponse()) // 改为同步方法
+            {
+                if (response != null)
+                {
+                    using (Stream stream = response.GetResponseStream())
+                    {
+                        using (StreamReader reader = new StreamReader(stream, Encoding.UTF8))
+                        {
+                            result = reader.ReadToEnd(); // 改为同步方法
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 生成签名 (此部分逻辑不变)
+        /// </summary>
+        private string GenerateSign(Dictionary<string, string> parameters)
+        {
+            // 1. 排除 sign 参数（逻辑不变）
+            var signParams = parameters.Where(p => p.Key != "sign")
+                                       .ToDictionary(p => p.Key, p => p.Value);
+
+            // 2. 关键修改：将 $"" 替换为 string.Format（C# 5.0 支持）
+            var kvPairs = signParams.Select(p => string.Format("{0}{1}", p.Key, p.Value)) // 替换此处
+                                    .OrderBy(s => s, StringComparer.Ordinal)
+                                    .ToArray();
+
+            // 3. 拼接待签名字符串（逻辑不变）
+            var stringToSign = $"{_appSecret}{string.Join("", kvPairs)}{_appSecret}";
+            // （可选）如果想彻底避免所有 $""，也可替换为：
+            // var stringToSign = string.Format("{0}{1}{0}", _appSecret, string.Join("", kvPairs));
+
+            // 4. MD5 加密（逻辑不变）
+            using (var md5 = MD5.Create())
+            {
+                var hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(stringToSign));
+                return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+            }
+        }
+
+        /// <summary>
+        /// 获取当前毫秒时间戳 (此部分逻辑不变)
+        /// </summary>
+        private string GetCurrentTimestamp()
+        {
+            var epochStart = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            return ((long)(DateTime.UtcNow - epochStart).TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// 合并字典（修改原目标字典，冲突时覆盖）
+        /// </summary>
+        /// <param name="targetDict">被合并的目标字典（会被修改）</param>
+        /// <param name="sourceDict">提供数据的源字典</param>
+        public static void MergeAndOverwrite(Dictionary<string, string> targetDict, Dictionary<string, string> sourceDict)
+        {
+            // 参数校验（.NET 4.5.1 无 nameof，用字符串）
+            if (targetDict == null)
+                throw new ArgumentNullException("targetDict", "目标字典不能为null");
+            if (sourceDict == null)
+                throw new ArgumentNullException("sourceDict", "源字典不能为null");
+
+            // 遍历源字典，合并到目标字典（冲突时覆盖）
+            foreach (var kvp in sourceDict)
+            {
+                // 若键已存在，覆盖；不存在则添加
+                if (targetDict.ContainsKey(kvp.Key))
+                    targetDict[kvp.Key] = kvp.Value;
+                else
+                    targetDict.Add(kvp.Key, kvp.Value);
+            }
+        }
+
+        /// <summary>
+        /// 合并字典（返回新字典，不修改原始数据，冲突时覆盖）
+        /// </summary>
+        /// <param name="dict1">第一个字典</param>
+        /// <param name="dict2">第二个字典</param>
+        /// <returns>合并后的新字典</returns>
+        public static Dictionary<string, string> MergeToNewAndOverwrite(Dictionary<string, string> dict1, Dictionary<string, string> dict2)
+        {
+            // 参数校验
+            if (dict1 == null) dict1 = new Dictionary<string, string>();
+            if (dict2 == null) dict2 = new Dictionary<string, string>();
+
+            // 创建新字典，先复制第一个字典的所有内容
+            Dictionary<string, string> newDict = new Dictionary<string, string>(dict1);
+
+            // 合并第二个字典（冲突时覆盖）
+            foreach (var kvp in dict2)
+            {
+                if (newDict.ContainsKey(kvp.Key))
+                    newDict[kvp.Key] = kvp.Value;
+                else
+                    newDict.Add(kvp.Key, kvp.Value);
+            }
+
+            return newDict;
+        }
+    }
+}

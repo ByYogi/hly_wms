@@ -1,4 +1,5 @@
 ﻿
+using DocumentFormat.OpenXml.Drawing;
 using DocumentFormat.OpenXml.Wordprocessing;
 using House.Business;
 using House.Business.Cargo;
@@ -1219,10 +1220,17 @@ namespace Cargo.House
                     {
                         //仓库同步缓存
                         CargoProductEntity syncProduct = bus.SyncTypeProduct(productID.ToString());
-                        //34 马牌  1 同步马牌  2 同步全部品牌
-                        if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
+                        }
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                        }
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                         }
 
                         bus.SaveProductInCargo(entDest, log);
@@ -1512,10 +1520,17 @@ namespace Cargo.House
 
                         //仓库同步缓存(缓存的旧的仓库信息)
                         CargoProductEntity syncProduct = bus.SyncTypeProduct(oldContainer.ProductID.ToString());
-                        //34 马牌  1 同步马牌  2 同步全部品牌
-                        if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
+                        }
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                        }
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                         }
 
                         bus.SaveMoveContainer(oldContainer, newContainer, log);
@@ -1590,10 +1605,17 @@ namespace Cargo.House
                     {
                         //仓库同步缓存(缓存的旧的仓库信息)
                         CargoProductEntity syncProduct = bus.SyncTypeProduct(oldContainer.ProductID.ToString());
-                        //34 马牌  1 同步马牌  2 同步全部品牌
-                        if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
+                        }
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                        }
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                         }
                         bus.SaveMoveContainer(oldContainer, newContainer, log);
                         msg.Message = "成功";
@@ -2597,10 +2619,17 @@ namespace Cargo.House
 
                         //仓库同步缓存
                         CargoProductEntity syncProduct = bus.SyncTypeProduct(ent.ProductID.ToString());
-                        //34 马牌  1 同步马牌  2 同步全部品牌
-                        if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
+                        }
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                        }
+                        if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                         }
                     }
 
@@ -3105,7 +3134,7 @@ namespace Cargo.House
             {
                 fileFolder = "D:\\Work\\WareHouse2\\Files\\新建文件夹";
             }
-            filePath = Path.Combine(fileFolder, fileName);
+            filePath = System.IO.Path.Combine(fileFolder, fileName);
             ToExcel.DataTableToExcel(table, filePath);
 
             if (File.Exists(filePath))
@@ -5588,7 +5617,7 @@ namespace Cargo.House
                 import.Message = ex.Message;
                 string abnormalJson = JSON.Encode(import);
                 Response.Clear();
-                Response.Write(abnormalJson); 
+                Response.Write(abnormalJson);
                 Response.Flush();
                 throw;
             }
@@ -5911,171 +5940,168 @@ namespace Cargo.House
 
         public void SyncStockData()
         {
-            var type = Convert.ToInt32(Request["type"]);
             CargoHouseBus houseBus = new CargoHouseBus();
-            var dataList = houseBus.GetInventoryList(type);
+            SyncStockDataSave();
+        }
+        public void SyncStockDataSave()
+        {
+            CargoHouseBus houseBus = new CargoHouseBus();
             CargoProductBus bus = new CargoProductBus();
             List<CargoProductSourceEntity> list = bus.QueryAllProductSource();
             CargoClientBus clientBus = new CargoClientBus();
             List<CargoUpClientEntity> clientList = clientBus.QueryAllUpClientDep(new CargoUpClientEntity { });
-
-            string tname = string.Empty;
-            DataTable table = new DataTable("库存数据");
-            table.Columns.Add("序号", typeof(int));
-            table.Columns.Add("店代码", typeof(string));
-            table.Columns.Add("店名称", typeof(string));
-            table.Columns.Add("所在仓库", typeof(string));
-            table.Columns.Add("供应商", typeof(string));
-            table.Columns.Add("品牌大类", typeof(string));
-            table.Columns.Add("品牌", typeof(string));
-            table.Columns.Add("产品编码", typeof(string));
-            table.Columns.Add("货品代码", typeof(string));
-            table.Columns.Add("规格", typeof(string));
-            table.Columns.Add("型号", typeof(string));
-            table.Columns.Add("花纹", typeof(string));
-            table.Columns.Add("载重指数", typeof(string));
-            table.Columns.Add("速度级别", typeof(string));
-            table.Columns.Add("库存数量", typeof(int));
-            if (type == 1)
+            for (int type = 1; type < 5; type++)
             {
-                table.Columns.Add("业务类型(物权)", typeof(string));
-            }
-            else if (type == 2)
-            {
-                table.Columns.Add("批次", typeof(string));
-
-            }
-            else if (type == 3)
-            {
-                table.Columns.Add("业务类型(物权)", typeof(string));
-                table.Columns.Add("最小批次", typeof(string));
-                table.Columns.Add("最大批次", typeof(string));
-            }
-            else if (type == 4)
-            {
-                table.Columns.Add("批次", typeof(string));
-                table.Columns.Add("业务类型(物权)", typeof(string));
-            }
-
-            //table.Columns.Add("在库天数", typeof(int));
-            table.Columns.Add("超期费用", typeof(decimal));
-            table.Columns.Add("门店价", typeof(decimal));
-            table.Columns.Add("小程序价", typeof(decimal));
-            table.Columns.Add("次日达价", typeof(decimal));
-            table.Columns.Add("批发价", typeof(decimal));
-            table.Columns.Add("货位数量", typeof(int));
-            table.Columns.Add("来货单数量", typeof(int));
-
-            table.Columns.Add("标识", typeof(string));
-
-            int i = 0;
-            foreach (var it in dataList)
-            {
-                i++;
-                DataRow newRows = table.NewRow();
-                newRows["序号"] = i;
-                newRows["店代码"] = it.StatisHouseCode;
-                newRows["店名称"] = it.StatisHouseName;
-                newRows["所在仓库"] = it.FirstAreaName;
-                newRows["供应商"] = it.Supplier;
-                newRows["品牌大类"] = it.TypeParentName;
-                newRows["品牌"] = it.TypeName;
-                newRows["产品编码"] = it.ProductCode;
-                newRows["货品代码"] = it.GoodsCode;
-                newRows["规格"] = it.Specs.Trim();
-                newRows["型号"] = it.Model.Trim();
-                newRows["花纹"] = it.Figure;
-                newRows["载重指数"] = it.LoadIndex;
-                newRows["速度级别"] = it.SpeedLevel;
-                newRows["库存数量"] = it.Piece;
-                //newRows["在库天数"] = it.InHouseDay;
-                if (type == 1)
+                var dataList = houseBus.GetInventoryList(type);
+                string tname = string.Empty;
+                DataTable table = new DataTable("库存数据");
+                table.Columns.Add("序号", typeof(int));
+                table.Columns.Add("店代码", typeof(string));
+                table.Columns.Add("店名称", typeof(string));
+                table.Columns.Add("品牌", typeof(string));
+                table.Columns.Add("规格", typeof(string));
+                table.Columns.Add("库存数量", typeof(int));
+                table.Columns.Add("批发价", typeof(decimal));
+                if (type == 2)
                 {
-                    newRows["业务类型(物权)"] = GetText(it.GoodsClass, "GoodsClass");
-                }
-                else if (type == 2)
-                {
-                    newRows["批次"] = it.Batch;
+                    table.Columns.Add("批次", typeof(string));
+
                 }
                 else if (type == 3)
                 {
-                    newRows["业务类型(物权)"] = GetText(it.GoodsClass, "GoodsClass");
-                    newRows["最小批次"] = it.minBatch;
-                    newRows["最大批次"] = it.maxBatch;
+                    table.Columns.Add("业务类型(物权)", typeof(string));
+                    table.Columns.Add("最小批次", typeof(string));
+                    table.Columns.Add("最大批次", typeof(string));
                 }
                 else if (type == 4)
                 {
-                    newRows["批次"] = it.Batch;
-                    newRows["业务类型(物权)"] = GetText(it.GoodsClass, "GoodsClass");
-
+                    table.Columns.Add("批次", typeof(string));
+                    table.Columns.Add("业务类型(物权)", typeof(string));
                 }
+                table.Columns.Add("供应商", typeof(string));
+                table.Columns.Add("产地", typeof(string));
+                table.Columns.Add("品牌大类", typeof(string));
+                table.Columns.Add("产品编码", typeof(string));
+                table.Columns.Add("货品代码", typeof(string));
+                table.Columns.Add("型号", typeof(string));
+                table.Columns.Add("花纹", typeof(string));
+                table.Columns.Add("载重指数", typeof(string));
+                table.Columns.Add("速度级别", typeof(string));
+                table.Columns.Add("门店价", typeof(decimal));
+                table.Columns.Add("小程序价", typeof(decimal));
+                table.Columns.Add("次日达价", typeof(decimal));
+                table.Columns.Add("标识", typeof(string));
+                table.Columns.Add("最近入库时间", typeof(string));
+                table.Columns.Add("最近出库时间", typeof(string));
 
-                newRows["超期费用"] = it.OverDueFee.ToString("F2");
-                newRows["门店价"] = it.TradePrice;
-                newRows["小程序价"] = it.SalePrice;
-                newRows["次日达价"] = it.NextDayPrice;
-                newRows["批发价"] = it.WholesalePrice;
-                newRows["货位数量"] = it.ContainerIDCount;
-                newRows["来货单数量"] = it.SourceOrderNoCount;
-                newRows["来货单数量"] = it.SourceOrderNoCount;
+
+                int i = 0;
+                foreach (var it in dataList)
+                {
+                    i++;
+                    DataRow newRows = table.NewRow();
+                    newRows["序号"] = i;
+                    newRows["店代码"] = it.StatisHouseCode;
+                    newRows["店名称"] = it.StatisHouseName;
+                    newRows["供应商"] = it.Supplier;
+                    newRows["品牌大类"] = it.TypeParentName;
+                    newRows["品牌"] = it.TypeName;
+                    newRows["产品编码"] = it.ProductCode;
+                    newRows["货品代码"] = it.GoodsCode;
+                    newRows["规格"] = it.Specs.Trim();
+                    newRows["型号"] = it.Model.Trim();
+                    newRows["花纹"] = it.Figure;
+                    newRows["载重指数"] = it.LoadIndex;
+                    newRows["速度级别"] = it.SpeedLevel;
+                    newRows["库存数量"] = it.Piece;
+                    newRows["最近入库时间"] = it.InHouseTime;
+                    if (it.OutHouseTime == Convert.ToDateTime(DateTime.MinValue))
+                        newRows["最近出库时间"] = "";
+                    else
+                        newRows["最近出库时间"] = it.OutHouseTime;
+                    newRows["产地"] = it.Born == "0" ? "国产" : "进口";
+                    //newRows["在库天数"] = it.InHouseDay;
+                    if (type == 2)
+                    {
+                        newRows["批次"] = it.Batch;
+                    }
+                    else if (type == 3)
+                    {
+                        newRows["业务类型(物权)"] = GetText(it.GoodsClass, "GoodsClass");
+                        newRows["最小批次"] = it.minBatch;
+                        newRows["最大批次"] = it.maxBatch;
+                    }
+                    else if (type == 4)
+                    {
+                        newRows["批次"] = it.Batch;
+                        newRows["业务类型(物权)"] = GetText(it.GoodsClass, "GoodsClass");
+
+                    }
+
+                    newRows["门店价"] = it.TradePrice;
+                    newRows["小程序价"] = it.SalePrice;
+                    newRows["次日达价"] = it.NextDayPrice;
+                    newRows["批发价"] = it.WholesalePrice;
 
 
-                newRows["标识"] = it.combinedName;
+                    newRows["标识"] = it.combinedName;
 
-                table.Rows.Add(newRows);
-            }
-            var fileName = string.Empty;
-            if (type == 1)
-            {
-                fileName = "狄乐库存数据(采购-进货)-" + DateTime.Now.ToString("yyyyMMddHHmm") + ".xlsx";
-            }
-            else if (type == 2)
-            {
-                fileName = "狄乐库存数据(财务库存分析-批次)-" + DateTime.Now.ToString("yyyyMMddHHmm") + ".xlsx";
-            }
-            else if (type == 3)
-            {
-                fileName = "狄乐库存数据(财务库存分析-物权)-" + DateTime.Now.ToString("yyyyMMddHHmm") + ".xlsx";
-            }
-            else if (type == 4)
-            {
-                fileName = "狄乐库存数据(财务库存分析)-" + DateTime.Now.ToString("yyyyMMddHHmm") + ".xlsx";
-            }
-            var filePath = string.Empty;
-            //ExportDataTableToExcel(table, fileName, out filePath);
-            var fileFolder = GetStockFile();
-            if (Debugger.IsAttached)
-            {
-                fileFolder = "D:\\Work\\WareHouse2\\Files\\新建文件夹";
-            }
-            filePath = Path.Combine(fileFolder, fileName);
-            ToExcel.DataTableToExcel(table, filePath);
-            if (File.Exists(filePath))
-            {
-                houseBus.saveFileLog(new CargoStockDownloadEntity { FileName = fileName, FilePath = filePath });
-
+                    table.Rows.Add(newRows);
+                }
+                var fileName = string.Empty;
+                if (type == 1)
+                {
+                    fileName = "狄乐库存数据(采购-进货)-" + DateTime.Now.ToString("yyyyMMddHHmm") + ".xlsx";
+                }
+                else if (type == 2)
+                {
+                    fileName = "狄乐库存数据(财务库存分析-批次)-" + DateTime.Now.ToString("yyyyMMddHHmm") + ".xlsx";
+                }
+                else if (type == 3)
+                {
+                    fileName = "狄乐库存数据(财务库存分析-物权)-" + DateTime.Now.ToString("yyyyMMddHHmm") + ".xlsx";
+                }
+                else if (type == 4)
+                {
+                    fileName = "狄乐库存数据(财务库存分析)-" + DateTime.Now.ToString("yyyyMMddHHmm") + ".xlsx";
+                }
+                var filePath = string.Empty;
+                //ExportDataTableToExcel(table, fileName, out filePath);
+                var fileFolder = GetStockFile();
+                if (Debugger.IsAttached)
+                {
+                    fileFolder = "D:\\Work\\WareHouse2\\Files\\新建文件夹";
+                }
+                filePath = System.IO.Path.Combine(fileFolder, fileName);
+                ToExcel.DataTableToExcel(table, filePath);
                 if (File.Exists(filePath))
                 {
-                    //删除文件
-                    if (Directory.Exists(fileFolder))
-                    {
-                        // 获取当前文件夹中的所有文件
-                        string[] files = Directory.GetFiles(fileFolder);
+                    houseBus.saveFileLog(new CargoStockDownloadEntity { FileName = fileName, FilePath = filePath });
 
-                        foreach (string file in files)
+                    if (File.Exists(filePath))
+                    {
+                        //删除文件
+                        if (Directory.Exists(fileFolder))
                         {
-                            DateTime createTime = File.GetCreationTime(file);
-                            // 判断是否超过一个月
-                            if (createTime < DateTime.Now.AddMonths(-1))
+                            // 获取当前文件夹中的所有文件
+                            string[] files = Directory.GetFiles(fileFolder);
+
+                            foreach (string file in files)
                             {
-                                // file 变量是文件的完整路径
-                                File.Delete(file);
+                                DateTime createTime = File.GetCreationTime(file);
+                                // 判断是否超过一个月
+                                if (createTime < DateTime.Now.AddMonths(-1))
+                                {
+                                    // file 变量是文件的完整路径
+                                    File.Delete(file);
+                                }
                             }
                         }
                     }
                 }
-            }
 
+              
+            }
             //导出安全库存数据到本地
             ExportSafeStockToLocExcel();
         }
@@ -6088,12 +6114,12 @@ namespace Cargo.House
             // 获取项目根目录（或你可换成指定目录）
             string projectDir = GetStockFile();
             //string projectDir = "D:\\Work\\WareHouse2\\Files\\新建文件夹\\";
-            string exportDir = Path.Combine(projectDir, "");
+            string exportDir = System.IO.Path.Combine(projectDir, "");
 
             if (!Directory.Exists(exportDir))
                 Directory.CreateDirectory(exportDir);
 
-            filePath = Path.Combine(exportDir, fileName);
+            filePath = System.IO.Path.Combine(exportDir, fileName);
 
             //using (var workbook = new XLWorkbook())
             //{

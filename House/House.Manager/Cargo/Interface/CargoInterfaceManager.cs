@@ -3779,7 +3779,7 @@ VALUES(@orderId,@orderItemSeqId,@adjustmentType,@adjustmentDesc,@adjustmentAmoun
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
-        public List<CargoProductEntity> QueryTuhuStockData(int[] typeIDs,int[] houseIDs)
+        public List<CargoProductEntity> QueryTuhuStockData(int[] typeIDs, int[] houseIDs, string[] productCodes = null)
         {
             List<CargoProductEntity> result = new List<CargoProductEntity>();
             string strSQL = @"
@@ -3793,8 +3793,6 @@ FROM
 	INNER JOIN Tbl_Cargo_Product AS p ON cg.ProductID = p.ProductID
 WHERE p.TypeID IN (@[TypeIDs])
     AND p.HouseID IN (@[HouseIDs])
-	AND p.IsLockStock = 0
-	AND cg.Piece > 0
 	AND p.IsLockStock = 0
 	AND ISNULL(p.ProductCode, '') <> ''
 GROUP BY p.ProductCode
@@ -3814,12 +3812,20 @@ SELECT
 	p.HubDiameter,
 	p.LoadIndex,
 	p.SpeedLevel,
-	p.Born
+	p.Born,
+	pt.TypeName
 FROM Tbl_Cargo_Product p
+LEFT JOIN Tbl_Cargo_ProductType pt ON p.TypeID = pt.TypeID
 INNER JOIN productPiece pp ON p.ProductID = pp.ProductID
                 ";
             strSQL = strSQL.Replace("@[TypeIDs]", string.Join(",", typeIDs));
             strSQL = strSQL.Replace("@[HouseIDs]", string.Join(",", houseIDs));
+
+            if (productCodes != null && productCodes.Length > 0)
+            {
+                strSQL += $" WHERE p.ProductCode IN ('{string.Join("','", productCodes)}') ";
+            }
+
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(cmd))
@@ -3835,6 +3841,7 @@ INNER JOIN productPiece pp ON p.ProductID = pp.ProductID
 
                             ProductName = dr.Field<string>("ProductName"),
                             TypeID = dr.Field<int>("TypeID"),
+                            TypeName = dr.Field<string>("TypeName"),
                             Model = dr.Field<string>("Model"),
                             Specs = dr.Field<string>("Specs"),
                             Figure = dr.Field<string>("Figure"),
@@ -3849,6 +3856,205 @@ INNER JOIN productPiece pp ON p.ProductID = pp.ProductID
             }
             return result;
         }
+        #endregion
+
+        #region 天猫
+
+        public List<CargoTMallEntity> QueryTMallData(CargoTMallEntity entity)
+        {
+            List<CargoTMallEntity> result = new List<CargoTMallEntity>();
+            try
+            {
+                string strSQL = $@"
+                    select * from Tbl_Cargo_TMallOrder where OutboundNoticeNo='{entity.outboundNoticeNo}'";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            result.Add(new CargoTMallEntity
+                            {
+                                // ======================================
+                                // long类型（空值默认0）
+                                // ======================================
+                                userId = idr["userId"] != DBNull.Value ? Convert.ToInt64(idr["userId"]) : 0,
+                                consigneeCityId = idr["consigneeCityId"] != DBNull.Value ? Convert.ToInt64(idr["consigneeCityId"]) : 0,
+                                consigneeCountyId = idr["consigneeCountyId"] != DBNull.Value ? Convert.ToInt64(idr["consigneeCountyId"]) : 0,
+                                consigneeProvinceId = idr["consigneeProvinceId"] != DBNull.Value ? Convert.ToInt64(idr["consigneeProvinceId"]) : 0,
+                                id = idr["id"] != DBNull.Value ? Convert.ToInt64(idr["id"]) : 0,
+
+                                // ======================================
+                                // int类型（空值默认0）
+                                // ======================================
+                                originBillFirstChannel = idr["originBillFirstChannel"] != DBNull.Value ? Convert.ToInt32(idr["originBillFirstChannel"]) : 0,
+                                originBillSecondChannel = idr["originBillSecondChannel"] != DBNull.Value ? Convert.ToInt32(idr["originBillSecondChannel"]) : 0,
+                                originBillThirdChannel = idr["originBillThirdChannel"] != DBNull.Value ? Convert.ToInt32(idr["originBillThirdChannel"]) : 0,
+                                isExpressSheetEncrypted = idr["isExpressSheetEncrypted"] != DBNull.Value ? Convert.ToInt32(idr["isExpressSheetEncrypted"]) : 0,
+                                originBillType = idr["originBillType"] != DBNull.Value ? Convert.ToInt32(idr["originBillType"]) : 0,
+                                urgentLevel = idr["urgentLevel"] != DBNull.Value ? Convert.ToInt32(idr["urgentLevel"]) : 0,
+                                isAllowLack = idr["isAllowLack"] != DBNull.Value ? Convert.ToInt32(idr["isAllowLack"]) : 0,
+                                isEncrypted = idr["isEncrypted"] != DBNull.Value ? Convert.ToInt32(idr["isEncrypted"]) : 0,
+
+                                // ======================================
+                                // DateTime类型（空值默认DateTime.MinValue）
+                                // ======================================
+                                requireArriveTime = idr["requireArriveTime"] != DBNull.Value ? Convert.ToDateTime(idr["requireArriveTime"]) : DateTime.MinValue,
+                                noticeCreateTime = idr["noticeCreateTime"] != DBNull.Value ? Convert.ToDateTime(idr["noticeCreateTime"]) : DateTime.MinValue,
+                                originBillTime = idr["originBillTime"] != DBNull.Value ? Convert.ToDateTime(idr["originBillTime"]) : DateTime.MinValue,
+                                requireOutWarehouseTime = idr["requireOutWarehouseTime"] != DBNull.Value ? Convert.ToDateTime(idr["requireOutWarehouseTime"]) : DateTime.MinValue,
+                                payTime = idr["payTime"] != DBNull.Value ? Convert.ToDateTime(idr["payTime"]) : DateTime.MinValue,
+
+                                // ======================================
+                                // string类型（无验证，直接转换）
+                                // ======================================
+                                sendType = Convert.ToString(idr["sendType"]),
+                                consigneePhone = Convert.ToString(idr["consigneePhone"]),
+                                extend = Convert.ToString(idr["extend"]),
+                                customerContact = Convert.ToString(idr["customerContact"]),
+                                outboundNoticeNo = Convert.ToString(idr["outboundNoticeNo"]),
+                                originBillNo = Convert.ToString(idr["originBillNo"]),
+                                consigneeProvinceName = Convert.ToString(idr["consigneeProvinceName"]),
+                                consigneeCityName = Convert.ToString(idr["consigneeCityName"]),
+                                consigneeCountyName = Convert.ToString(idr["consigneeCountyName"]),
+                                warehouseCode = Convert.ToString(idr["warehouseCode"]),
+                                saleType = Convert.ToString(idr["saleType"]),
+                                warehouseName = Convert.ToString(idr["warehouseName"]),
+                                thirdWarehouseCode = Convert.ToString(idr["thirdWarehouseCode"]),
+                                buyerRemark = Convert.ToString(idr["buyerRemark"]),
+                                sellerRemark = Convert.ToString(idr["sellerRemark"]),
+                                deliverRemark = Convert.ToString(idr["deliverRemark"]),
+                                aliOaid = Convert.ToString(idr["aliOaid"]),
+                                consigneeContacts = Convert.ToString(idr["consigneeContacts"]),
+                                customerName = Convert.ToString(idr["customerName"]),
+                                consigneeDetail = Convert.ToString(idr["consigneeDetail"]),
+
+                            });
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
+        public void AddTMallDataLog(CargoCassMallEntity entity)
+        {
+            try
+            {
+                string strSQL = "insert into Tbl_Cargo_TMallOrderLog(sourcetype,SourceAction, opdate, resjson, outboundNoticeNo) values (@sourcetype,@SourceAction, @opdate, @resjson, @outboundNoticeNo)SELECT @@IDENTITY";
+                long cdid = 0;
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@sourcetype", DbType.Int32, entity.SourceType);
+                    conn.AddInParameter(cmd, "@SourceAction", DbType.String, entity.SourceAction);
+                    conn.AddInParameter(cmd, "@opdate", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@resjson", DbType.String, entity.ResJson);
+                    conn.AddInParameter(cmd, "@outboundNoticeNo", DbType.String, entity.orderId);
+                    cdid = Convert.ToInt64(conn.ExecuteScalar(cmd));
+                }
+            }
+            catch (Exception EX)
+            {
+
+                throw new ApplicationException(EX.Message);
+            }
+
+        }
+        public void SaveTMallOutHouseData(CargoTMallEntity entity)
+        {
+            try
+            {
+                string strSQL = $@"
+insert into Tbl_Cargo_TMallOrder(userid, consigneecityid, sendtype, consigneephone, originbillfirstchannel, originbillsecondchannel, originbillthirdchannel, requirearrivetime, isexpresssheetencrypted, extend, customercontact, outboundnoticeno, originbillno, originbilltype, urgentlevel, consigneeprovincename, consigneecityname, consigneecountyname, warehousecode, saletype, warehousename, thirdwarehousecode, noticecreatetime, buyerremark, sellerremark, deliverremark, originbilltime, requireoutwarehousetime, isallowlack, isencrypted, alioaid, consigneecontacts, customername, paytime, consigneedetail, consigneecountyid, consigneeprovinceid) 
+    values (@userid, @consigneecityid, @sendtype, @consigneephone, @originbillfirstchannel, @originbillsecondchannel, @originbillthirdchannel, @requirearrivetime, @isexpresssheetencrypted, @extend, @customercontact, @outboundnoticeno, @originbillno, @originbilltype, @urgentlevel, @consigneeprovincename, @consigneecityname, @consigneecountyname, @warehousecode, @saletype, @warehousename, @thirdwarehousecode, @noticecreatetime, @buyerremark, @sellerremark, @deliverremark, @originbilltime, @requireoutwarehousetime, @isallowlack, @isencrypted, @alioaid, @consigneecontacts, @customername, @paytime, @consigneedetail, @consigneecountyid, @consigneeprovinceid);
+SELECT @@IDENTITY
+";
+                long cdid = 0;
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.AddInParameter(cmd, "@userid", DbType.Int64, entity.userId);
+                    conn.AddInParameter(cmd, "@consigneecityid", DbType.Int64, entity.consigneeCityId);
+                    conn.AddInParameter(cmd, "@sendtype", DbType.String, entity.sendType);
+                    conn.AddInParameter(cmd, "@consigneephone", DbType.String, entity.consigneePhone);
+                    conn.AddInParameter(cmd, "@originbillfirstchannel", DbType.Int32, entity.originBillFirstChannel);
+                    conn.AddInParameter(cmd, "@originbillsecondchannel", DbType.Int32, entity.originBillSecondChannel);
+                    conn.AddInParameter(cmd, "@originbillthirdchannel", DbType.Int32, entity.originBillThirdChannel);
+                    conn.AddInParameter(cmd, "@requirearrivetime", DbType.DateTime2, entity.requireArriveTime);
+                    conn.AddInParameter(cmd, "@isexpresssheetencrypted", DbType.Int32, entity.isExpressSheetEncrypted);
+                    conn.AddInParameter(cmd, "@extend", DbType.String, entity.extend);
+                    conn.AddInParameter(cmd, "@customercontact", DbType.String, entity.customerContact);
+                    conn.AddInParameter(cmd, "@outboundnoticeno", DbType.String, entity.outboundNoticeNo);
+                    conn.AddInParameter(cmd, "@originbillno", DbType.String, entity.originBillNo);
+                    conn.AddInParameter(cmd, "@originbilltype", DbType.Int32, entity.originBillType);
+                    conn.AddInParameter(cmd, "@urgentlevel", DbType.Int32, entity.urgentLevel);
+                    conn.AddInParameter(cmd, "@consigneeprovincename", DbType.String, entity.consigneeProvinceName);
+                    conn.AddInParameter(cmd, "@consigneecityname", DbType.String, entity.consigneeCityName);
+                    conn.AddInParameter(cmd, "@consigneecountyname", DbType.String, entity.consigneeCountyName);
+                    conn.AddInParameter(cmd, "@warehousecode", DbType.String, entity.warehouseCode);
+                    conn.AddInParameter(cmd, "@saletype", DbType.String, entity.saleType ?? "");
+                    conn.AddInParameter(cmd, "@warehousename", DbType.String, entity.warehouseName);
+                    conn.AddInParameter(cmd, "@thirdwarehousecode", DbType.String, entity.thirdWarehouseCode);
+                    conn.AddInParameter(cmd, "@noticecreatetime", DbType.DateTime2, entity.noticeCreateTime);
+                    conn.AddInParameter(cmd, "@buyerremark", DbType.String, entity.buyerRemark ?? "");
+                    conn.AddInParameter(cmd, "@sellerremark", DbType.String, entity.sellerRemark);
+                    conn.AddInParameter(cmd, "@deliverremark", DbType.String, entity.deliverRemark);
+                    conn.AddInParameter(cmd, "@originbilltime", DbType.DateTime2, entity.originBillTime);
+                    conn.AddInParameter(cmd, "@requireoutwarehousetime", DbType.DateTime2, entity.requireOutWarehouseTime);
+                    conn.AddInParameter(cmd, "@isallowlack", DbType.Int32, entity.isAllowLack);
+                    conn.AddInParameter(cmd, "@isencrypted", DbType.Int32, entity.isEncrypted);
+                    conn.AddInParameter(cmd, "@alioaid", DbType.String, entity.aliOaid);
+                    conn.AddInParameter(cmd, "@consigneecontacts", DbType.String, entity.consigneeContacts);
+                    conn.AddInParameter(cmd, "@customername", DbType.String, entity.customerName);
+                    conn.AddInParameter(cmd, "@paytime", DbType.DateTime2, entity.payTime);
+                    conn.AddInParameter(cmd, "@consigneedetail", DbType.String, entity.consigneeDetail); // 严格匹配实体的consigneeDetail大小写
+                    conn.AddInParameter(cmd, "@consigneecountyid", DbType.Int64, entity.consigneeCountyId);
+                    conn.AddInParameter(cmd, "@consigneeprovinceid", DbType.Int64, entity.consigneeProvinceId);
+                    cdid = Convert.ToInt64(conn.ExecuteScalar(cmd));
+                }
+
+                SaveTMallOutHouseGoodsData(entity.noticeDetailList, cdid);
+            }
+            catch (Exception EX)
+            {
+
+                throw new ApplicationException(EX.Message);
+            }
+
+        }
+        public void SaveTMallOutHouseGoodsData(List<OutboundNoticeDetailSpiPo> goods, long cdid)
+        {
+            try
+            {
+                foreach (var item in goods)
+                {
+                    string strSQL = $@"
+INSERT INTO Tbl_Cargo_TMallOrderGoods(pid, skuname, needoutboundnum, skuordercode, goodsquality, guaranteeperiod, skuid) 
+VALUES(@pid, @skuname, @needoutboundnum, @skuordercode, @goodsquality, @guaranteeperiod, @skuid);
+";
+
+                    using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                    {
+                        // 出库通知商品明细参数添加（严格区分大小写）
+                        conn.AddInParameter(cmd, "@pid", DbType.Int64, cdid); // pid为关联主表ID，按业务常规设为long类型
+                        conn.AddInParameter(cmd, "@skuname", DbType.String, item.skuName ?? ""); // 严格匹配实体skuName大小写
+                        conn.AddInParameter(cmd, "@needoutboundnum", DbType.Int32, item.needOutboundNum); // 严格匹配实体needOutboundNum大小写
+                        conn.AddInParameter(cmd, "@skuordercode", DbType.String, item.skuOrderCode ?? ""); // 严格匹配实体skuOrderCode大小写
+                        conn.AddInParameter(cmd, "@goodsquality", DbType.Int32, item.goodsQuality); // 严格匹配实体goodsQuality大小写
+                        conn.AddInParameter(cmd, "@guaranteeperiod", DbType.Int64, item.guaranteePeriod); // 严格匹配实体guaranteePeriod大小写（long类型）
+                        conn.AddInParameter(cmd, "@skuid", DbType.Int64, item.skuId); // 严格匹配实体skuId大小写
+                        Convert.ToInt64(conn.ExecuteScalar(cmd));
+                    }
+
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+
         #endregion
     }
 }

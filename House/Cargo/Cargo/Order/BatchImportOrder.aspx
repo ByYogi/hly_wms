@@ -1,4 +1,4 @@
-﻿<%@ Page Title="批量导入订单" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="BatchImportOrder.aspx.cs" Inherits="Cargo.Order.BatchImportOrder" %>
+﻿<%@ Page Title="服务商开单" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="BatchImportOrder.aspx.cs" Inherits="Cargo.Order.BatchImportOrder" %>
 
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <script type="text/javascript">
@@ -49,7 +49,6 @@
             columns.push({ title: '店代码', field: 'SourceCode' });
             columns.push({ title: '客户名称', field: 'SourceName' });
             columns.push({ title: '发票号码', field: 'GtmcNo' });
-            columns.push({ title: '订单所属公司', field: 'OrderOwnerName' });
             columns.push({ title: '货品代码', field: 'GoodsCode' });
             columns.push({ title: '数量', field: 'Piece', align: 'right' });
             columns.push({ title: '总库存', field: 'InPiece', align: 'right' });
@@ -81,6 +80,7 @@
                 }
             });
             columns.push({ title: '备注', field: 'Memo' });
+            columns.push({ title: '公司简称', field: 'OrderOwnerName' });
             columns.push({ title: '业务名称', field: 'BusinessName' });
             columns.push({
                 title: '分配订单类型', field: 'OrderAlloType', formatter: function (val, row, index) {

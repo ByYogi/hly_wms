@@ -923,15 +923,16 @@
 
     </div>
     <!--预收款-->
-    <div id="dlgPreRecord" class="easyui-dialog" style="width: 520px; height: 500px;"
-        closed="true" buttons="#dlgPreRecord-buttons">
+    <div id="dlgPreRecord" class="easyui-dialog" style="width: 900px; height: 700px;" closed="true" buttons="#dlgPreRecord-buttons">
         <form id="fmPreRecord" class="easyui-form" method="post">
             <input type="hidden" id="AClientID" />
         </form>
         <table id="dgPreRecord" class="easyui-datagrid">
         </table>
         <div id="PreRecordbar">
-            操作时间:<input id="StartDate" class="easyui-datebox" style="width: 100px">~<input id="EndDate" class="easyui-datebox" style="width: 100px">
+            客户编码:
+            <input id="PRClientNum" class="easyui-numberbox" data-options="" style="width: 90px" />
+            操作时间:<input id="StartDate" class="easyui-datebox" style="width: 100px" />~<input id="EndDate" class="easyui-datebox" style="width: 100px" />
             <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="QueryPreRecord()">查询</a>
             <span href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="exportEasyUIToCSV('dgPreRecord')" id="btnBrowseDetailExport">&nbsp;导&nbsp;出&nbsp;</span>
         </div>
@@ -2552,23 +2553,27 @@
             $('#dgPreRecord').datagrid('load', {
                 StartDate: $('#StartDate').datebox('getValue'),
                 EndDate: $('#EndDate').datebox('getValue'),
-                ClientID: $('#AClientID').val(),
-                operaType: '0'
+                //ClientID: $('#AClientID').val(),
+                ClientNum: $('#PRClientNum').numberbox('getValue'),
+                operaType: '0',
+                CheckOutType: '10',
             });
         }
-        //预收款查询
+        //预收款查询operaType=0
         function PreRecord() {
             var row = $('#dg').datagrid('getSelected');
             if (row == null || row == "") {
                 $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'warning');
                 return;
             }
-            $('#dlgPreRecord').dialog('open').dialog('setTitle', '查询客户：' + row.Boss + ' 预收款记录');
+            $('#dlgPreRecord').dialog('open').dialog('setTitle', '查询客户：' + row.ClientShortName + ' 预收款记录');
             showPreRecordGrid();
             var gridOpts = $('#dgPreRecord').datagrid('options');
-            gridOpts.url = 'clientApi.aspx?method=QueryPreRecord&ClientID=' + row.ClientID + '&operaType=0';
+            gridOpts.url = 'clientApi.aspx?method=QueryPreRecord&ClientID=' + row.ClientID + '&operaType=0&CheckOutType=10';
             //$('#AClientID').textbox('setValue', row.ClientID);
-            $('#AClientID').val(row.ClientID);
+            //$('#AClientID').val(row.ClientID);
+            $('#PRClientNum').numberbox('setValue', row.ClientNum);
+
         }
         //显示预收款数据列表 
         function showPreRecordGrid() {
@@ -2590,17 +2595,20 @@
                 toolbar: '#PreRecordbar',
                 columns: [[
                     //{ title: '', field: 'ID', checkbox: true, width: '30px' },
-                    { title: '报销单号', field: 'ExID', width: '100px' },
-                    { title: '预收款', field: 'Money', width: '100px' },
+                    { title: '客户编码', field: 'ClientNum', width: '90px' },
+                    { title: '公司名称', field: 'ClientName', width: '180px' },
+                    { title: '关联单号', field: 'ExID', width: '120px' },
+                    { title: '使用金额', field: 'Money', width: '100px' },
                     {
-                        title: '收支状态', field: 'RecordType', width: '60px', formatter: function (val, row, index) {
-                            if (val == "0") { return "收入"; }
-                            else if (val == "1") { return "支出"; }
-                            else if (val == "2") { return "退收"; }
+                        title: '收支状态', field: 'RecordType', width: '100px', formatter: function (val, row, index) {
+                            if (val == "0") { return "预收款收入"; }
+                            else if (val == "1") { return "销售订单支出"; }
+                            else if (val == "2") { return "销售订单退收"; }
+                            else if (val == "3") { return "预收款返利"; }
                             else { return ""; }
                         }
                     },
-                    { title: '动态余额', field: 'DynamicBalance', width: '60px' },
+                    { title: '动态余额', field: 'DynamicBalance', width: '90px' },
                     { title: '操作时间', field: 'OP_DATE', width: '120px', formatter: DateTimeFormatter }
                 ]]
             });
@@ -3016,12 +3024,15 @@
                 str = (rows[i].ExID).toString();
                 rows[i].ExID = str.replace(/,/g, '，');
 
+
                 if (rows[i].RecordType == "0") {
-                    rows[i].RecordType = "收入"
+                    rows[i].RecordType = "预收款收入"
                 } else if (rows[i].RecordType == "1") {
-                    rows[i].RecordType = "支出"
+                    rows[i].RecordType = "销售订单支出"
                 } else if (rows[i].RecordType == "2") {
-                    rows[i].RecordType = "退收"
+                    rows[i].RecordType = "销售订单退收"
+                } else if (rows[i].RecordType == "3") {
+                    rows[i].RecordType = "预收款返利"
                 }
                 rows[i].OP_DATE = DateTimeFormatter(rows[i].OP_DATE);
             }

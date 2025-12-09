@@ -9649,139 +9649,94 @@ WHERE
                 if (type == 1)
                 {
                     strSQL = $@"
-select *, ProductCode + '_' +ISNULL(Supplier, '') + '_' + ISNULL(StatisHouseCode, '') + '_' + ISNULL(cast(HouseID as varchar(10)), '') + '_' + ISNULL(cast(TypeID as varchar(10)), '') + '_' + ISNULL(CAST(Piece AS VARCHAR(10)), '') + '_' + ISNULL(Model, '') + '_' + ISNULL(Specs, '') + '_' + ISNULL(Figure, '') + '_' + ISNULL(LoadIndex, '') + '_' + ISNULL(SpeedLevel, '') AS combinedName
-from (select sum(b.Piece)                                                                     as Piece
-           , f.TypeName , f.TypeParentName , a.TypeID , a.HouseID , a.Model , a.GoodsCode , a.Specs , ltrim(rtrim(Figure)) as Figure , a.LoadIndex , a.SpeedLevel , a.Supplier , a.ProductCode , a.GoodsClass , max(a.WholesalePrice) as WholesalePrice , max(a.NextDayPrice) as NextDayPrice , max(a.InHousePrice) as InHousePrice , min(a.InHouseTime) as InHouseTime , min(ISNULL(e.OverDayNum, 0)) as OverDayNum , max(TradePrice) as TradePrice , max(SalePrice) as SalePrice , e.Name as FirstAreaName , count(distinct case when isnull(ContainerID, 0) <> 0 then ContainerID end) as ContainerIDCount , count(distinct case when isnull(SourceOrderNo, '') <> '' then SourceOrderNo end) as SourceOrderNoCount , max(ISNULL(e.OverDueUnitPrice, 0)) as OverDueUnitPrice , StatisHouseCode,ee.StatisHouseName
+select *,
+       ProductCode + '_' + ISNULL(Supplier, '') + '_' + ISNULL(StatisHouseCode, '') + '_' +
+       ISNULL(cast(TypeID as varchar(10)), '') + '_' +
+       ISNULL(CAST(Piece AS VARCHAR(10)), '') + '_' + ISNULL(Model, '') + '_' + ISNULL(Specs, '') + '_' +
+       ISNULL(Figure, '') + '_' + ISNULL(LoadIndex, '') + '_' + ISNULL(SpeedLevel, '') + '_' + ISNULL(cast(Born as varchar), '0') AS combinedName
+from (select sum(b.Piece)                 as Piece,Born
+           , f.TypeName , f.TypeParentName , a.TypeID , a.Model , a.GoodsCode , a.Specs , ltrim(rtrim(Figure)) as Figure , a.LoadIndex , a.SpeedLevel   , a.Supplier , a.ProductCode  , max(a.WholesalePrice) as WholesalePrice , max(a.NextDayPrice) as NextDayPrice , max(a.InHousePrice) as InHousePrice , max(b.InHouseTime) as InHouseTime , max(l.OutHouseTime) as OutHouseTime , min(ISNULL(e.OverDayNum, 0)) as OverDayNum , max(TradePrice) as TradePrice , max(SalePrice) as SalePrice  , StatisHouseCode , ee.StatisHouseName
       from Tbl_Cargo_Product as a
-               inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID
-               left join Tbl_Cargo_ProductSource as m on a.Source = m.Source
-               inner join Tbl_Cargo_House as e on a.HouseID = e.HouseID
-                left join Tbl_Cargo_Area as ee on a.HouseID = ee.HouseID and ee.ParentID=0
-               inner join Tbl_Cargo_ProductType as f on a.TypeID = f.TypeID
-               left join Tbl_Cargo_Client AS r on a.SuppClientNum = r.ClientNum
+               inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID left join Tbl_Cargo_ProductSource as m on a.Source = m.Source inner join Tbl_Cargo_House as e on a.HouseID = e.HouseID left join Tbl_Cargo_Area as ee on a.HouseID = ee.HouseID and ee.ParentID = 0 inner join Tbl_Cargo_ProductType as f on a.TypeID = f.TypeID left join Tbl_Cargo_Client AS r on a.SuppClientNum = r.ClientNum left join Tbl_Cargo_OutContainerGoods as l on a.ProductID = l.ProductID
       where (1 = 1)
         and b.Piece <> 0
         and f.ParentID = 1
         and a.IsLockStock = '0'
         and a.SpecsType <> '5'
         and SuppClientNum in (891524, 130453, 542207, 551098)
-        and exists(select 1
-                   from Tbl_Cargo_Container as c
-                            inner join Tbl_Cargo_Area as d on c.AreaID = d.AreaID
-                            inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID
-                            inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID
-                   where c.ContainerID = b.ContainerID
-                     and h.IsShowStock = 0)
-      group by TypeParentName, a.TypeID, a.HouseID, TypeName, ProductCode, GoodsCode, Specs, Model,
-               ltrim(rtrim(Figure)), LoadIndex, SpeedLevel, e.Name, GoodsClass, Supplier,
-                StatisHouseCode,ee.StatisHouseName) as a2
-
-order by StatisHouseCode,StatisHouseName, HouseID, TypeID, Piece
-
+        and exists(select 1 from Tbl_Cargo_Container as c inner join Tbl_Cargo_Area as d on c.AreaID = d.AreaID inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID where c.ContainerID = b.ContainerID and h.IsShowStock = 0)
+      group by TypeParentName, a.TypeID, TypeName, ProductCode, GoodsCode, Specs, Model,Born, ltrim(rtrim(Figure)), LoadIndex, SpeedLevel, Supplier, StatisHouseCode, ee.StatisHouseName) as a2
+order by StatisHouseCode, StatisHouseName, TypeID, Piece
 ";
                 }
                 else if (type == 2)
                 {
                     strSQL = $@"
-select *,ProductCode + '_' +ISNULL(Supplier, '') + '_' + ISNULL(StatisHouseCode, '') + '_' + ISNULL(cast(HouseID as varchar(10)), '') + '_' + ISNULL(cast(TypeID as varchar(10)), '') + '_' + ISNULL(CAST(Piece AS VARCHAR(10)), '') + '_' + ISNULL(Model, '') + '_' + ISNULL(Specs, '') + '_' + ISNULL(Figure, '') + '_' + ISNULL(LoadIndex, '') + '_' + ISNULL(SpeedLevel, '')+ '_' + ISNULL(Batch, '')+'_'+cast(BatchYear as varchar) AS combinedName from (
-    select sum(b.Piece) as Piece , f.TypeName , f.TypeParentName , a.TypeID , a.HouseID , a.Model , a.GoodsCode , a.Specs , ltrim(rtrim(Figure)) as Figure , a.LoadIndex , a.SpeedLevel , a.Batch , a.BatchYear  , a.Supplier , a.ProductCode  , max(a.WholesalePrice) as WholesalePrice , max(a.NextDayPrice) as NextDayPrice , max(a.InHousePrice) as InHousePrice , min(a.InHouseTime) as InHouseTime , min(ISNULL(e.OverDayNum, 0)) as OverDayNum , max(TradePrice) as TradePrice , max(SalePrice) as SalePrice , e.Name as FirstAreaName , count(distinct case when isnull(ContainerID, 0) <> 0 then ContainerID end) as ContainerIDCount , count(distinct case when isnull(SourceOrderNo, '') <> '' then SourceOrderNo end) as SourceOrderNoCount , max(ISNULL(e.OverDueUnitPrice, 0)) as OverDueUnitPrice
-    ,StatisHouseCode,ee.StatisHouseName
-from Tbl_Cargo_Product as a
-         inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID
-         left join Tbl_Cargo_ProductSource as m on a.Source = m.Source
-         inner join Tbl_Cargo_House as e on a.HouseID = e.HouseID
-         left join Tbl_Cargo_Area as ee on a.HouseID = ee.HouseID and ee.ParentID=0
-         inner join Tbl_Cargo_ProductType as f on a.TypeID = f.TypeID
-         left join Tbl_Cargo_Client AS r on a.SuppClientNum = r.ClientNum
-where (1 = 1)
-  and b.Piece <> 0
-  and f.ParentID = 1
-  and a.IsLockStock = '0'
-  and a.SpecsType <> '5'
-  and SuppClientNum in (891524, 130453, 542207, 551098)
-  and exists(select 1
-             from Tbl_Cargo_Container as c
-                      inner join Tbl_Cargo_Area as d on c.AreaID = d.AreaID
-                      inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID
-                      inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID
-             where c.ContainerID = b.ContainerID
-               and h.IsShowStock = 0)
-group by TypeParentName, a.TypeID, a.HouseID, TypeName, ProductCode, GoodsCode, Specs, Model,
-         ltrim(rtrim(Figure)), LoadIndex, SpeedLevel, Batch, BatchYear, e.Name, Supplier,StatisHouseCode,ee.StatisHouseName
-
-              ) as a2
-
-order by StatisHouseCode,StatisHouseName,HouseID,TypeID,Batch,BatchYear,Piece
-
+select *,
+       ProductCode + '_' + ISNULL(Supplier, '') + '_' + ISNULL(StatisHouseCode, '') + '_' +
+       ISNULL(cast(TypeID as varchar(10)), '') + '_' +
+       ISNULL(CAST(Piece AS VARCHAR(10)), '') + '_' + ISNULL(Model, '') + '_' + ISNULL(Specs, '') + '_' +
+       ISNULL(Figure, '') + '_' + ISNULL(LoadIndex, '') + '_' + ISNULL(SpeedLevel, '') + '_' +ISNULL(cast(Born as varchar), '0') + '_' + ISNULL(Batch, '') AS combinedName
+from (select sum(b.Piece)                 as Piece,Born
+           , f.TypeName , f.TypeParentName , a.TypeID , a.Model , a.GoodsCode , a.Specs , ltrim(rtrim(Figure)) as Figure , a.LoadIndex , a.SpeedLevel , a.Batch  , a.Supplier , a.ProductCode  , max(a.WholesalePrice) as WholesalePrice , max(a.NextDayPrice) as NextDayPrice , max(a.InHousePrice) as InHousePrice , max(b.InHouseTime) as InHouseTime , max(l.OutHouseTime) as OutHouseTime , min(ISNULL(e.OverDayNum, 0)) as OverDayNum , max(TradePrice) as TradePrice , max(SalePrice) as SalePrice  , StatisHouseCode , ee.StatisHouseName
+      from Tbl_Cargo_Product as a
+               inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID left join Tbl_Cargo_ProductSource as m on a.Source = m.Source inner join Tbl_Cargo_House as e on a.HouseID = e.HouseID left join Tbl_Cargo_Area as ee on a.HouseID = ee.HouseID and ee.ParentID = 0 inner join Tbl_Cargo_ProductType as f on a.TypeID = f.TypeID left join Tbl_Cargo_Client AS r on a.SuppClientNum = r.ClientNum left join Tbl_Cargo_OutContainerGoods as l on a.ProductID = l.ProductID
+      where (1 = 1)
+        and b.Piece <> 0
+        and f.ParentID = 1
+        and a.IsLockStock = '0'
+        and a.SpecsType <> '5'
+        and SuppClientNum in (891524, 130453, 542207, 551098)
+        and exists(select 1 from Tbl_Cargo_Container as c inner join Tbl_Cargo_Area as d on c.AreaID = d.AreaID inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID where c.ContainerID = b.ContainerID and h.IsShowStock = 0)
+      group by TypeParentName, a.TypeID, TypeName, ProductCode, GoodsCode, Specs, Model,Born, ltrim(rtrim(Figure)), LoadIndex, SpeedLevel, Batch, Supplier, StatisHouseCode, ee.StatisHouseName) as a2
+order by StatisHouseCode, StatisHouseName, TypeID, Batch, Piece
 ";
                 }
                 else if (type == 3)
                 {
                     strSQL = $@"
-select *,ProductCode + '_' +ISNULL(Supplier, '') + '_' + ISNULL(StatisHouseCode, '') + '_' + ISNULL(cast(HouseID as varchar(10)), '') + '_' + ISNULL(cast(TypeID as varchar(10)), '') + '_' + ISNULL(CAST(Piece AS VARCHAR(10)), '') + '_' + ISNULL(Model, '') + '_' + ISNULL(Specs, '') + '_' + ISNULL(Figure, '') + '_' + ISNULL(LoadIndex, '') + '_' + ISNULL(SpeedLevel, '')+ '_'+cast(GoodsClass as varchar) AS combinedName from (
-    select sum(b.Piece) as Piece , f.TypeName , f.TypeParentName , a.TypeID , a.HouseID , a.Model , a.GoodsCode , a.Specs , ltrim(rtrim(Figure)) as Figure , a.LoadIndex , a.SpeedLevel ,  a.Supplier , a.ProductCode , a.GoodsClass , max(a.WholesalePrice) as WholesalePrice , max(a.NextDayPrice) as NextDayPrice , max(a.InHousePrice) as InHousePrice , min(a.InHouseTime) as InHouseTime , min(ISNULL(e.OverDayNum, 0)) as OverDayNum , max(TradePrice) as TradePrice , max(SalePrice) as SalePrice , e.Name as FirstAreaName , count(distinct case when isnull(ContainerID, 0) <> 0 then ContainerID end) as ContainerIDCount , count(distinct case when isnull(SourceOrderNo, '') <> '' then SourceOrderNo end) as SourceOrderNoCount , max(ISNULL(e.OverDueUnitPrice, 0)) as OverDueUnitPrice
-    ,StatisHouseCode,ee.StatisHouseName,min(Batch) minBatch,max(Batch) as maxBatch
-from Tbl_Cargo_Product as a
-         inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID
-         left join Tbl_Cargo_ProductSource as m on a.Source = m.Source
-         inner join Tbl_Cargo_House as e on a.HouseID = e.HouseID
-         left join Tbl_Cargo_Area as ee on a.HouseID = ee.HouseID and ee.ParentID=0
-         inner join Tbl_Cargo_ProductType as f on a.TypeID = f.TypeID
-         left join Tbl_Cargo_Client AS r on a.SuppClientNum = r.ClientNum
-where (1 = 1)
-  and b.Piece <> 0
-  and f.ParentID = 1
-  and a.IsLockStock = '0'
-  and a.SpecsType <> '5'
-  and SuppClientNum in (891524, 130453, 542207, 551098)
-  and exists(select 1
-             from Tbl_Cargo_Container as c
-                      inner join Tbl_Cargo_Area as d on c.AreaID = d.AreaID
-                      inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID
-                      inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID
-             where c.ContainerID = b.ContainerID
-               and h.IsShowStock = 0)
-group by TypeParentName, a.TypeID, a.HouseID, TypeName, ProductCode, GoodsCode, Specs, Model,
-         ltrim(rtrim(Figure)), LoadIndex, SpeedLevel, e.Name, GoodsClass, Supplier,StatisHouseCode,ee.StatisHouseName
-
-              ) as a2
-
-order by StatisHouseCode,StatisHouseName,HouseID,TypeID,Piece
-
+select *,
+       ProductCode + '_' + ISNULL(Supplier, '') + '_' + ISNULL(StatisHouseCode, '') + '_' +
+       ISNULL(cast(TypeID as varchar(10)), '') + '_' +
+       ISNULL(CAST(Piece AS VARCHAR(10)), '') + '_' + ISNULL(Model, '') + '_' + ISNULL(Specs, '') + '_' +
+       ISNULL(Figure, '') + '_' + ISNULL(LoadIndex, '') + '_' + ISNULL(SpeedLevel, '') + '_' +ISNULL(cast(Born as varchar), '0') + '_' + cast(GoodsClass as varchar) AS combinedName
+from (select sum(b.Piece)                 as Piece,Born,min(Batch) minBatch,max(Batch) maxBatch
+           , f.TypeName , f.TypeParentName , a.TypeID , a.Model , a.GoodsCode , a.Specs , ltrim(rtrim(Figure)) as Figure , a.LoadIndex , a.SpeedLevel   , a.Supplier , a.ProductCode , a.GoodsClass , max(a.WholesalePrice) as WholesalePrice , max(a.NextDayPrice) as NextDayPrice , max(a.InHousePrice) as InHousePrice , max(b.InHouseTime) as InHouseTime , max(l.OutHouseTime) as OutHouseTime , min(ISNULL(e.OverDayNum, 0)) as OverDayNum , max(TradePrice) as TradePrice , max(SalePrice) as SalePrice  , StatisHouseCode , ee.StatisHouseName
+      from Tbl_Cargo_Product as a
+               inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID left join Tbl_Cargo_ProductSource as m on a.Source = m.Source inner join Tbl_Cargo_House as e on a.HouseID = e.HouseID left join Tbl_Cargo_Area as ee on a.HouseID = ee.HouseID and ee.ParentID = 0 inner join Tbl_Cargo_ProductType as f on a.TypeID = f.TypeID left join Tbl_Cargo_Client AS r on a.SuppClientNum = r.ClientNum left join Tbl_Cargo_OutContainerGoods as l on a.ProductID = l.ProductID
+      where (1 = 1)
+        and b.Piece <> 0
+        and f.ParentID = 1
+        and a.IsLockStock = '0'
+        and a.SpecsType <> '5'
+        and SuppClientNum in (891524, 130453, 542207, 551098)
+        and exists(select 1 from Tbl_Cargo_Container as c inner join Tbl_Cargo_Area as d on c.AreaID = d.AreaID inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID where c.ContainerID = b.ContainerID and h.IsShowStock = 0)
+      group by TypeParentName, a.TypeID, TypeName, ProductCode, GoodsCode, Specs, Model,Born, ltrim(rtrim(Figure)), LoadIndex, SpeedLevel, GoodsClass, Supplier, StatisHouseCode, ee.StatisHouseName) as a2
+order by StatisHouseCode, StatisHouseName, TypeID, GoodsClass, Piece
 ";
                 }
                 else if (type == 4)
                 {
                     strSQL = $@"
-select *,ProductCode + '_' +ISNULL(Supplier, '') + '_' + ISNULL(StatisHouseCode, '') + '_' + ISNULL(cast(HouseID as varchar(10)), '') + '_' + ISNULL(cast(TypeID as varchar(10)), '') + '_' + ISNULL(CAST(Piece AS VARCHAR(10)), '') + '_' + ISNULL(Model, '') + '_' + ISNULL(Specs, '') + '_' + ISNULL(Figure, '') + '_' + ISNULL(LoadIndex, '') + '_' + ISNULL(SpeedLevel, '')+ '_' + ISNULL(Batch, '')+'_'+cast(BatchYear as varchar)+'_'+cast(GoodsClass as varchar) AS combinedName from (
-    select sum(b.Piece) as Piece , f.TypeName , f.TypeParentName , a.TypeID , a.HouseID , a.Model , a.GoodsCode , a.Specs , ltrim(rtrim(Figure)) as Figure , a.LoadIndex , a.SpeedLevel , a.Batch , a.BatchYear  , a.Supplier , a.ProductCode , a.GoodsClass , max(a.WholesalePrice) as WholesalePrice , max(a.NextDayPrice) as NextDayPrice , max(a.InHousePrice) as InHousePrice , min(a.InHouseTime) as InHouseTime , min(ISNULL(e.OverDayNum, 0)) as OverDayNum , max(TradePrice) as TradePrice , max(SalePrice) as SalePrice , e.Name as FirstAreaName , count(distinct case when isnull(ContainerID, 0) <> 0 then ContainerID end) as ContainerIDCount , count(distinct case when isnull(SourceOrderNo, '') <> '' then SourceOrderNo end) as SourceOrderNoCount , max(ISNULL(e.OverDueUnitPrice, 0)) as OverDueUnitPrice
-    ,StatisHouseCode,ee.StatisHouseName
-from Tbl_Cargo_Product as a
-         inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID
-         left join Tbl_Cargo_ProductSource as m on a.Source = m.Source
-         inner join Tbl_Cargo_House as e on a.HouseID = e.HouseID
-         left join Tbl_Cargo_Area as ee on a.HouseID = ee.HouseID and ee.ParentID=0
-         inner join Tbl_Cargo_ProductType as f on a.TypeID = f.TypeID
-         left join Tbl_Cargo_Client AS r on a.SuppClientNum = r.ClientNum
-where (1 = 1)
-  and b.Piece <> 0
-  and f.ParentID = 1
-  and a.IsLockStock = '0'
-  and a.SpecsType <> '5'
-  and SuppClientNum in (891524, 130453, 542207, 551098)
-  and exists(select 1
-             from Tbl_Cargo_Container as c
-                      inner join Tbl_Cargo_Area as d on c.AreaID = d.AreaID
-                      inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID
-                      inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID
-             where c.ContainerID = b.ContainerID
-               and h.IsShowStock = 0)
-group by TypeParentName, a.TypeID, a.HouseID, TypeName, ProductCode, GoodsCode, Specs, Model,
-         ltrim(rtrim(Figure)), LoadIndex, SpeedLevel, Batch, BatchYear, e.Name, GoodsClass, Supplier,StatisHouseCode,ee.StatisHouseName
-
-              ) as a2
-
-order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYear,Piece
+select *,
+       ProductCode + '_' + ISNULL(Supplier, '') + '_' + ISNULL(StatisHouseCode, '') + '_' +
+       ISNULL(cast(TypeID as varchar(10)), '') + '_' +
+       ISNULL(CAST(Piece AS VARCHAR(10)), '') + '_' + ISNULL(Model, '') + '_' + ISNULL(Specs, '') + '_' +
+       ISNULL(Figure, '') + '_' + ISNULL(LoadIndex, '') + '_' + ISNULL(SpeedLevel, '') + '_' +ISNULL(cast(Born as varchar), '0') + '_' + ISNULL(Batch, '') + '_' +
+       cast(GoodsClass as varchar) AS combinedName
+from (select sum(b.Piece)                 as Piece,Born
+           , f.TypeName , f.TypeParentName , a.TypeID , a.Model , a.GoodsCode , a.Specs , ltrim(rtrim(Figure)) as Figure , a.LoadIndex , a.SpeedLevel , a.Batch  , a.Supplier , a.ProductCode , a.GoodsClass , max(a.WholesalePrice) as WholesalePrice , max(a.NextDayPrice) as NextDayPrice , max(a.InHousePrice) as InHousePrice , max(b.InHouseTime) as InHouseTime , max(l.OutHouseTime) as OutHouseTime , min(ISNULL(e.OverDayNum, 0)) as OverDayNum , max(TradePrice) as TradePrice , max(SalePrice) as SalePrice  , StatisHouseCode , ee.StatisHouseName
+      from Tbl_Cargo_Product as a
+               inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID left join Tbl_Cargo_ProductSource as m on a.Source = m.Source inner join Tbl_Cargo_House as e on a.HouseID = e.HouseID left join Tbl_Cargo_Area as ee on a.HouseID = ee.HouseID and ee.ParentID = 0 inner join Tbl_Cargo_ProductType as f on a.TypeID = f.TypeID left join Tbl_Cargo_Client AS r on a.SuppClientNum = r.ClientNum left join Tbl_Cargo_OutContainerGoods as l on a.ProductID = l.ProductID
+      where (1 = 1)
+        and b.Piece <> 0
+        and f.ParentID = 1
+        and a.IsLockStock = '0'
+        and a.SpecsType <> '5'
+        and SuppClientNum in (891524, 130453, 542207, 551098)
+        and exists(select 1 from Tbl_Cargo_Container as c inner join Tbl_Cargo_Area as d on c.AreaID = d.AreaID inner join Tbl_Cargo_Area as g on d.ParentID = g.AreaID inner join Tbl_Cargo_Area as h on g.ParentID = h.AreaID where c.ContainerID = b.ContainerID and h.IsShowStock = 0)
+      group by TypeParentName, a.TypeID, TypeName, ProductCode, GoodsCode, Specs, Model,Born, ltrim(rtrim(Figure)), LoadIndex, SpeedLevel, Batch, GoodsClass, Supplier, StatisHouseCode, ee.StatisHouseName) as a2
+order by StatisHouseCode, StatisHouseName, TypeID, GoodsClass, Batch, Piece
 ";
                 }
                 using (DbCommand cmdAdd = conn.GetSqlStringCommond(strSQL))
@@ -9790,14 +9745,14 @@ order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYe
                     {
                         foreach (DataRow idr in dt.Rows)
                         {
-                            int inHouseDay = Convert.ToDateTime(DateTime.Now.ToShortDateString()).Subtract(Convert.ToDateTime(Convert.ToDateTime(idr["InHouseTime"]).ToShortDateString())).Days;
-                            int OverDay = 0;
-                            decimal OnlyOverDayFee = 0.00M;
-                            if (!Convert.ToInt32(idr["OverDayNum"]).Equals(0) && !Convert.ToDecimal(idr["OverDueUnitPrice"]).Equals(0) && inHouseDay > Convert.ToInt32(idr["OverDayNum"]))
-                            {
-                                OverDay = inHouseDay - Convert.ToInt32(idr["OverDayNum"]);
-                                OnlyOverDayFee = OverDay * Convert.ToDecimal(idr["OverDueUnitPrice"]) * Convert.ToInt32(idr["Piece"]);
-                            }
+                            //int inHouseDay = Convert.ToDateTime(DateTime.Now.ToShortDateString()).Subtract(Convert.ToDateTime(Convert.ToDateTime(idr["InHouseTime"]).ToShortDateString())).Days;
+                            //int OverDay = 0;
+                            //decimal OnlyOverDayFee = 0.00M;
+                            //if (!Convert.ToInt32(idr["OverDayNum"]).Equals(0) && !Convert.ToDecimal(idr["OverDueUnitPrice"]).Equals(0) && inHouseDay > Convert.ToInt32(idr["OverDayNum"]))
+                            //{
+                            //    OverDay = inHouseDay - Convert.ToInt32(idr["OverDayNum"]);
+                            //    OnlyOverDayFee = OverDay * Convert.ToDecimal(idr["OverDueUnitPrice"]) * Convert.ToInt32(idr["Piece"]);
+                            //}
 
 
                             if (type == 1)
@@ -9806,11 +9761,10 @@ order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYe
                                 {
                                     Piece = Convert.ToInt32(idr["Piece"]),//货位上件数
                                     InHouseTime = Convert.ToDateTime(idr["InHouseTime"]),//入库时间
-                                    FirstAreaName = Convert.ToString(idr["FirstAreaName"]),
                                     NextDayPrice = string.IsNullOrEmpty(Convert.ToString(idr["NextDayPrice"])) ? 0 : Convert.ToDecimal(idr["NextDayPrice"]),
                                     WholesalePrice = string.IsNullOrEmpty(Convert.ToString(idr["WholesalePrice"])) ? 0 : Convert.ToDecimal(idr["WholesalePrice"]),
-                                    HouseID = Convert.ToInt32(idr["HouseID"]),
                                     ProductCode = Convert.ToString(idr["ProductCode"]),
+                                    Born = Convert.ToString(idr["Born"]),
                                     TypeID = Convert.ToInt32(idr["TypeID"]),
                                     TypeName = Convert.ToString(idr["TypeName"]),
                                     TypeParentName = Convert.ToString(idr["TypeParentName"]),
@@ -9824,12 +9778,10 @@ order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYe
                                     SalePrice = string.IsNullOrEmpty(Convert.ToString(idr["SalePrice"])) ? 0 : Convert.ToDecimal(idr["SalePrice"]),
                                     InHousePrice = string.IsNullOrEmpty(Convert.ToString(idr["InHousePrice"])) ? 0 : Convert.ToDecimal(idr["InHousePrice"]),
                                     Supplier = Convert.ToString(idr["Supplier"]),
-                                    GoodsClass = Convert.ToString(idr["GoodsClass"]),
                                     StatisHouseCode = Convert.ToString(idr["StatisHouseCode"]),
                                     StatisHouseName = Convert.ToString(idr["StatisHouseName"]),
                                     combinedName = Convert.ToString(idr["combinedName"]),
-                                    ContainerIDCount = Convert.ToInt32(idr["ContainerIDCount"]),
-                                    SourceOrderNoCount = Convert.ToInt32(idr["SourceOrderNoCount"]),
+                                    OutHouseTime = string.IsNullOrEmpty(Convert.ToString(idr["OutHouseTime"])) ? DateTime.MinValue : Convert.ToDateTime(Convert.ToString(idr["OutHouseTime"])),
                                 });
 
                             }
@@ -9839,11 +9791,10 @@ order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYe
                                 {
                                     Piece = Convert.ToInt32(idr["Piece"]),//货位上件数
                                     InHouseTime = Convert.ToDateTime(idr["InHouseTime"]),//入库时间
-                                    FirstAreaName = Convert.ToString(idr["FirstAreaName"]),
                                     NextDayPrice = string.IsNullOrEmpty(Convert.ToString(idr["NextDayPrice"])) ? 0 : Convert.ToDecimal(idr["NextDayPrice"]),
                                     WholesalePrice = string.IsNullOrEmpty(Convert.ToString(idr["WholesalePrice"])) ? 0 : Convert.ToDecimal(idr["WholesalePrice"]),
-                                    HouseID = Convert.ToInt32(idr["HouseID"]),
                                     ProductCode = Convert.ToString(idr["ProductCode"]),
+                                    Born = Convert.ToString(idr["Born"]),
                                     TypeID = Convert.ToInt32(idr["TypeID"]),
                                     TypeName = Convert.ToString(idr["TypeName"]),
                                     TypeParentName = Convert.ToString(idr["TypeParentName"]),
@@ -9857,13 +9808,11 @@ order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYe
                                     SalePrice = string.IsNullOrEmpty(Convert.ToString(idr["SalePrice"])) ? 0 : Convert.ToDecimal(idr["SalePrice"]),
                                     InHousePrice = string.IsNullOrEmpty(Convert.ToString(idr["InHousePrice"])) ? 0 : Convert.ToDecimal(idr["InHousePrice"]),
                                     Batch = Convert.ToString(idr["Batch"]),
-                                    BatchYear = Convert.ToInt32(idr["BatchYear"]),
                                     Supplier = Convert.ToString(idr["Supplier"]),
                                     combinedName = Convert.ToString(idr["combinedName"]),
                                     StatisHouseCode = Convert.ToString(idr["StatisHouseCode"]),
                                     StatisHouseName = Convert.ToString(idr["StatisHouseName"]),
-                                    ContainerIDCount = Convert.ToInt32(idr["ContainerIDCount"]),
-                                    SourceOrderNoCount = Convert.ToInt32(idr["SourceOrderNoCount"]),
+                                    OutHouseTime = string.IsNullOrEmpty(Convert.ToString(idr["OutHouseTime"])) ? DateTime.MinValue : Convert.ToDateTime(Convert.ToString(idr["OutHouseTime"])),
                                 });
 
                             }
@@ -9873,11 +9822,10 @@ order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYe
                                 {
                                     Piece = Convert.ToInt32(idr["Piece"]),//货位上件数
                                     InHouseTime = Convert.ToDateTime(idr["InHouseTime"]),//入库时间
-                                    FirstAreaName = Convert.ToString(idr["FirstAreaName"]),
                                     NextDayPrice = string.IsNullOrEmpty(Convert.ToString(idr["NextDayPrice"])) ? 0 : Convert.ToDecimal(idr["NextDayPrice"]),
                                     WholesalePrice = string.IsNullOrEmpty(Convert.ToString(idr["WholesalePrice"])) ? 0 : Convert.ToDecimal(idr["WholesalePrice"]),
-                                    HouseID = Convert.ToInt32(idr["HouseID"]),
                                     ProductCode = Convert.ToString(idr["ProductCode"]),
+                                    Born = Convert.ToString(idr["Born"]),
                                     TypeID = Convert.ToInt32(idr["TypeID"]),
                                     TypeName = Convert.ToString(idr["TypeName"]),
                                     TypeParentName = Convert.ToString(idr["TypeParentName"]),
@@ -9897,8 +9845,7 @@ order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYe
                                     combinedName = Convert.ToString(idr["combinedName"]),
                                     StatisHouseCode = Convert.ToString(idr["StatisHouseCode"]),
                                     StatisHouseName = Convert.ToString(idr["StatisHouseName"]),
-                                    ContainerIDCount = Convert.ToInt32(idr["ContainerIDCount"]),
-                                    SourceOrderNoCount = Convert.ToInt32(idr["SourceOrderNoCount"]),
+                                    OutHouseTime = string.IsNullOrEmpty(Convert.ToString(idr["OutHouseTime"])) ? DateTime.MinValue : Convert.ToDateTime(Convert.ToString(idr["OutHouseTime"])),
                                 });
 
                             }
@@ -9907,12 +9854,10 @@ order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYe
                                 result.Add(new CargoContainerShowEntity
                                 {
                                     Piece = Convert.ToInt32(idr["Piece"]),//货位上件数
-                                    InHouseTime = Convert.ToDateTime(idr["InHouseTime"]),//入库时间
-                                    FirstAreaName = Convert.ToString(idr["FirstAreaName"]),
                                     NextDayPrice = string.IsNullOrEmpty(Convert.ToString(idr["NextDayPrice"])) ? 0 : Convert.ToDecimal(idr["NextDayPrice"]),
                                     WholesalePrice = string.IsNullOrEmpty(Convert.ToString(idr["WholesalePrice"])) ? 0 : Convert.ToDecimal(idr["WholesalePrice"]),
-                                    HouseID = Convert.ToInt32(idr["HouseID"]),
                                     ProductCode = Convert.ToString(idr["ProductCode"]),
+                                    Born = Convert.ToString(idr["Born"]),
                                     TypeID = Convert.ToInt32(idr["TypeID"]),
                                     TypeName = Convert.ToString(idr["TypeName"]),
                                     TypeParentName = Convert.ToString(idr["TypeParentName"]),
@@ -9926,14 +9871,13 @@ order by StatisHouseCode,StatisHouseName,HouseID,TypeID,GoodsClass,Batch,BatchYe
                                     SalePrice = string.IsNullOrEmpty(Convert.ToString(idr["SalePrice"])) ? 0 : Convert.ToDecimal(idr["SalePrice"]),
                                     InHousePrice = string.IsNullOrEmpty(Convert.ToString(idr["InHousePrice"])) ? 0 : Convert.ToDecimal(idr["InHousePrice"]),
                                     Batch = Convert.ToString(idr["Batch"]),
-                                    BatchYear = Convert.ToInt32(idr["BatchYear"]),
                                     Supplier = Convert.ToString(idr["Supplier"]),
                                     GoodsClass = Convert.ToString(idr["GoodsClass"]),
                                     combinedName = Convert.ToString(idr["combinedName"]),
                                     StatisHouseCode = Convert.ToString(idr["StatisHouseCode"]),
                                     StatisHouseName = Convert.ToString(idr["StatisHouseName"]),
-                                    ContainerIDCount = Convert.ToInt32(idr["ContainerIDCount"]),
-                                    SourceOrderNoCount = Convert.ToInt32(idr["SourceOrderNoCount"]),
+                                    InHouseTime = string.IsNullOrEmpty(Convert.ToString(idr["InHouseTime"]))?DateTime.MinValue:Convert.ToDateTime(Convert.ToString(idr["InHouseTime"])),
+                                    OutHouseTime = string.IsNullOrEmpty(Convert.ToString(idr["OutHouseTime"]))?DateTime.MinValue:Convert.ToDateTime(Convert.ToString(idr["OutHouseTime"])),
                                 });
 
                             }
@@ -10113,6 +10057,164 @@ and Figure='{entity.Figure}' and a.TypeID='{entity.TypeID}'
             return result;
         }
 
+        public List<CargoContainerShowEntity> QueryToTMallStockData(CargoContainerShowEntity entity)
+        {
+            CargoProductManager pro = new CargoProductManager();
+            List<CargoContainerShowEntity> result = new List<CargoContainerShowEntity>();
+            try
+            {
+                string strSQL = @" select sum(b.Piece) as Piece,a.HouseID, ProductCode, a.TypeID,GoodsCode from Tbl_Cargo_Product as a inner join Tbl_Cargo_ContainerGoods as b on a.ProductID=b.ProductID left join Tbl_Cargo_ProductSource as m on a.Source=m.Source inner join Tbl_Cargo_Container as c on b.ContainerID=c.ContainerID inner join Tbl_Cargo_Area as d on c.AreaID=d.AreaID ";
+                //if (!entity.FirstAreaID.Equals(0))
+                //{
+                //    strSQL += " left join Tbl_Cargo_Area as g on d.ParentID=g.AreaID";
+                //}
+                strSQL += " inner join Tbl_Cargo_Area as g on d.ParentID=g.AreaID inner join Tbl_Cargo_Area as h on g.ParentID=h.AreaID ";
+                strSQL += " inner join Tbl_Cargo_House as e on d.HouseID=e.HouseID inner join Tbl_Cargo_ProductType as f on a.TypeID=f.TypeID  left join Tbl_Cargo_Client AS r on a.SuppClientNum=r.ClientNum  where (1=1) and b.Piece>0  and TyreModel=0 ";
+                //strSQL += " inner join Tbl_Cargo_House as e on d.HouseID=e.HouseID inner join Tbl_Cargo_ProductType as f on a.TypeID=f.TypeID left join Tbl_Cargo_ProductType as k on f.ParentID=k.TypeID where (1=1) and b.Piece<>0 ";
+                //if (!entity.FirstAreaID.Equals(0))
+                //{
+                //    strSQL += " and g.ParentID=" + entity.FirstAreaID + "";
+                //}
+                if (!entity.FirstAreaID.Equals(0)) { strSQL += " and h.AreaID = " + entity.FirstAreaID + ""; }
+                //以产品名称为查询条件
+                if (!string.IsNullOrEmpty(entity.ProductName)) { strSQL += " and a.ProductName like '%" + entity.ProductName + "%'"; }
+                if (!string.IsNullOrEmpty(entity.ProductCode)) { strSQL += " and a.ProductCode like '%" + entity.ProductCode + "%'"; }
+                //以产品名称为查询条件
+                //if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and a.Specs like '%" + entity.Specs + "%'"; }
+                if (entity.HouseID.Equals(62))
+                {
+                    if (!string.IsNullOrEmpty(entity.Specs)) { strSQL += " and a.Specs like '%" + entity.Specs + "%'"; }
+                }
+                else
+                {
+                    if (!string.IsNullOrWhiteSpace(entity.Specs))
+                    {
+                        string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "");
+                        if (res.Length <= 3)
+                        {
+                            if (!string.IsNullOrEmpty(res)) { strSQL += " and a.Specs like '%" + res + "%'"; }
+                        }
+                        if (res.Length > 3 && res.Length <= 5)
+                        {
+                            strSQL += " and (a.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or a.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
+                        }
+                        if (res.Length > 5)
+                        {
+                            strSQL += " and (a.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or a.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or a.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or a.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or a.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%' or a.Specs like '" + entity.Specs + "')";
+                        }
+                    }
+                }
+                //型号
+                if (!string.IsNullOrEmpty(entity.Model)) { strSQL += " and a.Model like '%" + entity.Model + "%'"; }
+                //货品代码
+                if (!string.IsNullOrEmpty(entity.GoodsCode)) { strSQL += " and a.GoodsCode like '%" + entity.GoodsCode + "%'"; }
+                //以一级类型ID为查询条件
+                if (!entity.TypeParentID.Equals(0)) { strSQL += " and f.ParentID=" + entity.TypeParentID; }
+                //二级类型ID
+                if (!entity.TypeID.Equals(0)) { strSQL += " and a.TypeID=" + entity.TypeID; }
+                else if (!string.IsNullOrEmpty(entity.TypeIDs)) { strSQL += " and a.TypeID in (" + entity.TypeIDs + ")"; }
+                if (!entity.ProductID.Equals(0)) { strSQL += " and a.ProductID=" + entity.ProductID; }
+                if (!entity.TreadWidth.Equals(0)) { strSQL += " and a.TreadWidth=" + entity.TreadWidth; }
+                if (!entity.TradePrice.Equals(0)) { strSQL += " and a.TradePrice=" + entity.TradePrice; }
+                if (!entity.SalePrice.Equals(0)) { strSQL += " and a.SalePrice<=" + entity.SalePrice; }
+                if (!entity.FlatRatio.Equals(0)) { strSQL += " and a.FlatRatio=" + entity.FlatRatio; }
+                if (!string.IsNullOrEmpty(entity.Batch)) { strSQL += " and a.Batch = '" + entity.Batch + "'"; }
+                if (!string.IsNullOrEmpty(entity.Born)) { strSQL += " and a.Born = '" + entity.Born + "'"; }
+                //花纹
+                if (!string.IsNullOrEmpty(entity.Figure)) { strSQL += " and a.Figure like '%" + entity.Figure + "%'"; }
+                if (!string.IsNullOrEmpty(entity.BelongDepart)) { strSQL += " and a.BelongDepart = '" + entity.BelongDepart + "'"; }
+                if (!entity.BatchYear.Equals(0)) { strSQL += " and a.BatchYear=" + entity.BatchYear; }
+                if (!entity.BatchWeek.Equals(0))
+                {
+                    if (entity.PriceType.Equals(0))
+                    {
+                        //半年前
+                        strSQL += " and ((a.BatchWeek<DATEPART(week,DATEADD(month,-6,getdate())) and BatchYear=" + entity.BatchWeek + ") or (BatchYear<" + entity.BatchWeek + "))";
+                    }
+                    else if (entity.PriceType.Equals(1))
+                    {
+                        //一年前
+                        strSQL += " and ((a.BatchWeek<DATEPART(week,DATEADD(month,-12,getdate())) and BatchYear=" + entity.BatchWeek + ") or (BatchYear<" + entity.BatchWeek + "))";
+                    }
+                    else if (entity.PriceType.Equals(2))
+                    {
+                        //10个月前
+                        strSQL += " and ((a.BatchWeek<DATEPART(week,DATEADD(month,-10,getdate())) and BatchYear=" + entity.BatchWeek + ") or (BatchYear<" + entity.BatchWeek + "))";
+                    }
+                    else if (entity.PriceType.Equals(3))
+                    {
+                        //30周前
+                        strSQL += " and ((a.BatchWeek<DATEPART(week,DATEADD(WEEK,-30,getdate())) and BatchYear=" + entity.BatchWeek + ") or (BatchYear<" + entity.BatchWeek + "))";
+                    }
+                    else if (entity.PriceType.Equals(4))
+                    {
+                        //9个月前
+                        strSQL += " and ((a.BatchWeek<DATEPART(week,DATEADD(month,-9,getdate())) and BatchYear=" + entity.BatchWeek + ") or (BatchYear<" + entity.BatchWeek + "))";
+                    }
+                    else if (entity.PriceType.Equals(5))
+                    {
+                        //3个月前
+                        strSQL += " and ((a.BatchWeek<DATEPART(week,DATEADD(month,-3,getdate())) and BatchYear=" + entity.BatchWeek + ") or (BatchYear<" + entity.BatchWeek + "))";
+                    }
+                }
+                if (!entity.HubDiameter.Equals(0)) { strSQL += " and a.HubDiameter=" + entity.HubDiameter; }
+                if (!string.IsNullOrEmpty(entity.LoadIndex)) { strSQL += " and a.LoadIndex='" + entity.LoadIndex + "'"; }
+                if (!string.IsNullOrEmpty(entity.SpeedLevel)) { strSQL += " and a.SpeedLevel = '" + entity.SpeedLevel + "'"; }
+                if (!entity.HouseID.Equals(0)) { strSQL += " and e.HouseID=@HouseID"; }
+                if (!entity.ParentAreaID.Equals(0)) { strSQL += " and d.ParentID=" + entity.ParentAreaID + ""; }
+                //if (!entity.AreaID.Equals(0)) { strSQL += " and (b.ParentID=@AreaID or b.AreaID=@AreaID)"; }
+                if (!string.IsNullOrEmpty(entity.ContainerCode)) { strSQL += " and c.ContainerCode=@ContainerCode"; }
+                if (!string.IsNullOrEmpty(entity.ContainerType)) { strSQL += " and c.ContainerType=@ContainerType"; }
+                //锁定库存
+                if (!string.IsNullOrEmpty(entity.IsLockStock)) { strSQL += " and a.IsLockStock='" + entity.IsLockStock + "'"; }
+                //所属仓库ID
+                if (!string.IsNullOrEmpty(entity.CargoPermisID)) { strSQL += " and a.HouseID in (" + entity.CargoPermisID + ")"; }
+                //所属公司
+                if (!string.IsNullOrEmpty(entity.Company)) { strSQL += " and a.Company = '" + entity.Company + "'"; }
+                //规格类型
+                if (!string.IsNullOrEmpty(entity.SpecsType))
+                {
+                    strSQL += " and a.SpecsType='" + entity.SpecsType + "'";
+                }
+                else
+                {
+                    strSQL += " and a.SpecsType<>5";
+                }
+                if (!string.IsNullOrEmpty(entity.IsShowStock)) { strSQL += " and h.IsShowStock='" + entity.IsShowStock + "'"; }
+                if (!entity.SuppClientNum.Equals(0)) { strSQL += " and a.SuppClientNum=" + entity.SuppClientNum; }
+                strSQL += $@" group by a.HouseID, ProductCode, a.TypeID,GoodsCode";
+                using (DbCommand cmdAdd = conn.GetSqlStringCommond(strSQL))
+                {
+                    if (!entity.HouseID.Equals(0)) { conn.AddInParameter(cmdAdd, "@HouseID", DbType.Int32, entity.HouseID); }
+                    if (!string.IsNullOrEmpty(entity.ContainerCode))
+                    {
+                        conn.AddInParameter(cmdAdd, "@ContainerCode", DbType.String, entity.ContainerCode);
+                    }
+                    if (!string.IsNullOrEmpty(entity.ContainerType))
+                    {
+                        conn.AddInParameter(cmdAdd, "@ContainerType", DbType.String, entity.ContainerType);
+                    }
+                    using (DataTable dt = conn.ExecuteDataTable(cmdAdd))
+                    {
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            result.Add(new CargoContainerShowEntity
+                            {
+                                Piece = Convert.ToInt32(idr["Piece"]),//货位上件数
+                                HouseID = Convert.ToInt32(idr["HouseID"]),
+                                ProductCode = Convert.ToString(idr["ProductCode"]),
+                                TypeID = Convert.ToInt32(idr["TypeID"]),
+                                GoodsCode = Convert.ToString(idr["GoodsCode"]),
+                            });
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { 
+                throw new ApplicationException(ex.Message);
+            }
+            return result;
+        }
 
     }
 

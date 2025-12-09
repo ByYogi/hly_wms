@@ -643,7 +643,7 @@
                     var json = JSON.stringify(row)
                     var sku = JSON.stringify(goods)
                     $.ajax({
-                        url: 'orderApi.aspx?method=SaveContiOrder&ClientNum=' + escape($('#ClientNum').combobox('getValue')) + '&HouseID=' + $('#HouseID').combobox('getValue') + '&AreaID=' + $('#AreaID').combobox('getValue') + '&Dest=' + $('#ADest').combobox('getValue') + '&SaleManID=' + $('#SaleManID').combobox('getValue') + '&SaleManName=' + $('#SaleManName').val() + '&SaleCellPhone=' + $('#SaleCellPhone').val() + '&AcceptPeople=' + $('#AcceptPeople').combobox('getValue') + '&AcceptAddress=' + $('#AcceptAddress').textbox('getValue') + '&BatchYear=' + $('#BatchYear').combobox('getValue') + '&Remark=' + escape($('#Remark').val()),
+                        url: 'orderApi.aspx?method=SaveContiOrder&ClientNum=' + escape($('#ClientNum').combobox('getValue')) + '&HouseID=' + $('#HouseID').combobox('getValue') + '&AreaID=' + $('#AreaID').combobox('getValue') + '&Dest=' + $('#ADest').combobox('getValue') + '&SaleManID=' + $('#SaleManID').combobox('getValue') + '&SaleManName=' + $('#SaleManName').val() + '&SaleCellPhone=' + $('#SaleCellPhone').val() + '&AcceptPeople=' + escape($('#AcceptPeople').combobox('getValue')) + '&AcceptAddress=' + escape($('#AcceptAddress').textbox('getValue')) + '&BatchYear=' + $('#BatchYear').combobox('getValue') + '&Remark=' + escape($('#Remark').val()),
                         type: 'post', dataType: 'json', data: { data: json, goods: sku },
                         success: function (text) {
                             //var result = eval('(' + msg + ')');

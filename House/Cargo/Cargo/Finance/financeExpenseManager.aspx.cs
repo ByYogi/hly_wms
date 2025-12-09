@@ -68,7 +68,7 @@ namespace Cargo.Finance
             table.Columns.Add("费用", typeof(string));
             //table.Columns.Add("报销类别", typeof(string));
             table.Columns.Add("付款方式", typeof(string));
-            table.Columns.Add("付款单位", typeof(string));
+            table.Columns.Add("单位", typeof(string));
             //table.Columns.Add("报销金额", typeof(decimal));
             table.Columns.Add("下一审批人", typeof(string));
             table.Columns.Add("当前审批人", typeof(string));
@@ -100,7 +100,7 @@ namespace Cargo.Finance
                 newRows["费用"] = it.DetailCharge;
                 // newRows["报销类别"] = it.CostName.Trim();
                 newRows["付款方式"] = GetText(it.ChargeType.Trim(), "ChargeType");
-                newRows["付款单位"] = it.ChargeUnit.Trim();
+                newRows["单位"] = it.ChargeUnit.Trim();
                 //newRows["报销金额"] = it.ExCharge;
                 newRows["下一审批人"] = string.IsNullOrEmpty(it.NextCheckName.Trim()) ? it.OperaName.Trim() : it.NextCheckName;
                 newRows["当前审批人"] = it.UserName;

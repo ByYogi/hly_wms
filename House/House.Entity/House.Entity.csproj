@@ -152,6 +152,7 @@
     <Compile Include="Cargo\Order\CargoReserveProcurementOrderEntity.cs" />
     <Compile Include="Cargo\Order\CargoRplOrder.cs" />
     <Compile Include="Cargo\Order\CargoRplOrderGoods.cs" />
+    <Compile Include="Cargo\Order\CargoTMallEntity.cs" />
     <Compile Include="Cargo\Product\CargoImportEntity.cs" />
     <Compile Include="Cargo\Product\CargoProductAccessCountEntity.cs" />
     <Compile Include="Cargo\Product\CargoProductAccessDetailsEntity.cs" />

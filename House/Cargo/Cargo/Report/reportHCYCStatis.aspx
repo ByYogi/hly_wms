@@ -724,7 +724,7 @@
             data: {
                 labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
                 datasets: [{
-                    label: '销售量',
+                    label: '浏览量',
                     data: [12, 95, 45, 78, 96, 31],
                     type: 'bar',
                 }]
@@ -1199,7 +1199,7 @@
                     var Storeslabels = [];
                     var Storesdatas = {
                         data: [],
-                        label: '增长数',
+                        label: '浏览量',
                         type: 'bar',
                         borderColor: [],
                         backgroundColor: [],
@@ -1212,13 +1212,13 @@
                         borderColor: [],
                         backgroundColor: '#FF6A6A',
                     }
-                    for (var i = 0; i < newData.Statistics.Stores.length; i++) {
-                        Storeslabels.push(newData.Statistics.Stores[i].Date)
-                        Storesdatas.data.push(newData.Statistics.Stores[i].Num)
-                        StoresdataLien.data.push(newData.Statistics.Stores[i].Num)
+                    for (var i = 0; i < newData.PageViews.length; i++) {
+                        Storeslabels.push(newData.PageViews[i].YearMonth)
+                        Storesdatas.data.push(newData.PageViews[i].clickCount)
+                        StoresdataLien.data.push(newData.PageViews[i].clickCount)
                     }
                     len = StoresBarChart.data.datasets.length;
-                    Storesdatas.label = "增长数";
+                    Storesdatas.label = "浏览量";
                     for (var i = 0; i < len; i++) {
                         StoresBarChart.data.datasets.pop();
                     }

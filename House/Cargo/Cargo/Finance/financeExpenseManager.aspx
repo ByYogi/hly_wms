@@ -224,7 +224,7 @@
                         formatter: function (val, row, index) { if (val == "0") { return "现金"; } else if (val == "1") { return "银行卡"; } else if (val == "2") { return "微信"; } else { return ""; } }
                     },
                     {
-                        title: '付款单位', field: 'ChargeUnit', width: '150px', formatter: function (value) {
+                        title: '单位', field: 'ChargeUnit', width: '150px', formatter: function (value) {
                             if (value != null && value != "") {
                                 return "<span title='" + value + "'>" + value + "</span>";
                             }
@@ -553,10 +553,11 @@
                         <input name="PayWay" id="PayWay1" type="radio" value="1"><label for="PayWay1" style="font-size: 14px;">对公转账</label>
                         <input name="PayWay" id="PayWay2" type="radio" value="2"><label for="PayWay2" style="font-size: 14px;">对私转账</label>
                         <input name="PayWay" id="PayWay3" type="radio" value="3"><label for="PayWay3" style="font-size: 14px;">油卡</label>
+                        <input name="PayWay" id="PayWay4" type="radio" value="4"><label for="PayWay4" style="font-size: 14px;">借支单核销</label>
                     </td>
                 </tr>
                  <tr>
-     <td>付款单位:
+     <td>单位:
      </td>
      <td>
          <input name="ChargeUnit" id="ChargeUnit" class="easyui-textbox" style="width: 300px" disabled >
@@ -753,7 +754,7 @@
                     { title: '付款金额', field: 'PayMoney', width: '80px' },
                     {
                         title: '付款方式', field: 'PayWay', width: '60px', formatter: function (val, row, index) {
-                            if (val == "1") { return "对公"; } else if (val == "2") { return "对私"; } else if (val == "3") { return "油卡"; } else { return "现金"; }
+                            if (val == "1") { return "对公"; } else if (val == "2") { return "对私"; } else if (val == "3") { return "油卡"; } else if (val == "4") { return "借支单核销"; } else { return "现金"; }
                         }
                     },
                     { title: '付款说明', field: 'PayMemo', width: '90px' },
@@ -1288,6 +1289,7 @@
             if ($('#PayWay1').is(':checked')) { pway = "对公转账"; }
             if ($('#PayWay2').is(':checked')) { pway = "对私转账"; }
             if ($('#PayWay3').is(':checked')) { pway = "油卡"; }
+            if ($('#PayWay4').is(':checked')) { pway = "借支单核销"; }
             var hous = '<%= HouseName%>';
             var com = '<%= UserInfor.HouseName%>' + '付款申请书';
             if (hous.indexOf('湖南') != -1) { com = '湖南狄乐汽服付款申请书'; }

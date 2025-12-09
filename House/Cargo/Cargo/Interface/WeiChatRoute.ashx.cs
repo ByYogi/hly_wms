@@ -2257,10 +2257,18 @@ namespace Cargo.Interface
                         foreach (CargoContainerShowEntity time in outHouseList)
                         {
                             CargoProductEntity syncProduct = house.SyncTypeProduct(time.ProductID.ToString());
-                            //34 马牌  1 同步马牌  2 同步全部品牌
-                            if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+
+                            if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                             {
-                                RedisHelper.HashSet("OpenSystemStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.GoodsCode);
+                                RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
+                            }
+                            if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
+                            {
+                                RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                            }
+                            if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                            {
+                                RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                             }
                         }
 
@@ -2427,10 +2435,17 @@ namespace Cargo.Interface
                     List<CargoProductEntity> syncProduct = house.SyncTypeOrderNo(ord.OrderNo);
                     foreach (CargoProductEntity product in syncProduct)
                     {
-
-                        if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
+                        }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
+                        }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
                         }
                     }
 

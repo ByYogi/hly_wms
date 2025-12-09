@@ -2144,10 +2144,10 @@
             var EndDate = $('#TypeBrowseEndDate').datebox('getValue')
             var houseid = $('#TypeHouseID').combobox('getValue')
             var typeid = $('#BrowseTypeID').combobox('getValue')
-            if (houseid == "" || houseid == null) {
+<%--            if (houseid == "" || houseid == null) {
                 hideLoading();
                 $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择仓库！', 'warning'); return;
-            }
+            }--%>
             var key = {
                 StartDate: StartDate,
                 EndDate: EndDate,

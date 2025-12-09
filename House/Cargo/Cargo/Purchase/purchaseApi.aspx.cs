@@ -4009,9 +4009,17 @@ namespace Cargo.Purchase
                     foreach (CargoProductEntity product in syncProduct)
                     {
 
-                        if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
+                        }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
+                        }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
                         }
                     }
 

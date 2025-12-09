@@ -119,6 +119,7 @@ namespace House.Entity.Cargo
         public string HouseName { get; set; }
         public string SalePrice { get; set; }
         public string UnitPrice { get; set; }
+        public decimal TradePrice { get; set; }
         public string BelongDepart { get; set; }
         public string NewHouseName { get; set; }
         public string Memo { get; set; }
@@ -126,6 +127,12 @@ namespace House.Entity.Cargo
         public string TagCode { get; set; }
         public string TyreCode { get; set; }
         public string ProductCode { get; set; }
+        public string Supplier { get; set; }
+
+        public DateTime? CompDate {  get; set; }
+        public int? SpendDays { get; set; }
+
+
         /// <summary>
         /// 去NULL,替换危险字符
         /// </summary>

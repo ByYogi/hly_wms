@@ -676,12 +676,19 @@ namespace Cargo.QY
 
                     //仓库同步缓存
                     CargoProductEntity syncProduct = house.SyncTypeProduct(outcargo.ProductID.ToString());
-                    //34 马牌  1 同步马牌  2 同步全部品牌
-                    if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+
+                    if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                     {
                         RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
                     }
-
+                    if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
+                    {
+                        RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                    }
+                    if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                    {
+                        RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                    }
 
                 }
                 ent.Piece = pieceT;
@@ -2506,9 +2513,17 @@ namespace Cargo.QY
                     foreach (CargoProductEntity product in syncProduct)
                     {
 
-                        if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
+                        }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
+                        }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
                         }
                     }
 
@@ -3518,17 +3533,19 @@ namespace Cargo.QY
 
             //仓库同步缓存
             CargoProductEntity syncProduct = house.SyncTypeProduct(tag.ProductID.ToString());
-            //34 马牌  1 同步马牌  2 同步全部品牌
-            if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+
+            if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
             {
                 RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
             }
-            //主仓缓存更改
-            if (house.IsAddCaching(syncProduct.HouseID, syncProduct.TypeID))
+            if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
             {
                 RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
             }
-            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+            if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+            {
+                RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+            }
 
             inter.ScanMoveOrderInCargo(entity, log);
 
@@ -4541,17 +4558,19 @@ namespace Cargo.QY
             #endregion
             //仓库同步缓存
             CargoProductEntity syncProduct = house.SyncTypeProduct(parentID.ToString());
-            //34 马牌  1 同步马牌  2 同步全部品牌
-            if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+
+            if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
             {
                 RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
             }
-            //主仓缓存更改
-            if (house.IsAddCaching(syncProduct.HouseID, syncProduct.TypeID))
+            if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
             {
                 RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
             }
-            RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+            if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+            {
+                RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+            }
 
             inter.scanTagInCargo(new CargoProductEntity { ProductName = ProductName, GoodsCode = GoodsCode, HouseID = HouseID, TypeID = TypeID, Specs = Specs, Figure = Figure, Model = Model, Batch = Batch, ContainerCode = ContainerCode, TagCode = TagCode, BatchYear = bYear, BatchWeek = bWeek, InCargoID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString(), OPID = UserID, LoadIndex = LoadIndex, SpeedLevel = SpeedLevel, Meridian = "R", TreadWidth = TreadWidth, FlatRatio = flatRadio, HubDiameter = HubDiameter, InCargoStatus = "1", InHouseTime = DateTime.Now, OperaType = "1", Born = Born, Assort = Assort, TyreCode = TyreCode, Numbers = Convert.ToInt32(InCargoNum), ParentID = parentID, Source = Source, SourceOrderNo = SourceOrderNo, BelongMonth = BelongMonth, UnitPrice = unitPrice, FinalCostPrice = finalCostPrice, CostPrice = costPrice, TaxCostPrice = taxCostPrice, NoTaxCostPrice = noTaxCostPrice, TradePrice = tradePrice, SalePrice = salePrice, HLYReturnID = HLYReturnID, BelongDepart = BelongDepart, SpecsType = SpecsType, Company = "0", Supplier = Supplier, SuppClientNum = SuppClientNum, ProductCode = ProductCode, SupplierAddress = SupplierAddress, InHousePrice = InHousePrice, NextDayPrice = NextDayPrice, WholesalePrice= WholesalePrice, GoodsClass="0" }, log);
             msg.Message = Batch;
@@ -4681,11 +4700,20 @@ namespace Cargo.QY
                 }
                 //仓库同步缓存(缓存的旧的仓库信息)
                 CargoProductEntity syncProduct = house.SyncTypeProduct(it.ProductID.ToString());
-                //34 马牌  1 同步马牌  2 同步全部品牌
-                if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+
+                if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                 {
                     RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
                 }
+                if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
+                {
+                    RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                }
+                if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                {
+                    RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                }
+
                 house.SaveMoveContainer(it, newContainer, log);
                 List<CargoProductTagEntity> tli = new List<CargoProductTagEntity>();
                 tli.Add(new CargoProductTagEntity { TagCode = TagCode, ContainerID = contain.ContainerID });
@@ -7199,9 +7227,18 @@ namespace Cargo.QY
                     foreach (CargoProductEntity product in syncProduct)
                     {
 
-                        if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
+                        }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
+                        }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
                         }
                     }
 

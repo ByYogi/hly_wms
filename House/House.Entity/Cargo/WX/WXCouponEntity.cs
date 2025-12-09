@@ -26,6 +26,7 @@ namespace House.Entity.Cargo
         /// </summary>
         public DateTime UseDate { get; set; }
         public long OrderID { get; set; }
+        public string OrderIDList { get; set; }
         public string FromOrderNO { get; set; }
         
         public string OrderType { get; set; }
@@ -77,6 +78,15 @@ namespace House.Entity.Cargo
         /// </summary>
         public string IsFollowQuantity { get; set; }
         public string IsLoseEfficacy { get; set; }
+        /// <summary>
+        /// 实际付款人
+        /// </summary>
+        public string ActualType { get; set; }
+
+        /// <summary>
+        /// 可用订单类型
+        /// </summary>
+        public string ThrowGood { get; set; }
         /// <summary>
         /// 去NULL,替换危险字符
         /// </summary>

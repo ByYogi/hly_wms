@@ -219,6 +219,7 @@ namespace Cargo
             }
             else
             {
+                Common.WriteTextLog("一键分账 通联回调错误信息：" + rspDic["respMsg"]);
                 throw new Exception(rspDic["respMsg"]);
                 //return param;
             }

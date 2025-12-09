@@ -1,0 +1,3063 @@
+﻿<%@ Page Title="客户管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="clientManager.aspx.cs" Inherits="Cargo.Client.clientManager" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+            $("[name='hiddenTr']").hide();
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ClientID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [[
+                    { title: '', field: 'ClientID', checkbox: true, width: '30px' },
+                    { title: '客户编码', field: 'ClientNum', width: '70px' },
+                    {
+                        title: '公司名称', field: 'ClientName', width: '120px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    { title: '公司简称', field: 'ClientShortName', width: '100px' },
+                    {
+                        title: '客户类型', field: 'ClientType', width: '60px', formatter: function (val, row, index) {
+                            if (val == "0") { return "个人客户"; }
+                            else if (val == "1") { return "月结客户"; }
+                            else if (val == "2") { return "VIP客户"; }
+                            else if (val == "3") { return "逾期客户"; }
+                            else if (val == "4") { return "云仓供应商"; }
+                            else if (val == "5") { return "云仓签约客户"; }
+                            else { return "个人客户"; }
+                        }
+                    },
+
+                    { title: '联系人', field: 'Boss', width: '80px' },
+                    { title: '手机号码', field: 'Cellphone', width: '100px' },
+                    { title: '公司电话', field: 'Telephone', width: '100px' },
+                    {
+                        title: '公司地址', field: 'Address', width: '200px', formatter: function (val, row, index) {
+                            return "<span title='" + row.Province + " " + row.City + " " + row.Country + " " + row.Address + "'>" + row.Province + " " + row.City + " " + row.Country + " " + row.Address + "</span>";
+                        }
+                    },
+                    { title: '预收款', field: 'PreReceiveMoney', width: '70px', align: 'right' },
+                    { title: '返利款', field: 'RebateMoney', width: '70px', align: 'right' },
+                    { title: '透支额度', field: 'LimitMoney', width: '70px', align: 'right' },
+                    { title: '目标销量', field: 'TargetNum', width: '70px', align: 'right' },
+                    { title: '业务员', field: 'UserName', width: '60px' },
+                    { title: '所属仓库', field: 'HouseName', width: '80px' },
+                    //{ title: '店代码', field: 'ShopCode', width: '60px' },
+                    //{ title: '折扣率', field: 'Discount', width: '60px' },
+                    { title: '店代码', field: 'ShopCode', width: '60px' },
+                    { title: '所属公司', field: 'UpClientShortName', width: '100px' },
+                    { title: '入驻仓库', field: 'SettleHouseName', width: '100px' },
+                    { title: '入驻品牌', field: 'ClientTypeName', width: '100px' },
+                    //{ title: '配送物流', field: 'LogisName', width: '60px' },
+                    //{ title: '配送费用', field: 'LogisFee', width: '60px' },
+                    {
+                        title: '启用状态', field: 'DelFlag', width: '60px', formatter: function (val, row, index) {
+                            if (val == "0") { return "启用"; }
+                            else if (val == "1") { return "停用"; }
+                            else { return "启用"; }
+                        }
+                    },
+                    {
+                        title: '货到付款', field: 'ArrivePayLimit', width: '60px', formatter: function (val, row, index) {
+                            if (val == "0") { return "开通"; }
+                            else if (val == "1") { return "关闭"; }
+                            else { return "开通"; }
+                        }
+                    },
+                    {
+                        title: '资料审核', field: 'BookCheck', width: '60px', formatter: function (val, row, index) {
+                            if (val == "0") { return "未通过"; }
+                            else if (val == "1") { return "审核通过"; }
+                            else { return "审核通过"; }
+                        }
+                    },
+                    {
+                        title: '马牌门店', field: 'TryeClientType', width: '60px', formatter: function (val, row, index) {
+                            if (val == "BD") { return "BD"; } else if (val == "CPD") { return "CPD"; } else if (val == "CSD") { return "CSD"; } else if (val == "CSS") { return "CSS"; } else if (val == "CTO") { return "CTO"; } else if (val == "SW") { return "SW"; } else if (val == "NO") { return "未签约"; } else { return ""; }
+                        }
+                    },
+                    { title: '马牌店代', field: 'TryeClientCode', width: '60px' },
+                    { title: '操作时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter }
+                ]],
+                onLoadSuccess: function (data) { },
+                rowStyler: function (index, row) {
+                    if (row.ClientType == "3") { return "color:#FF0000"; };
+                },
+                onClickRow: function (index, row) {
+                    $('#dg').datagrid('clearSelections');
+                    $('#dg').datagrid('selectRow', index);
+                },
+                onDblClickRow: function (index, row) { editItemByID(index); }
+            });
+            $('#QClientType').combobox('textbox').bind('focus', function () { $('#QClientType').combobox('showPanel'); });
+            $('#QDelFlag').combobox('textbox').bind('focus', function () { $('#QDelFlag').combobox('showPanel'); });
+            $('#ClientType').combobox('textbox').bind('focus', function () { $('#ClientType').combobox('showPanel'); });
+            var UHID = "<%= UserInfor.HouseID%>";
+            var UserLN = "<%= UserInfor.LoginName%>";
+            var IsAC = "<%= UserInfor.IsAddClient%>";
+            if (UHID == "9" || UHID == "12" || UHID == "34" || UHID == "44" || UHID == "45") {
+                if (IsAC == "" || IsAC == "0") {
+                    $('#btnAdd').hide();
+                    $('#btnUpdate').hide();
+                    $('#btnImport').hide();
+                    $('#btnDel').hide();
+                    //$('#btnAddress').hide();
+                    $('#btnExport').hide();
+                    $('#btnVIP').hide();
+                    $('#btnPrerecord').hide();
+                    $('#btnRebate').hide();
+                    $('#btnClientIn').hide();
+                }
+            }
+            //省市区三级联动
+            $('#Province').combobox({
+                url: '../House/houseApi.aspx?method=QueryCityData',
+                valueField: 'ID', textField: 'City',
+                onSelect: function (rec) {
+                    $('#City').combobox('clear');
+                    var url = '../House/houseApi.aspx?method=QueryCityData&PID=' + rec.ID;
+                    $('#City').combobox('reload', url);
+                    //一级仓库
+                    $('#City').combobox({
+                        onSelect: function (fai) {
+                            $('#Country').combobox('clear');
+                            var url = '../House/houseApi.aspx?method=QueryCityData&PID=' + fai.ID;
+                            $('#Country').combobox('reload', url);
+                        }
+                    });
+                }
+            });
+            //所在仓库
+            $('#HID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            //$('#HID').combobox('setValue', "<%= UserInfor.HouseID%>");
+
+            $('#HouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    if (rec.HouseID == 82) {
+                        $('#ClientType').combobox('setValue', "0");
+                        $("#ClientType").combobox('disable');
+                    } else {
+                        $("#ClientType").combobox('enable');
+                    }
+                    $('#UserID').combobox({
+                        url: '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=' + rec.HouseID,
+                        valueField: 'LoginName', textField: 'UserName',
+                        onSelect: onSaleManIDChanged
+                    });
+                    $('#BusUserID').combobox({
+                        url: '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=' + rec.HouseID,
+                        valueField: 'LoginName', textField: 'UserName',
+                        onSelect: onBusSaleManIDChanged
+                    });
+                }
+            });
+            $('#HID').combobox('textbox').bind('focus', function () { $('#HID').combobox('showPanel'); });
+            //$('#HouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+            $('#CheckOutType').combobox('textbox').bind('focus', function () { $('#CheckOutType').combobox('showPanel'); });
+            //一级产品
+            $('#ParentID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLOneProductType', valueField: 'TypeID', textField: 'TypeName',
+                onSelect: function (rec) {
+                    $('#TypeID').combobox('clear');
+                    var url = '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + rec.TypeID;
+                    $('#TypeID').combobox('reload', url);
+                }
+            });
+
+
+            $('#dgAcceptAddress').datagrid({
+                width: '100%',
+                height: '440px',
+                title: '', //标题内容
+                pagination: true, //分页是否显示
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ADID',
+                url: null,
+                toolbar: '#AcceptAddressbar',
+                columns: [[
+                    { title: '', field: '', checkbox: true, width: '30px' },
+                    { title: '客户编码', field: 'ClientNum', width: '60px' },
+                    { title: '收货人', field: 'AcceptPeople', width: '80px' },
+                    { title: '手机号码', field: 'AcceptCellphone', width: '80px' },
+                    { title: '电话', field: 'AcceptTelephone', width: '80px' },
+                    { title: '收货地址', field: 'AcceptAddress', width: '200px' },
+                    { title: '所在省', field: 'AcceptProvince', width: '60px' },
+                    { title: '所在市', field: 'AcceptCity', width: '60px' },
+                    { title: '所在区', field: 'AcceptCountry', width: '60px' },
+                    {
+                        title: '是否默认', field: 'isDefault', width: '60px', formatter: function (val, row, index) {
+                            if (val == "0") { return "否"; } else if (val == "1") { return "是"; } else { return ""; }
+                        }
+                    },
+                    { title: '目标销量', field: 'TargetNum', width: '60px', align: 'right' },
+                    //{ title: '所属仓库', field: 'HouseName', width: '80px' },
+                    {
+                        title: '马牌门店', field: 'TryeClientType', width: '60px', formatter: function (val, row, index) {
+                            if (val == "BD") { return "BD"; } else if (val == "CPD") { return "CPD"; } else if (val == "CSD") { return "CSD"; } else if (val == "CSS") { return "CSS"; } else if (val == "CTO") { return "CTO"; } else if (val == "SW") { return "SW"; } else if (val == "NO") { return "未签约"; } else { return ""; }
+                        }
+                    },
+                    { title: '马牌店代', field: 'TryeClientCode', width: '60px' },
+                    //{ title: '操作账号', field: 'OP_ID', width: '60px' },
+                    { title: '操作时间', field: 'OP_DATE', width: '120px', formatter: DateTimeFormatter }
+                ]],
+                onClickRow: function (index, row) {
+                    $('#dgAcceptAddress').datagrid('clearSelections');
+                    $('#dgAcceptAddress').datagrid('selectRow', index);
+                },
+                onDblClickRow: function (index, row) {
+                    var UHID = "<%= UserInfor.HouseID%>";
+                    if (UHID == "9" || UHID == "12" || UHID == "34" || UHID == "44" || UHID == "45") {
+                        if (IsAC == "" || IsAC == "0") {
+                            return;
+                        }
+                    }
+                    editAcceptAddressByID(index);
+                }
+            });
+            //入驻仓库
+            $('#SettleHouseID').combobox({ url: '../House/houseApi.aspx?method=CargoPermisionHouse', valueField: 'HouseID', textField: 'Name', });
+            //入驻品牌
+            $('#ClientTypeID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=1', valueField: 'TypeID', textField: 'TypeName', AddField: 'PinyinName',
+                filter: function (q, row) {
+                    var opts = $(this).combobox('options');
+                    return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                },
+            });
+            $('#SettleHouseID').combobox('textbox').bind('focus', function () { $('#SettleHouseID').combobox('showPanel'); });
+            $('#ClientTypeID').combobox('textbox').bind('focus', function () { $('#ClientTypeID').combobox('showPanel'); });
+        });
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = '../Client/clientApi.aspx?method=QueryCargoClient';
+            $('#dg').datagrid('load', {
+                ClientNum: $('#QClientNum').val(),
+                ClientName: $("#QClientName").val(),
+                ShopCode: $("#QShopCode").val(),
+                Boss: $("#QBoss").val(),
+                AcceptPeople: $("#QAcceptPeople").val(),
+                PushAccount: $("#QPushAccount").combobox('getValue'),
+                Cellphone: $("#QCellphone").val(),
+                DelFlag: $("#QDelFlag").combobox('getValue'),
+                ArrivePayLimit: $("#QArrivePayLimit").combobox('getValue'),
+                CheckOutType: $("#QCheckOutType").combobox('getValue'),
+                ClientType: $("#QClientType").combobox('getValue'),
+                HID: $("#HID").combobox('getValue'),
+                UpClientID: $('#AUpClientID').combobox('getValue'),
+                BizUserId: $('#BizUserId').val(),
+            });
+            //adjustment();
+        }
+
+        //业务员选择方法
+        function onSaleManIDChanged(item) {
+            if (item) {
+                $('#UserName').val(item.UserName);
+            }
+        }
+        //市场业务员选择方法
+        function onBusSaleManIDChanged(item) {
+            if (item) {
+                $('#BusUserName').val(item.UserName);
+            }
+        }
+
+    </script>
+</asp:Content>
+
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="width: 100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">负责人:
+                </td>
+                <td>
+                    <input id="QBoss" class="easyui-textbox" data-options="prompt:'请输入公司负责人'" style="width: 120px" />
+                </td>
+                <td style="text-align: right;">公司名称:
+                </td>
+                <td>
+                    <input id="QClientName" class="easyui-textbox" data-options="prompt:'请输入客户全称'" style="width: 120px" />
+                </td>
+                <td style="text-align: right;">店代码:
+                </td>
+                <td>
+                    <input id="QShopCode" class="easyui-textbox" data-options="prompt:'请输入店代码'" style="width: 120px" />
+                </td>
+                <td style="text-align: right;">客户类型:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="QClientType" style="width: 100px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">个人客户</option>
+                        <option value="1">门店客户</option>
+                        <option value="2">VIP客户</option>
+                        <option value="3">逾期客户</option>
+                        <option value="4">云仓供应商</option>
+                        <option value="5">云仓签约客户</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">状态:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="QDelFlag" style="width: 80px;" panelheight="auto" editable="false">
+                        <option value="0">启用</option>
+                        <option value="1">停用</option>
+                        <option value="-1">全部</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">货到付款:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="QArrivePayLimit" style="width: 80px;" panelheight="auto" editable="false">
+                        <option value="-1">全部</option>
+                        <option value="0">开通</option>
+                        <option value="1">关闭</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">通联编码:
+                </td>
+                <td>
+                    <input id="BizUserId" class="easyui-textbox" data-options="prompt:'请输入通联编码'" style="width: 120px" />
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right;">收货人:
+                </td>
+                <td>
+                    <input id="QAcceptPeople" class="easyui-textbox" data-options="prompt:'请输入收货人'" style="width: 120px" />
+                </td>
+                <td style="text-align: right;">客户编码:
+                </td>
+                <td>
+                    <input id="QClientNum" class="easyui-numberbox" data-options="prompt:'请输入客户编码'" style="width: 120px" />
+                </td>
+                <%--                <td style="text-align: right;">公司电话:
+                </td>
+                <td>
+                    <input id="QTelephone" class="easyui-textbox" data-options="prompt:'请输入公司电话'" style="width: 120px">
+                </td>--%>
+                <td style="text-align: right;">手机号码:
+                </td>
+                <td>
+                    <input id="QCellphone" class="easyui-numberbox" data-options="prompt:'请输入手机号码'" style="width: 120px" />
+                </td>
+                <td style="text-align: right;">所属仓库:
+                </td>
+                <td>
+                    <input id="HID" class="easyui-combobox" style="width: 100px;" />
+                </td>
+                <td style="text-align: right;">账单推送:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="QPushAccount" style="width: 80px;" panelheight="auto" editable="false">
+                        <option value="">全部</option>
+                        <option value="0">不推送</option>
+                        <option value="1">推送</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">付款方式:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="QCheckOutType" style="width: 80px;" panelheight="auto" editable="false">
+                        <option value="">全部</option>
+                        <option value="7">现金</option>
+                        <option value="0">现付</option>
+                        <option value="8">周结</option>
+                        <option value="9">半月结</option>
+                        <option value="2">月结</option>
+                        <option value="1">回单</option>
+                        <option value="3">到付</option>
+                        <option value="4">额度</option>
+                        <option value="10">预收款</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">所属公司:
+                </td>
+                <td>
+                    <input id="AUpClientID" class="easyui-combobox" style="width: 100px;" data-options="valueField:'UpClientID',textField:'UpClientShortName',url:'../Client/clientApi.aspx?method=QeurylistUpClientData'" panelheight="auto" />
+                </td>
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addItem()" id="btnAdd">&nbsp;新&nbsp;增&nbsp;</a>&nbsp;
+       <%-- <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editItem()" id="btnUpdate">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;--%>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-in_cargo" plain="false" onclick="Import()" id="btnImport">&nbsp;导&nbsp;入&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelItem()" id="btnDel">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="AwbExport()" id="btnExport">&nbsp;导&nbsp;出&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-tag_blue_edit" plain="false" onclick="btnAddress()" id="btnAddress">&nbsp;收货地址&nbsp;</a>&nbsp;<a href="#" id="btnPicture" class="easyui-linkbutton" iconcls="icon-picture_add" plain="false" onclick="addInsurancePic()">&nbsp;上传证件&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-coins" plain="false" onclick="RebateRecord()" id="btnRebate">&nbsp;返利管理&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-award_star_gold_1" plain="false" onclick="VIPCode()" id="btnVIP">&nbsp;VIP编码&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-coins" plain="false" onclick="PreRecord()" id="btnPrerecord">&nbsp;预收款记录&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-basket_add" plain="false" onclick="ClientIncome()" id="btnClientIn">&nbsp;客户来款记录&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-printer" plain="false" onclick="QueryInvoice()" id="btnInvoice">&nbsp;开票资料&nbsp;</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-basket_add" plain="false" onclick="SettleHouse()" id="settleHouse">&nbsp;入驻仓库&nbsp;</a>&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="ModifyClientType()" id="btnClientType">&nbsp;设置客户类型&nbsp;</a>&nbsp;
+        <form runat="server" id="fm1">
+            <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived_Click" />
+        </form>
+    </div>
+    <div id="dlg" class="easyui-dialog" style="width: 800px; height: 600px; padding: 0px"
+        closed="true" buttons="#dlg-buttons">
+        <div id="saPanel">
+            <form id="fm" class="easyui-form" method="post">
+                <input type="hidden" name="ClientID" />
+                <input type="hidden" name="ClientTypeID" />
+                <input type="hidden" name="ClientTypeName" />
+                <input type="hidden" name="SettleHouseID" />
+                <input type="hidden" name="SettleHouseName" />
+                <table>
+                    <tr>
+                        <td style="text-align: right;">客户类型:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="ClientType" name="ClientType" data-options="onSelect:ctypeChange" style="width: 250px;"
+                                panelheight="auto" required="true">
+                                <option value="0">个人客户</option>
+                                <option value="1">月结客户</option>
+                                <option value="2">VIP客户</option>
+                                <option value="3">逾期客户</option>
+                                <option value="4">云仓供应商</option>
+                                <option value="5">云仓签约客户</option>
+                            </select>
+                        </td>
+                        <td style="text-align: right;">客户编号:
+                        </td>
+                        <td>
+                            <select name="ClientNum" id="ClientNum" class="easyui-combogrid" style="width: 90px" data-options="panelWidth: 200,idField: 'ClientNum',textField: 'ClientNum',url: 'clientApi.aspx?method=QuerySpecialCodeList',method: 'get',columns: [[{field:'ClientNum',title:'客户编码',width:100},{field:'ClientShortName',title:'客户名称',width:100}]],fitColumns: true">
+                            </select>&nbsp;所属区域:
+                            <input name="Product" id="Product" class="easyui-textbox" style="width: 90px;" />
+                        </td>
+
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">客户全称:
+                        </td>
+                        <td>
+                            <input name="ClientName" id="ClientName" class="easyui-textbox" data-options="required:true"
+                                style="width: 250px;" />
+                        </td>
+                        <td style="text-align: right;">客户简称:
+                        </td>
+                        <td>
+                            <input name="ClientShortName" id="ClientShortName" class="easyui-textbox" data-options="required:true"
+                                style="width: 250px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">公司地址:
+                        </td>
+                        <td colspan="3">
+                            <input id="Province" name="Province" class="easyui-combobox" style="width: 70px;" data-options="required:true,editable:false" />&nbsp;省
+                            <input id="City" name="City" class="easyui-combobox" style="width: 70px;" data-options="valueField:'ID',textField:'City',editable:false,required:true" />&nbsp;市
+                            <input id="Country" name="Country" class="easyui-combobox" style="width: 70px;" data-options="valueField:'ID',textField:'City'" />&nbsp;区&nbsp;
+                            <input name="Address" id="Address" class="easyui-textbox" style="width: 350px;" />
+                        </td>
+                        <%--  <td style="text-align: right;">公司电话:
+                        </td>
+                        <td>
+                            <input name="Telephone" id="Telephone" class="easyui-textbox" style="width: 250px;">
+                        </td>--%>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">负责人名:
+                        </td>
+                        <td>
+                            <input name="Boss" id="Boss" class="easyui-textbox" data-options="required:true" style="width: 250px;" />
+                        </td>
+                        <td style="text-align: right;">手机号码:
+                        </td>
+                        <td>
+                            <input name="Cellphone" id="Cellphone" class="easyui-numberbox" style="width: 90px;" />
+                            公司电话:
+                            <input name="Telephone" id="Telephone" class="easyui-textbox" style="width: 90px;" />
+                        </td>
+                    </tr>
+                    <tr name="hiddenTr">
+                        <td style="text-align: right;">公司邮件:
+                        </td>
+                        <td>
+                            <input name="Email" id="Email" class="easyui-textbox" style="width: 250px;" />
+                        </td>
+                        <td style="text-align: right;">公司邮编:
+                        </td>
+                        <td>
+                            <input name="ZipCode" id="ZipCode" class="easyui-textbox" style="width: 90px;" />
+                            公司传真:
+                      
+                            <input name="Fax" id="Fax" class="easyui-textbox" style="width: 90px;" />
+                        </td>
+                    </tr>
+                    <tr>
+
+                        <td style="text-align: right;">所属仓库:
+                        </td>
+                        <td>
+                            <input id="HouseID" name="HouseID" class="easyui-combobox" style="width: 250px;" data-options="required:true" />
+                        </td>
+                        <td style="text-align: right;">状态标识:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="DelFlag" name="DelFlag" style="width: 90px;"
+                                panelheight="auto" required="true">
+                                <option value="0">启用</option>
+                                <option value="1">停用</option>
+                            </select>
+                            付款方式:
+                              <select class="easyui-combobox" id="CheckOutType" name="CheckOutType" style="width: 90px;"
+                                  panelheight="auto">
+                                  <option value="7">现金</option>
+                                  <option value="0">现付</option>
+                                  <option value="8">周结</option>
+                                  <option value="9">半月结</option>
+                                  <option value="2">月结</option>
+                                  <option value="1">回单</option>
+                                  <option value="3">到付</option>
+                                  <option value="4">额度</option>
+                                  <option value="10">预收款</option>
+                              </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">市场专员:</td>
+                        <td>
+                            <input name="BusUserID" id="BusUserID" class="easyui-combobox" style="width: 90px;" />
+                            <input type="hidden" id="BusUserName" name="BusUserName" />开单专员:
+                        <input name="UserID" id="UserID" class="easyui-combobox" style="width: 90px;" />
+                            <input type="hidden" id="UserName" name="UserName" /></td>
+                        <td style="text-align: right;">透支额度:
+                        </td>
+                        <td>
+                            <input name="LimitMoney" id="LimitMoney" class="easyui-numberbox" data-options="min:0,precision:3 " style="width: 90px;" />
+                            目标销量: 
+                        <input name="TargetNum" id="TargetNum" class="easyui-numberbox" style="width: 90px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">店代码:
+                        </td>
+                        <td>
+                            <input name="ShopCode" id="ShopCode" class="easyui-textbox" style="width: 90px;" />
+                            折扣率:<input name="Discount" id="Discount" class="easyui-textbox" style="width: 90px;" />
+                        </td>
+                        <td style="text-align: right;">轮胎公司:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="TryeCompany" name="TryeCompany" style="width: 90px;"
+                                panelheight="auto">
+                                <option value="1">德国马牌</option>
+                            </select>
+                            门店类型:
+                       <select class="easyui-combobox" id="TryeClientType" name="TryeClientType" style="width: 90px;"
+                           panelheight="auto">
+                           <option value="BD">BD</option>
+                           <option value="CPD">CPD</option>
+                           <option value="CSD">CSD</option>
+                           <option value="CSS">CSS</option>
+                           <option value="CTO">CTO</option>
+                           <option value="SW">SW</option>
+                           <option value="NO">非签约</option>
+                       </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">配送物流:
+                        </td>
+                        <td>
+                            <input id="LogisID" name="LogisID" class="easyui-combobox" style="width: 100px;"
+                                data-options="url: '../systempage/sysService.aspx?method=QueryAllLogistic',valueField: 'ID',textField: 'LogisticName'" />
+                            配送费用:
+                        <input name="LogisFee" id="LogisFee" class="easyui-numberbox" style="width: 80px;">
+                        </td>
+                        <td style="text-align: right;">马牌店代:
+                        </td>
+                        <td>
+                            <input name="TryeClientCode" id="TryeClientCode" class="easyui-textbox" style="width: 90px;">
+                            推送账单:
+                            <select class="easyui-combobox" id="PushAccount" name="PushAccount" style="width: 90px;"
+                                panelheight="auto" editable="false">
+                                <option value="0">不推送</option>
+                                <option value="1">推送</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr id="Upstream" style="display: none;">
+                        <td style="text-align: right;">所属公司:</td>
+                        <%--data-options="valueField:'BasicID',textField:'Aliases',url:'financeService.aspx?method=QueryBasicData'"--%>
+                        <td>
+                            <input id="UpClientID" name="UpClientID" class="easyui-combobox" style="width: 250px;" data-options="valueField:'UpClientID',textField:'UpClientShortName',url:'clientApi.aspx?method=QeurylistUpClientData'"
+                                panelheight="auto" /></td>
+                    </tr>
+                    <%--  <tr>
+                    <td style="text-align: right;">客户产品类型:
+                    </td>
+                    <td colspan="3">
+                        <input id="ParentID" name="ParentID" class="easyui-combobox" style="width: 150px;"
+                            panelheight="auto" />
+
+                        <input id="TypeID" name="TypeID" class="easyui-combobox" style="width: 300px;" data-options="valueField:'TypeID',textField:'TypeName',multiple:true"
+                            panelheight="auto" />
+                    </td>
+                </tr>--%>
+                    <tr>
+                        <td style="text-align: right;">地推人员:</td>
+                        <td>
+                            <input name="GroundPushName" id="GroundPushName" class="easyui-textbox" data-options="required:false" style="width: 250px;" />
+                        </td>
+                        <td style="text-align: right;">货到付款:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="ArrivePayLimit" name="ArrivePayLimit" style="width: 90px;"
+                                panelheight="auto" required="true">
+                                <option value="0">开通</option>
+                                <option value="1">关闭</option>
+                            </select>
+                            限制下单:
+                       <select class="easyui-combobox" id="IsBuy" name="IsBuy" style="width: 90px;"
+                           panelheight="auto" required="true">
+                           <option value="0">不限制</option>
+                           <option value="1">限制</option>
+                       </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">限制品牌:</td>
+                        <td>
+                            <input id="NoType" name="NoType" class="easyui-combobox" style="width: 250px;" data-options="multiple:true" />
+                        </td>
+                        <td style="text-align: right;">通联编码:
+                        </td>
+                        <td>
+                            <input name="BizUserId" id="ABizUserId" class="easyui-textbox" data-options="required:false" style="width: 250px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">多地址下单:</td>
+                        <td>
+                            <input name="MulAddressOrder" id="MulAddressOrder1" type="radio" checked="checked" value="0" /><label for="MulAddressOrder1">否</label>
+                            <input name="MulAddressOrder" id="MulAddressOrder2" type="radio" value="1" /><label for="MulAddressOrder2">是</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">客户备注:
+                        </td>
+                        <td colspan="3">
+                            <textarea id="Remark" rows="6" name="Remark" style="width: 500px;"></textarea>
+                        </td>
+                    </tr>
+                    <%--<tr>
+                        <td style="text-align: right;">入驻仓库:
+                        </td>
+                        <td>
+                            <input class="easyui-combobox" name="SettleHouseID" id="SettleHouseID" data-options="multiple:true" style="width: 250px;" />
+
+                        </td>
+                        <td style="text-align: right;">入驻品牌:
+                        </td>
+                        <td>
+                            <input id="ClientTypeID" name="ClientTypeID" class="easyui-combobox" style="width: 250px;" data-options="multiple:true" />
+                        </td>
+                    </tr>--%>
+                </table>
+            </form>
+        </div>
+    </div>
+    <div id="dlg-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveItem()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+
+    <!--客户收货地址-->
+    <div id="dlgAcceptAddress" class="easyui-dialog" style="width: 1000px; height: 550px; padding: 0px 0px"
+        closed="true" buttons="#dlgAcceptAddress-buttons">
+        <div id="saPanel">
+            <table>
+                <tr>
+                    <td style="text-align: right;">客户编码:
+                    </td>
+                    <td>
+                        <input id="AdClientNum" class="easyui-textbox" data-options="prompt:'请输入客户编码',readonly:true" style="width: 80px" />
+                    </td>
+                    <td style="text-align: right;">公司名称:
+                    </td>
+                    <td>
+                        <input id="AAcceptCompany" class="easyui-textbox" data-options="prompt:'请输入公司名称'" style="width: 150px" />
+                    </td>
+                    <td style="text-align: right;">客户姓名:
+                    </td>
+                    <td>
+                        <input id="AAcceptPeople" class="easyui-textbox" data-options="prompt:'请输入客户姓名'" style="width: 100px" />
+                    </td>
+                    <td style="text-align: right;">手机号码:
+                    </td>
+                    <td>
+                        <input id="AAcceptCellphone" class="easyui-textbox" data-options="prompt:'请输入手机号码'" style="width: 90px" />
+                    </td>
+
+                    <td style="text-align: right;">所属仓库:
+                    </td>
+                    <td>
+                        <input id="AHID" class="easyui-combobox" style="width: 90px;" />
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <table id="dgAcceptAddress" class="easyui-datagrid">
+        </table>
+        <div id="AcceptAddressbar">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="QueryAcceptAddress()">&nbsp;查询&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addAcceptAddress()">&nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editAcceptAddressByID()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelAcceptAddress()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;
+               <input type="file" id="fileAddr" name="file" accept=".xls,.xlsx" onchange="saveAddrFile()" style="width: 250px;" />
+            <a href="../upload/sFile/客户收货地址导入模板.xls" id="Addrdowload" class="easyui-linkbutton" iconcls="icon-application_put" plain="false">&nbsp;下载收货地址导入模板&nbsp;</a>&nbsp;&nbsp;
+
+        </div>
+    </div>
+    <div id="dlgAcceptAddress-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgAcceptAddress').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <!--客户收货地址-->
+    <!--新增客户收货地址-->
+    <div id="dlgAddAcceptAddress" class="easyui-dialog" style="width: 1000px; height: 300px; padding: 0px 0px"
+        closed="true" buttons="#dlgAddAcceptAddress-buttons">
+        <div id="saPanel">
+            <form id="fmAddAcceptAddress" class="easyui-form" method="post">
+                <input type="hidden" name="ADID" />
+                <input type="hidden" name="ClientID" id="ADClientID" />
+                <table>
+                    <tr>
+                        <td style="text-align: right;">客户编码:
+                        </td>
+                        <td>
+                            <input name="ClientNum" id="AClientNum" class="easyui-textbox" data-options="required:true"
+                                style="width: 250px;">
+                        </td>
+
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">收货单位:
+                        </td>
+                        <td>
+                            <input name="AcceptCompany" id="AcceptCompany" class="easyui-textbox" data-options="required:true"
+                                style="width: 250px;">
+                        </td>
+                        <td style="text-align: right;">收货人:
+                        </td>
+                        <td>
+                            <input name="AcceptPeople" id="AcceptPeople" class="easyui-textbox" data-options="required:true"
+                                style="width: 250px;">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">手机号码:
+                        </td>
+                        <td>
+                            <input name="AcceptCellphone" id="AcceptCellphone" class="easyui-textbox" data-options="required:true" style="width: 250px;">
+                        </td>
+                        <td style="text-align: right;">公司电话:
+                        </td>
+                        <td>
+                            <input name="AcceptTelephone" id="AcceptTelephone" class="easyui-textbox" style="width: 250px;">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">收货地址:
+                        </td>
+                        <td colspan="3">
+                            <input id="AcceptProvince" name="AcceptProvince" class="easyui-combobox" style="width: 70px;" data-options="required:true,editable:false" />&nbsp;省
+                            <input id="AcceptCity" name="AcceptCity" class="easyui-combobox" style="width: 70px;" data-options="valueField:'ID',textField:'City',editable:false,required:true" />&nbsp;市
+                            <input id="AcceptCountry" name="AcceptCountry" class="easyui-combobox" style="width: 70px;" data-options="valueField:'ID',textField:'City'" />&nbsp;区&nbsp;
+                            <input name="AcceptAddress" id="AcceptAddress" class="easyui-textbox" style="width: 400px;">
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style="text-align: right;">所属仓库:
+                        </td>
+                        <td>
+                            <input id="AHouseID" name="HouseID" class="easyui-combobox" style="width: 250px;" data-options="required:true" />
+                        </td>
+                        <td style="text-align: right;">目标销量:
+                        </td>
+                        <td>
+                            <input name="TargetNum" id="ATargetNum" class="easyui-numberbox" style="width: 250px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">轮胎公司:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="ATryeCompany" name="TryeCompany" style="width: 90px;"
+                                panelheight="auto">
+                                <option value="1">德国马牌</option>
+                            </select>
+                            门店类型:
+                       <select class="easyui-combobox" id="ATryeClientType" name="TryeClientType" style="width: 90px;"
+                           panelheight="auto">
+                           <option value="BD">BD</option>
+                           <option value="CPD">CPD</option>
+                           <option value="CSD">CSD</option>
+                           <option value="CSS">CSS</option>
+                           <option value="CTO">CTO</option>
+                           <option value="SW">SW</option>
+                           <option value="NO">非签约</option>
+                       </select>
+                        </td>
+                        <td style="text-align: right;">马牌店代:
+                        </td>
+                        <td>
+                            <input name="TryeClientCode" id="ATryeClientCode" class="easyui-textbox" style="width: 90px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">默认地址:
+                        </td>
+                        <td>
+                            <select class="easyui-combobox" id="isDefault" name="isDefault" style="width: 90px;"
+                                panelheight="auto">
+                                <option value="0">否</option>
+                                <option value="1">是</option>
+                            </select>
+                        </td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+    </div>
+    <div id="dlgAddAcceptAddress-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveAcceptAddress()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgAddAcceptAddress').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <!--新增客户收货地址-->
+
+    <div id="vip" class="easyui-dialog" style="width: 520px; height: 500px; padding: 1px 1px"
+        closed="true" buttons="#vip-buttons">
+        <table id="dgVip" class="easyui-datagrid">
+        </table>
+        <div id="specialbar">
+            客户编码:
+            <input id="QSpecialCode" class="easyui-numberbox" data-options="prompt:'请输入客户编码'" style="width: 120px">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="awbSpecialCode()">查询</a>
+        </div>
+    </div>
+    <div id="vip-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-add" onclick="addVIP()">&nbsp;新增&nbsp;</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-delete" onclick="delVIP()">&nbsp;删除&nbsp;</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" onclick="cancelVIP()">&nbsp;解绑&nbsp;</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#vip').dialog('close')">&nbsp;关闭&nbsp;</a>
+    </div>
+    <div id="addvip" class="easyui-dialog" style="width: 250px; height: 150px; padding: 5px 5px"
+        closed="true" buttons="#addvip-buttons">
+        <form id="vipfm" class="easyui-form" method="post">
+            <table>
+                <tr>
+                    <td style="text-align: right;">客户编码:
+                    </td>
+                    <td>
+                        <input name="speCode" class="easyui-numberbox" data-options="min:0,max:999999,required:true" style="width: 120px">
+                    </td>
+                </tr>
+            </table>
+        </form>
+    </div>
+    <div id="addvip-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveaddvip()">&nbsp;保存&nbsp;</a>
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#addvip').dialog('close')">&nbsp;取消&nbsp;</a>
+
+    </div>
+    <!--预收款-->
+    <div id="dlgPreRecord" class="easyui-dialog" style="width: 900px; height: 700px;" closed="true" buttons="#dlgPreRecord-buttons">
+        <form id="fmPreRecord" class="easyui-form" method="post">
+            <input type="hidden" id="AClientID" />
+        </form>
+        <table id="dgPreRecord" class="easyui-datagrid">
+        </table>
+        <div id="PreRecordbar">
+            客户编码:
+            <input id="PRClientNum" class="easyui-numberbox" data-options="" style="width: 90px" />
+            操作时间:<input id="StartDate" class="easyui-datebox" style="width: 100px" />~<input id="EndDate" class="easyui-datebox" style="width: 100px" />
+            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="QueryPreRecord()">查询</a>
+            <span href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="exportEasyUIToCSV('dgPreRecord')" id="btnBrowseDetailExport">&nbsp;导&nbsp;出&nbsp;</span>
+        </div>
+    </div>
+    <div id="dlgPreRecord-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgPreRecord').dialog('close')">&nbsp;关闭&nbsp;</a>
+    </div>
+    <!--预收款-->
+    <!--返利款-->
+    <div id="dlgRebateRecord" class="easyui-dialog" style="width: 1000px; height: 550px;"
+        closed="true" buttons="#dlgRebateRecord-buttons">
+        <div id="saPanel">
+            <table>
+                <tr>
+                    <td style="text-align: right;">客户编码:
+                    </td>
+                    <td>
+                        <input id="RClientNum" class="easyui-numberbox" data-options="prompt:'请输入客户编码'" style="width: 100px">
+                    </td>
+                    <td style="text-align: right;">公司名称:
+                    </td>
+                    <td>
+                        <input id="RClientName" class="easyui-textbox" data-options="prompt:'请输入公司名称'" style="width: 100px">
+                    </td>
+                    <td style="text-align: right;">客户姓名:
+                    </td>
+                    <td>
+                        <input id="RBoss" class="easyui-textbox" data-options="prompt:'请输入客户姓名'" style="width: 100px">
+                    </td>
+                    <td style="text-align: right;">所属仓库:
+                    </td>
+                    <td>
+                        <input id="RHID" class="easyui-combobox" style="width: 100px;" />
+                    </td>
+                    <%--  <td style="text-align: right;">操作时间:
+                </td>
+                <td>
+                    <input id="BStartDate" class="easyui-datebox" style="width: 100px">~<input id="BEndDate" class="easyui-datebox" style="width: 100px">
+                </td>--%>
+                </tr>
+            </table>
+        </div>
+        <table id="dgRebateRecord" class="easyui-datagrid">
+        </table>
+        <div id="RebateRecordbar">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="QueryRebateRecord()">&nbsp;查询&nbsp;</a>
+            <input type="file" id="fileRebate" name="file" accept=".xls,.xlsx" onchange="saveRebateFile()" style="width: 250px;" />
+            <input type="hidden" id="ExistCount" />
+            <a href="#" class="easyui-linkbutton" iconcls="icon-ok" plain="false" onclick="btnRebateSaveData()">&nbsp;保存数据&nbsp;</a>&nbsp;&nbsp;<a href="../upload/sFile/客户返利数据导入模板2024.xls" id="Rebatedowload" class="easyui-linkbutton" iconcls="icon-application_put" plain="false">&nbsp;下载模板&nbsp;</a>
+        </div>
+    </div>
+    <div id="dlgRebateRecord-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgRebateRecord').dialog('close')">&nbsp;关闭&nbsp;</a>
+    </div>
+    <!--预收款-->
+    <!--客户来款操作-->
+    <div id="dlgIncome" class="easyui-dialog" style="width: 1000px; height: 650px;"
+        closed="true" buttons="#dlgIncome-buttons">
+        <input type="hidden" id="IncomeClientID" />
+        <div id="saPanel" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
+            <table>
+                <tr>
+                    <td style="text-align: right;">客户编码:
+                    </td>
+                    <td>
+                        <input id="InClientNum" class="easyui-numberbox" data-options="prompt:'请输入客户编码'" style="width: 80px">
+                    </td>
+                    <td style="text-align: right;">客户姓名:
+                    </td>
+                    <td>
+                        <input id="InBoss" class="easyui-textbox" data-options="prompt:'请输入客户姓名'" style="width: 80px">
+                    </td>
+
+                    <td style="text-align: right;">手机号码:
+                    </td>
+                    <td>
+                        <input id="InCellphone" class="easyui-textbox" data-options="prompt:'请输入手机号码'" style="width: 90px">
+                    </td>
+                    <td style="text-align: right;">所属仓库:
+                    </td>
+                    <td>
+                        <input id="InID" class="easyui-combobox" style="width: 80px;" panelheight="auto" />
+                    </td>
+                    <td style="text-align: right;">来款时间:
+                    </td>
+                    <td>
+                        <input id="InStartDate" class="easyui-datebox" style="width: 100px">~
+                    <input id="InEndDate" class="easyui-datebox" style="width: 100px">
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <table id="dgIncome" class="easyui-datagrid">
+        </table>
+        <div id="Incomebar">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="QueryClientIncome()">查询</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addIncome()">
+            &nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-edit"
+                plain="false" onclick="editIncome()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton"
+                    iconcls="icon-cut" plain="false" onclick="DelIncome()">&nbsp;删&nbsp;除&nbsp;</a>
+        </div>
+    </div>
+    <div id="dlgIncome-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgIncome').dialog('close')">&nbsp;关闭&nbsp;</a>
+    </div>
+
+    <div id="dlgAddIncome" class="easyui-dialog" style="width: 600px; height: 400px;"
+        closed="true" buttons="#dlgAddIncome-buttons">
+        <div id="saPanel" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
+            <form id="fmIncome" class="easyui-form" method="post">
+                <input name="IncomeID" type="hidden" />
+                <input name="HouseID" type="hidden" id="IncomeHouseID" />
+                <input name="ClientID" type="hidden" id="AIncomeClientID" />
+                <table>
+                    <tr>
+                        <td style="text-align: right;">客户编码:
+                        </td>
+                        <td>
+                            <input id="IncomeClientNum" name="ClientNum" class="easyui-textbox" style="width: 200px;" readonly="readonly" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">客户姓名:
+                        </td>
+                        <td>
+                            <input id="IncomeClientName" class="easyui-textbox" style="width: 200px;" readonly="readonly" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">账户类型:
+                        </td>
+                        <td>
+                            <input name="CardType" id="inCardType0" type="radio" value="0"><label for="inCardType0" style="font-size: 15px;">现金</label>
+                            <input name="CardType" id="inCardType1" type="radio" value="1"><label for="inCardType1" style="font-size: 15px;">银行卡</label>
+                            <input name="CardType" id="inCardType2" type="radio" value="2"><label for="inCardType2" style="font-size: 15px;">微信</label>
+                            <input name="CardType" id="inCardType3" type="radio" value="3"><label for="inCardType3" style="font-size: 15px;">支付宝</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">
+                            <div id="zr">
+                                来款账号:
+                            </div>
+                        </td>
+                        <td>
+                            <input id="BasicID" name="BasicID" class="easyui-combobox" style="width: 200px;"
+                                panelheight="auto" data-options="required:true " />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">来款金额:
+                        </td>
+                        <td>
+                            <input id="Money" name="Money" class="easyui-numberbox" data-options="min:0,precision:2,required:true " style="width: 200px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">来款时间:
+                        </td>
+                        <td>
+                            <input id="CreateDate" name="CreateDate" class="easyui-datebox" data-options="required:true " style="width: 200px">
+                        </td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+    </div>
+    <div id="dlgAddIncome-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveIncomeRecord()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgAddIncome').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+    <!--客户来款操作-->
+    <%--此div用于导入数据--%>
+    <div id="dlginput" class="easyui-dialog" style="width: 1000px; height: 530px; padding: 2px 2px" closed="true" buttons="#dlginput-buttons">
+        <table id="dgImport" class="easyui-datagrid">
+        </table>
+        <div id="dginporttoolbar">
+            <input type="file" id="fileT" name="file" accept=".xls,.xlsx" onchange="saveFile()" style="width: 250px;" />
+            <a href="#" id="btnload" class="easyui-linkbutton" iconcls="icon-out_cargo" plain="false" onclick="saveFile()">&nbsp;重新上传&nbsp;</a>&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-ok" plain="false" onclick="btnSaveData()">&nbsp;保存数据&nbsp;</a>&nbsp;&nbsp;
+            <a href="../upload/sFile/客户管理导入模板.xls" id="dowload" class="easyui-linkbutton" iconcls="icon-application_put" plain="false">&nbsp;下载模板&nbsp;</a>&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="closeDlgStatus()">&nbsp;关&nbsp;闭&nbsp;</a>
+        </div>
+    </div>
+    <%--此div用于导入数据--%>
+    <%-- 上传身份证照片和合同资料 --%>
+    <div id="dlgUploadPic" class="easyui-dialog" style="width: 800px; height: 470px; padding: 1px 1px" closed="true" buttons="#dlgUploadPic-buttons">
+        <form id="fmUploadPic" class="easyui-form" method="post" enctype="multipart/form-data">
+            <input type="hidden" id="FClientID" />
+            <input type="hidden" id="FClientNum" />
+            <input type="hidden" id="FClientName" />
+            <table>
+                <tr>
+                    <td>
+                        <input style="width: 150px; height: 30px;" id="InsurePic" name="InsurePic" class="easyui-filebox" data-options="prompt:'身份证正面',buttonText:'点击选择',onChange:change_photo" />
+                    </td>
+                    <td>
+                        <input style="width: 150px; height: 30px;" id="TrafficPic" name="TrafficPic" class="easyui-filebox" data-options="prompt:'身份证反面',buttonText:'点击选择',onChange:traffic_Photo" />
+                    </td>
+                    <td>
+                        <input style="width: 150px; height: 30px;" id="DrivingLicensePic" name="DrivingLicensePic" class="easyui-filebox" data-options="prompt:'营业执照',buttonText:'点击选择',onChange:DrivingLicense_Photo" />
+                    </td>
+                    <td>
+                        <input style="width: 150px; height: 30px;" id="CarRegisterCardPic" name="CarRegisterCardPic" class="easyui-filebox" data-options="prompt:'签订合同',buttonText:'点击选择',onChange:CarRegisterCard_Photo" />
+                    </td>
+                    <td>
+                        <input style="width: 150px; height: 30px;" id="ShopHeadPic" name="ShopHeadPic" class="easyui-filebox" data-options="prompt:'门头照片',buttonText:'点击选择',onChange:ShopHeadPic_Photo" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <div id="InsureImgdiv">
+                            <img id="InsureImg" width="100px" height="100px" />
+                        </div>
+                    </td>
+                    <td>
+                        <div id="TrafficImgdiv">
+                            <img id="TrafficImg" width="100px" height="100px" />
+                        </div>
+                    </td>
+                    <td>
+                        <div id="DrivingLicensediv">
+                            <img id="DrivingLicenseImg" width="100px" height="100px" />
+                        </div>
+                    </td>
+                    <td>
+                        <div id="CarRegisterCarddiv">
+                            <img id="CarRegisterCardImg" width="100px" height="100px" />
+                        </div>
+                    </td>
+                    <td>
+                        <div id="ShopHeaddiv">
+                            <img id="ShopHeadImg" width="100px" height="100px" />
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            <table id="dgInsurcePicture" class="easyui-datagrid">
+            </table>
+        </form>
+    </div>
+    <div id="dlgUploadPic-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-application_view_tile" onclick="submitApprove()">&nbsp;提交客户审批&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelPic()">&nbsp;&nbsp;删&nbsp;除&nbsp;&nbsp;</a>&nbsp;&nbsp;
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconcls="icon-ok" onclick="savePic()">&nbsp;&nbsp;保&nbsp;存&nbsp;&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgUploadPic').dialog('close')">&nbsp;&nbsp;关&nbsp;闭&nbsp;&nbsp;</a>
+    </div>
+    <%-- 上传身份证照片和合同资料 --%>
+    <%-- 客户资料提交申请单 --%>
+    <div id="dlgInsuranceApprove" class="easyui-dialog" style="width: 1000px; height: 500px; padding: 1px 1px" closed="true" buttons="#dlgInsuranceApprove-buttons">
+        <table border="1" cellspacing="0" cellpadding="0" style="table-layout: fixed; border: 1px solid rgb(221, 221, 221); width: 100%; margin: 0 auto; border-collapse: collapse;">
+            <tr>
+                <td style="font-size: 26px; font-family: bold; text-align: center; height: 20px; padding: 0px; height: 40px;" colspan="8">客户资料审批申请单</td>
+            </tr>
+            <tr>
+                <td style="text-align: right; height: 40px;" colspan="8">申请日期：&nbsp;<label id="AskForLeavedate"></label>&nbsp;&nbsp;</td>
+            </tr>
+            <tr>
+                <td style="font-size: medium; height: 40px; text-align: center; background-color: rgb(246, 246, 246);">申请人</td>
+                <td style="text-align: center;"><%= UserInfor.UserName%></td>
+                <td style="font-size: medium; text-align: center; background-color: rgb(246, 246, 246);">客户姓名</td>
+                <td style="text-align: center;">
+                    <label id="AppBoss"></label>
+                </td>
+                <td style="font-size: medium; text-align: center; background-color: rgb(246, 246, 246);">申请标题</td>
+                <td style="text-align: center;">
+                    <label id="AppTitle"></label>
+                </td>
+                <td style="font-size: medium; text-align: center; background-color: rgb(246, 246, 246);">申请额度</td>
+                <td style="text-align: center;">
+                    <input id="ALimitMoney" name="LimitMoney" class="easyui-numberbox" data-options="min:0,precision:2" style="width: 100px;" /></td>
+            </tr>
+            <tr>
+                <td style="font-size: medium; height: 120px; text-align: center; background-color: rgb(246, 246, 246);">申请内容
+                </td>
+                <td colspan="7">
+                    <textarea id="Memo" name="Memo" rows="2" style="width: 830px; height: 200px; border: 1px solid #bdbdbd"></textarea>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="dlgInsuranceApprove-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveInsurance()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgInsuranceApprove').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <%-- 客户资料提交申请单 --%>
+
+    <!--查询客户开票资料-->
+    <div id="dlgAddPostAddress" class="easyui-dialog" style="width: 1000px; height: 550px; padding: 0px 0px"
+        closed="true" buttons="#dlgAddPostAddress-buttons">
+        <table id="dgInvoice" class="easyui-datagrid"></table>
+        <table id="dgPostAddress" class="easyui-datagrid"></table>
+    </div>
+    <div id="dlgAddPostAddress-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgAddPostAddress').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <!--查询客户开票资料-->
+
+    <!--入驻仓库操作-->
+    <div id="dlgSettleHouse" class="easyui-dialog" style="width: 600px; height: 530px;" closed="true" buttons="#dlgSettleHouse-buttons">
+        <table id="dgSettleHouse" class="easyui-datagrid">
+        </table>
+        <div id="SettleHousebar">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="QuerySettleHouse()">查询</a>&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-add" plain="false" onclick="addSettleHouse()">&nbsp;新&nbsp;增&nbsp;</a>&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editSettleHouse()">&nbsp;修&nbsp;改&nbsp;</a>&nbsp;&nbsp;
+            <a href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelSettleHouse()">&nbsp;删&nbsp;除&nbsp;</a>
+        </div>
+    </div>
+    <div id="dlgSettleHouse-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgSettleHouse').dialog('close')">&nbsp;关闭&nbsp;</a>
+    </div>
+
+    <!--入驻仓库-->
+    <div id="dlgAddSettleHouse" class="easyui-dialog" style="width: 400px; height: 250px;" closed="true" buttons="#dlgAddSettleHouse-buttons">
+        <div id="saPanel" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
+            <form id="fmSettleHouse" class="easyui-form" method="post">
+                <input type="hidden" id="ID" name="ID" />
+                <input type="hidden" id="SettleHouseClientID" name="SettleHouseClientID" />
+                <input type="hidden" id="SettleHouseClientNum" name="SettleHouseClientNum" />
+                <table>
+                    <tr>
+                        <td style="text-align: right;">入驻仓库:</td>
+                        <td>
+                            <input class="easyui-combobox" name="SettleHouseID" id="SettleHouseID" data-options="multiple:false" style="width: 250px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">入驻品牌:</td>
+                        <td>
+                            <input id="ClientTypeID" name="ClientTypeID" class="easyui-combobox" style="width: 250px;" data-options="multiple:true" />
+                        </td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+    </div>
+    <div id="dlgAddSettleHouse-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="saveSettleHouse()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlgAddSettleHouse').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+
+    <!--设置客户类型-->
+    <div id="divModifyClientType" class="easyui-dialog" style="width: 400px; height: 200px;" closed="true" buttons="#divModifyClientType-buttons">
+        <table>
+            <tr>
+                <td style="text-align: right;">客户类型:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="MClientType" name="ClientType" data-options="" style="width: 100px;"
+                        panelheight="auto" required="true">
+                        <option value="0">个人客户</option>
+                        <option value="1">月结客户</option>
+                        <option value="2">VIP客户</option>
+                        <option value="3">逾期客户</option>
+                    </select>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="divModifyClientType-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-ok" onclick="SaveClientType()">&nbsp;保&nbsp;存&nbsp;</a>&nbsp;&nbsp;
+     <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#divModifyClientType').dialog('close')">&nbsp;取&nbsp;消&nbsp;</a>
+    </div>
+    <!--设置客户类型-->
+    <script src="../JS/easy/js/ajaxfileupload.js" type="text/javascript"></script>
+    <script type="text/javascript">
+
+        //设置客户类型
+        function SaveClientType() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定保存？', function (r) {
+                if (r) {
+                    var MClientType = $('#MClientType').combobox('getValue');
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=SaveClientType',
+                        type: 'post', dataType: 'json', data: { data: json, MClientType: MClientType },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                                $('#dg').datagrid('reload');
+                                $('#dg').datagrid('unselectAll');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        function ModifyClientType() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            $('#divModifyClientType').dialog('open').dialog('setTitle', '修改客户类型');
+            $('#MClientType').combobox('clear');
+        }
+
+
+
+        $('#ShopCode').textbox({
+            onChange: function (value) {
+                if (value.length > 0) {
+                    $("#Upstream").css("display", "")
+                    $("#UpClientID").combobox({
+                        required: true
+                    });
+                }
+                else {
+                    $("#Upstream").css("display", "none")//attr({required:true})
+                    $("#UpClientID").combobox({
+                        required: false
+                    });
+                }
+            }
+        });
+        //查询客户开票资料
+        function QueryInvoice() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row) {
+                $('#dlgAddPostAddress').dialog('open').dialog('setTitle', '查询客户开票资料');
+                $('#dgInvoice').datagrid({
+                    width: '100%',
+                    height: '250px',
+                    title: '客户发票抬头', //标题内容
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: false, //行高是否自动
+                    collapsible: false, //是否可折叠
+                    pagination: true, //分页是否显示
+                    pageSize: 20, //每页多少条
+                    pageList: [20, 50],
+                    fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: false, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'ID',
+                    url: null,
+                    toolbar: '',
+                    columns: [[
+                        /* { title: '', field: 'ID', checkbox: true, width: '30px' },*/
+                        { title: '发票抬头', field: 'HeaderInfo', width: '150px' },
+                        {
+                            title: '抬头类型', field: 'HeaderType', width: '60px', formatter: function (val, row, index) {
+                                if (val == "0") { return "企业"; } else if (val == "1") { return "个人"; } else { return ""; }
+                            }
+                        },
+                        {
+                            title: '发票类型', field: 'InvoiceType', width: '100px', formatter: function (val, row, index) {
+                                if (val == "0") { return "增值税普通发票"; } else if (val == "1") { return "增值税专用发票"; } else { return ""; }
+                            }
+                        },
+                        { title: '统一社会信用代码', field: 'SocialCode', width: '150px' },
+                        { title: '开户银行名称', field: 'BankName', width: '90px' },
+                        { title: '开户基本账号', field: 'BankNumber', width: '120px' },
+                        { title: '注册公司地址', field: 'RegisAddress', width: '200px' },
+                        { title: '注册电话', field: 'RegisTelephone', width: '80px' },
+                        /*{ title: '操作时间', field: 'OP_DATE', width: '120px', formatter: DateTimeFormatter }*/
+                    ]]
+                });
+                $('#dgPostAddress').datagrid({
+                    width: '100%',
+                    height: '200px',
+                    title: '发票邮寄地址', //标题内容
+                    loadMsg: '数据加载中请稍候...',
+                    autoRowHeight: false, //行高是否自动
+                    collapsible: false, //是否可折叠
+                    pagination: true, //分页是否显示
+                    pageSize: 20, //每页多少条
+                    pageList: [20, 50],
+                    fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                    singleSelect: false, //设置为 true，则只允许选中一行。
+                    checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                    idField: 'ID',
+                    url: null,
+                    toolbar: '',
+                    columns: [[
+                        /*{ title: '', field: 'ID', checkbox: true, width: '30px' },*/
+                        { title: '收件人', field: 'AcceptPeople', width: '80px' },
+                        { title: '收件电话', field: 'AcceptCellphone', width: '100px' },
+                        {
+                            title: '收件地址', field: 'AcceptAddress', width: '400px', formatter: function (val, row, index) {
+                                return row.AcceptProvince + " " + row.AcceptCity + " " + row.AcceptCountry + " " + row.AcceptAddress;
+                            }
+                        },
+                        { title: '邮政编码', field: 'ZipCode', width: '80px' },
+                        /* { title: '操作时间', field: 'OP_DATE', width: '120px', formatter: DateTimeFormatter }*/
+                    ]]
+                });
+                var mOpts = $('#dgInvoice').datagrid('options');
+                mOpts.url = 'clientApi.aspx?method=QueryClientInvoiceHeader';
+                $('#dgInvoice').datagrid('load', { ClientNum: row.ClientNum });
+                var mOptsAddress = $('#dgPostAddress').datagrid('options');
+                mOptsAddress.url = 'clientApi.aspx?method=QueryClientPostAddress';
+                $('#dgPostAddress').datagrid('load', { ClientNum: row.ClientNum });
+            }
+        }
+
+        //保存上传的收货地址文件
+        function saveAddrFile() {
+            var file = $('#fileAddr').val();
+            if (file == null || file == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择导入文件!', 'info');
+                return;
+            }
+            $('#dgAcceptAddress').datagrid('loadData', { total: 0, rows: [] });
+            ajaxAddrFileUpload();
+        }
+
+        //文件上传
+        function ajaxAddrFileUpload() {
+            $('#ExistCount').val('');
+            var clientNum = $('#AdClientNum').textbox('getValue');
+            $.ajaxFileUpload({
+                url: 'clientApi.aspx?method=saveAddrFile&clientNum=' + clientNum,
+                secureuri: false, fileElementId: 'fileAddr', dataType: 'json',
+                success: function (data) {
+                    var val = JSON.parse(data.responseText);
+                    var result = val.Result;
+                    if (result == true) {
+                        var type = val.Type;
+                        if (type == 1) {
+                            var reg = new RegExp("\r\n", "g");
+                            var message = val.Message.replace(reg, "<br>");
+                            $.messager.alert('以下Excel数据有误已跳过导入', message, 'warning');
+                        }
+                        var value = eval(val.Data);
+                        $('#dgAcceptAddress').datagrid('loadData', value);
+                        if (val.ExistCount > 0) {
+                            $('#ExistCount').val(val.ExistCount);
+                        }
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '导入保存成功!', 'info');
+                    }
+                    else {
+                        var message = val.Message;
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', message, 'warning');
+                    }
+                },
+                error: function (data) {
+                    var val = JSON.parse(data.responseText);
+                    var result = val.Result;
+                    if (result == true) {
+                        var type = val.Type;
+                        if (type == 1) {
+                            var reg = new RegExp("\r\n", "g");
+                            var message = val.Message.replace(reg, "<br>");
+                            $.messager.alert('以下Excel数据有误已跳过导入', message, 'warning');
+                        }
+                        var value = eval(val.Data);
+                        $('#dgAcceptAddress').datagrid('loadData', value);
+                        if (val.ExistCount > 0) {
+                            $('#ExistCount').val(val.ExistCount);
+                        }
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '导入保存成功!', 'info');
+                    }
+                    else {
+                        var message = val.Message;
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', message, 'warning');
+                    }
+                }
+            })
+            return false;
+        }
+        //提交申请单
+        function saveInsurance() {
+            var row = $('#dgInsurcePicture').datagrid('getSelections');
+            if (row.length <= 0) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请先勾选客户证件资料', 'warning'); return; }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定提交？', function (r) {
+                if (r) {
+                    //var AppTitle = $('#AppTitle').html();
+                    var json = JSON.stringify(row);
+                    $.messager.progress({ msg: '请稍后,正在保存中...' });
+                    $.ajax({
+                        url: 'clientApi.aspx?method=SaveClientApprove&memo=' + escape($('#Memo').val()) + '&ApplyType=8&Title=' + escape($('#AppTitle').html()) + '&ClientID=' + row[0].ClientID + '&LimitMoney=' + escape($('#ALimitMoney').numberbox('getValue')),
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            $.messager.progress("close");
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '提交成功!', 'info');
+                                $('#dlgInsuranceApprove').dialog('close');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        //提交客户资料申请单
+        function submitApprove() {
+            var row = $('#dgInsurcePicture').datagrid('getSelections');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要操作的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#dlgInsuranceApprove').dialog('open').dialog('setTitle', '提交客户资料审批申请单');
+                var d = new Date();
+                $('#AskForLeavedate').text(AllDateTime(d));
+                var rowSelect = $('#dg').datagrid('getSelected');
+                $('#AppBoss').text(rowSelect.Boss);
+                $('#AppTitle').text(rowSelect.Boss + "客户资料申请");
+                $('#ALimitMoney').numberbox('setValue', 0);
+                //$('#AppBusinessEnd').text(DateFormatter(rowSelect.BusinessEnd));
+                //$('#AppCarOwner').text(rowSelect.CarOwner);
+                $('#Memo').text("客户：" + rowSelect.Boss + "的身份证资料已上传！请领导审批！");
+            }
+        }
+        //删除照片
+        function DelPic() {
+            var rows = $('#dgInsurcePicture').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=DelPicInfo',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            // var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dgInsurcePicture').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        //保存照片
+        function savePic() {
+            $('#fmUploadPic').form('submit', {
+                url: 'clientApi.aspx?method=SaveInsurcePic',
+                onSubmit: function (param) {
+                    console.log(param)
+                    param.ClientID = $('#FClientID').val();
+                    param.ClientNum = $('#FClientNum').val();
+                    param.ClientName = $('#FClientName').val();
+                    var trd = $(this).form('enableValidation').form('validate');
+                    return trd;
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dgInsurcePicture').datagrid('reload');
+                        //$('#dlgUploadPic').dialog('close'); 	// close the dialog
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            });
+        }
+        function change_photo() {
+            PreviewImage($("input[name='InsurePic']")[0], 'InsureImg', 'InsureImgdiv');
+        }
+        function traffic_Photo() {
+            PreviewImage($("input[name='TrafficPic']")[0], 'TrafficImg', 'TrafficImgdiv');
+        }
+        function DrivingLicense_Photo() {
+            PreviewImage($("input[name='DrivingLicensePic']")[0], 'DrivingLicenseImg', 'DrivingLicensediv');
+        }
+        function CarRegisterCard_Photo() {
+            PreviewImage($("input[name='CarRegisterCardPic']")[0], 'CarRegisterCardImg', 'CarRegisterCarddiv');
+        }
+        function ShopHeadPic_Photo() {
+            PreviewImage($("input[name='ShopHeadPic']")[0], 'ShopHeadImg', 'ShopHeaddiv');
+        }
+
+        function PreviewImage(fileObj, imgPreviewId, divPreviewId) {
+            if (fileObj.files.length <= 0) {
+                return;
+            }
+            var allowExtention = ".jpg,.bmp,.gif,.png,.pdf,.rar,.zip";//允许上传文件的后缀名document.getElementById("hfAllowPicSuffix").value;  
+            var extention = fileObj.value.substring(fileObj.value.lastIndexOf(".") + 1).toLowerCase();
+            var browserVersion = window.navigator.userAgent.toUpperCase();
+            if (allowExtention.indexOf(extention) > -1) {
+                if (fileObj.files) {//HTML5实现预览，兼容chrome、火狐7+等  
+                    if (window.FileReader) {
+                        var reader = new FileReader();
+                        reader.onload = function (e) {
+                            document.getElementById(imgPreviewId).setAttribute("src", e.target.result);
+                        }
+                        reader.readAsDataURL(fileObj.files[0]);
+                    } else if (browserVersion.indexOf("SAFARI") > -1) {
+                        alert("不支持Safari6.0以下浏览器的图片预览!");
+                    }
+                } else if (browserVersion.indexOf("MSIE") > -1) {
+                    if (browserVersion.indexOf("MSIE 6") > -1) {//ie6  
+                        document.getElementById(imgPreviewId).setAttribute("src", fileObj.value);
+                    } else {//ie[7-9]  
+                        fileObj.select();
+                        if (browserVersion.indexOf("MSIE 9") > -1)
+                            fileObj.blur();//不加上document.selection.createRange().text在ie9会拒绝访问  
+                        var newPreview = document.getElementById(divPreviewId + "New");
+                        if (newPreview == null) {
+                            newPreview = document.createElement("div");
+                            newPreview.setAttribute("id", divPreviewId + "New");
+                            newPreview.style.width = document.getElementById(imgPreviewId).width + "px";
+                            newPreview.style.height = document.getElementById(imgPreviewId).height + "px";
+                            newPreview.style.border = "solid 1px #d2e2e2";
+                        }
+                        newPreview.style.filter = "progid:DXImageTransform.Microsoft.AlphaImageLoader(sizingMethod='scale',src='" + document.selection.createRange().text + "')";
+                        var tempDivPreview = document.getElementById(divPreviewId);
+                        tempDivPreview.parentNode.insertBefore(newPreview, tempDivPreview);
+                        tempDivPreview.style.display = "none";
+                    }
+                } else if (browserVersion.indexOf("FIREFOX") > -1) {//firefox  
+                    var firefoxVersion = parseFloat(browserVersion.toLowerCase().match(/firefox\/([\d.]+)/)[1]);
+                    if (firefoxVersion < 7) {//firefox7以下版本  
+                        document.getElementById(imgPreviewId).setAttribute("src", fileObj.files[0].getAsDataURL());
+                    } else {//firefox7.0+                      
+                        document.getElementById(imgPreviewId).setAttribute("src", window.URL.createObjectURL(fileObj.files[0]));
+                    }
+                } else {
+                    document.getElementById(imgPreviewId).setAttribute("src", fileObj.value);
+                }
+            } else {
+                alert("仅支持" + allowExtention + "为后缀名的文件!");
+                fileObj.value = "";//清空选中文件  
+                if (browserVersion.indexOf("MSIE") > -1) {
+                    fileObj.select();
+                    document.selection.clear();
+                }
+                fileObj.outerHTML = fileObj.outerHTML;
+            }
+        }
+        //上传保险照片
+        function addInsurancePic() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要操作的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#InsurePic').filebox('clear');
+                $('#TrafficPic').filebox('clear');
+                $('#DrivingLicensePic').filebox('clear');
+                $('#CarRegisterCardPic').filebox('clear');
+                $('#ShopHeadPic').filebox('clear');
+                document.getElementById("TrafficImg").setAttribute("src", "");
+                document.getElementById("InsureImg").setAttribute("src", "");
+                document.getElementById("DrivingLicenseImg").setAttribute("src", "");
+                document.getElementById("CarRegisterCardImg").setAttribute("src", "");
+                document.getElementById("ShopHeadImg").setAttribute("src", "");
+
+                $('#dlgUploadPic').dialog('open').dialog('setTitle', '客户名：' + row.Boss + ' 上传证件资料');
+                $('#FClientID').val(row.ClientID);
+                $('#FClientNum').val(row.ClientNum);
+                $('#FClientName').val(row.Boss);
+
+                //显示DG
+                showdgInsurcePicture();
+                $('#dgInsurcePicture').datagrid('clearSelections');
+                var gridOpts = $('#dgInsurcePicture').datagrid('options');
+                gridOpts.url = 'clientApi.aspx?method=QueryCarInsurceRecord&ClientID=' + row.ClientID;
+            }
+        }
+        //曾经上传的保险照片
+        function showdgInsurcePicture() {
+            $('#dgInsurcePicture').datagrid({
+                width: '100%',
+                height: '250px',
+                //iconCls: 'icon-view',//标题图标
+                loadMsg: '数据加载中请稍候...',
+                //width: function () { return document.body.clientWidth * 0.9 },
+                //nowrap: true, //是否禁止文字自动换行设置为 true，则把数据显示在一行里。设置为 true 可提高加载性能。
+                autoRowHeight: false, //行高是否自动
+                //striped: true, //奇偶行使用不同背景色
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                rownumbers: true, //行号
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                //ctrlSelect:true,
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'FID',
+                url: null,
+                toolbar: '',
+                columns: [[
+                    { title: '', field: 'FID', checkbox: true, width: '30px' },
+                    { title: '证件照片', field: 'FileName', width: '200px', formatter: imgListFormatter },
+                    { title: '证件类型', field: 'FileType', width: '100px', formatter: function (val, row, index) { if (val == "0") { return "身份证正面"; } else if (val == "1") { return "身份证反面"; } else if (val == "2") { return "营业执照"; } else if (val == "3") { return "签订合同"; } else if (val == "4") { return "门头照片"; } else { return ""; } } },
+                    { title: '上传时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter }
+                ]]
+            });
+
+        }
+        //显示所有照片
+        function imgListFormatter(value, row, index) {
+            if (value != '' && value != null) {
+                return "<a href='" + row.FilePath + "' target='_blank'>" + value + "</a>";
+            }
+        }
+        //保存客户收货地址
+        function saveAcceptAddress() {
+            var clientnum = $('#AClientNum').textbox('getValue');
+            if (clientnum == undefined || clientnum == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '客户编码不能为空!', 'warning');
+                return;
+            }
+            $('#fmAddAcceptAddress').form('submit', {
+                url: 'clientApi.aspx?method=SaveAcceptAddress',
+                onSubmit: function (param) {
+                    param.AProvince = $('#AcceptProvince').combobox('getText');
+                    param.ACity = $('#AcceptCity').combobox('getText');
+                    param.ACountry = $('#AcceptCountry').combobox('getText');
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlgAddAcceptAddress').dialog('close'); 	// close the dialog
+                        QueryAcceptAddress();
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+        //新增收货地址
+        function addAcceptAddress() {
+            $('#dlgAddAcceptAddress').dialog('open').dialog('setTitle', '新增客户收货地址信息');
+            $('#fmAddAcceptAddress').form('clear');
+            var row = $('#dg').datagrid('getSelected');
+            if (row) {
+                $('#AClientNum').textbox('setValue', row.ClientNum);
+                $('#ADClientID').val(row.ClientID);
+            }
+            //所在仓库
+            $('#AHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            $('#AHouseID').combobox('setValue', "<%= UserInfor.HouseID%>");
+        }
+        //修改收货地址
+        function editAcceptAddress() {
+
+        }
+        //修改客户信息
+        function editAcceptAddressByID() {
+            var rows = $('#dgAcceptAddress').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (rows.length > 1) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择一条要修改的数据！', 'warning');
+                return;
+            }
+            if (rows[0]) {
+                $('#fmAddAcceptAddress').form('clear');
+                $('#dlgAddAcceptAddress').dialog('open').dialog('setTitle', '修改客户收货地址信息');
+                $('#fmAddAcceptAddress').form('load', rows[0]);
+
+                $('#AClientNum').combobox('readonly', true);
+            }
+        }
+        //导入
+        function Import() {
+            $('#dlginput').dialog('open').dialog('setTitle', '导入客户数据');
+            showData();
+            $('#dgImport').datagrid('loadData', { total: 0, rows: [] });
+        }
+
+        //显示DataGrid数据列表
+        function showData() {
+            $('#dgImport').datagrid({
+                width: '100%',
+                height: '450px',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                pagination: false, //分页是否显示
+                rownumbers: true,//显示序号
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                fitColumns: true, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: true, //设置为 true，则只允许选中一行。
+                checkOnSelect: false, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                url: null,
+                toolbar: '#dginporttoolbar',
+                columns: [[
+                    { title: '所属仓库', field: 'HouseName', width: '80px' },
+                    {
+                        title: '客户类型', field: 'ClientType', width: '60px', formatter: function (val, row, index) {
+                            if (val == "0") { return "个人客户"; }
+                            else if (val == "1") { return "月结客户"; }
+                            else if (val == "2") { return "VIP客户"; }
+                            else if (val == "3") { return "逾期客户"; }
+                            else if (val == "4") { return "云仓供应商"; }
+                            else if (val == "5") { return "云仓签约客户"; }
+
+                            else { return "个人客户"; }
+                        }
+                    },
+                    { title: '客户全称', field: 'ClientName', width: '120px' },
+                    { title: '客户简称', field: 'ClientShortName', width: '100px' },
+                    { title: '负责人', field: 'Boss', width: '80px' },
+                    { title: '手机号码', field: 'Cellphone', width: '100px' },
+                    { title: '客户地址', field: 'Address', width: '200px' },
+                    { title: '客户电话', field: 'Telephone', width: '100px' },
+                    { title: '目标销量', field: 'TargetNum', width: '70px', align: 'right' },
+                    { title: '店代码', field: 'ShopCode', width: '60px' },
+                    { title: '门店类型', field: 'TryeClientType', width: '60px' },
+                    { title: '马牌店代', field: 'TryeClientCode', width: '60px' },
+                    { title: '备注', field: 'Remark', width: '60px' }
+                ]]
+            });
+        }
+        //保存上传的返利数据文件
+        function saveRebateFile() {
+            var file = $("#fileRebate").val();
+            if (file == null || file == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择导入文件!', 'info');
+                return;
+            }
+            $('#dgRebateRecord').datagrid('loadData', { total: 0, rows: [] });
+            ajaxRebateFileUpload();
+        }
+        //保存返利数据
+        function btnRebateSaveData() {
+            var rows = $("#dgRebateRecord").datagrid('getData').rows;
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请先导入需要保存的数据！', 'warning');
+                return;
+            }
+            var msg = "确定保存？";
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', msg, function (r) {
+                if (r) {
+                    $.messager.progress({ msg: '请稍后,正在保存中...' });
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=SaveRebateData',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            $.messager.progress("close");
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                                $('#dlgRebateRecord').dialog('close');
+                                $("#fileRebate").val("");
+                                $('#dgRebateRecord').datagrid('loadData', { total: 0, rows: [] });
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        //上传返利数据文件
+        function ajaxRebateFileUpload() {
+            $('#ExistCount').val('');
+            $.ajaxFileUpload({
+                url: 'clientApi.aspx?method=saveRebateFile',
+                secureuri: false, fileElementId: 'fileRebate', dataType: 'json',
+                success: function (data) {
+                    var val = JSON.parse(data.responseText);
+                    var result = val.Result;
+                    if (result == true) {
+                        var type = val.Type;
+                        if (type == 1) {
+
+                            var reg = new RegExp("\r\n", "g");
+                            var message = val.Message.replace(reg, "<br>");
+                            $.messager.alert('以下Excel数据有误已跳过导入', message, 'warning');
+                        }
+                        var value = eval(val.Data);
+                        $('#dgRebateRecord').datagrid('loadData', value);
+                        if (val.ExistCount > 0) {
+                            $('#ExistCount').val(val.ExistCount);
+                        }
+                    }
+                    else {
+                        var message = val.Message;
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', message, 'warning');
+                    }
+                },
+                error: function (data) {
+                    var val = JSON.parse(data.responseText);
+                    var result = val.Result;
+                    if (result == true) {
+                        var type = val.Type;
+                        if (type == 1) {
+
+                            var reg = new RegExp("\r\n", "g");
+                            var message = val.Message.replace(reg, "<br>");
+                            $.messager.alert('以下Excel数据有误已跳过导入', message, 'warning');
+                        }
+                        var value = eval(val.Data);
+                        $('#dgRebateRecord').datagrid('loadData', value);
+                        if (val.ExistCount > 0) {
+                            $('#ExistCount').val(val.ExistCount);
+                        }
+                    }
+                    else {
+                        var message = val.Message;
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', message, 'warning');
+                    }
+                }
+            })
+            return false;
+        }
+        //保存上传的文件
+        function saveFile() {
+            var file = $("#fileT").val();
+            if (file == null || file == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择导入文件!', 'info');
+                return;
+            }
+            $('#dgImport').datagrid('loadData', { total: 0, rows: [] });
+            ajaxFileUpload();
+        }
+
+        //文件上传
+        function ajaxFileUpload() {
+            $('#ExistCount').val('');
+            $.ajaxFileUpload({
+                url: 'clientApi.aspx?method=saveFile',
+                secureuri: false,
+                fileElementId: 'fileT',
+                dataType: 'json',
+                success: function (data) {
+                    var val = JSON.parse(data.responseText);
+                    var result = val.Result;
+                    if (result == true) {
+                        var type = val.Type;
+                        if (type == 1) {
+
+                            var reg = new RegExp("\r\n", "g");
+                            var message = val.Message.replace(reg, "<br>");
+                            $.messager.alert('以下Excel数据有误已跳过导入', message, 'warning');
+                        }
+                        var value = eval(val.Data);
+                        $('#dgImport').datagrid('loadData', value);
+                        if (val.ExistCount > 0) {
+                            $('#ExistCount').val(val.ExistCount);
+                        }
+                    }
+                    else {
+                        var message = val.Message;
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', message, 'warning');
+                    }
+                },
+                error: function (data) {
+                    var val = JSON.parse(data.responseText);
+                    var result = val.Result;
+                    if (result == true) {
+                        var type = val.Type;
+                        if (type == 1) {
+
+                            var reg = new RegExp("\r\n", "g");
+                            var message = val.Message.replace(reg, "<br>");
+                            $.messager.alert('以下Excel数据有误已跳过导入', message, 'warning');
+                        }
+                        var value = eval(val.Data);
+                        $('#dgImport').datagrid('loadData', value);
+                        if (val.ExistCount > 0) {
+                            $('#ExistCount').val(val.ExistCount);
+                        }
+                    }
+                    else {
+                        var message = val.Message;
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', message, 'warning');
+                    }
+                }
+            })
+            return false;
+        }
+        //保存数据
+        function btnSaveData() {
+            var rows = $("#dgImport").datagrid('getData').rows;
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请先导入需要保存的数据！', 'warning');
+                return;
+            }
+            var msg = "确定保存？";
+            //var existCount = $('#ExistCount').val();
+            //if (existCount > 0) {
+            //    msg = "当前系统已存在" + existCount + "条本次导入同期数据，保存将覆盖所有数据，确定保存？";
+            //}
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', msg, function (r) {
+                if (r) {
+                    $.messager.progress({ msg: '请稍后,正在保存中...' });
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=SaveImportData',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            $.messager.progress("close");
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '导入成功!', 'info');
+                                $('#dlginput').dialog('close');
+                                dosearch();
+                                $("#fileT").val("");
+                                $('#dgImport').datagrid('loadData', { total: 0, rows: [] });
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        //关闭数据导入弹出框
+        function closeDlgStatus() {
+            $('#dlginput').dialog('close');
+            $('#dgImport').datagrid('loadData', { total: 0, rows: [] });
+            $('#fileT').val("");
+        }
+        //删除客户来款记录
+        function DelIncome() {
+            var rows = $('#dgIncome').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=DelClientIncome',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dgIncome').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        //保存客户来款记录
+        function saveIncomeRecord() {
+            $('#fmIncome').form('submit', {
+                url: 'clientApi.aspx?method=saveIncomeRecord',
+                onSubmit: function (param) {
+                    //param.ClientTypeName = $('#TypeID').combobox('getText');
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlgAddIncome').dialog('close'); 	// close the dialog
+                        $('#dgIncome').datagrid('reload');
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+        //新增来款记录
+        function addIncome() {
+            $('#dlgAddIncome').dialog('open').dialog('setTitle', '新增客户来款数据');
+            //$('#fm').form('clear');
+            //$('#DelFlag').combobox('select', '0');
+            var row = $('#dg').datagrid('getSelected');
+            $('#IncomeClientNum').textbox('setValue', row.ClientNum);
+            $('#IncomeClientName').textbox('setValue', row.Boss);
+            $('#AIncomeClientID').val(row.ClientID);
+            $('#IncomeHouseID').val(row.HouseID);
+
+            $("input[name=CardType]").click(function () { inCont(); });
+        }
+        function inCont() {
+            switch ($("input[name=CardType]:checked").attr("id")) {
+                case "inCardType0":
+                    $("#zr").html("现金仓库:");
+                    $('#BasicID').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=0',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                case "inCardType1":
+                    $("#zr").html("转入账号:");
+                    $('#BasicID').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=1',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                case "inCardType2":
+                    $("#zr").html("转入微信:");
+                    $('#BasicID').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=2',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                case "inCardType3":
+                    $("#zr").html("转入支付宝:");
+                    $('#BasicID').combobox({
+                        url: '../Finance/financeApi.aspx?method=AutoCompleteCard&tk=3',
+                        valueField: 'BasicID',
+                        textField: 'Aliases'
+                    });
+                    break;
+                default:
+                    break;
+            }
+        }
+        //修改客户信息
+        function editIncome() {
+            var row = $('#dgIncome').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#fmIncome').form('clear');
+                $('#dlgAddIncome').dialog('open').dialog('setTitle', '修改客户来款信息');
+                $('#fmIncome').form('load', row);
+                $('#IncomeClientNum').textbox('setValue', row.ClientNum);
+                $('#IncomeClientName').textbox('setValue', row.Boss);
+                $('#AIncomeClientID').val(row.ClientID);
+                $('#IncomeHouseID').val(row.HouseID);
+
+                $("input[name=CardType]").click(function () { inCont(); });
+                inCont();
+                $('#BasicID').combobox('setValue', row.BasicID);
+
+
+            }
+        }
+        //修改客户来款信息
+        function editIncomeByID(Did) {
+            var row = $("#dgIncome").datagrid('getData').rows[Did];
+            if (row) {
+                $('#fmIncome').form('clear');
+                $('#dlgAddIncome').dialog('open').dialog('setTitle', '修改客户来款信息');
+                $('#fmIncome').form('load', row);
+
+                $('#IncomeClientNum').textbox('setValue', row.ClientNum);
+                $('#IncomeClientName').textbox('setValue', row.Boss);
+                $('#AIncomeClientID').val(row.ClientID);
+                $('#IncomeHouseID').val(row.HouseID);
+
+                $("input[name=CardType]").click(function () { inCont(); });
+                inCont();
+                $('#BasicID').combobox('setValue', row.BasicID);
+            }
+        }
+        //查询客户来款记录
+        function QueryClientIncome() {
+            $('#dgIncome').datagrid('clearSelections');
+            var gridOpts = $('#dgIncome').datagrid('options');
+            gridOpts.url = 'clientApi.aspx?method=QueryClientIncome';
+            $('#dgIncome').datagrid('load', {
+                ClientNum: $('#InClientNum').val(),
+                Boss: $("#InBoss").val(),
+                Cellphone: $("#InCellphone").val(),
+                StartDate: $('#InStartDate').datebox('getValue'),
+                EndDate: $('#InEndDate').datebox('getValue'),
+                HID: $("#InID").combobox('getValue')
+            });
+        }
+        //客户来款
+        function ClientIncome() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'warning');
+                return;
+            }
+            $('#dlgIncome').dialog('open').dialog('setTitle', '查询客户：' + row.Boss + ' 来款记录');
+            showdgIncomeGrid();
+            var gridOpts = $('#dgIncome').datagrid('options');
+            gridOpts.url = 'clientApi.aspx?method=QueryClientIncome&ClientNum=' + row.ClientNum;
+            $('#IncomeClientID').val(row.ClientID);
+            $('#InClientNum').numberbox('setValue', row.ClientNum);
+            $('#InCellphone').textbox('setValue', row.Cellphone);
+            $('#InBoss').textbox('setValue', row.Boss);
+            //所在仓库
+            $('#InID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            $('#InID').combobox('setValue', row.HouseID);
+
+        }
+        function showdgIncomeGrid() {
+            $('#dgIncome').datagrid({
+                width: '100%',
+                height: '500px',
+                title: '', //标题内容
+                pagination: true, //分页是否显示
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'IncomeID',
+                url: null,
+                toolbar: '#Incomebar',
+                columns: [[
+                    { title: '', field: 'IncomeID', checkbox: true, width: '30px' },
+                    { title: '客户编码', field: 'ClientNum', width: '60px' },
+                    { title: '客户姓名', field: 'Boss', width: '60px' },
+                    { title: '来款金额', field: 'Money', width: '60px' },
+                    { title: '来款时间', field: 'CreateDate', width: '80px', formatter: DateFormatter },
+                    { title: '转入账号', field: 'Aliases', width: '100px' },
+                    {
+                        title: '账号类型', field: 'CardType', width: '60px', formatter: function (val, row, index) {
+                            if (val == "0") { return "现金"; }
+                            else if (val == "1") { return "银行卡"; }
+                            else if (val == "2") { return "微信"; }
+                            else if (val == "3") { return "支付宝"; }
+                            else { return ""; }
+                        }
+                    },
+                    { title: '开户行', field: 'Bank', width: '80px' },
+                    { title: '开户名', field: 'CardName', width: '80px' },
+                    { title: '账号', field: 'CardNum', width: '120px' },
+                    { title: '操作人', field: 'OP_ID', width: '50px' },
+                    { title: '操作时间', field: 'OP_DATE', width: '120px', formatter: DateTimeFormatter }
+                ]],
+                onDblClickRow: function (index, row) { editIncomeByID(index); }
+            });
+        }
+
+        //导出数据
+        function AwbExport() {
+            var row = $("#dg").datagrid('getData').rows[0];
+            if (row == null) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '没有数据可以进行导出，请重新查询！', 'warning'); return; }
+            var key = new Array();
+            key[0] = $('#QClientNum').val();
+            key[1] = $("#QClientName").val();
+            key[2] = $("#QShopCode").val();
+            key[3] = $("#QBoss").val();
+            key[4] = '';
+            key[5] = $("#QCellphone").val();
+            key[6] = $("#QDelFlag").combobox('getValue');
+            key[7] = $("#QClientType").combobox('getValue');
+            key[8] = $("#HID").combobox('getValue');
+            key[9] = $('#AUpClientID').combobox('getValue'),
+                $.messager.progress({ msg: '请稍后,正在导出中...' });
+            $.ajax({
+                url: "clientApi.aspx?method=QueryCargoClientForExport&key=" + escape(key.toString()),
+                success: function (text) {
+                    if (text == "OK") {
+                        $.messager.progress("close");
+                        var obj = document.getElementById("<%=btnDerived.ClientID %>"); obj.click();
+                    }
+                    else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
+                }
+            });
+        }
+        //客户类型选择方法
+        function ctypeChange(item) {
+            if (item.value == "2") {
+                $('#ClientNum').combogrid('readonly', false);
+            } else {
+                $('#ClientNum').combogrid('readonly', true);
+            }
+        }
+        //解绑特殊的客户编码
+        function cancelVIP() {
+            var rows = $('#dgVip').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要解绑的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定解绑？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=CancelSpecialCode',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '解绑成功!', 'info');
+                                $('#dgVip').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        //删除特殊的客户编码
+        function delVIP() {
+            var rows = $('#dgVip').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=DelSpecialCode',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dgVip').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        //保存特殊的客户编码
+        function saveaddvip() {
+            $('#vipfm').form('submit', {
+                url: 'clientApi.aspx?method=SaveSpecialCode',
+                onSubmit: function () {
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#addvip').dialog('close'); 	// close the dialog
+                        $('#dgVip').datagrid('reload');
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+        //查询客户编码
+        function awbSpecialCode() {
+            var mOpts = $('#dgVip').datagrid('options');
+            mOpts.url = 'clientApi.aspx?method=QuerySpecialCode';
+            $('#dgVip').datagrid('load', {
+                sCode: $('#QSpecialCode').val()
+            });
+        }
+        //新增VIP编码
+        function addVIP() {
+            $('#addvip').dialog('open').dialog('setTitle', '新增VIP编码');
+        }
+        //VIP编码
+        function VIPCode() {
+            $('#vip').dialog('open').dialog('setTitle', 'VIP编码管理');
+            showGrid();
+            var gridOpts = $('#dgVip').datagrid('options');
+            gridOpts.url = 'clientApi.aspx?method=QuerySpecialCode';
+        }
+        //显示列表
+        function showGrid() {
+            $('#dgVip').datagrid({
+                width: '100%',
+                height: '100%',
+                title: '', //标题内容
+                pagination: true, //分页是否显示
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '#specialbar',
+                columns: [[
+                    { title: '', field: 'ID', checkbox: true, width: '30px' },
+                    { title: '客户编码', field: 'ClientNum', width: '100px' },
+                    {
+                        title: '启用状态', field: 'Status', width: '80px', formatter: function (val, row, index) {
+                            if (val == "0") { return "未启用"; }
+                            else if (val == "1") { return "已启用"; }
+                            else { return "启用"; }
+                        }
+                    },
+                    { title: '客户名称', field: 'ClientShortName', width: '120px' },
+                    { title: '操作时间', field: 'OP_DATE', width: '120px', formatter: DateTimeFormatter }
+                ]]
+            });
+        }
+        //查询客户收货地址数据
+        function QueryAcceptAddress() {
+            var mOpts = $('#dgAcceptAddress').datagrid('options');
+            mOpts.url = 'clientApi.aspx?method=QueryAcceptAddress';
+            $('#dgAcceptAddress').datagrid('load', {
+                ClientNum: $('#AdClientNum').val(),
+                AcceptCompany: $('#AAcceptCompany').val(),
+                AcceptPeople: $('#AAcceptPeople').val(),
+                AcceptCellphone: $('#AAcceptCellphone').val(),
+                HID: $("#AHID").combobox('getValue')
+            });
+        }
+        //查询返利款记录
+        function QueryRebateRecord() {
+            var mOpts = $('#dgRebateRecord').datagrid('options');
+            mOpts.url = 'clientApi.aspx?method=QueryPreRecord';
+            $('#dgRebateRecord').datagrid('load', {
+                StartDate: "",//$('#BStartDate').datebox('getValue'),
+                EndDate: "",//$('#BEndDate').datebox('getValue'),
+                ClientNum: $('#RClientNum').val(),
+                ClientName: $('#RClientName').val(),
+                Boss: $('#RBoss').val(),
+                HID: $("#RHID").combobox('getValue'),
+                operaType: '1'
+            });
+        }
+        //返利款查询
+        function RebateRecord() {
+            <%--var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'warning');
+                return;
+            }--%>
+            $('#dlgRebateRecord').dialog('open').dialog('setTitle', '返利管理');
+            showRebateRecordGrid();
+
+            $('#RHID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            $('#RHID').combobox('setValue', "<%= UserInfor.HouseID%>");
+            $('#RHID').combobox('textbox').bind('focus', function () { $('#RHID').combobox('showPanel'); });
+            //var gridOpts = $('#dgRebateRecord').datagrid('options');
+            //gridOpts.url = 'clientApi.aspx?method=QueryPreRecord&ClientID=' + row.ClientID + '&operaType=1';
+            //$('#BClientID').textbox('setValue', row.ClientID);
+        }
+        //显示返利款数据列表 
+        function showRebateRecordGrid() {
+            var HID = '<%=UserInfor.HouseID%>';
+            var columns = [];
+            columns.push({ title: '客户编码', field: 'ClientNum', width: '60px' });
+            columns.push({ title: '客户姓名', field: 'Boss', width: '80px' });
+            columns.push({ title: '返利月份', field: 'RebateMonth', width: '80px' });
+            if (HID == "82") {
+                //锦湖
+                columns.push({ title: '月度达成返利', field: 'MonthMoney', width: '80px' });
+                columns.push({ title: '18寸达成返利', field: 'ShiBaMoney', width: '80px' });
+                columns.push({ title: '早期订单返利', field: 'StageOrderMoney', width: '80px' });
+                columns.push({ title: '季度达成返利', field: 'QuaterMoney', width: '80px' });
+                columns.push({ title: '追加促销返利', field: 'PromotionMoney', width: '80px' });
+            }
+            else {
+                columns.push({ title: '马牌店代', field: 'TryeClientCode', width: '80px' });
+                columns.push({ title: '延保返利', field: 'YBMoney', width: '60px' });
+                columns.push({ title: '好评返利', field: 'HPMoney', width: '60px' });
+                columns.push({ title: '补贴返利', field: 'BTMoney', width: '60px' });
+                columns.push({ title: 'ROOS返利', field: 'ROSSMoney', width: '60px' });
+            }
+            columns.push({
+                title: '收支状态', field: 'RecordType', width: '60px', formatter: function (val, row, index) {
+                    if (val == "0") { return "收入"; }
+                    else if (val == "1") { return "支出"; }
+                    else { return ""; }
+                }
+            });
+            columns.push({ title: '支出金额', field: 'Money', width: '60px' });
+            columns.push({ title: '支出单号', field: 'ExID', width: '80px' });
+            columns.push({
+                title: '备注', field: 'Remark', width: '200px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            $('#dgRebateRecord').datagrid({
+                width: '100%',
+                height: '440px',
+                title: '', //标题内容
+                pagination: true, //分页是否显示
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ClientNum',
+                url: null,
+                toolbar: '#RebateRecordbar',
+                columns: [columns]
+            });
+        }
+        //查询预收款记录
+        function QueryPreRecord() {
+            var mOpts = $('#dgPreRecord').datagrid('options');
+            mOpts.url = 'clientApi.aspx?method=QueryPreRecord';
+            $('#dgPreRecord').datagrid('load', {
+                StartDate: $('#StartDate').datebox('getValue'),
+                EndDate: $('#EndDate').datebox('getValue'),
+                //ClientID: $('#AClientID').val(),
+                ClientNum: $('#PRClientNum').numberbox('getValue'),
+                operaType: '0',
+                CheckOutType: '10',
+            });
+        }
+        //预收款查询operaType=0
+        function PreRecord() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'warning');
+                return;
+            }
+            $('#dlgPreRecord').dialog('open').dialog('setTitle', '查询客户：' + row.ClientShortName + ' 预收款记录');
+            showPreRecordGrid();
+            var gridOpts = $('#dgPreRecord').datagrid('options');
+            gridOpts.url = 'clientApi.aspx?method=QueryPreRecord&ClientID=' + row.ClientID + '&operaType=0&CheckOutType=10';
+            //$('#AClientID').textbox('setValue', row.ClientID);
+            //$('#AClientID').val(row.ClientID);
+            $('#PRClientNum').numberbox('setValue', row.ClientNum);
+
+        }
+        //显示预收款数据列表 
+        function showPreRecordGrid() {
+            $('#dgPreRecord').datagrid({
+                width: '100%',
+                height: '100%',
+                title: '', //标题内容
+                pagination: true, //分页是否显示
+                pageSize: 1000, //每页多少条
+                pageList: [1000, 2000],
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '#PreRecordbar',
+                columns: [[
+                    //{ title: '', field: 'ID', checkbox: true, width: '30px' },
+                    { title: '客户编码', field: 'ClientNum', width: '90px' },
+                    { title: '公司名称', field: 'ClientName', width: '180px' },
+                    { title: '关联单号', field: 'ExID', width: '120px' },
+                    { title: '使用金额', field: 'Money', width: '100px' },
+                    {
+                        title: '收支状态', field: 'RecordType', width: '100px', formatter: function (val, row, index) {
+                            if (val == "0") { return "预收款收入"; }
+                            else if (val == "1") { return "销售订单支出"; }
+                            else if (val == "2") { return "销售订单退收"; }
+                            else if (val == "3") { return "预收款返利"; }
+                            else { return ""; }
+                        }
+                    },
+                    { title: '动态余额', field: 'DynamicBalance', width: '90px' },
+                    { title: '操作时间', field: 'OP_DATE', width: '120px', formatter: DateTimeFormatter }
+                ]]
+            });
+        }
+        //新增客户信息
+        function addItem() {
+            $('#dlg').dialog('open').dialog('setTitle', '新增客户信息');
+            $('#fm').form('clear');
+            $('#DelFlag').combobox('select', '0');
+            $('#ArrivePayLimit').combobox('select', '1');
+            $('#IsBuy').combobox('select', '0');
+            $("#Upstream").css("display", "none")
+            $('#HouseID').combobox('readonly', false);
+            $("#MulAddressOrder1").prop('checked', true);
+            //限制品牌
+            $('#NoType').combobox({
+                url: '../Order/orderApi.aspx?method=QueryTypeData',
+                valueField: 'TypeID', textField: 'TypeName',
+                onSelect: function (rec) {
+
+                }
+            });
+        }
+        //修改客户信息
+        function editItem() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (row) {
+                $('#fm').form('clear');
+                $('#dlg').dialog('open').dialog('setTitle', '修改客户信息');
+                //$('#fm').form('load', row);
+
+
+                $('#UserID').combobox({
+                    url: '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=' + row.HouseID,
+                    valueField: 'LoginName', textField: 'UserName',
+                    onSelect: onSaleManIDChanged
+                });
+                $('#BusUserID').combobox({
+                    url: '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=' + row.HouseID,
+                    valueField: 'LoginName', textField: 'UserName',
+                    onSelect: onBusSaleManIDChanged
+                });
+
+                //valueField:'UpClientID',textField:'UpClientShortName',url:'clientApi.aspx?method=QeurylistUpClientData'
+                $('#UpClientID').combobox({
+                    url: 'clientApi.aspx?method=QeurylistUpClientData',
+                    valueField: 'UpClientID', textField: 'UpClientShortName',
+                    onSelect: onBusSaleManIDChanged
+                });
+                $("#Upstream").css("display", "display")
+                $('#fm').form('load', row);
+                if (row.UpClientID == 0) {
+                    $("#Upstream").css("display", "none")
+                    $('#UpClientID').combobox('setValue', '')
+                    $('#UpClientID').combobox('setText', '')
+                }
+
+                if (row.SettleHouseID == '') { $('#SettleHouseID').combobox('clear'); }
+                if (row.ClientTypeID == '') { $('#ClientTypeID').combobox('clear'); }
+                //$('#SettleHouseID').combobox('clear');
+                //var url = '../House/houseApi.aspx?method=CargoPermisionHouse';
+                //$('#SettleHouseID').combobox('reload', url);
+                //$('#SettleHouseID').combobox('setValues', row.SettleHouseID);
+
+                //$('#TypeID').combobox('clear');
+                //var url = '../Product/productApi.aspx?method=QueryALLOneProductType&PID=1';
+                //$('#TypeID').combobox('reload', url);
+                //if (row.ClientTypeID != '') {
+                //    $('#TypeID').combobox('setValues', row.ClientTypeID);
+                //}
+                $('#ClientNum').combobox('readonly', true);
+                $('#HouseID').combobox('readonly', true);
+
+                if (row.HouseID == 82) {
+                    $('#ClientType').combobox('setValue', "0");
+                    $("#ClientType").combobox('disable');
+                } else {
+                    $("#ClientType").combobox('enable');
+                }
+            }
+        }
+        //修改客户信息              
+        function editItemByID(Did) {
+            var row = $("#dg").datagrid('getData').rows[Did];
+            if (row) {
+                $('#fm').form('clear');
+                $('#dlg').dialog('open').dialog('setTitle', '修改查询客户信息');
+
+                $('#UserID').combobox({
+                    url: '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=' + row.HouseID,
+                    valueField: 'LoginName', textField: 'UserName',
+                    onSelect: onSaleManIDChanged
+                });
+                $('#BusUserID').combobox({
+                    url: '../Order/orderApi.aspx?method=QueryUserByDepCode&houseID=' + row.HouseID,
+                    valueField: 'LoginName', textField: 'UserName',
+                    onSelect: onBusSaleManIDChanged
+                });
+                //valueField:'UpClientID',textField:'UpClientShortName',url:'clientApi.aspx?method=QeurylistUpClientData'
+                $('#UpClientID').combobox({
+                    url: 'clientApi.aspx?method=QeurylistUpClientData',
+                    valueField: 'UpClientID', textField: 'UpClientShortName',
+                    onSelect: onBusSaleManIDChanged
+                });
+                //限制品牌
+                $('#NoType').combobox({
+                    url: '../Order/orderApi.aspx?method=QueryTypeData',
+                    valueField: 'TypeID', textField: 'TypeName',
+                    onSelect: function (rec) {
+
+                    }
+                });
+                $("#Upstream").css("display", "display")
+                $('#fm').form('load', row);
+                if (row.UpClientID == 0) {
+                    $("#Upstream").css("display", "none")
+                    $('#UpClientID').combobox('setValue', '')
+                    $('#UpClientID').combobox('setText', '')
+                }
+
+                if (row.SettleHouseID == '') { $('#SettleHouseID').combobox('clear'); }
+                if (row.ClientTypeID == '') { $('#ClientTypeID').combobox('clear'); }
+                //$('#SettleHouseID').combobox('clear');
+                //var url = '../House/houseApi.aspx?method=CargoPermisionHouse';
+                //$('#SettleHouseID').combobox('reload', url);
+                //$('#SettleHouseID').combobox('setValues', row.SettleHouseID);
+
+                //$('#TypeID').combobox('clear');
+                //var url = '../Product/productApi.aspx?method=QueryALLOneProductType&PID=1';
+                //$('#TypeID').combobox('reload', url);
+                //if (row.ClientTypeID != '') {
+                //    $('#TypeID').combobox('setValues', row.ClientTypeID);
+                //}
+                $('#ClientNum').combobox('readonly', true);
+                $('#HouseID').combobox('readonly', true);
+
+                console.log(row)
+                if (row.MulAddressOrder == "1") {
+                    $("#MulAddressOrder2").prop('checked', true);
+                } else {
+                    $("#MulAddressOrder1").prop('checked', true);
+                }
+
+                if (row.HouseID == 82) {
+                    $('#ClientType').combobox('setValue', "0");
+                    $("#ClientType").combobox('disable');
+                } else {
+                    $("#ClientType").combobox('enable');
+                }
+
+            }
+        }
+
+        //删除客户收货地址
+        function DelAcceptAddress() {
+            var rows = $('#dgAcceptAddress').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=DelAcceptAddress',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dgAcceptAddress').datagrid('reload');
+                                $('#dgAcceptAddress').datagrid('unselectAll');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        //收货地址管理
+        function btnAddress() {
+            $('#dgAcceptAddress').datagrid('loadData', { total: 0, rows: [] });
+            $('#dlgAcceptAddress').dialog('open').dialog('setTitle', '客户收货地址管理');
+            $('#AHID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            $('#AHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+
+            //省市区三级联动
+            $('#AcceptProvince').combobox({
+                url: '../House/houseApi.aspx?method=QueryCityData',
+                valueField: 'ID', textField: 'City',
+                onSelect: function (rec) {
+                    $('#AcceptCity').combobox('clear');
+                    var url = '../House/houseApi.aspx?method=QueryCityData&PID=' + rec.ID;
+                    $('#AcceptCity').combobox('reload', url);
+                    //一级仓库
+                    $('#AcceptCity').combobox({
+                        onSelect: function (fai) {
+                            $('#AcceptCountry').combobox('clear');
+                            var url = '../House/houseApi.aspx?method=QueryCityData&PID=' + fai.ID;
+                            $('#AcceptCountry').combobox('reload', url);
+                        }
+                    });
+                }
+            });
+            //$('#AHID').combobox('setValue', "<%= UserInfor.HouseID%>");
+            $('#AHID').combobox('textbox').bind('focus', function () { $('#AHID').combobox('showPanel'); });
+            var row = $('#dg').datagrid('getSelected');
+            if (row) {
+                $('#AdClientNum').textbox('setValue', row.ClientNum);
+                //$('#AAcceptCompany').textbox('setValue', row.ClientShortName);
+                //$('#AAcceptPeople').textbox('setValue', row.Boss);
+                QueryAcceptAddress();
+            }
+        }
+        //删除客户信息
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=DelCargoClient',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dg').datagrid('reload');
+                                $('#dg').datagrid('unselectAll');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        //保存客户信息
+        function saveItem() {
+            $("#ClientType").combobox('enable');
+            var TryeClientType = $('#TryeClientType').combobox('getValue');
+            if (TryeClientType != undefined && TryeClientType != "" && TryeClientType != "NO") {
+                var TryeClientCode = $('#TryeClientCode').textbox('getValue');
+                if (TryeClientCode == "" || TryeClientCode.length != 7) {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请输入7位马牌店代码', 'warning');
+                    return;
+                }
+            }
+            $('#fm').form('submit', {
+                url: 'clientApi.aspx?method=SaveCargoClient',
+                onSubmit: function (param) {
+                    param.AProvince = $('#Province').combobox('getText');
+                    param.ACity = $('#City').combobox('getText');
+                    param.ACountry = $('#Country').combobox('getText');
+                    param.LogisName = $('#LogisID').combobox('getText');
+                    param.UpClientShortName = $('#UpClientID').combobox('getText');
+                    //param.NoType = $("#NoType").combobox('getValues').toString();//仓库ID
+                    //param.ClientTypeName = $('#ClientTypeID').combobox('getText');
+                    //param.SettleHouseName = $('#SettleHouseID').combobox('getText');
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlg').dialog('close'); 	// close the dialog
+                        $('#dg').datagrid('reload');
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+
+        function showdgSettleHouseGrid() {
+            $('#dgSettleHouse').datagrid({
+                width: '100%',
+                height: '450px',
+                title: '', //标题内容
+                pagination: true, //分页是否显示
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: false, //是否可折叠
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '#SettleHousebar',
+                columns: [[
+                    { title: '', field: 'ID', checkbox: true, width: '30px' },
+                    { title: '入驻仓库', field: 'SettleHouseName', width: '90px' },
+                    { title: '入驻品牌', field: 'ClientTypeName', width: '450px' },
+                ]],
+                onClickRow: function (index, row) {
+                    $('#dgSettleHouse').datagrid('clearSelections');
+                    $('#dgSettleHouse').datagrid('selectRow', index);
+                },
+                onDblClickRow: function (index, row) { editSettleHouse(index); }
+            });
+        }
+        //
+        function SettleHouse() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'warning');
+                return;
+            }
+            $('#dlgSettleHouse').dialog('open').dialog('setTitle', '查询客户：' + row.Boss + ' 入驻仓库');
+            showdgSettleHouseGrid();
+            $("#SettleHouseClientID").val(row.ClientID);
+            $("#SettleHouseClientNum").val(row.ClientNum);
+            var gridOpts = $('#dgSettleHouse').datagrid('options');
+            gridOpts.url = 'clientApi.aspx?method=QuerySettleHouse&ClientNum=' + row.ClientNum;
+
+        }
+        function addSettleHouse() {
+            $("#ID").val('');
+            $('#dlgedit').form('clear');
+            $("#ClientTypeID").combobox('clear');
+            $("#SettleHouseID").combobox('clear');
+            $('#dlgAddSettleHouse').dialog('open').dialog('setTitle', '新增客户入驻仓库');
+        }
+        function editSettleHouse() {
+            var rows = $('#dgSettleHouse').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning');
+                return;
+            }
+            if (rows.length > 1) {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择一条要修改的数据！', 'warning');
+                return;
+            }
+            if (rows[0]) {
+                $('#dlgAddSettleHouse').dialog('open').dialog('setTitle', '修改客户入驻仓库');
+                $('#fmSettleHouse').form('load', rows[0]);
+            }
+        }
+        function DelSettleHouse() {
+            var rows = $('#dgSettleHouse').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'clientApi.aspx?method=DelSettleHouse',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dgSettleHouse').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        function saveSettleHouse() {
+            $('#fmSettleHouse').form('submit', {
+                url: 'clientApi.aspx?method=SaveSettleHouse',
+                onSubmit: function (param) {
+                    param.SettleHouseName = $('#SettleHouseID').combobox('getText');
+                    param.ClientTypeName = $('#ClientTypeID').combobox('getText');
+                    return $(this).form('enableValidation').form('validate');
+                },
+                success: function (msg) {
+                    var result = eval('(' + msg + ')');
+                    if (result.Result) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存成功!', 'info');
+                        $('#dlgAddSettleHouse').dialog('close'); 	// close the dialog
+                        $('#dgSettleHouse').datagrid('reload');
+                    } else {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '保存失败：' + result.Message, 'warning');
+                    }
+                }
+            })
+        }
+
+        function exportEasyUIToCSV(tableName) {
+            var rows = $('#' + tableName).datagrid('getRows'); // 获取当前页数据
+
+            for (var i = 0; i < rows.length; i++) {
+                var str = (rows[i].ExID + '').toString();
+                // 确保它不是 null 或 undefined，并且是字符串
+                rows[i].ExID = str.replace(/,+$/, '');
+                str = (rows[i].ExID).toString();
+                rows[i].ExID = str.replace(/,/g, '，');
+
+
+                if (rows[i].RecordType == "0") {
+                    rows[i].RecordType = "预收款收入"
+                } else if (rows[i].RecordType == "1") {
+                    rows[i].RecordType = "销售订单支出"
+                } else if (rows[i].RecordType == "2") {
+                    rows[i].RecordType = "销售订单退收"
+                } else if (rows[i].RecordType == "3") {
+                    rows[i].RecordType = "预收款返利"
+                }
+                rows[i].OP_DATE = DateTimeFormatter(rows[i].OP_DATE);
+            }
+            if (!rows.length) return alert('无数据可导出');
+
+            var header = $('#' + tableName).datagrid('getColumnFields')
+                .map(field => $('#' + tableName).datagrid('getColumnOption', field).title)
+                .join(',');
+
+            var csv = header + '\n';
+
+
+            rows.forEach(row => {
+                var line = $('#' + tableName).datagrid('getColumnFields')
+                    .map(field => row[field] ?? '')
+                    .join(',');
+                csv += line + '\n';
+            });
+
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "export.csv";
+            link.click();
+        }
+    </script>
+
+</asp:Content>

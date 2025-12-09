@@ -2990,6 +2990,16 @@ namespace Cargo.Interface
                     wXCoupons.Add(coupon);
                     if (!coupon.UseStatus.Equals("0"))
                     { weiChat.code = 2; weiChat.msg = "优惠券已使用"; goto ERROR; }
+                    bool isExists = !string.IsNullOrWhiteSpace(coupon.ThrowGood)&& coupon.ThrowGood.Split(',')
+                       .Select(s => s.Trim())
+                       .Any(s => int.TryParse(s, out int val) && val == Convert.ToInt32(YPOrderType));
+                    if (coupon.ThrowGood!="0"&& !isExists) {
+                        weiChat.code = 2; weiChat.msg = "此订单无法使用该优惠卷"; goto ERROR;
+                    }
+                    if (PromotionType != 0)
+                    {
+                        weiChat.code = 2; weiChat.msg = "此订单无法使用该优惠卷"; goto ERROR;
+                    }
                     if (coupon.EndDate < DateTime.Now)
                     {
                         weiChat.code = 2; weiChat.msg = "优惠券已过期"; goto ERROR;
@@ -3505,18 +3515,18 @@ namespace Cargo.Interface
             foreach (CargoContainerShowEntity time in outHouseList)
             {
                 CargoProductEntity syncProduct = house.SyncTypeProduct(time.ProductID.ToString());
-                //34 马牌  1 同步马牌  2 同步全部品牌
-                if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+                if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                 {
-                    RedisHelper.HashSet("OpenSystemStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.GoodsCode);
+                    RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
                 }
-
-                //主仓缓存更改
-                if (house.IsAddCaching(syncProduct.HouseID, time.TypeID))
+                if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
                 {
                     RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                 }
-                RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                {
+                    RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                }
 
             }
 
@@ -5041,10 +5051,17 @@ namespace Cargo.Interface
                 List<CargoProductEntity> syncProduct = house.SyncTypeOrderNo(wo.CargoOrderNo);
                 foreach (CargoProductEntity product in syncProduct)
                 {
-
-                    if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+                    if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Cass"))
                     {
                         RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
+                    }
+                    if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "DILE"))
+                    {
+                        RedisHelper.HashSet("HCYCHouseStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
+                    }
+                    if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Tuhu"))
+                    {
+                        RedisHelper.HashSet("TuhuStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
                     }
                 }
                 orderBus.DeleteOrderInfo(new List<CargoOrderEntity> { new CargoOrderEntity { OrderNo = wo.CargoOrderNo, OrderID = wo.OrderID, DeleteID = wxUser.wxOpenID, DeleteName = wxUser.Name, WXOrderNo = wo.OrderNo, CheckStatus = "0" } }, log);
@@ -5741,7 +5758,6 @@ namespace Cargo.Interface
         }
         #endregion
 
-
         #region 小程序购物车 Redis
         public static long GetCurrentUnixTimeSeconds()
         {
@@ -6027,402 +6043,9 @@ namespace Cargo.Interface
             });
             context.Response.Write(returnString);
         }
-
-        /// <summary>
-        /// 修改商品详情数量等数据 数量
-        /// </summary>
-        /// <param name="context"></param>
-        /// <param name="wxOpenId"></param>
-        /// <param name="json"></param>
-        private void UpdateShoppingCartItemQuantity(HttpContext context)
-        {
-            string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
-            string json = Convert.ToString(context.Request["json"]);
-            String returnString = string.Empty;
-            long timestampMs = GetCurrentUnixTimeSeconds();
-            var data = JsonConvert.DeserializeObject<MiniApplicationParam>(json);
-            if (data != null)
-            {
-                var dataList = new List<MiniApplicationParam>();
-                //if (data.CreateTimestampId == null)
-                //{
-                //    returnString = JSON.Encode(new
-                //    {
-                //        code = -1,
-                //        msg = "未获取到订单ID"
-                //    });
-                //    context.Response.Write(returnString);
-                //    return;
-                //}
-                if (data.ThrowGood == null)
-                {
-                    returnString = JSON.Encode(new
-                    {
-                        code = -1,
-                        msg = "未获取到订单类型"
-                    });
-                    context.Response.Write(returnString);
-                    return;
-                }
-                if (!Enum.IsDefined(typeof(CargoProductThrowGoodEnum), data.ThrowGood))
-                {
-                    returnString = JSON.Encode(new
-                    {
-                        code = -1,
-                        msg = "传入类型有误"
-                    });
-                    context.Response.Write(returnString);
-                    return;
-                }
-                CargoProductThrowGoodEnum goodEnum = (CargoProductThrowGoodEnum)data.ThrowGood;
-                //查询现有数据
-                var rediDataItem = RedisHelper.GetStringDbIndex($@"MiniProgram:ShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{data.CreateTimestampId}", DbIndex_: 4);
-                var dataItem = JsonConvert.DeserializeObject<MiniApplicationParam>(rediDataItem);
-
-                if (dataItem != null)
-                {
-                    data.CartNumber += dataItem.CartNumber;
-                    RedisHelper.SetStringDbIndex($@"MiniProgram:ShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{data.CreateTimestampId}", JsonConvert.SerializeObject(data), DbIndex_: 4);
-                }
-                else
-                {
-                    returnString = JSON.Encode(new
-                    {
-                        code = -1,
-                        msg = "未查询到数据"
-                    });
-                    context.Response.Write(returnString);
-                    return;
-                }
-            }
-            else
-            {
-                returnString = JSON.Encode(new
-                {
-                    code = -1,
-                    msg = "未获取到传入数据"
-                });
-                context.Response.Write(returnString);
-                return;
-            }
-            returnString = JSON.Encode(new
-            {
-                code = 0,
-                msg = ""
-            });
-            context.Response.Write(returnString);
-        }
-
-        #endregion
-
-        #region 预订单
-
-        /// <summary>
-        /// 查询上架商品
-        /// </summary>
-        private void QueryAvailableProducts(HttpContext context)
-        {
-            CargoContainerShowEntity queryEntity = new CargoContainerShowEntity();
-            if (!string.IsNullOrEmpty(context.Request["Specs"]))
-            {
-                string spe = Convert.ToString(context.Request["Specs"]).ToUpper();
-                if (spe.Contains("/") || spe.Contains("R") || spe.Contains("."))
-                {
-                    queryEntity.Specs = spe;
-                }
-                else
-                {
-                    if (spe.Length <= 3)
-                    {
-                        queryEntity.Specs = spe;
-                    }
-                    if (spe.Length > 3 && spe.Length <= 5)
-                    {
-                        queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, spe.Length - 3);
-                    }
-                    if (spe.Length > 5)
-                    {
-                        queryEntity.Specs = spe.Substring(0, 3) + "/" + spe.Substring(3, 2) + "R" + spe.Substring(5, spe.Length - 5);
-                    }
-                }
-            }
-
-            queryEntity.ProductName = Convert.ToString(context.Request["ProductName"]);
-            queryEntity.Model = Convert.ToString(context.Request["Model"]);
-            queryEntity.GoodsCode = Convert.ToString(context.Request["GoodsCode"]);
-            if (!string.IsNullOrEmpty(context.Request["PID"]))//一级分类
-            {
-                queryEntity.TypeParentID = Convert.ToInt32(context.Request["PID"]);
-            }
-            if (!string.IsNullOrEmpty(context.Request["SID"]))//二级分类
-            {
-                queryEntity.TypeID = Convert.ToInt32(context.Request["SID"]);
-            }
-            queryEntity.TreadWidth = string.IsNullOrEmpty(context.Request["TreadWidth"]) ? 0 : Convert.ToInt32(context.Request["TreadWidth"]);
-            queryEntity.FlatRatio = string.IsNullOrEmpty(context.Request["FlatRatio"]) ? 0 : Convert.ToInt32(context.Request["FlatRatio"]);
-            //queryEntity.Batch = Convert.ToString(Request["Batch"]);//批次
-            queryEntity.Figure = Convert.ToString(context.Request["Figure"]);//花纹
-            queryEntity.HubDiameter = string.IsNullOrEmpty(context.Request["HubDiameter"]) ? 0 : Convert.ToInt32(context.Request["HubDiameter"]);
-            queryEntity.LoadIndex = Convert.ToString(context.Request["LoadIndex"]);
-            queryEntity.SpeedLevel = Convert.ToString(context.Request["SpeedLevel"]);//速度级别
-                                                                                     //queryEntity.CargoPermisID = UserInfor.CargoPermisID;//用户所属仓库权限
-
-            if (!string.IsNullOrEmpty(context.Request["SaleType"]) && context.Request["SaleType"] != "-1")
-            {
-                queryEntity.SaleType = Convert.ToString(context.Request["SaleType"]);//是否特价促销
-            }
-            //在库数量
-            queryEntity.Piece = Convert.ToInt32(context.Request["Piece"]);
-            queryEntity.OnShelves = "0";//默认只查上架商品
-
-            //分页
-            int pageIndex = 0;
-            int pageSize = 1000;
-            CargoProductBus bus = new CargoProductBus();
-            Hashtable list = bus.QueryBasicProdictData(pageIndex, pageSize, queryEntity);
-
-            String json = JSON.Encode(list);
-            context.Response.Clear();
-            context.Response.Write(json);
-        }
-
-        /// <summary>
-        /// 新增 OR 修改
-        /// </summary>
-        /// <param name="context"></param>
-        /// <param name="wxOpenId"></param>
-        /// <param name="json"></param>
-        private void InsertShoppingCartItem_Reserve(HttpContext context)
-        {
-            NoticeEntity result = new NoticeEntity();
-            string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
-            string json = Convert.ToString(context.Request["json"]);
-            String returnString = string.Empty;
-            if (string.IsNullOrEmpty(wxOpenId))
-            {
-                returnString = JSON.Encode(new
-                {
-                    code = -1,
-                    msg = "未获取到openid",
-                });
-                context.Response.Write(returnString);
-                return;
-            }
-            long timestampMs = GetCurrentUnixTimeSeconds();
-            var data = JsonConvert.DeserializeObject<MiniApplicationParam>(json);
-            if (data != null)
-            {
-                var dataList = new List<MiniApplicationParam>();
-                data.ThrowGood = (int)CargoProductThrowGoodEnum.预订单;
-                CargoProductThrowGoodEnum goodEnum = (CargoProductThrowGoodEnum)data.ThrowGood;
-                //查询现有数据
-                var redisList = RedisHelper.GetKeys($@"MiniProgram:ReserveShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:", _DbIndex: 4);
-                if (redisList.Count > 0)
-                {
-
-                    foreach (var rowStr in redisList)
-                    {
-                        var item = RedisHelper.GetStringDbIndex(rowStr, false, 4);
-                        if (string.IsNullOrEmpty(item)) continue;
-                        var list = JsonConvert.DeserializeObject<MiniApplicationParam>(item);
-                        dataList.Add(list);
-                    }
-                }
-
-                if (dataList.Count > 0)
-                {
-                    var dataItem = dataList.Where(a => a.BatchYear == data.BatchYear && a.HouseID == data.HouseID && a.ProductCode == data.ProductCode && a.SuppClientNum == data.SuppClientNum).FirstOrDefault();
-                    if (dataItem != null)
-                    {
-                        data.CreateTimestampId = dataItem.CreateTimestampId;
-                        RedisHelper.SetStringDbIndex($@"MiniProgram:ReserveShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{dataItem.CreateTimestampId}", JsonConvert.SerializeObject(data), DbIndex_: 4);
-                    }
-                    else
-                    {
-                        data.CreateTimestampId = timestampMs;
-                        RedisHelper.SetStringDbIndex($@"MiniProgram:ReserveShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{timestampMs}", JsonConvert.SerializeObject(data), DbIndex_: 4);
-                    }
-                }
-                else
-                {
-                    data.CreateTimestampId = timestampMs;
-                    RedisHelper.SetStringDbIndex($@"MiniProgram:ReserveShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{timestampMs}", JsonConvert.SerializeObject(data), DbIndex_: 4);
-                }
-            }
-            else
-            {
-                result.code = -1;
-                result.msg = "未获取到传入数据";
-                context.Response.Write(returnString);
-                return;
-            }
-            returnString = JSON.Encode(new
-            {
-                code = 0,
-                msg = "加入购物车成功"
-            });
-            context.Response.Write(returnString);
-        }
-        /// <summary>
-        /// 修改商品详情数量等数据
-        /// </summary>
-        /// <param name="context"></param>
-        /// <param name="wxOpenId"></param>
-        /// <param name="json"></param>
-        private void UpdateShoppingCartItemQuantity_Reserve(HttpContext context)
-        {
-            string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
-            string json = Convert.ToString(context.Request["json"]);
-            String returnString = string.Empty;
-            if (string.IsNullOrEmpty(wxOpenId))
-            {
-                returnString = JSON.Encode(new
-                {
-                    code = -1,
-                    msg = "未获取到openid",
-                });
-                context.Response.Write(returnString);
-                return;
-            }
-            long timestampMs = GetCurrentUnixTimeSeconds();
-            var data = JsonConvert.DeserializeObject<MiniApplicationParam>(json);
-            if (data != null)
-            {
-                var dataList = new List<MiniApplicationParam>();
-                if (data.CreateTimestampId == null)
-                {
-                    returnString = JSON.Encode(new
-                    {
-                        code = -1,
-                        msg = "未获取到订单ID"
-                    });
-                    context.Response.Write(returnString);
-                    return;
-                }
-                data.ThrowGood = (int)CargoProductThrowGoodEnum.预订单;
-                CargoProductThrowGoodEnum goodEnum = (CargoProductThrowGoodEnum)data.ThrowGood;
-                //查询现有数据
-                var rediDataItem = RedisHelper.GetStringDbIndex($@"MiniProgram:ReserveShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{data.CreateTimestampId}", DbIndex_: 4);
-                //var dataItem = JsonConvert.DeserializeObject<MiniApplicationParam>(rediDataItem);
-
-                if (rediDataItem != null)
-                {
-                    RedisHelper.SetStringDbIndex($@"MiniProgram:ReserveShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{data.CreateTimestampId}", JsonConvert.SerializeObject(data), DbIndex_: 4);
-                }
-                else
-                {
-                    returnString = JSON.Encode(new
-                    {
-                        code = -1,
-                        msg = "未查询到数据"
-                    });
-                    context.Response.Write(returnString);
-                    return;
-                }
-            }
-            else
-            {
-                returnString = JSON.Encode(new
-                {
-                    code = -1,
-                    msg = "未获取到传入数据"
-                });
-                context.Response.Write(returnString);
-                return;
-            }
-            returnString = JSON.Encode(new
-            {
-                code = 200,
-                msg = ""
-            });
-            context.Response.Write(returnString);
-        }
-        /// <summary>
-        /// 商品详情删除
-        /// </summary>
-        /// <param name="context"></param>
-        /// <param name="wxOpenId"></param>
-        /// <param name="CreateTimestampId">详情ID 可空。</param>
-        private void DeleteShoppingCartItem_Reserve(HttpContext context)
-        {
-            string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
-            string json = Convert.ToString(context.Request["json"]);
-            String returnString = string.Empty;
-            if (string.IsNullOrEmpty(wxOpenId))
-            {
-                returnString = JSON.Encode(new
-                {
-                    code = -1,
-                    msg = "未获取到openid",
-                });
-                context.Response.Write(returnString);
-                return;
-            }
-            if (json == null)
-            {
-                //删除客户所有购物车数据
-                RedisHelper.DeleteKeys($@"MiniProgram:ReserveShoppingCartItem:{wxOpenId}:", _DbIndex: 4);
-            }
-            else
-            {
-                List<MiniApplicationParam> dataList = JsonConvert.DeserializeObject<List<MiniApplicationParam>>(json);
-                foreach (var item in dataList)
-                {
-                    CargoProductThrowGoodEnum goodEnum = (CargoProductThrowGoodEnum)item.ThrowGood;
-                    RedisHelper.DeleteKeys($@"MiniProgram:ReserveShoppingCartItem:{wxOpenId}:{goodEnum.ToString()}:{item.CreateTimestampId}", _DbIndex: 4);
-                }
-            }
-
-            returnString = JSON.Encode(new
-            {
-                code = 200,
-                msg = ""
-            });
-            context.Response.Write(returnString);
-        }
-        /// <summary>
-        /// 查询预订单详情
-        /// </summary>
-        /// <param name="context"></param>
-        private void GetMiniShoppingCartItems_Reserve(HttpContext context)
-        {
-            String returnString = string.Empty;
-            string wxOpenId = Convert.ToString(context.Request["wxOpenId"]);
-            if (string.IsNullOrEmpty(wxOpenId))
-            {
-                returnString = JSON.Encode(new
-                {
-                    code = -1,
-                    msg = "未获取到openid",
-                });
-                context.Response.Write(returnString);
-                return;
-            }
-            var dataList = new List<MiniApplicationParam>();
-            var redisList = RedisHelper.GetKeys($@"MiniProgram:ReserveShoppingCartItem:{wxOpenId}:", _DbIndex: 4);
-            if (redisList.Count > 0)
-            {
-
-                foreach (var rowStr in redisList)
-                {
-                    var item = RedisHelper.GetStringDbIndex(rowStr, false, 4);
-                    if (string.IsNullOrEmpty(item)) continue;
-                    var list = JsonConvert.DeserializeObject<MiniApplicationParam>(item);
-                    dataList.Add(list);
-                }
-            }
-            returnString = JSON.Encode(new
-            {
-                code = 200,
-                msg = "",
-                list = dataList,
-            });
-            context.Response.Write(returnString);
-        }
         #endregion
 
         #region 预收款明细
-
         private void GetClientPreRecordList(HttpContext context)
         {
             ReturnPreRecordListEntity result = new ReturnPreRecordListEntity();
@@ -6476,10 +6099,7 @@ namespace Cargo.Interface
             String returnString = JSON.Encode(result);
             context.Response.Write(returnString);
         }
-
-
         #endregion
-
 
         public void ProcessRequest(HttpContext context)
         {

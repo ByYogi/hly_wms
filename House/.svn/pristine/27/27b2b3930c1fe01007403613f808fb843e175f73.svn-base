@@ -1,0 +1,423 @@
+﻿using House.Business;
+using House.Business.Cargo;
+using House.Business.Log;
+using House.Entity;
+using House.Entity.Dto.Tuhu;
+using Newtonsoft.Json;
+using StackExchange.Redis;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace HouseServices
+{
+    internal class TuhuSync
+    {
+        public string RobotID = Convert.ToString(ConfigurationManager.AppSettings["RobotID"]);
+        /// <summary>
+        /// 途虎全量推送商品数据
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        //void TuhuPush_Task(object sender, System.Timers.ElapsedEventArgs e)
+        public void TuhuFullSync()
+        {
+            //机器人账号
+            LogEntity log = new LogEntity();
+            log.IPAddress = "";
+            log.Moudle = "服务管理";
+            log.Status = "0";
+            log.NvgPage = "途虎全量推送商品数据（定时任务）";
+            log.UserID = RobotID;
+            log.Operate = "A";
+
+            //获取途虎Url连接信息
+            string tuhuUrl = TuhuConfig.TestUrl;
+
+            LogBus logbus = new LogBus();
+            CargoInterfaceBus bus = new CargoInterfaceBus();
+            // 记录途虎响应信息
+            List<string> skuPushResList = new List<string>();
+            List<string> pushStockResList = new List<string>();
+            List<string> pushPriceResList = new List<string>();
+            string skuDelAllRes = null;
+            try
+            {
+                //获取商品信息
+                var brandIDs = TuhuConfig.Brands.Keys.ToArray();
+                var houseIDs = TuhuConfig.Houses.Keys.ToArray();
+                var prductData = bus.QueryTuhuStockData(brandIDs, houseIDs);
+                // ==================== 业务调用 ====================
+
+                // 构建通用头
+                var comheaders = TuhuHandle.BuildHeaders();
+
+                //删除指定商品
+                //var skuDelRes = PostJson(
+                //    TuhuConfig.TestUrl + TuhuConfig.UrlSkuDeleteAll,
+                //    new TuhuPushDto(TuhuConfig.Platform, TuhuConfig.AuthCode)
+                //    {
+                //        erpSkuCodes = prductData.Select(x => x.ProductCode).Take(50).ToList()
+                //    },
+                //    comheaders
+                //);
+
+                //删除所有商品
+                //skuDelAllRes = TuhuHandle.PostJson(
+                //    TuhuConfig.TestUrl + TuhuConfig.UrlSkuDeleteAll,
+                //    new TuhuPushDto(TuhuConfig.Platform, TuhuConfig.AuthCode),
+                //    comheaders
+                //);
+
+                // 开始推送商品数据
+                // 每批 50 条
+                var batches = prductData
+                    .Select((x, i) => new { x, i })
+                    .GroupBy(x => x.i / 50)
+                    .Select(g => g.Select(x => x.x).ToList());
+
+                foreach (var batch in batches)
+                {
+                    // 1. 推送商品信息（只在第一次同步时推送，后续只推送库存和价格即可）
+                    //var tuhuPushSkuBody = new TuhuPushDto()
+                    //{
+                    //    platform = TuhuConfig.Platform,
+                    //    authCode = TuhuConfig.AuthCode,
+                    //    skuInfos = batch.Select(x => new Tuhu_Sku
+                    //    {
+                    //        version = 1,
+                    //        erpSkuCode = x.ProductCode,
+                    //        ProductCode = x.ProductCode,
+                    //        GoodsCode = x.GoodsCode,
+                    //        TypeID = x.TypeID,
+                    //        TypeName = x.TypeName,
+                    //        Model = x.Model,
+                    //        Specs = x.Specs,
+                    //        Figure = x.Figure,
+                    //        HubDiameter = x.HubDiameter,
+                    //        LoadIndex = x.LoadIndex,
+                    //        SpeedLevel = x.SpeedLevel,
+                    //        Born = x.Born
+                    //    }).ToList()
+                    //};
+
+                    //RateLimiter.Wait();
+                    //var skuRes = TuhuHandle.PostJson(
+                    //    TuhuConfig.TestUrl + TuhuConfig.UrlPushSku,
+                    //    tuhuPushSkuBody,
+                    //    comheaders
+                    //);
+                    //skuPushResList.Add(skuRes);
+
+                    // 2. 推送库存
+                    RateLimiter.Wait();
+                    var tuhuPushStockBody = new TuhuPushDto()
+                    {
+                        platform = TuhuConfig.Platform,
+                        authCode = TuhuConfig.AuthCode,
+                        stockInfos = batch.Select(x => new Tuhu_Stock
+                        {
+                            version = 1,
+                            erpSkuCode = x.ProductCode,
+                            Piece = x.Piece,
+                        }).ToList()
+                    };
+                    var stockRes = TuhuHandle.PostJson(
+                        TuhuConfig.TestUrl + TuhuConfig.UrlPushStock,
+                        tuhuPushStockBody,
+                        comheaders
+                    );
+                    pushStockResList.Add(stockRes);
+
+                    // 3. 推送价格
+                    RateLimiter.Wait();
+                    var tuhuPushPriceBody = new TuhuPushDto()
+                    {
+                        platform = TuhuConfig.Platform,
+                        authCode = TuhuConfig.AuthCode,
+                        priceInfos = batch.Select(x => new Tuhu_Price
+                        {
+                            version = 1,
+                            erpSkuCode = x.ProductCode,
+                            SalePrice = x.SalePrice,
+                        }).ToList()
+                    };
+                    var priceRes = TuhuHandle.PostJson(
+                        TuhuConfig.TestUrl + TuhuConfig.UrlPushPrice,
+                        tuhuPushPriceBody,
+                        comheaders
+                    );
+                    pushPriceResList.Add(priceRes);
+                }
+
+                //记录日志
+                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                log.Memo = $"途虎商品同步成功。同步数量：{prductData.Count()}。{tuhuRes}";
+                logbus.InsertLog(log);
+                LogHelper.WriteLog("途虎商品同步成功");
+            }
+            catch (Exception ex)
+            {
+                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                log.Status = "1";
+                log.Memo = $"途虎商品同步失败。{tuhuRes}" + ex.FormatErr();
+                LogHelper.WriteLog("途虎商品同步失败\r\n\t" + ex.FormatErr());
+            }
+        }
+
+        public void TuhuIncrementalSync()
+        {
+            //机器人账号
+            LogEntity log = new LogEntity();
+            log.IPAddress = "";
+            log.Moudle = "服务管理";
+            log.Status = "0";
+            log.NvgPage = "途虎增量同步商品库存（定时任务）";
+            log.UserID = RobotID;
+            log.Operate = "A";
+
+            //获取途虎Url连接信息
+            string tuhuUrl = TuhuConfig.TestUrl;
+
+            LogBus logbus = new LogBus();
+            CargoInterfaceBus bus = new CargoInterfaceBus();
+            // 记录途虎响应信息
+            List<string> pushStockResList = new List<string>();
+            try
+            {
+                //获取商品信息
+                HashEntry[] HCYCredisValues = RedisHelper.HashGetAll("TuhuStockSyc");
+                var dict = HCYCredisValues.ToDictionary(x => x.Name.ToString(), x => x.Value.ToString());
+                var confHouseIDs = TuhuConfig.Houses.Keys.ToList();
+                var confBrandIDs = TuhuConfig.Brands.Keys.ToList();
+                var willAsyncHouseIDs = dict.Keys.Select(x => Convert.ToInt32(x.Split('_')[0])).Distinct().Where(x => confHouseIDs.Contains(x)).ToArray();
+                var willAsyncBrandIDs = dict.Keys.Select(x => Convert.ToInt32(x.Split('_')[1])).Distinct().Where(x => TuhuConfig.Brands.Keys.ToArray().Contains(x)).ToArray();
+                var filterHouseIDs = confHouseIDs.Where(x => willAsyncHouseIDs.Contains(x)).ToArray();
+                var filterBrandIDs = confBrandIDs.Where(x => willAsyncBrandIDs.Contains(x)).ToArray();
+                var productCodes = dict.Values.ToArray();
+                var prductData = bus.QueryTuhuStockData(filterBrandIDs, filterHouseIDs, productCodes);
+
+                // ==================== 业务调用 ====================
+                // 构建通用头
+                var comheaders = TuhuHandle.BuildHeaders();
+                // 开始推送商品数据
+                // 每批 50 条
+                var batches = prductData
+                    .Select((x, i) => new { x, i })
+                    .GroupBy(x => x.i / 50)
+                    .Select(g => g.Select(x => x.x).ToList());
+                foreach (var batch in batches)
+                {
+                    // 推送库存
+                    RateLimiter.Wait();
+                    var tuhuPushStockBody = new TuhuPushDto()
+                    {
+                        platform = TuhuConfig.Platform,
+                        authCode = TuhuConfig.AuthCode,
+                        skuInfos = batch.Select(x => new Tuhu_Sku
+                        {
+                            version = 1,
+                            erpSkuCode = x.ProductCode,
+                            ProductCode = x.ProductCode,
+                            Piece = x.Piece,
+                        }).ToList()
+                    };
+                    var stockRes = TuhuHandle.PostJson(
+                        TuhuConfig.TestUrl + TuhuConfig.UrlPushStock,
+                        tuhuPushStockBody,
+                        comheaders
+                    );
+
+                    // 推送价格
+                    RateLimiter.Wait();
+                    var tuhuPushPriceBody = new TuhuPushDto()
+                    {
+                        platform = TuhuConfig.Platform,
+                        authCode = TuhuConfig.AuthCode,
+                        priceInfos = batch.Select(x => new Tuhu_Price
+                        {
+                            version = 1,
+                            erpSkuCode = x.ProductCode,
+                            SalePrice = x.SalePrice,
+                        }).ToList()
+                    };
+                    var priceRes = TuhuHandle.PostJson(
+                        TuhuConfig.TestUrl + TuhuConfig.UrlPushPrice,
+                        tuhuPushPriceBody,
+                        comheaders
+                    );
+
+
+                    RedisHelper.HashDeleteAll("TuhuStockSyc");
+                    pushStockResList.Add(stockRes);
+                }
+
+                //记录日志
+                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}";
+                log.Memo = $"途虎商品库存增量同步成功。同步数量：{prductData.Count()}。{tuhuRes}";
+                logbus.InsertLog(log);
+                LogHelper.WriteLog("途虎商品库存增量同步成功");
+
+            }
+            catch (Exception ex)
+            {
+                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}";
+                log.Status = "1";
+                log.Memo = $"途虎商品库存增量同步失败。{tuhuRes}" + ex.FormatErr();
+                LogHelper.WriteLog("途虎商品库存增量同步失败\r\n\t" + ex.FormatErr());
+            }
+        }
+    }
+
+    internal static class TuhuHandle
+    {
+        public static string Sha256(string input)
+        {
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+            {
+                var bytes = System.Text.Encoding.UTF8.GetBytes(input);
+                var hash = sha.ComputeHash(bytes);
+                return BitConverter.ToString(hash).Replace("-", "").ToLower();
+            }
+        }
+
+        // 公共：构建请求头
+        public static Dictionary<string, string> BuildHeaders()
+        {
+            string timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+            string nonceStr = Guid.NewGuid().ToString("N");
+
+            string sign = Sha256(
+                $"appId={TuhuConfig.TestAppId}&nonceStr={nonceStr}&signType=sha256&timestamp={timestampMs}{TuhuConfig.TestAppSecret}"
+            );
+
+            return new Dictionary<string, string>
+            {
+                ["appid"] = TuhuConfig.TestAppId,
+                ["noncestr"] = nonceStr,
+                ["signType"] = "sha256",
+                ["sign"] = sign,
+                ["authType"] = "openapi",
+                ["timestamp"] = timestampMs
+            };
+        }
+
+        // 公共：发送 POST JSON
+        public static string PostJson(string url, object body, Dictionary<string, string> headers)
+        {
+            //使用匿名方法跳过 SSL/TLS 证书校验
+            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+
+            var req = (HttpWebRequest)WebRequest.Create(url);
+            req.Method = "POST";
+            req.ContentType = "application/json";
+
+            foreach (var h in headers)
+                req.Headers[h.Key] = h.Value;
+
+            string bodyJson = JsonConvert.SerializeObject(body);
+            var bytes = Encoding.UTF8.GetBytes(bodyJson);
+            req.ContentLength = bytes.Length;
+
+            using (var stream = req.GetRequestStream())
+                stream.Write(bytes, 0, bytes.Length);
+
+            using (var res = req.GetResponse())
+            using (var stream = res.GetResponseStream())
+            using (var reader = new StreamReader(stream, Encoding.UTF8))
+                return reader.ReadToEnd();
+        }
+
+    }
+    /// <summary>
+    /// 限制每秒最多 50 次请求（QPS = 50）
+    /// </summary>
+    static class RateLimiter
+    {
+        private static readonly object _lock = new object();
+        private static readonly Queue<long> _timestamps = new Queue<long>();
+        private const int MAX_QPS = 50;
+
+        public static void Wait()
+        {
+            lock (_lock)
+            {
+                long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                long oneSecondAgo = now - 1000;
+
+                // 移除 1 秒前的请求时间戳
+                while (_timestamps.Count > 0 && _timestamps.Peek() < oneSecondAgo)
+                {
+                    _timestamps.Dequeue();
+                }
+
+                // 如果当前已经达到了 50 QPS，则等待
+                if (_timestamps.Count >= MAX_QPS)
+                {
+                    long waitMs = _timestamps.Peek() - oneSecondAgo;
+                    if (waitMs > 0)
+                        Thread.Sleep((int)waitMs);
+                }
+
+                // 记录本次请求时间戳
+                _timestamps.Enqueue(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            }
+        }
+    }
+    static class TuhuConfig
+    {
+        // 通用配置
+        public static string Platform => Get("Tuhu.com.platform");
+        public static string AuthCode => Get("Tuhu.com.authCode");
+        public static Dictionary<int, string> Brands =>
+            Get("Tuhu.com.brands")
+                .Split(',')
+                .Select(x => x.Trim())
+                .Select(x => x.Split('-'))
+                .Where(parts => parts.Length == 2)
+                .ToDictionary(
+                    parts => int.Parse(parts[0]),
+                    parts => parts[1]
+                );
+        public static Dictionary<int, string> Houses =>
+            Get("Tuhu.com.houses")
+                .Split(',')
+                .Select(x => x.Trim())
+                .Select(x => x.Split('-'))
+                .Where(parts => parts.Length == 2)
+                .ToDictionary(
+                    parts => int.Parse(parts[0]),
+                    parts => parts[1]
+                );
+
+        // API 资源路径
+        public static string UrlPushSku => Get("Tuhu.urlpath.pushSku");
+        public static string UrlPushStock => Get("Tuhu.urlpath.pushStock");
+        public static string UrlPushPrice => Get("Tuhu.urlpath.pushPrice");
+        public static string UrlSkuDelete => Get("Tuhu.urlpath.skuDelete");
+        public static string UrlSkuDeleteAll => Get("Tuhu.urlpath.skuDeleteAll");
+
+        // 测试环境
+        public static string TestUrl => Get("Tuhu.test.url");
+        public static string TestAppId => Get("Tuhu.test.appid");
+        public static string TestAppSecret => Get("Tuhu.test.appsecret");
+
+        // 正式环境
+        public static string ProdUrl => Get("Tuhu.prod.url");
+        public static string ProdAppId => Get("Tuhu.prod.appid");
+        public static string ProdAppSecret => Get("Tuhu.prod.appsecret");
+
+        // 内部方法
+        private static string Get(string key)
+        {
+            return ConfigurationManager.AppSettings[key] ?? "";
+        }
+    }
+}

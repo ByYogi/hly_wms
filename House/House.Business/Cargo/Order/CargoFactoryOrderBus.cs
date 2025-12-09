@@ -521,7 +521,7 @@ namespace House.Business.Cargo
                             case "广汽本田":
                                 orderOwner = 2;
                                 break;
-                            case "一汽丰田公司":
+                            case "一汽丰田":
                                 orderOwner = 3;
                                 break;
                             case "广汽丰田":

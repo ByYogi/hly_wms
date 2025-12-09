@@ -382,6 +382,17 @@ namespace HouseServices
             redisKey = AddKeyPrefix(redisKey);
             return _db.HashGetAll(redisKey);
         }
+        /// <summary>
+        /// 清除指定hashKey的所有数据    
+        /// </summary>
+        /// <param name="redisKey"></param>
+        /// <returns></returns>
+        public static bool HashDeleteAll(string redisKey)
+        {
+            IDatabase _db = GetDatabase(DbIndex);
+            redisKey = AddKeyPrefix(redisKey);
+            return _db.KeyDelete(redisKey);
+        }
 
         /// <summary>
         /// 从 hash 返回全部的字段值

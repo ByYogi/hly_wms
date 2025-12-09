@@ -2425,5 +2425,12 @@ namespace House.Business.Cargo
         {
             return man.GetFileData(ID);
         }
+
+        #region 天猫库存同步
+        public List<CargoContainerShowEntity> QueryToTMallStockData(CargoContainerShowEntity entity)
+        {
+            return man.QueryToTMallStockData(entity);
+        }
+        #endregion
     }
 }

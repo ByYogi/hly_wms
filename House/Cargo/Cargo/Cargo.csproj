@@ -838,6 +838,7 @@
     <Content Include="Weixin\wxSupplierDataDisplay.aspx" />
     <Content Include="YFLogisTrack.aspx" />
     <Content Include="Interface\CassMallApi.ashx" />
+    <Content Include="Interface\TMallApi.ashx" />
     <None Include="packages.config" />
     <None Include="Service References\Neway\neway.disco" />
     <None Include="Service References\Neway\configuration91.svcinfo" />
@@ -2861,6 +2862,9 @@
     <Compile Include="Interface\MiniPayRefundSuccess.aspx.designer.cs">
       <DependentUpon>MiniPayRefundSuccess.aspx</DependentUpon>
     </Compile>
+    <Compile Include="Interface\TMallApi.ashx.cs">
+      <DependentUpon>TMallApi.ashx</DependentUpon>
+    </Compile>
     <Compile Include="Interface\UnionPaySuccess.aspx.cs">
       <DependentUpon>UnionPaySuccess.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -3764,6 +3768,7 @@
     <Compile Include="systempage\Notice.aspx.designer.cs">
       <DependentUpon>Notice.aspx</DependentUpon>
     </Compile>
+    <Compile Include="TianMaoApiServiceV2.cs" />
     <Compile Include="WeixinPush\wxApi.aspx.cs">
       <DependentUpon>wxApi.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>

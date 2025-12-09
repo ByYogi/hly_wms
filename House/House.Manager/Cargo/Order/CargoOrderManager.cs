@@ -1077,7 +1077,8 @@ namespace House.Manager.Cargo
                         foreach (DataRow idr in dt.Rows)
                         {
                             decimal ptf = Convert.ToDecimal(idr["OtherFee"]);
-                            if (Convert.ToInt32(idr["ClientNum"])!= 613469 && Convert.ToInt32(idr["ClientNum"])!= 863602)
+                            //251201  天猫伽美订单 516958、三头六臂订单  613469
+                            if (Convert.ToInt32(idr["ClientNum"]) != 613469 && Convert.ToInt32(idr["ClientNum"]) != 863602 && Convert.ToInt32(idr["ClientNum"]) != 516958 && Convert.ToInt32(idr["ClientNum"]) != 165462)
                             {
                                 if (Convert.ToString(idr["OrderType"]).Equals("4"))
                                 {
@@ -3308,7 +3309,7 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
                     conn.AddInParameter(cmd, "@SuppClientNum", DbType.Int32, entity.SuppClientNum);
                     conn.AddInParameter(cmd, "@ThrowGood", DbType.String, entity.ThrowGood);
                     conn.AddInParameter(cmd, "@ActualAmounts", DbType.Decimal, entity.ActualAmounts);
-                   
+
 
                     //conn.ExecuteNonQuery(cmd);
                     did = Convert.ToInt64(conn.ExecuteScalar(cmd));
@@ -7767,7 +7768,7 @@ VALUES
         public List<CargoMoveOrderGoodsEntity> QueryMoveOrderGoodsList(CargoMoveOrderGoodsEntity entity)
         {
             List<CargoMoveOrderGoodsEntity> result = new List<CargoMoveOrderGoodsEntity>();
-            string strSQL = "select a.*,ISNULL(b.ScanNum,0) as ScanNum from ( select a.*,mo.MoveStatus,mo.NewHouseName,mo.Memo,mo.ID as MoveID,c.ProductName,c.TypeID,pt.TypeName,c.Model,c.GoodsCode,c.Specs,c.Figure,c.SalePrice,c.UnitPrice,c.LoadIndex,c.SpeedLevel,c.Batch,c.BelongDepart,d.ContainerCode,h.Name as HouseName,f.Name as FirstAreaName,ps.SourceName From Tbl_Cargo_MoveOrderGood as a inner join Tbl_Cargo_ContainerGoods as b on a.ContainerGoodsID=b.ID inner join Tbl_Cargo_Product as c on a.ProductID=c.ProductID left join Tbl_Cargo_ProductSource ps on c.Source=ps.Source inner join Tbl_Cargo_Container as d on b.ContainerID=d.ContainerID inner join Tbl_Cargo_Area as e on d.AreaID=e.AreaID inner join Tbl_Cargo_Area as f on e.ParentID=f.AreaID inner join Tbl_Cargo_MoveOrder mo on a.MoveNo=mo.MoveNo inner join Tbl_Cargo_ProductType pt on c.TypeID=pt.TypeID inner join Tbl_Cargo_House h on h.HouseID=e.HouseID where (1=1)";
+            string strSQL = "select a.*,ISNULL(b.ScanNum,0) as ScanNum from ( select a.*,mo.MoveStatus,mo.NewHouseName,mo.Memo,mo.ID as MoveID,mo.CompDate,mo.OP_DATE as MoOPDate,c.ProductName,c.TypeID,pt.TypeName,c.Model,c.GoodsCode,c.Specs,c.Figure,c.SalePrice,c.UnitPrice,c.TradePrice,c.LoadIndex,c.SpeedLevel,c.Batch,c.BelongDepart,d.ContainerCode,h.Name as HouseName,f.Name as FirstAreaName,ps.SourceName,c.Supplier From Tbl_Cargo_MoveOrderGood as a inner join Tbl_Cargo_ContainerGoods as b on a.ContainerGoodsID=b.ID inner join Tbl_Cargo_Product as c on a.ProductID=c.ProductID left join Tbl_Cargo_ProductSource ps on c.Source=ps.Source inner join Tbl_Cargo_Container as d on b.ContainerID=d.ContainerID inner join Tbl_Cargo_Area as e on d.AreaID=e.AreaID inner join Tbl_Cargo_Area as f on e.ParentID=f.AreaID inner join Tbl_Cargo_MoveOrder mo on a.MoveNo=mo.MoveNo inner join Tbl_Cargo_ProductType pt on c.TypeID=pt.TypeID inner join Tbl_Cargo_House h on h.HouseID=e.HouseID where (1=1)";
             if (!string.IsNullOrEmpty(entity.MoveNo)) { strSQL += " and a.MoveNo='" + entity.MoveNo + "'"; }
             if (!entity.ProductID.Equals(0)) { strSQL += " and a.ProductID=" + entity.ProductID; }
             if (!entity.ContainerID.Equals(0)) { strSQL += " and a.ContainerID=" + entity.ContainerID; }
@@ -7810,13 +7811,17 @@ VALUES
                             HouseName = Convert.ToString(idr["HouseName"]),
                             SalePrice = Convert.ToString(idr["SalePrice"]),
                             UnitPrice = Convert.ToString(idr["UnitPrice"]),
+                            TradePrice = Convert.ToDecimal(idr["TradePrice"]),
+                            Supplier = Convert.ToString(idr["Supplier"]),
                             TypeName = Convert.ToString(idr["TypeName"]),
                             FirstAreaName = Convert.ToString(idr["FirstAreaName"]),
                             BelongDepart = Convert.ToString(idr["BelongDepart"]),
                             NewHouseName = Convert.ToString(idr["NewHouseName"]),
                             Memo = Convert.ToString(idr["Memo"]),
                             SourceName = Convert.ToString(idr["SourceName"]),
-                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                            OP_DATE = Convert.ToDateTime(idr["MoOPDate"]),
+                            CompDate = idr.Field<DateTime?>("CompDate"),
+                            SpendDays = idr.Field<DateTime?>("CompDate") != null? (int)Math.Ceiling(((DateTime)idr["CompDate"] - (DateTime)idr["MoOPDate"]).TotalDays): default(int?)
                         });
                     }
                 }
@@ -16093,8 +16098,8 @@ ORDER BY RowNumber ASC
         {
             entity.EnSafe();
             Int64 did = 0;
-            string strSQL = @"INSERT INTO Tbl_Cargo_ExterOrderAllo(ExterOrderAlloNo, OrderAlloType, AlloPiece, OPLoginName, OPName, OPDATE) 
-VALUES (@ExterOrderAlloNo, @OrderAlloType, @AlloPiece,@OPLoginName, @OPName, @OPDATE) SELECT @@IDENTITY;";
+            string strSQL = @"INSERT INTO Tbl_Cargo_ExterOrderAllo(ExterOrderAlloNo, OrderAlloType, AlloPiece, OPLoginName, OPName, OPDATE,OrderOwnerName) 
+VALUES (@ExterOrderAlloNo, @OrderAlloType, @AlloPiece,@OPLoginName, @OPName, @OPDATE,@OrderOwnerName) SELECT @@IDENTITY;";
             try
             {
                 string getNextNum = @"
@@ -16107,9 +16112,9 @@ DECLARE @seq INT;
 SET @prefix = 'W' + FORMAT(GETDATE(), 'yyMMddHHmm') + '-';  
 
 -- 找当日最大流水
-SELECT @maxNo = MAX(RplNo)
-FROM Tbl_Cargo_RplOrder
-WHERE RplNo LIKE @prefix + '%';
+SELECT @maxNo = MAX(ExterOrderAlloNo)
+FROM Tbl_Cargo_ExterOrderAllo
+WHERE ExterOrderAlloNo LIKE @prefix + '%';
 
 -- 截取最后四位并+1
 IF @maxNo IS NULL
@@ -16139,6 +16144,8 @@ SELECT @newNo AS nextNo;
                     conn.AddInParameter(cmd, "@OPLoginName", DbType.String, entity.OPLoginName);
                     conn.AddInParameter(cmd, "@OPName", DbType.String, entity.OPName);
                     conn.AddInParameter(cmd, "@OPDATE", DbType.DateTime, DateTime.Now);
+                    conn.AddInParameter(cmd, "@OrderOwnerName", DbType.String, entity.OrderOwnerName);
+                    
                     did = Convert.ToInt64(conn.ExecuteScalar(cmd));
                 }
 
@@ -16872,7 +16879,7 @@ order by TypeID
                 ";
 
             //下单方式
-            if (entity.ids!=null && entity.ids.Count>0) { strSQL += $@" and OrderID in({string.Join(",", entity.ids)}) "; }
+            if (entity.ids != null && entity.ids.Count > 0) { strSQL += $@" and OrderID in({string.Join(",", entity.ids)}) "; }
             if (!string.IsNullOrEmpty(entity.OrderType)) { strSQL += " and a.OrderType = '" + entity.OrderType + "'"; }
             if (!string.IsNullOrEmpty(entity.OutHouseName)) { strSQL += " and a.OutHouseName = '" + entity.OutHouseName + "'"; }
             if (!string.IsNullOrEmpty(entity.TranHouse)) { strSQL += " and a.TranHouse = '" + entity.TranHouse + "'"; }
@@ -17049,7 +17056,7 @@ order by TypeID
                             HouseName = Convert.ToString(idr["HouseName"]),
                             HouseCellphone = Convert.ToString(idr["HouseCellphone"]),
                             SuppClientNum = Convert.ToInt32(idr["SuppClientNum"]),
-                            
+
                             //PickPlanGoodsList = OrderPickPlanGoodsList
                         });
                         #endregion
@@ -17202,7 +17209,7 @@ order by TypeID
                          on a.OrderNo = e.OpenOrderNo
                           Where (1 = 1)
                 ";
-            if (entity.ids!=null&&entity.ids.Count > 0) { strSQL += $@" and a.OrderID in({string.Join(",",entity.ids)})"; }
+            if (entity.ids != null && entity.ids.Count > 0) { strSQL += $@" and a.OrderID in({string.Join(",", entity.ids)})"; }
             //下单方式
             if (!string.IsNullOrEmpty(entity.OrderType)) { strSQL += " and a.OrderType = '" + entity.OrderType + "'"; }
             if (!string.IsNullOrEmpty(entity.OutHouseName)) { strSQL += " and a.OutHouseName = '" + entity.OutHouseName + "'"; }
@@ -17410,11 +17417,11 @@ order by TypeID
                          on a.OrderNo = e.OpenOrderNo
                           Where (1 = 1)
                 ";
-            if (entity.ids!=null&&entity.ids.Count > 0) { strSQL += $@" and a.OrderID in({string.Join(",",entity.ids)})"; }
-           
+            if (entity.ids != null && entity.ids.Count > 0) { strSQL += $@" and a.OrderID in({string.Join(",", entity.ids)})"; }
+
             //订单编号 
             if (!string.IsNullOrEmpty(entity.OrderNo)) { strSQL += " and a.OrderNo = '" + entity.OrderNo.ToUpper() + "'"; }
-           
+
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(command))
@@ -17527,7 +17534,7 @@ where a.OrderNo='{entity.OrderNo}'
                             HouseID = Convert.ToInt32(idr["HouseID"]),
                             Piece = Convert.ToInt32(idr["Piece"]),
                             GoodsPiece = Convert.ToInt32(idr["GoodsPiece"]),
-                            InventoryPiece =string.IsNullOrEmpty(Convert.ToString(idr["InventoryPiece"]))?0: Convert.ToInt32(idr["InventoryPiece"]),
+                            InventoryPiece = string.IsNullOrEmpty(Convert.ToString(idr["InventoryPiece"])) ? 0 : Convert.ToInt32(idr["InventoryPiece"]),
                             ActSalePrice = Convert.ToDecimal(idr["ActSalePrice"]),
                             Born = Convert.ToString(idr["Born"]),
                             Assort = Convert.ToString(idr["Assort"]),
@@ -17553,14 +17560,14 @@ where a.OrderNo='{entity.OrderNo}'
             string strSQL = $@"      
 select a2.*, isnull(d.Piece, 0) as InventoryPiece from (select a.ProductCode, a.TypeID, a.Model, a.GoodsCode, a.Specs, a.Figure, a.HouseID, sum(a.Piece) as Piece, a.ActSalePrice, b.TypeName, c.Name as HouseName, isnull(sum(f2.Piece),0) as GoodsPiece, STUFF((SELECT ',' + OrderNo FROM Tbl_Cargo_ReserveOrderGoods t2 WHERE t2.OrderNo in ('{string.Join("','", entity.OrderNoList)}') and t2.ProductCode = a.ProductCode and t2.TypeID = a.TypeID and a.GoodsCode = a.GoodsCode and t2.Specs = a.Specs and t2.Figure = a.Figure and t2.HouseID = a.HouseID FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '') AS OrderNos from Tbl_Cargo_ReserveOrderGoods as a inner join Tbl_Cargo_ProductType as b on a.TypeID = b.TypeID inner join Tbl_Cargo_House as c on a.HouseID = c.HouseID left join (select sum(f.Piece) Piece, ff.OpenOrderNo, Specs, ProductCode, GoodsCode, TypeID from Tbl_Cargo_Order as ff inner join Tbl_Cargo_OrderGoods as f on ff.OrderNo=f.OrderNo inner join Tbl_Cargo_Product as g on f.ProductID = g.ProductID where OpenOrderSource = 3 group by ff.OpenOrderNo, Specs, ProductCode, GoodsCode, TypeID) as f2 on f2.OpenOrderNo = a.OrderNo and a.Specs = f2.Specs and a.ProductCode = f2.ProductCode and a.GoodsCode = f2.GoodsCode and a.TypeID = f2.TypeID  where a.OrderNo in ('{string.Join("','", entity.OrderNoList)}') group by a.HouseID, Name, a.ProductCode, a.Specs, Model, Figure, a.GoodsCode, a.ActSalePrice, a.TypeID, TypeName) as a2 left join (select a.TypeID, a.GoodsCode, a.Specs, a.Figure, a.HouseID, ProductCode, sum(b.Piece) as Piece from Tbl_Cargo_Product as a inner join Tbl_Cargo_ContainerGoods as b on a.ProductID = b.ProductID left join Tbl_Cargo_Container as c on b.ContainerID = c.ContainerID Where a.InCargoStatus = '1' and a.IsLockStock = 0 and b.Piece <> 0 and SpecsType = '4' and SuppClientNum='{entity.SuppClientNum}' group by Specs, GoodsCode, ProductCode, Figure, a.TypeID, a.HouseID) as d on a2.Specs = d.Specs and a2.GoodsCode = d.GoodsCode and a2.TypeID = d.TypeID and a2.HouseID = d.HouseID and a2.Figure = d.Figure and a2.ProductCode = d.ProductCode
  where 1=1 ";
-            if (entity.IsStock==1)
+            if (entity.IsStock == 1)
             {
                 strSQL += $@" and (a2.Piece > isnull(d.Piece, 0) and a2.Piece!=GoodsPiece) ";
-            }     
-            if (entity.IsNoOutHouse==1)
+            }
+            if (entity.IsNoOutHouse == 1)
             {
                 strSQL += $@" and (a2.Piece > GoodsPiece) ";
-            }     
+            }
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(command))
@@ -17633,7 +17640,7 @@ select a2.*, isnull(d.Piece, 0) as InventoryPiece from (select a.ProductCode, a.
 
         public List<CargoInterfaceEntity> QueryStockDetail(CargoInterfaceEntity entity)
         {
-            
+
             List<CargoInterfaceEntity> result = new List<CargoInterfaceEntity>();
             string strSQL = $@"
 select DISTINCT ROW_NUMBER() OVER (ORDER BY a.TypeID, a.HouseID,ProductCode DESC) AS RowNumber,a.ProductID,Batch,BatchWeek, a.TypeID, a.GoodsCode,ProductCode, a.Specs, a.Figure, a.HouseID, a.Model,b.Piece,
@@ -17650,7 +17657,7 @@ inner join Tbl_Cargo_ProductType as e on a.TypeID=e.TypeID
 and Specs='{entity.Specs}' and GoodsCode='{entity.GoodsCode}' and ProductCode='{entity.ProductCode}' 
 and Figure='{entity.Figure}' and a.TypeID='{entity.TypeID}'  and SuppClientNum='{entity.SuppClientNum}'
                 ";
-            
+
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(command))
@@ -17685,7 +17692,7 @@ and Figure='{entity.Figure}' and a.TypeID='{entity.TypeID}'  and SuppClientNum='
 
         public List<CargoInterfaceEntity> QueryStockHouse(CargoInterfaceEntity entity)
         {
-            
+
             List<CargoInterfaceEntity> result = new List<CargoInterfaceEntity>();
             string strSQL = $@"
 select DISTINCT ROW_NUMBER() OVER (ORDER BY a.HouseID DESC) AS RowNumber, a.HouseID, sum(b.Piece) as Piece, dd.Name as HouseName
@@ -17701,7 +17708,7 @@ inner join Tbl_Cargo_ProductType as e on a.TypeID=e.TypeID
 and Specs='{entity.Specs}' and GoodsCode='{entity.GoodsCode}' and ProductCode='{entity.ProductCode}' 
 and Figure='{entity.Figure}' and a.TypeID='{entity.TypeID}'  and SuppClientNum='{entity.SuppClientNum}'
                group by a.HouseID,dd.Name ";
-            
+
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(command))
@@ -17713,8 +17720,8 @@ and Figure='{entity.Figure}' and a.TypeID='{entity.TypeID}'  and SuppClientNum='
                         result.Add(new CargoInterfaceEntity
                         {
                             RowNumber = idr["RowNumber"] != DBNull.Value ? Convert.ToInt32(idr["RowNumber"]) : 0, // 假设TypeID为长整型，根据实际类型调整转换方法
-                           HouseName = idr["HouseName"] != DBNull.Value ? idr["HouseName"].ToString() : null, // 假设Figure为字符串类型，根据实际类型调整
-                           HouseID = idr["HouseID"] != DBNull.Value ? Convert.ToInt32(idr["HouseID"]) : 0, // 假设HouseID为长整型
+                            HouseName = idr["HouseName"] != DBNull.Value ? idr["HouseName"].ToString() : null, // 假设Figure为字符串类型，根据实际类型调整
+                            HouseID = idr["HouseID"] != DBNull.Value ? Convert.ToInt32(idr["HouseID"]) : 0, // 假设HouseID为长整型
                             StockNum = idr["Piece"] != DBNull.Value ? Convert.ToInt32(idr["Piece"]) : 0 // sum(b.Piece)结果通常为数值型，假设为长整型
                         });
                         #endregion
@@ -17731,7 +17738,7 @@ and Figure='{entity.Figure}' and a.TypeID='{entity.TypeID}'  and SuppClientNum='
             string strSQL = $@"
                  select * from Tbl_Cargo_ReserveProcurementOrder where ReserveOrderNo='{entity.ReserveOrderNo}'
                 ";
-            
+
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(command))
@@ -17763,7 +17770,7 @@ and Figure='{entity.Figure}' and a.TypeID='{entity.TypeID}'  and SuppClientNum='
                  select a.OrderNo as CargoOrderNo,b.OrderNo,a.OP_DATE from Tbl_Cargo_Order as a
 inner join Tbl_Cargo_ReserveOrder as b on a.OpenOrderSource=3 and OpenOrderNo=b.OrderNo
 where b.OrderNo='{entity.OrderNo}' ";
-            
+
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(command))
@@ -17848,7 +17855,7 @@ CREATE TABLE ##quryParamTemp(
                     {
                         //List<CargoOrderPickPlanGoodsEntity> OrderPickPlanGoodsList = GetOrderPickPlanGoodsList(Convert.ToString(idr["PickPlanNo"]));
                         #region 获取运单数据
-                        result=(new CargoReserveOrderPaymentRecordEntity
+                        result = (new CargoReserveOrderPaymentRecordEntity
                         {
                             OrderNo = idr["OrderNo"].ToString(),
                             WxOrderNo = idr["WxOrderNo"].ToString(),
@@ -17874,7 +17881,7 @@ CREATE TABLE ##quryParamTemp(
                     {
                         //List<CargoOrderPickPlanGoodsEntity> OrderPickPlanGoodsList = GetOrderPickPlanGoodsList(Convert.ToString(idr["PickPlanNo"]));
                         #region 获取运单数据
-                        result=(new CargoOrderEntity
+                        result = (new CargoOrderEntity
                         {
                             OrderNo = idr["OrderNo"].ToString(),
                         });

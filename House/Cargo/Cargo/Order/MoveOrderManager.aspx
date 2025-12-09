@@ -98,7 +98,7 @@
                     },
                     { title: '操作时间', field: 'OP_DATE', width: '130px', formatter: DateTimeFormatter },
                     { title: '完成时间', field: 'CompDate', width: '130px', formatter: DateTimeFormatter },
-                    { title: '花费天数', field: 'SpendDays', width: '130px'}
+                    { title: '花费天数', field: 'SpendDays', width: '130px' }
                 ]],
                 onClickRow: function (index, row) {
                     $('#dg').datagrid('clearSelections');
@@ -476,8 +476,8 @@
                 columns: [[
                     { title: '', field: '', checkbox: true, width: '30px' },
                     { title: '移库单号', field: 'MoveOrderNo', width: '80px' },
-                    { title: '产品ID', field: 'ProductID', width: '70px' },
-                    { title: '标签编码', field: 'TagCode', width: '100px' },
+                    { title: '目标产品ID', field: 'ProductID', width: '80px' },
+                    { title: '标签编码', field: 'TagCode', width: '150px' },
                     { title: '轮胎码', field: 'TyreCode', width: '80px' },
                     //{ title: '出库时间', field: 'OutCargoTime', width: '120px', formatter: DateTimeFormatter },
                     //{ title: '出库人', field: 'OutCargoOperID', width: '60px' },
@@ -485,11 +485,17 @@
                     //{ title: '产品名称', field: 'ProductName', width: '100px' },
                     { title: '规格', field: 'Specs', width: '80px' },
                     { title: '花纹', field: 'Figure', width: '100px' },
+                    {
+                        title: '载速', field: 'LoadIndex', width: '80px', formatter: function (value, row) {
+                            return "<span title='" + value + row.SpeedLevel + "'>" + value + row.SpeedLevel + "</span>";
+                        }
+                    },
                     { title: '批次', field: 'Batch', width: '50px' },
                     { title: '型号', field: 'Model', width: '60px' },
                     { title: '货品代码', field: 'GoodsCode', width: '80px' },
-                    { title: '载重指数', field: 'LoadIndex', width: '60px' },
-                    { title: '速度级别', field: 'SpeedLevel', width: '60px' },
+                    { title: '供应商', field: 'Supplier', width: '80px' },
+                    
+                    //{ title: '速度级别', field: 'SpeedLevel', width: '60px' },
                     { title: '入库时间', field: 'InCargoTime', width: '120px', formatter: DateTimeFormatter },
                     //{ title: '货位代码', field: 'ContainerCode', width: '80px' }
                     //{ title: '一级区域', field: 'ParentAreaName', width: '60px' },
@@ -782,7 +788,17 @@
                     }
                 });
                 columns.push({
-                    title: '销售价', field: 'SalePrice', width: '60px', formatter: function (value) {
+                    title: '供应商', field: 'Supplier', width: '120px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '小程序价', field: 'SalePrice', width: '70px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '门店价', field: 'TradePrice', width: '70px', formatter: function (value) {
                         return "<span title='" + value + "'>" + value + "</span>";
                     }
                 });

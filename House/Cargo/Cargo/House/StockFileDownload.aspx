@@ -114,14 +114,16 @@
     <table id="dg" class="easyui-datagrid">
     </table>
     <div id="toolbar">
-        <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false" onclick="SyncData(1)">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false" onclick="SyncData()">
+            更新</a>&nbsp;&nbsp;
+       <%-- <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false" onclick="SyncData(1)">
             更新(采购-进货)</a>&nbsp;&nbsp;
         <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false" onclick="SyncData(2)">
             更新(采购库存管理/批次)</a>&nbsp;&nbsp;
         <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false" onclick="SyncData(3)">
             更新(财务库存分析/物权)</a>&nbsp;&nbsp;
         <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false" onclick="SyncData(4)">
-            更新(财务库存分析)</a>&nbsp;&nbsp;
+            更新(财务库存分析)</a>&nbsp;&nbsp;--%>
         <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
         <%--<a href="#" class="easyui-linkbutton"
                     iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>--%>

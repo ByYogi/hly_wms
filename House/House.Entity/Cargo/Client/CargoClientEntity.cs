@@ -370,6 +370,8 @@ namespace House.Entity.Cargo
     [Serializable]
     public class CargoClientPreRecordEntity
     {
+        
+        public string CheckOutType { get; set; }
         public string Boss { get; set; }
         public string ClientName { get; set; }
         public int ClientNum { get; set; }

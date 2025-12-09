@@ -1,0 +1,1443 @@
+﻿<%@ Page Title="财务报销管理" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="financeExpenseManager.aspx.cs" Inherits="Cargo.Finance.financeExpenseManager" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <style type="text/css">
+        .commTblStyle_8 {
+        }
+
+            .commTblStyle_8 th {
+                border: 1px solid rgb(205, 205, 205);
+                text-align: center;
+                color: rgb(255, 255, 255);
+                line-height: 28px;
+                background-color: rgb(15, 114, 171);
+            }
+
+            .commTblStyle_8 tr {
+            }
+
+                .commTblStyle_8 tr.BlankRow td {
+                    line-height: 10px;
+                }
+
+                .commTblStyle_8 tr td {
+                    border: 1px solid rgb(205, 205, 205);
+                    text-align: center;
+                    line-height: 20px;
+                }
+
+                    .commTblStyle_8 tr td.left {
+                        text-align: right;
+                        padding-right: 10px;
+                        font-weight: bold;
+                        white-space: nowrap;
+                        background-color: rgb(239, 239, 239);
+                    }
+
+                    .commTblStyle_8 tr td.right {
+                        text-align: left;
+                        padding-left: 10px;
+                    }
+
+            .commTblStyle_8 .whiteback {
+                background-color: rgb(255, 255, 255);
+            }
+        /*流程图样式*/
+        .processBar {
+            float: left;
+            width: 100px;
+            margin-top: 15px;
+        }
+
+            .processBar .bar {
+                background: rgb(230, 224, 236);
+                height: 3px;
+                position: relative;
+                width: 100px;
+                margin-left: 10px;
+            }
+
+            .processBar .b-select {
+                background: rgb(96, 72, 124);
+            }
+
+            .processBar .bar .c-step {
+                position: absolute;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: rgb(230, 224, 236);
+                left: -12px;
+                top: 50%;
+                margin-top: -4px;
+            }
+
+            .processBar .bar .c-select {
+                width: 10px;
+                height: 10px;
+                margin: -5px -1px;
+                background: rgb(96, 72, 124);
+            }
+
+        .main-hide {
+            position: absolute;
+            top: -9999px;
+            left: -9999px;
+        }
+
+        .poetry {
+            color: rgb(41, 41, 41);
+            font-family: KaiTi_GB2312, KaiTi, STKaiti;
+            font-size: 16px;
+            background-color: transparent;
+            font-weight: bold;
+            font-style: normal;
+            text-decoration: none;
+        }
+
+        button {
+            width: 80px;
+            line-height: 30px;
+            font-size: 11px;
+            color: rgb(116, 42, 149);
+            text-align: center;
+            border-radius: 6px;
+            border: 1px solid #e2e2e2;
+            cursor: pointer;
+            background-color: #fff;
+            outline: none;
+        }
+
+            button:hover {
+                border: 1px solid rgb(179, 161, 200);
+            }
+    </style>
+    <script src="../JS/easy/js/datagrid-groupview.js" type="text/javascript"></script>
+    <script src="../JS/Lodop/LodopFuncs.js" type="text/javascript"></script>
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ExID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [[
+                    { title: '', field: '', checkbox: true, width: '30px' },
+                    {
+                        title: '报销类型', field: 'ExType', width: '60px', formatter: function (val, row, index) {
+                            if (val == "1") { return "收入"; } else if (val == "2") { return "支出"; } else { return ""; }
+                        }
+                    },
+                    {
+                        title: '报销单号', field: 'ExID', width: '60px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '申请仓库', field: 'HouseName', width: '150px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '报销人', field: 'ExName', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '报销部门', field: 'ExDepart', width: '200px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    { title: '报销时间', field: 'ExDate', width: '80px', formatter: DateFormatter },
+                    {
+                        title: '报销金额', field: 'ExCharge', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '客户名称', field: 'ClientName', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '受款人', field: 'ReceiveName', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '受款账号', field: 'ReceiveNumber', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '付款方式', field: 'ChargeType', width: '60px',
+                        formatter: function (val, row, index) { if (val == "0") { return "现金"; } else if (val == "1") { return "银行卡"; } else if (val == "2") { return "微信"; } else { return ""; } }
+                    },
+                    {
+                        title: '单位', field: 'ChargeUnit', width: '150px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '报销类别', field: 'CostName', width: '150px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '审批状态', field: 'Status', width: '80px',
+                        formatter: function (val, row, index) { if (val == "0") { return "待审"; } else if (val == "1") { return "审批中"; } else if (val == "2") { return "拒审"; } else if (val == "3") { return "结束"; } else if (val == "4") { return "财务已审批"; } else if (val == "5") { return "领导已审批"; } else { return ""; } }
+                    },
+                    {
+                        title: '上一审批人', field: 'UserName', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    { title: '上一审批时间', field: 'CheckTime', width: '120px', formatter: DateTimeFormatter },
+                    {
+                        title: '下一审批人', field: 'NextCheckName', width: '80px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    },
+                    {
+                        title: '结算状态', field: 'CheckStatus', width: '60px',
+                        formatter: function (val, row, index) { if (val == "0") { return "未结算"; } else if (val == "1") { return "已结清"; } else if (val == "2") { return "未结清"; } else { return ""; } }
+                    },
+                    {
+                        title: '拒审原因', field: 'DenyReason', width: '90px', formatter: function (value) {
+                            if (value != null && value != "") {
+                                return "<span title='" + value + "'>" + value + "</span>";
+                            }
+                        }
+                    }
+                ]],
+                onLoadSuccess: function (data) { },
+                onDblClickRow: function (index, row) { editItemByID(index); }
+            });
+            var datenow = new Date();
+            $('#StartDate').datebox('setValue', getLastDayFormatDate(datenow));
+            $('#EndDate').datebox('setValue', getNowFormatDate(datenow));
+            //所在仓库
+            $('#AHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name',
+                onSelect: function (rec) {
+                    $('#InBoss').combobox('clear');
+                    var url = '../Client/clientApi.aspx?method=AutoCompleteClient&houseID=' + rec.HouseID;
+                    $('#InBoss').combobox('reload', url);
+
+                }
+            });
+            $("#AHouseID").combobox("setValue", '<%=UserInfor.HouseID%>');
+            $('#AHouseID').combobox('textbox').bind('focus', function () { $('#HouseID').combobox('showPanel'); });
+        });
+        //查询
+        function dosearch() {
+            $('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = '../Finance/financeApi.aspx?method=QueryExpenseMyCheck';
+            $('#dg').datagrid('load', {
+                ExID: $("#ExID").val(),
+                ExName: $("#ExName").val(),
+                ExDepart: $("#ExDepart").val(),
+                ExCharge: $("#ExCharge").val(),
+                ReceiveName: $("#ReceiveName").val(),
+                ReceiveNumber: $("#ReceiveNumber").val(),
+                StartDate: $('#StartDate').datebox('getValue'),
+                EndDate: $('#EndDate').datebox('getValue'),
+                Status: $("#Status").combobox('getValue'),
+                ExType: $("#ExType").combobox('getValue'),
+                HouseID: $("#AHouseID").combobox('getValue'),//仓库ID
+                IsMe: "0"
+            });
+        }
+    </script>
+
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id='Loading' style="position: absolute; z-index: 1000; top: 0px; left: 0px; width: 98%; height: 100%; background: white; text-align: center; padding: 5px 10px; display: table;">
+        <div style="display: table-cell; vertical-align: middle">
+            <h1><font size="9">页面加载中……</font></h1>
+        </div>
+    </div>
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="" data-options="iconCls:'icon-search'" style="100%">
+        <table>
+            <tr>
+                <td style="text-align: right;">报销人:
+                </td>
+                <td>
+                    <input id="ExName" class="easyui-textbox" style="width: 100px">
+                </td>
+                <td style="text-align: right;">报销部门:
+                </td>
+                <td>
+                    <input id="ExDepart" class="easyui-textbox" style="width: 100px">
+                </td>
+                <td style="text-align: right;">报销单号:
+                </td>
+                <td>
+                    <input id="ExID" class="easyui-textbox" data-options="prompt:'请输入报销单号'" style="width: 100px">
+                </td>
+
+                <td style="text-align: right;">报销金额:
+                </td>
+                <td>
+                    <input id="ExCharge" class="easyui-textbox" style="width: 80px">
+                </td>
+                <td style="text-align: right;">报销时间:
+                </td>
+                <td>
+                    <input id="StartDate" class="easyui-datebox" style="width: 100px">~
+                    <input id="EndDate" class="easyui-datebox" style="width: 100px">
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: right;">受款人:
+                </td>
+                <td>
+                    <input id="ReceiveName" class="easyui-textbox" style="width: 100px">
+                </td>
+                <td style="text-align: right;">受款账号:
+                </td>
+                <td>
+                    <input id="ReceiveNumber" class="easyui-textbox" style="width: 100px">
+                </td>
+
+                <td style="text-align: right;">报销状态:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="Status" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="0">待审</option>
+                        <option value="1">审批中</option>
+                        <option value="2">拒审</option>
+                        <option value="3">结束</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">报销类型:
+                </td>
+                <td>
+                    <select class="easyui-combobox" id="ExType" style="width: 80px;" panelheight="auto">
+                        <option value="-1">全部</option>
+                        <option value="1">收入</option>
+                        <option value="2">支出</option>
+                    </select>
+                </td>
+                <td style="text-align: right;">所在仓库:
+</td>
+<td>
+    <input id="AHouseID" class="easyui-combobox" style="width: 100px;" />
+</td>
+            </tr>
+        </table>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;<a href="#"
+            class="easyui-linkbutton" iconcls="icon-edit" plain="false" onclick="editItem()">&nbsp;查&nbsp;看&nbsp;</a>&nbsp;&nbsp;<a
+                href="#" class="easyui-linkbutton" iconcls="icon-cut" plain="false" onclick="DelItem()">&nbsp;删&nbsp;除&nbsp;</a>&nbsp;&nbsp;<a
+                    href="#" class="easyui-linkbutton" iconcls="icon-sitemap_color" plain="false"
+                    onclick="Proc()">&nbsp;审批流程图&nbsp;</a>&nbsp;&nbsp;<a
+                        href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false"
+                        onclick="AwbExport()">&nbsp;导&nbsp;出&nbsp;</a>&nbsp;&nbsp;<a
+                            href="#" class="easyui-linkbutton" iconcls="icon-print" onclick="showPrint()">&nbsp;打印汇款涵&nbsp;</a>&nbsp;&nbsp;<a
+                                href="#" class="easyui-linkbutton" iconcls="icon-page_white_paint" onclick="Remit()">&nbsp;汇款涵管理&nbsp;</a>
+        <form runat="server" id="fm1">
+            <asp:Button ID="btnDerived" runat="server" Style="display: none;" Text="导出" OnClick="btnDerived_Click" />
+        </form>
+    </div>
+    <div id="dlg" class="easyui-dialog" style="width: 700px; height: 470px; padding: 10px 10px"
+        closed="true" buttons="#dlg-buttons">
+        <div id="lblTrack">
+        </div>
+    </div>
+    <div id="dlg-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="javascript:$('#dlg').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <div id="dlgAwbDetail" class="easyui-dialog" style="width: 800px; height: 480px;"
+        closed="true" buttons="#dlgAwbDetail-buttons">
+        <input id="IsSave" type="hidden" value="0" />
+        <form id="fm" class="easyui-form" method="post">
+            <input name="ExID" id="AExID" type="hidden" />
+            <input name="NextCheckID" id="NextCheckID" type="hidden" />
+            <input name="NextCheckName" id="NextCheckName" type="hidden" />
+            <div id="saPanel">
+                <table style="width: 100%">
+                    <tr>
+                        <td style="text-align: right;">报销人:
+                        </td>
+                        <td>
+                            <input name="ExName" id="AExName" class="easyui-textbox" style="width: 140px" data-options="required:true">
+                        </td>
+                        <td style="text-align: right;">报销部门:
+                        </td>
+                        <td>
+                            <%--<input name="ExpenseDate" readonly="true" id="AExpenseDate" class="easyui-datetimebox" style="width: 170px">--%>
+                            <input type="hidden" name="ExpenseDate" id="AExpenseDate" />
+                            <input name="ExDepart" id="AExDepart" style="width: 170px;" class="easyui-combobox" />
+                        </td>
+                        <td style="text-align: right;">报销金额:
+                        </td>
+                        <td>
+                            <input name="ExCharge" id="AExCharge" class="easyui-numberbox" style="width: 140px;"
+                                data-options="min:0,precision:2" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">受款人:
+                        </td>
+                        <td>
+                            <input name="ReceiveName" id="AReceiveName" class="easyui-textbox" style="width: 140px;" />
+                        </td>
+                        <td style="text-align: right;">受款账号:
+                        </td>
+                        <td>
+                            <input name="ReceiveNumber" id="AReceiveNumber" class="easyui-textbox" style="width: 170px;" />
+                        </td>
+                        <td style="text-align: right;">付款方式:
+                        </td>
+                        <td>
+                            <input name="ChargeType" id="ChargeType0" type="radio" value="0"><label for="ChargeType0" style="font-size: 14px;">现金</label>
+                            <input name="ChargeType" id="ChargeType1" type="radio" value="1"><label for="ChargeType1" style="font-size: 14px;">银行卡</label>
+                            <input name="ChargeType" id="ChargeType2" type="radio" value="2"><label for="ChargeType2" style="font-size: 14px;">微信</label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">操作人:
+                        </td>
+                        <td>
+                            <input name="OperaName" readonly="true" id="OperaName" style="width: 140px;" class="easyui-textbox" />
+                        </td>
+                        <td style="text-align: right;">报销时间:
+                        </td>
+                        <td>
+                            <input name="ExDate" id="AExDate" class="easyui-datebox" style="width: 170px"
+                                data-options="required:true">
+                        </td>
+                        <td style="text-align: right;">审批流程:
+                        </td>
+                        <td>
+                            <input name="ApproveID" id="ApproveID" class="easyui-combobox" style="width: 140px;" />
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="text-align: right;">备注:
+                        </td>
+                        <td colspan="3">
+                            <textarea name="Reason" id="AReason" rows="3" style="width: 450px;"></textarea>
+                        </td>
+                        <td colspan="2">
+                            <div id="ApproveInfo"></div>
+                        </td>
+                    </tr>
+
+                </table>
+            </div>
+            <table id="dgAdd" class="easyui-datagrid">
+            </table>
+        </form>
+    </div>
+    <div id="dlgAwbDetail-buttons">
+        <a href="#" class="easyui-linkbutton" id="preprint"
+            iconcls="icon-print" onclick="prn1_preview()">&nbsp;打印预览&nbsp;</a>&nbsp;&nbsp;<a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+                onclick="closeDlg()">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <div id="dvPrint" class="easyui-dialog" style="width: 800px; height: 400px;" closed="true"
+        buttons="#dvPrint-buttons">
+        <form id="fmPrint" class="easyui-form" method="post">
+            <input name="ID" type="hidden" />
+            <table style="width: 100%">
+                <tr>
+                    <td style="text-align: center; font-size: 22px;">付款申请书
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">申请日期：
+                    <input id="NowDate" class="easyui-datebox" readonly="readonly" style="width: 100px">
+                    </td>
+                </tr>
+            </table>
+            <table>
+                <tr>
+                    <td>申请部门:
+                    </td>
+                    <td>
+                        <input name="ApplyDep" id="ApplyDep" class="easyui-textbox" style="width: 300px">
+                    </td>
+                    <td>申请人:
+                    </td>
+                    <td>
+                        <input name="ApplyPeople" id="ApplyPeople" class="easyui-textbox" style="width: 300px;" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>收款单位:
+                    </td>
+                    <td>
+                        <input name="ReceiveUnit" id="ReceiveUnit" class="easyui-textbox" style="width: 300px">
+                    </td>
+                    <td>对应单号:
+                    </td>
+                    <td>
+                        <input name="RelateAwb" id="RelateAwb" class="easyui-textbox" style="width: 300px">
+                    </td>
+                </tr>
+                <tr>
+                    <td>开户行:
+                    </td>
+                    <td>
+                        <input name="CardBank" id="CardBank" class="easyui-textbox" style="width: 300px">
+                    </td>
+                    <td>付款方式:
+                    </td>
+                    <td>
+                        <input name="PayWay" id="PayWay0" type="radio" value="0"><label for="PayWay0" style="font-size: 14px;">现金</label>
+                        <input name="PayWay" id="PayWay1" type="radio" value="1"><label for="PayWay1" style="font-size: 14px;">对公转账</label>
+                        <input name="PayWay" id="PayWay2" type="radio" value="2"><label for="PayWay2" style="font-size: 14px;">对私转账</label>
+                        <input name="PayWay" id="PayWay3" type="radio" value="3"><label for="PayWay3" style="font-size: 14px;">油卡</label>
+                    </td>
+                </tr>
+                 <tr>
+     <td>单位:
+     </td>
+     <td>
+         <input name="ChargeUnit" id="ChargeUnit" class="easyui-textbox" style="width: 300px" disabled >
+     </td>
+
+ </tr>
+                <tr>
+                    <td>收款账号:
+                    </td>
+                    <td>
+                        <input name="CardNum" id="CardNum" class="easyui-combobox" data-options="valueField:'CardNum',textField:'CardNum',onSelect:onCardNumChanged"
+                            style="width: 300px;" />
+                    </td>
+                    <td>收款人姓名:
+                    </td>
+                    <td>
+                        <input id="CardName" name="CardName" class="easyui-combobox" style="width: 300px;" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>金额(大写):
+                    </td>
+                    <td>
+                        <input id="PayMoneyDX" class="easyui-textbox" style="width: 300px">
+                    </td>
+                    <td>金额(小写):
+                    </td>
+                    <td>
+                        <input id="PayMoney" name="PayMoney" class="easyui-numberbox" data-options="min:0,precision:2" style="width: 100px;" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>付款说明:
+                    </td>
+                    <td colspan="3">
+                        <textarea id="PayMemo" name="PayMemo" rows="4" style="width: 600px;"></textarea>
+                    </td>
+                </tr>
+
+            </table>
+        </form>
+    </div>
+    <div id="dvPrint-buttons">
+        <a href="#" class="easyui-linkbutton" id="btnPrint" iconcls="icon-printer" onclick="PayPrint()">&nbsp;打&nbsp;印&nbsp;</a>&nbsp;&nbsp; <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+            onclick="javascript:$('#dvPrint').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+
+    <div id="dvRemit" class="easyui-dialog" style="width: 1000px; height: 600px;" closed="true"
+        buttons="#dvRemit-buttons">
+        <div id="saPanel" class="easyui-panel" title="" data-options="iconCls:'icon-search'">
+            <table>
+                <tr>
+                    <td style="text-align: right;">申请人:
+                    </td>
+                    <td>
+                        <input id="RApplyPeople" class="easyui-textbox" style="width: 100px">
+                    </td>
+                    <td style="text-align: right;">关联单号:
+                    </td>
+                    <td>
+                        <input id="RRelateAwb" class="easyui-textbox" style="width: 80px">
+                    </td>
+                    <td style="text-align: right;">所属仓库:
+                    </td>
+                    <td>
+                        <input id="RHouseID" class="easyui-combobox" style="width: 100px;" />
+                    </td>
+                    <td style="text-align: right;">操作时间:
+                    </td>
+                    <td>
+                        <input id="RStartDate" class="easyui-datebox" style="width: 100px">~
+                    <input id="REndDate" class="easyui-datebox" style="width: 100px">
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">收款单位:
+                    </td>
+                    <td>
+                        <input id="RReceiveUnit" class="easyui-textbox" style="width: 100px">
+                    </td>
+
+                    <td style="text-align: right;">收款人名:
+                    </td>
+                    <td>
+                        <input id="RCardName" class="easyui-textbox" style="width: 80px">
+                    </td>
+                    <td style="text-align: right;">开户银行:
+                    </td>
+                    <td>
+                        <input id="RCardBank" class="easyui-textbox" style="width: 100px">
+                    </td>
+                    <td style="text-align: right;">收款账号:
+                    </td>
+                    <td>
+                        <input id="RCardNum" class="easyui-textbox" style="width: 100px">
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <table id="dgRemit" class="easyui-datagrid">
+        </table>
+        <div id="Remittoolbar">
+            <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="RemitQuery()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+        </div>
+    </div>
+    <div id="dvRemit-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel"
+            onclick="javascript:$('#dvRemit').dialog('close')">&nbsp;关&nbsp;闭&nbsp;</a>
+    </div>
+    <object id="LODOP_OB" title="dd" classid="clsid:2105C259-1E0C-4534-8141-A753534CB4CA"
+        width="0" height="0">
+        <embed id="LODOP_EM" type="application/x-print-lodop" width="0" height="0"></embed>
+    </object>
+
+    <script type="text/javascript">
+        //修改付款涵
+        function modifyRemit(Did) {
+            var row = $("#dgRemit").datagrid('getData').rows[Did];
+            if (row) {
+                $('#dvPrint').dialog('open').dialog('setTitle', '修改' + row.CardName + '的付款涵');
+                $('#fmPrint').form('clear');
+                $('#fmPrint').form('load', row);
+                var datenow = new Date();
+                $('#NowDate').datebox('setValue', getNowFormatDate(datenow));
+                $('#PayMoneyDX').textbox('setValue', atoc(row.PayMoney));
+                //收款人姓名
+                $('#CardName').combobox({
+                    valueField: 'CardName', textField: 'CardName', delay: '10',
+                    url: '../Finance/financeApi.aspx?method=QueryReceiveNameList',
+                    onSelect: onReceiveNameChanged,
+                    required: true
+                });
+                $('#ApplyPeople').textbox('readonly', true);
+                $('#RelateAwb').textbox('readonly', true);
+                $('#PayMoney').numberbox('readonly', false);
+                $('#PayMoneyDX').textbox('readonly', false);
+                $('#btnPrint').linkbutton({ text: '&nbsp;保存成功后打印&nbsp;' });
+                $('#CardName').combobox('setValue', row.CardName);
+                bindMethod();
+            }
+        }
+
+        //查询付款涵
+        function RemitQuery() {
+            var mOpts = $('#dgRemit').datagrid('options');
+            mOpts.url = 'financeApi.aspx?method=RemitQuery';
+            $('#dgRemit').datagrid('load', {
+                ApplyPeople: $('#RApplyPeople').val(),
+                RelateAwb: $('#RRelateAwb').val(),
+                HouseID: $("#RHouseID").combobox('getValue'),
+                ReceiveUnit: $('#RReceiveUnit').val(),
+                CardName: $('#RCardName').val(),
+                CardNum: $('#RCardNum').val(),
+                StartDate: $('#RStartDate').datebox('getValue'),
+                EndDate: $('#REndDate').datebox('getValue'),
+                CardBank: $('#RCardBank').val()
+            });
+        }
+        //打开汇款涵界面
+        function Remit() {
+            $('#dvRemit').dialog('open').dialog('setTitle', '汇款涵管理');
+            var datenow = new Date();
+            $('#RStartDate').datebox('setValue', getNowFormatDate(datenow));
+            $('#REndDate').datebox('setValue', getNowFormatDate(datenow));
+            //所在仓库
+            $('#RHouseID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID', textField: 'Name'
+            });
+            $('#dgRemit').datagrid({
+                width: '100%',
+                height: '450',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: 12, //每页多少条
+                pageList: [12, 20],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'ID',
+                url: null,
+                toolbar: '#Remittoolbar',
+                columns: [[
+                    { title: '', field: '', checkbox: true, width: '30px' },
+                    { title: '申请部门', field: 'ApplyDep', width: '80px' },
+                    { title: '申请人', field: 'ApplyPeople', width: '70px' },
+                    { title: '收款单位', field: 'ReceiveUnit', width: '80px' },
+                    { title: '收款人', field: 'CardName', width: '80px' },
+                    { title: '开户行', field: 'CardBank', width: '120px' },
+                    { title: '收款账号', field: 'CardNum', width: '120px' },
+                    { title: '付款金额', field: 'PayMoney', width: '80px' },
+                    {
+                        title: '付款方式', field: 'PayWay', width: '60px', formatter: function (val, row, index) {
+                            if (val == "1") { return "对公"; } else if (val == "2") { return "对私"; } else if (val == "3") { return "油卡"; } else { return "现金"; }
+                        }
+                    },
+                    { title: '付款说明', field: 'PayMemo', width: '90px' },
+                    { title: '关联单号', field: 'RelateAwb', width: '80px' },
+                    { title: '所属仓库', field: 'HouseName', width: '70px' },
+                    { title: '打印次数', field: 'PrintNum', width: '60px' },
+                    { title: '操作时间', field: 'OP_DATE', width: '120px', formatter: DateTimeFormatter }
+                ]],
+                onLoadSuccess: function (data) { },
+                onDblClickRow: function (index, row) { modifyRemit(index); }
+            });
+        }
+        //打印付款申请书
+        function PayPrint() {
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定打印付款申请书？', function (r) {
+                if (r) {
+                    $('#fmPrint').form('submit', {
+                        url: 'financeApi.aspx?method=SavePayment',
+                        contentType: "application/json;charset=utf-8", dataType: "json",
+                        onSubmit: function (param) {
+                            param.ACardNum = $('#CardNum').combobox('getText');
+                            param.ACardName = $('#CardName').combobox('getText');
+                            var trd = $(this).form('enableValidation').form('validate');
+                            return trd;
+                        },
+                        success: function (msg) { }
+                    });
+                    //打印
+                    DivPayPrint();
+                }
+            });
+        }
+        //绑定费用框
+        function bindMethod() {
+            $("#PayMoney").numberbox({ "onChange": function (newValue, oldValue) { $('#PayMoneyDX').textbox('setValue', atoc(Number(newValue))); } });
+        }
+        //显示打印付款申请书
+        function showPrint() {
+            bindMethod();
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要打印的数据！', 'warning'); return; }
+            var datenow = new Date();
+            $('#NowDate').datebox('setValue', getNowFormatDate(datenow));
+            var contractN = "";
+            var TFee = 0;
+            var ApplyPeople = null;
+            var ApplyDep = null;
+            for (var i = 0, l = rows.length; i < l; i++) {
+                TFee += Number(rows[i].ExCharge); //报销金额
+                contractN += rows[i].ExID + ","; //报销单号
+                if (ApplyPeople != null) {
+                    if (ApplyPeople != rows[i].ExName) {
+                        $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '只能打印同一报销人的汇款函！', 'warning');
+                        return;
+                    }
+                } else {
+                    ApplyPeople = rows[i].ExName;
+                    ApplyDep = rows[i].ExDepart;
+                }
+            }
+            $('#dvPrint').dialog('open').dialog('setTitle', '打印付款申请书');
+            $('#ApplyDep').textbox('setValue', ApplyDep);
+            $('#ApplyPeople').textbox('setValue', ApplyPeople);
+            $('#ChargeUnit').textbox('setValue', rows[0].ChargeUnit);
+            //收款人姓名
+            $('#CardName').combobox({
+                valueField: 'CardName', textField: 'CardName', delay: '10',
+                url: '../Finance/financeApi.aspx?method=QueryReceiveNameList',
+                onSelect: onReceiveNameChanged,
+                required: true
+            });
+            $('#ApplyPeople').textbox('readonly', false);
+            $('#RelateAwb').textbox('readonly', false);
+            $('#PayMoney').numberbox('readonly', false);
+            $('#PayMoneyDX').textbox('readonly', false);
+            //$('#ReceiveUnit').textbox('setValue', '');
+            $('#RelateAwb').textbox('setValue', contractN);
+            //$('#CardName').textbox('setValue', '');
+            $('#CardBank').textbox('setValue', '');
+            $('#CardNum').textbox('setValue', '');
+            $('#PayMoney').textbox('setValue', Number(TFee).toFixed(2));
+            $('#PayMoneyDX').textbox('setValue', atoc(TFee));
+            $('#PayMemo').val('');
+            $('#btnPrint').linkbutton({ text: '&nbsp;打&nbsp;印&nbsp;' });
+
+        }
+        //收货人自动选择方法
+        function onReceiveNameChanged(item) {
+            if (item) {
+                $('#ReceiveUnit').textbox('setValue', item.ReceiveUnit);
+                var url = "../Finance/financeApi.aspx?method=QueryReceiveInfo&CardName=" + item.CardName;
+                $('#CardNum').combobox('reload', url);
+                $('#CardNum').combobox('setValue', '');
+            }
+        }
+        function onCardNumChanged(item) {
+            if (item) {
+                $('#ReceiveUnit').textbox('setValue', item.ReceiveUnit);//ClientShortName
+                $('#CardBank').textbox('setValue', item.CardBank);
+                //$('input:checkbox[name="PayWay"][value="1"]').prop('checked', true); //打印运单
+            }
+        }
+        //修改
+        function editItem() {
+            $('#IsSave').val("1");
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要修改的数据！', 'warning'); return; }
+            if (row) {
+                if (row.CheckStatus == "1") { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '已结算的单不能修改！', 'warning'); return; }
+                $('#dlgAwbDetail').dialog('open').dialog('setTitle', '修改报销');
+                ShowDG();
+                $('#dgAdd').datagrid('loadData', { total: 0, rows: [] });
+                $('#fm').form('clear');
+                $.ajax({
+                    url: "../Finance/financeApi.aspx?method=GetExpenseById&id=" + row.ExID,
+                    cache: false,
+                    success: function (text) {
+                        var o = eval('(' + text + ')');
+                        o.ExpenseDate = AllDateTime(o.ExpenseDate);
+                        $('#fm').form('load', o);
+                        if (o.OneCheckID != undefined && o.OneCheckID != "") { info = "一级审批:" + o.OneCheckName; }
+                        if (o.TwoCheckID != undefined && o.TwoCheckID != "") { info = "<br />二级审批:" + o.TwoCheckName; }
+                        if (o.ThreeCheckID != undefined && o.ThreeCheckID != "") { info = "<br />三级审批:" + o.ThreeCheckName; }
+                        if (o.FourCheckID != undefined && o.FourCheckID != "") { info = "<br />四级审批:" + o.FourCheckName; }
+                        if (o.FiveCheckID != undefined && o.FiveCheckID != "") { info = "<br />五级审批:" + o.FiveCheckName; }
+                        if (o.SixCheckID != undefined && o.SixCheckID != "") { info = "<br />六级审批:" + o.SixCheckName; }
+                        //$('#ApproveInfo').html("一级审批：" + rec.SupervisorName + "<br />二级审批：" + rec.FinanceName + "<br />三级审批：" + rec.LeaderName);
+                        $('#ApproveInfo').html(info);
+                        for (var i = 0; i < o.exDetail.length; i++) {
+                            var rows = { HappenDate: o.exDetail[i].HappenDate, Memo: o.exDetail[i].Memo, Summary: o.exDetail[i].Summary, DetailCharge: o.exDetail[i].DetailCharge, DetailID: o.exDetail[i].DetailID, ZID: o.exDetail[i].ZID, ZName: o.exDetail[i].ZName, FName: o.exDetail[i].FName, FID: o.exDetail[i].FID, SID: o.exDetail[i].SID, SName: o.exDetail[i].SName };
+                            $('#dgAdd').datagrid('appendRow', rows);
+                        }
+                        if (o.Status == "0" || o.Status == "2") { $('#save').linkbutton('enable'); } else { $('#save').linkbutton('disable'); }
+                    }
+                });
+                //报销部门
+                $('#AExDepart').combobox({
+                    valueField: 'Name', textField: 'Name', delay: '10',
+                    url: '../Finance/financeApi.aspx?method=QuerySystemOrganize',
+                    required: true
+                });
+            }
+        }
+        //修改
+        function editItemByID(Did) {
+            $('#IsSave').val("1");
+            var row = $("#dg").datagrid('getData').rows[Did];
+            if (row) {
+                if (row.CheckStatus == "1") { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '已结算的单不能修改！', 'warning'); return; }
+                $('#dlgAwbDetail').dialog('open').dialog('setTitle', '修改报销');
+                ShowDG();
+                $('#dgAdd').datagrid('loadData', { total: 0, rows: [] });
+                $('#fm').form('clear');
+                $.ajax({
+                    url: "../Finance/financeApi.aspx?method=GetExpenseById&id=" + row.ExID,
+                    cache: false,
+                    success: function (text) {
+                        var o = eval('(' + text + ')');
+                        o.ExpenseDate = AllDateTime(o.ExpenseDate);
+                        $('#fm').form('load', o);
+                        if (o.OneCheckID != undefined && o.OneCheckID != "") { info = "一级审批:" + o.OneCheckName; }
+                        if (o.TwoCheckID != undefined && o.TwoCheckID != "") { info = "<br />二级审批:" + o.TwoCheckName; }
+                        if (o.ThreeCheckID != undefined && o.ThreeCheckID != "") { info = "<br />三级审批:" + o.ThreeCheckName; }
+                        if (o.FourCheckID != undefined && o.FourCheckID != "") { info = "<br />四级审批:" + o.FourCheckName; }
+                        if (o.FiveCheckID != undefined && o.FiveCheckID != "") { info = "<br />五级审批:" + o.FiveCheckName; }
+                        if (o.SixCheckID != undefined && o.SixCheckID != "") { info = "<br />六级审批:" + o.SixCheckName; }
+                        //$('#ApproveInfo').html("一级审批：" + rec.SupervisorName + "<br />二级审批：" + rec.FinanceName + "<br />三级审批：" + rec.LeaderName);
+                        $('#ApproveInfo').html(info);
+                        for (var i = 0; i < o.exDetail.length; i++) {
+                            var rows = { HappenDate: o.exDetail[i].HappenDate, Memo: o.exDetail[i].Memo, Summary: o.exDetail[i].Summary, DetailCharge: o.exDetail[i].DetailCharge, DetailID: o.exDetail[i].DetailID, ZID: o.exDetail[i].ZID, ZName: o.exDetail[i].ZName, FName: o.exDetail[i].FName, FID: o.exDetail[i].FID, SID: o.exDetail[i].SID, SName: o.exDetail[i].SName };
+                            $('#dgAdd').datagrid('appendRow', rows);
+                        }
+                        if (o.Status == "0" || o.Status == "2") { $('#save').linkbutton('enable'); } else { $('#save').linkbutton('disable'); }
+                    }
+                });
+            }
+        }
+
+        //删除
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning'); return; }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '审批中和已结算的单不能删除，确定删除？', function (r) {
+                if (r) {
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: '../Finance/financeApi.aspx?method=DelCargoMyExpense&ty=1',
+                        type: 'post',
+                        dataType: 'json',
+                        data: { data: json },
+                        success: function (text) {
+                            if (text.Result == true) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info'); $('#dg').datagrid('reload'); }
+                            else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning'); }
+                        }
+                    });
+                }
+            });
+        }
+        //导出数据
+        function AwbExport() {
+            var row = $("#dg").datagrid('getData').rows[0];
+            if (row == null) { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '没有数据可以进行导出，请重新查询！', 'warning'); return; }
+                var key = new Array();
+                key[0] = $('#ExID').val();
+                key[1] = $("#ExName").val();
+                key[2] = $("#ExCharge").val();
+                key[3] = $("#ReceiveName").val();
+                key[4] = $("#ReceiveNumber").val();
+                key[5] = $('#StartDate').datebox('getValue');
+                key[6] = $('#EndDate').datebox('getValue');
+                key[7] = $("#Status").combobox('getValue');
+                key[8] = $("#ExType").combobox('getValue');
+                key[9] = "0";
+                key[10] = $("#AHouseID").combobox('getValue');
+                $.ajax({
+                    url: "../Finance/financeApi.aspx?method=QueryExpenseMyCheckForExport&key=" + escape(key.toString()),
+                    success: function (text) {
+                        if (text == "OK") { var obj = document.getElementById("<%=btnDerived.ClientID %>"); obj.click(); }
+                    else { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text, 'warning'); }
+                }
+            });
+        }
+
+        //审批流程图
+        function Proc() {
+            var row = $('#dg').datagrid('getSelected');
+            if (row == null || row == "") { $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要查看的数据！', 'warning'); return; }
+            if (row) {
+                $('#dlg').dialog('open').dialog('setTitle', '查看报销单：' + row.ExID + "的审核流程图");
+                $.ajax({
+                    url: "../Finance/financeApi.aspx?method=QueryExpenseRout&id=" + row.ExID + "&ApproveType=0" + "&ApproveID=" + row.ApproveID + "&applyID=" + row.OperaID + "&ApplyName=" + row.OperaName + "&HouseID=" + row.HouseID,
+                    cache: false,
+                    success: function (text) {
+                        var ldl = document.getElementById("lblTrack");
+                        ldl.innerHTML = text;
+                    }
+                });
+            }
+        }
+        function reload() {
+            $('#dg').datagrid('reload');
+            $('#dg').datagrid('clearSelections');
+        }
+        function closeDlg() {
+            $('#dlgAwbDetail').dialog('close');
+        }
+        function ShowDG() {
+            $('#dgAdd').datagrid({
+                width: '100%',
+                height: '230px',
+                title: '', //标题内容
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: false, //分页是否显示
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: true, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'DetailID',
+                url: null,
+                columns: [[
+                    {
+                        title: '收入支出', field: 'ZID', width: '60px', formatter: function (value, row) {
+                            return row.ZName;
+                        }
+                    },
+                    {
+                        title: '一级科目', field: 'FID', width: '90px', formatter: function (value, row) {
+                            return row.FName;
+                        }
+                    },
+                    {
+                        title: '二级科目', field: 'SID', width: '120px', formatter: function (value, row) {
+                            return row.SName;
+                        }
+                    },
+                    { title: '发生日期', field: 'HappenDate', width: '100px', editor: 'datebox', formatter: DateFormatter },
+                    { title: '说明', field: 'Memo', width: '120px', editor: 'textbox' },
+                    { title: '对应单号(多个单号用,逗号隔开)', field: 'Summary', width: '180px', editor: 'textbox' },
+                    { title: '费用', field: 'DetailCharge', width: '80px', editor: { type: 'numberbox', options: { precision: 2 } } }
+                ]]
+            });
+        }
+        //修改
+        function editItemByID(Did) {
+            var row = $("#dg").datagrid('getData').rows[Did];
+            if (row) {
+                $('#dlgAwbDetail').dialog('open').dialog('setTitle', '查看报销');
+                ShowDG();
+                $('#dgAdd').datagrid('loadData', { total: 0, rows: [] });
+                $('#fm').form('clear');
+                $.ajax({
+                    url: "../Finance/financeApi.aspx?method=GetExpenseById&id=" + row.ExID,
+                    cache: false,
+                    success: function (text) {
+                        var o = eval('(' + text + ')');
+                        //审批流程查询
+                        $('#ApproveID').combobox({
+                            url: 'financeApi.aspx?method=QueryApproveSet&ApproveType=7&DelFlag=0',
+                            valueField: 'ID',
+                            textField: 'ApproveName'
+                        });
+                        o.ExpenseDate = AllDateTime(o.ExpenseDate);
+                        $('#fm').form('load', o);
+                        var info;
+                        if (o.OneCheckID != undefined && o.OneCheckID != "") { info = "一级审批：" + o.OneCheckName; }
+                        if (o.TwoCheckID != undefined && o.TwoCheckID != "") { info += "<br />二级审批：" + o.TwoCheckName; }
+                        if (o.ThreeCheckID != undefined && o.ThreeCheckID != "") { info += "<br />三级审批：" + o.ThreeCheckName; }
+                        if (o.FourCheckID != undefined && o.FourCheckID != "") { info += "<br />四级审批：" + o.FourCheckName; }
+                        if (o.FiveCheckID != undefined && o.FiveCheckID != "") { info += "<br />五级审批：" + o.FiveCheckName; }
+                        if (o.SixCheckID != undefined && o.SixCheckID != "") { info += "<br />六级审批：" + o.SixCheckName; }
+                        //$('#ApproveInfo').html("一级审批：" + rec.SupervisorName + "<br />二级审批：" + rec.FinanceName + "<br />三级审批：" + rec.LeaderName);
+                        $('#ApproveInfo').html(info);
+                        for (var i = 0; i < o.exDetail.length; i++) {
+                            var rows = { HappenDate: o.exDetail[i].HappenDate, Memo: o.exDetail[i].Memo, Summary: o.exDetail[i].Summary, DetailCharge: o.exDetail[i].DetailCharge, DetailID: o.exDetail[i].DetailID, ZID: o.exDetail[i].ZID, ZName: o.exDetail[i].ZName, FName: o.exDetail[i].FName, FID: o.exDetail[i].FID, SID: o.exDetail[i].SID, SName: o.exDetail[i].SName };
+                            $('#dgAdd').datagrid('appendRow', rows);
+                        }
+                        $('#save').linkbutton('disable');
+                    }
+                });
+                //报销部门
+                $('#AExDepart').combobox({
+                    valueField: 'Name', textField: 'Name', delay: '10',
+                    url: '../Finance/financeApi.aspx?method=QuerySystemOrganize',
+                    required: true
+                });
+            }
+        }
+        var LODOP; //打印全局变量
+        //打印
+        function prn1_preview() {
+            LODOP = getLodop(document.getElementById('LODOP_OB'), document.getElementById('LODOP_EM'));
+            CreateOneFormPage();
+            LODOP.PREVIEW();
+            //LODOP.PRINT();
+        };
+        //针式打印机的打印样式
+        function CreateOneFormPage() {
+            LODOP = getLodop(document.getElementById('LODOP_OB'), document.getElementById('LODOP_EM'));
+            var hous = '<%= HouseName%>';
+            var com = '湖南迪乐泰费用报销单';
+            if (hous.indexOf('湖北') != -1) { com = '湖北迪乐泰费用报销单'; }
+            if (hous.indexOf('西安') != -1) { com = '西安新陆程费用报销单'; }
+            if (hous.indexOf('海南') != -1) { com = '海南迪乐泰费用报销单'; }
+            if (hous.indexOf('梅州') != -1) { com = '梅州新陆程费用报销单'; }
+            if (hous.indexOf('广州') != -1) { com = '广州市狄祺达费用报销单'; }
+            if (hous.indexOf('广东') != -1) { com = '广州市狄祺达费用报销单'; }
+            if (hous.indexOf('揭阳') != -1) { com = '揭阳迪乐泰费用报销单'; }
+            if (hous.indexOf('四川') != -1) { com = '四川迪乐泰费用报销单'; }
+            if (hous.indexOf('富添盛') != -1) { com = '广州富添盛费用报销单'; }
+            if (hous.indexOf('海口城配') != -1) { com = "海南新路城配费用报销单" }
+            if (hous.indexOf('一二三轮胎') != -1) { com = "一二三轮胎费用报销单" }
+            LODOP.PRINT_INITA(10, 10, 750, 450, com);
+            LODOP.SET_PRINT_STYLE("FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(-2, 219, 285, 30, com);
+            LODOP.SET_PRINT_STYLEA(0, "FontName", "新宋体");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 16);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+            LODOP.ADD_PRINT_TEXT(25, 8, 90, 20, "报销人：");
+            LODOP.SET_PRINT_STYLEA(0, "FontName", "新宋体");
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(25, 81, 277, 20, $('#AExName').textbox('getValue'));
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(52, 8, 90, 25, "受款人：");
+            LODOP.SET_PRINT_STYLEA(0, "FontName", "新宋体");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(25, 577, 94, 30, "报销单号：");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(25, 648, 100, 30, $('#AExID').val()); //报销单号mini.getbyName("ExID").getValue()
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(52, 198, 95, 25, "受款账号：");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            //LODOP.ADD_PRINT_TEXT(52, 391, 85, 25, "报销日期：");
+            //LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            //LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(52, 577, 167, 25, "单据及附件共     页");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(51, 81, 120, 25, $('#AReceiveName').textbox('getValue')); //受款人
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(51, 283, 205, 25, $('#AReceiveNumber').textbox('getValue')); //受款账号
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            //LODOP.ADD_PRINT_TEXT(49, 472, 100, 25, getNowFormatDate(getDate($('#AExpenseDate').datetimebox('getValue'))));
+            //LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+            //LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(25, 198, 95, 25, "报销日期：");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            //LODOP.ADD_PRINT_TEXT(25, 283, 105, 25, getNowFormatDate(getDate($('#AExpenseDate').datetimebox('getValue')))); //客户名称
+            LODOP.ADD_PRINT_TEXT(25, 283, 105, 25, $('#AExpenseDate').val()); //客户名称
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_SHAPE(2, 77, 8, 35, 25, 0, 1, "#000000");
+            LODOP.ADD_PRINT_SHAPE(2, 77, 42, 80, 25, 0, 1, "#000000");
+            LODOP.ADD_PRINT_SHAPE(2, 77, 121, 90, 25, 0, 1, "#000000");
+            LODOP.ADD_PRINT_SHAPE(2, 77, 210, 262, 25, 0, 1, "#000000");
+            LODOP.ADD_PRINT_SHAPE(2, 77, 471, 167, 25, 0, 1, "#000000");
+            LODOP.ADD_PRINT_SHAPE(2, 77, 637, 100, 25, 0, 1, "#000000");
+            LODOP.ADD_PRINT_TEXT(81, 2, 50, 20, "序号");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+            LODOP.ADD_PRINT_TEXT(81, 45, 79, 20, "报销类别");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+            LODOP.ADD_PRINT_TEXT(81, 126, 85, 20, "发生日期");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+            LODOP.ADD_PRINT_TEXT(81, 295, 100, 20, "用 途 说 明");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+            LODOP.ADD_PRINT_TEXT(81, 486, 100, 20, "对应单号");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+            LODOP.ADD_PRINT_TEXT(81, 636, 100, 20, "报销金额(元)");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+
+            var griddata = $('#dgAdd').datagrid('getRows');
+            var js = 0, hg = 0, wh = 0;
+            for (var i = 0; i < griddata.length; i++) {
+                LODOP.ADD_PRINT_SHAPE(2, 101 + i * 40 - i, 8, 35, 40, 0, 1, "#000000");
+                LODOP.ADD_PRINT_TEXT(112 + i * 40, 10, 33, 20, i + 1);
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+                LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+                LODOP.ADD_PRINT_SHAPE(2, 101 + i * 40 - i, 42, 80, 40, 0, 1, "#000000");
+                LODOP.ADD_PRINT_TEXT(112 + i * 40, 42, 90, 25, griddata[i].SName);
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+                LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                LODOP.SET_PRINT_STYLEA(0, "Alignment", 1);
+                LODOP.ADD_PRINT_SHAPE(2, 101 + i * 40 - i, 121, 90, 40, 0, 1, "#000000");
+                LODOP.ADD_PRINT_TEXT(112 + i * 40, 121, 100, 25, getNowFormatDate(griddata[i].HappenDate));
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+                LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+                LODOP.ADD_PRINT_SHAPE(2, 101 + i * 40 - i, 210, 262, 40, 0, 1, "#000000");
+                LODOP.ADD_PRINT_TEXT(108 + i * 40, 212, 273, 25, griddata[i].Memo);
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+                LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+                LODOP.ADD_PRINT_SHAPE(2, 101 + i * 40 - i, 471, 167, 40, 0, 1, "#000000");
+                LODOP.ADD_PRINT_TEXT(112 + i * 40, 471, 167, 25, griddata[i].Summary);
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+                LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+                LODOP.ADD_PRINT_SHAPE(2, 101 + i * 40 - i, 637, 100, 40, 0, 1, "#000000");
+                LODOP.ADD_PRINT_TEXT(112 + i * 40, 637, 100, 25, griddata[i].DetailCharge);
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+                LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+                js += Number(griddata[i].DetailCharge);
+                hg = 101 + (i + 1) * 40 - i - 1;
+                if (i == griddata.length - 1) {
+                    LODOP.ADD_PRINT_SHAPE(2, hg, 8, 630, 30, 0, 1, "#000000");
+                    LODOP.ADD_PRINT_SHAPE(2, hg, 637, 100, 30, 0, 1, "#000000");
+                    LODOP.ADD_PRINT_TEXT(hg + 10, 232, 100, 25, "合计：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                    LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+                    LODOP.ADD_PRINT_TEXT(hg + 10, 639, 100, 25, Number(js).toFixed(2));
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                    LODOP.SET_PRINT_STYLEA(0, "Alignment", 2);
+
+                    LODOP.ADD_PRINT_SHAPE(2, hg + 29, 8, 729, 30, 0, 1, "#000000");
+                    LODOP.ADD_PRINT_TEXT(hg + 35, 77, 100, 25, "金额大写：");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                    LODOP.ADD_PRINT_TEXT(hg + 35, 168, 600, 25, atoc(js));
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                    LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                    LODOP.ADD_PRINT_SHAPE(2, hg + 58, 8, 60, 40, 0, 1, "#000000");
+                    LODOP.ADD_PRINT_TEXT(hg + 68, 12, 70, 25, "领导审批");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+                    LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                    LODOP.ADD_PRINT_SHAPE(2, hg + 58, 67, 120, 40, 0, 1, "#000000");
+                    LODOP.ADD_PRINT_SHAPE(2, hg + 58, 186, 40, 40, 0, 1, "#000000");
+                    LODOP.ADD_PRINT_TEXT(hg + 68, 190, 40, 25, "备注");
+                    LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+                    LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+                    LODOP.ADD_PRINT_SHAPE(2, hg + 58, 225, 512, 40, 0, 1, "#000000");
+                    LODOP.ADD_PRINT_TEXT(hg + 65, 225, 600, 40, $('#AReason').val());
+                    wh = hg + 110;
+                }
+            }
+            if (wh == 0) {
+                wh = 110;
+            }
+            LODOP.ADD_PRINT_TEXT(wh, 8, 90, 25, "复核：");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(wh, 145, 90, 25, "会计：");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(wh, 316, 54, 25, "出纳：");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(wh, 452, 70, 25, "操作员：");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(wh, 523, 90, 25, $('#OperaName').textbox('getValue'));
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+            LODOP.ADD_PRINT_TEXT(wh, 596, 70, 25, "领款人：");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.SET_PRINT_STYLEA(0, "FontColor", "#000000");
+
+        }
+
+        function DivPayPrint() {
+
+            var rows = $("#dg").datagrid('getSelections')
+
+            LODOP = getLodop(document.getElementById('LODOP_OB'), document.getElementById('LODOP_EM'));
+            var nowdate = new Date();
+            var pway = "现金";
+            if ($('#PayWay1').is(':checked')) { pway = "对公转账"; }
+            if ($('#PayWay2').is(':checked')) { pway = "对私转账"; }
+            if ($('#PayWay3').is(':checked')) { pway = "油卡"; }
+            var hous = '<%= HouseName%>';
+            var com = '<%= UserInfor.HouseName%>' + '付款申请书';
+            if (hous.indexOf('湖南') != -1) { com = '湖南狄乐汽服付款申请书'; }
+            if (hous.indexOf('湖北') != -1) { com = '湖北狄乐汽服付款申请书'; }
+            if (hous.indexOf('武汉') != -1) { com = '湖北狄乐汽服付款申请书'; }
+            if (hous.indexOf('西安') != -1) { com = '西安新陆程付款申请书'; }
+            if (hous.indexOf('海南') != -1) { com = '海南迪乐泰付款申请书'; }
+            if (hous.indexOf('梅州') != -1) { com = '梅州新陆程付款申请书'; }
+            if (hous.indexOf('广州') != -1) { com = '广州市狄祺达付款申请书'; }
+            if (hous.indexOf('广东') != -1) { com = '广州市狄祺达付款申请书'; }
+            if (hous.indexOf('揭阳') != -1) { com = '揭阳迪乐泰付款申请书'; }
+            if (hous.indexOf('四川') != -1) { com = '四川迪乐泰付款申请书'; }
+            if (hous.indexOf('富添盛') != -1) { com = '广州富添盛付款申请书'; }
+            if (hous.indexOf('好来运科技') != -1) { com = "广州好来运科技付款申请书" }
+            if (hous.indexOf('海口城配') != -1) { com = "海南新路城配付款申请书" }
+            if (hous.indexOf('一二三轮胎') != -1) { com = "一二三轮胎付款申请书" }
+            if (hous.indexOf('云仓') != -1) { com = "狄乐汽服付款申请书" }
+            if (hous.indexOf('狄乐汽服') != -1) { com = "广州狄乐汽服付款申请书" }
+            //251129 付款单位+付款申请书
+            com = $('#ChargeUnit').textbox('getValue').trim() ? `${$('#ChargeUnit').textbox('getValue').trim()}付款申请书`: com;
+            LODOP.PRINT_INIT(com);
+            LODOP.SET_PRINT_MODE("PRINT_NOCOLLATE", 1);
+            LODOP.ADD_PRINT_TEXT(0, 206, 520, 35, com);
+            LODOP.SET_PRINT_STYLEA(0, "FontName", "新宋体");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 16);
+            LODOP.SET_PRINT_STYLEA(0, "Bold", 1);
+            LODOP.ADD_PRINT_TEXT(25, 563, 114, 30, "申请日期：");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+            LODOP.ADD_PRINT_TEXT(25, 641, 142, 30, getNowFormatDate(nowdate));
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 12);
+            LODOP.ADD_PRINT_RECT(45, 1, 750, 410, 0, 1);
+            LODOP.ADD_PRINT_TEXT(55, 7, 80, 30, "申请部门");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(55, 369, 63, 30, "申请人");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(55, 96, 248, 30, $('#ApplyDep').textbox('getValue'));//申请部门
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_LINE(83, 2, 82, 751, 0, 1);
+            LODOP.ADD_PRINT_LINE(235, 354, 45, 355, 0, 1);
+            LODOP.ADD_PRINT_LINE(455, 88, 46, 89, 0, 1);
+            LODOP.ADD_PRINT_LINE(235, 433, 45, 434, 0, 1);
+            LODOP.ADD_PRINT_LINE(121, 2, 120, 751, 0, 1);
+            LODOP.ADD_PRINT_LINE(159, 2, 158, 751, 0, 1);
+            LODOP.ADD_PRINT_LINE(197, 2, 196, 751, 0, 1);
+
+            LODOP.ADD_PRINT_LINE(235, 2, 234, 751, 0, 1);
+            LODOP.ADD_PRINT_TEXT(55, 446, 303, 30, $('#ApplyPeople').textbox('getValue'));//申请人
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(92, 7, 80, 30, "收款单位");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(92, 362, 74, 30, "关联单号");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(92, 94, 266, 25, $('#ReceiveUnit').textbox('getValue'));//收款单位
+            if ($('#ReceiveUnit').textbox('getValue') < 18) {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            } else if ($('#ReceiveUnit').textbox('getValue') > 17 && $('#ReceiveUnit').textbox('getValue') < 20) {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+            } else {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 9);
+            }
+
+            LODOP.ADD_PRINT_TEXT(88, 444, 314, 35, $('#RelateAwb').textbox('getValue'));//关联单号
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+            LODOP.ADD_PRINT_TEXT(130, 7, 80, 30, "开户行");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(169, 7, 80, 30, "收款账号");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(130, 362, 75, 30, "付款方式");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(169, 357, 85, 30, "收款人姓名");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(208, 7, 85, 30, "金额(大写)");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(208, 356, 89, 30, "金额(小写)");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            var PayMoney = atoc($('#PayMoney').textbox('getValue'));
+            LODOP.ADD_PRINT_TEXT(208, 96, 262, 30, PayMoney);//金额(大写)
+            if (PayMoney.length < 17) {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            } else if (PayMoney.length > 16 && PayMoney.length < 20) {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+            } else {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 9);
+            }
+            LODOP.ADD_PRINT_TEXT(130, 92, 282, 30, $('#CardBank').textbox('getValue'));//开户行
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(169, 96, 280, 30, $('#CardNum').combobox('getText'));//收款账号
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(130, 446, 312, 30, pway);//付款方式
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(169, 438, 317, 30, $('#CardName').combobox('getText'));//收款人姓名
+            if ($('#CardName').combobox('getText').length < 21) {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            } else if ($('#CardName').combobox('getText').length > 20 && $('#CardName').combobox('getText').length < 24) {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+            } else {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 9);
+            }
+            LODOP.ADD_PRINT_TEXT(208, 446, 312, 30, $('#PayMoney').textbox('getValue'));//金额(小写)
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_LINE(347, 2, 346, 751, 0, 1);
+            LODOP.ADD_PRINT_TEXT(283, 7, 80, 30, "付款说明");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(240, 96, 669, 103, $('#PayMemo').val());//付款说明
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 10);
+            LODOP.ADD_PRINT_LINE(399, 2, 398, 751, 0, 1);
+            LODOP.ADD_PRINT_LINE(398, 253, 346, 254, 0, 1);
+            LODOP.ADD_PRINT_LINE(398, 354, 346, 355, 0, 1);
+            LODOP.ADD_PRINT_TEXT(365, 18, 65, 30, "经办人");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(366, 265, 85, 30, "部门负责人");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_TEXT(418, 13, 69, 30, "财务复核");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_LINE(455, 610, 399, 611, 0, 1);
+            LODOP.ADD_PRINT_LINE(455, 253, 399, 254, 0, 1);
+            LODOP.ADD_PRINT_TEXT(421, 259, 100, 30, "分管副总审核");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_LINE(455, 354, 396, 355, 0, 1);
+            LODOP.ADD_PRINT_LINE(455, 506, 397, 507, 0, 1);
+            LODOP.ADD_PRINT_TEXT(419, 521, 87, 30, "总经理审批");
+            LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+            LODOP.ADD_PRINT_LINE(403, 506, 346, 507, 0, 1);
+            LODOP.ADD_PRINT_LINE(403, 610, 347, 611, 0, 1);
+            LODOP.ADD_PRINT_TEXT(367, 526, 77, 30, "财务审核");
+
+            var isSH = false;
+            $.ajax({
+                url: "../Finance/financeApi.aspx?method=IsChairmanApproval",
+                cache: false, async: false, data: {
+                    ids: $('#RelateAwb').textbox('getValue')
+                },
+                success: function (text) {
+                    var o = eval('(' + text + ')');
+                    isSH = o.Result;
+                }
+            });
+            if (isSH) {
+                LODOP.SET_PRINT_STYLEA(0, "FontSize", 11);
+                LODOP.ADD_PRINT_LINE(510, 1, 450, 1, 0, 1);
+                LODOP.ADD_PRINT_LINE(510, 88, 450, 88, 0, 1);
+                LODOP.ADD_PRINT_LINE(510, 751, 450, 751, 0, 1);
+                LODOP.ADD_PRINT_LINE(510, 1, 510, 751, 0, 1);
+                LODOP.ADD_PRINT_TEXT(475, 13, 69, 30, "董事长审批");
+            } 
+
+           
+            LODOP.PREVIEW();
+            //LODOP.PRINT_DESIGN();
+        }
+    </script>
+
+</asp:Content>

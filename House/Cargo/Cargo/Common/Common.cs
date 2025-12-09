@@ -1,8 +1,10 @@
 ﻿using House.Business.Cargo;
+using House.Entity;
 using House.Entity.Cargo;
 using House.Entity.Cargo.Order;
 using House.Entity.House;
 using House.Manager.Cargo;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NPOI.HSSF.Record.Formula.Functions;
 using System;
@@ -48,6 +50,41 @@ namespace Cargo
             sw.WriteLine(str.ToString());
             sw.Close();
         }
+
+        /// <summary>
+        /// 判断该仓库，该品牌是否要向外部系统同步库存
+        /// </summary>
+        /// <param name="HouseID">仓库ID</param>
+        /// <param name="TypeID">品牌ID</param>
+        /// <param name="ThreeSystem">第三方系统代码 CASS，TUHU，DILE，TMAO</param>
+        /// <returns></returns>
+        public static bool IsAllSyncStock(int HouseID, int TypeID, string ThreeSystem)
+        {
+            string resStr = RedisHelper.GetString("AAllThreeSystemStockSyc");
+
+            List<SyncEntity> syncEntities = JsonConvert.DeserializeObject<List<SyncEntity>>(resStr);
+            List<SyncHouseID> iDs = syncEntities.Where(c => c.Company.Equals(ThreeSystem)).SelectMany(cc => cc.SyncHouseID).ToList();
+
+            foreach (var id in iDs)
+            {
+                if (id.HouseID.Equals(HouseID))
+                {
+                    if (string.IsNullOrEmpty(id.TypeID)) { return true; }
+
+                    string[] strings = id.TypeID.Split(',');
+                    foreach (var strs in strings)
+                    {
+                        if (TypeID.Equals(Convert.ToInt32(strs)))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
         public static decimal GetHCYCTodayOrderTransitFee()
         {
             decimal TodayOrderTransitFee = 0M;
@@ -1122,7 +1159,7 @@ namespace Cargo
 
 
             //string key = "91_20250107";//91_20250107  仓库ID+当天日期
-            string key = "PRO_"+hID.ToString() + "_" + DateTime.Now.ToString("yyyyMMdd");
+            string key = "PRO_" + hID.ToString() + "_" + DateTime.Now.ToString("yyyyMMdd");
             int oNum = 0;
             if (!RedisHelper.HashExists("HouseOrderNo", key))
             {

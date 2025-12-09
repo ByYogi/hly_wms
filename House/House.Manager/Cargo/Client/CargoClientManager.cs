@@ -10,6 +10,7 @@ using System.Data.Common;
 using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Policy;
 using System.Text;
 
 namespace House.Manager.Cargo
@@ -2671,7 +2672,7 @@ namespace House.Manager.Cargo
             Hashtable resHT = new Hashtable();
             try
             {
-                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.RebateDate DESC) AS RowNumber,  a.*,b.ClientName,b.Boss,b.ClientNum,ISNULL(b.RebateMoney,0) as RebateMoney,ISNULL(b.PreReceiveMoney,0) as PreReceiveMoney From ( select ClientID,TryeClientCode,ExID,(case when Remark='预付款收入' then 2 else RecordType end) as RecordType,OperaType,ISNULL(TypeID,0) as TypeID,RebateDate,OP_DATE, Sum(case rebatetype when '1' then Money else 0 end) as 'YB', Sum(case rebatetype when '2' then Money else 0 end) as 'BT', Sum(case rebatetype when '3' then Money else 0 end) as 'HP', Sum(case rebatetype when '4' then Money else 0 end) as 'ROSS', Sum(case rebatetype when '5' then Money else 0 end) as 'MT', Sum(case rebatetype when '6' then Money else 0 end) as 'SB',Sum(case rebatetype when '0' then Money else 0 end) as 'BX',REPLACE(REPLACE(stuff( (select ',' + Remark from Tbl_Cargo_ClientPreRecord where ClientID = cp.ClientID and TryeClientCode=cp.TryeClientCode and ExID=cp.ExID and RecordType=cp.RecordType and OperaType=cp.OperaType and TypeID=cp.TypeID and RebateDate=cp.RebateDate for xml path('')) ,1,1,''),',,',','),',,',',') as Remark From Tbl_Cargo_ClientPreRecord cp group by ClientID,TryeClientCode,ExID,RecordType,OperaType,TypeID,RebateDate,OP_DATE, Remark ) as a inner join Tbl_Cargo_Client as b on a.ClientID=b.ClientID  WHERE (1=1)";
+                string strSQL = @" SELECT TOP " + pNum + " * from (select ROW_NUMBER() OVER (ORDER BY a.RebateDate DESC) AS RowNumber,  a.*,b.ClientName,b.Boss,b.ClientNum,ISNULL(b.RebateMoney,0) as RebateMoney,ISNULL(b.PreReceiveMoney,0) as PreReceiveMoney From ( select ClientID,TryeClientCode,ExID,(case when Remark='预付款收入' then 2 when Remark='预付款返利' then 3 else RecordType end) as RecordType,OperaType,ISNULL(TypeID,0) as TypeID,RebateDate,OP_DATE, Sum(case rebatetype when '1' then Money else 0 end) as 'YB', Sum(case rebatetype when '2' then Money else 0 end) as 'BT', Sum(case rebatetype when '3' then Money else 0 end) as 'HP', Sum(case rebatetype when '4' then Money else 0 end) as 'ROSS', Sum(case rebatetype when '5' then Money else 0 end) as 'MT', Sum(case rebatetype when '6' then Money else 0 end) as 'SB',Sum(case rebatetype when '0' then Money else 0 end) as 'BX',REPLACE(REPLACE(stuff( (select ',' + Remark from Tbl_Cargo_ClientPreRecord where ClientID = cp.ClientID and TryeClientCode=cp.TryeClientCode and ExID=cp.ExID and RecordType=cp.RecordType and OperaType=cp.OperaType and TypeID=cp.TypeID and RebateDate=cp.RebateDate for xml path('')) ,1,1,''),',,',','),',,',',') as Remark From Tbl_Cargo_ClientPreRecord cp group by ClientID,TryeClientCode,ExID,RecordType,OperaType,TypeID,RebateDate,OP_DATE, Remark ) as a inner join Tbl_Cargo_Client as b on a.ClientID=b.ClientID  WHERE (1=1)";
                 if (!string.IsNullOrEmpty(entity.OperaType)) { strSQL += " and a.OperaType='" + entity.OperaType + "'"; }
                 if (!entity.ClientID.Equals(0)) { strSQL += " and a.ClientID = " + entity.ClientID; }
                 //if (!entity.CargoPermisID.Equals(0)) { strSQL += " and b.HouseID in ('" + entity.CargoPermisID + "')"; }
@@ -2679,6 +2680,7 @@ namespace House.Manager.Cargo
                 if (!entity.ClientNum.Equals(0)) { strSQL += " and b.ClientNum = " + entity.ClientNum; }
                 if (!string.IsNullOrEmpty(entity.ClientName)) { strSQL += " and b.ClientName like '%" + entity.ClientName + "%'"; }
                 if (!string.IsNullOrEmpty(entity.Boss)) { strSQL += " and b.Boss like '%" + entity.Boss + "%'"; }
+                if (!string.IsNullOrEmpty(entity.CheckOutType)) { strSQL += " and b.CheckOutType='" + entity.CheckOutType + "'"; }
                 //日期范围
                 if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
                 {
@@ -2733,7 +2735,7 @@ namespace House.Manager.Cargo
                 foreach (var transaction in orderedTransactions)
                 {
                     transaction.RecordTypeStr = GetRecordTypeStr(transaction.RecordType);
-                    var calculate = (transaction.RecordType == "2" || transaction.RecordType == "0") ? "0" : "1";
+                    var calculate = (transaction.RecordType == "2" || transaction.RecordType == "0" || transaction.RecordType == "3") ? "0" : "1";
                     // 累加当前交易的金额
                     if (transaction.Money != 0)
                     {
@@ -2746,22 +2748,23 @@ namespace House.Manager.Cargo
 
                 resHT["rows"] = result;
 
-                string strCount = @"Select Count(*) as TotalCount From (select ClientID,TryeClientCode,ExID,RecordType,OperaType,TypeID,RebateDate, Sum(case rebatetype when '1' then Money else 0 end) as 'YB',Sum(case rebatetype when '2' then Money else 0 end) as 'BT',Sum(case rebatetype when '3' then Money else 0 end) as 'HP',Sum(case rebatetype when '4' then Money else 0 end) as 'ROSS',  Sum(case rebatetype when '5' then Money else 0 end) as 'MT', Sum(case rebatetype when '6' then Money else 0 end) as 'SB',Sum(case rebatetype when '0' then Money else 0 end) as 'BX' From Tbl_Cargo_ClientPreRecord group by ClientID,TryeClientCode,ExID,RecordType,OperaType,TypeID,RebateDate) as a inner join Tbl_Cargo_Client as b on a.ClientID=b.ClientID  WHERE (1=1)";
+                string strCount = @"Select Count(*) as TotalCount from Tbl_Cargo_ClientPreRecord as a inner join Tbl_Cargo_Client as b on a.ClientID=b.ClientID  WHERE (1=1)";
                 if (!string.IsNullOrEmpty(entity.OperaType)) { strCount += " and a.OperaType='" + entity.OperaType + "'"; }
                 if (!entity.ClientID.Equals(0)) { strCount += " and a.ClientID = " + entity.ClientID; }
                 if (!entity.ClientNum.Equals(0)) { strCount += " and b.ClientNum = " + entity.ClientNum; }
                 if (!string.IsNullOrEmpty(entity.CargoPermisID)) { strCount += " and b.HouseID in (" + entity.CargoPermisID + ")"; }
                 if (!string.IsNullOrEmpty(entity.ClientName)) { strCount += " and b.ClientName like '%" + entity.ClientName + "%'"; }
                 if (!string.IsNullOrEmpty(entity.Boss)) { strCount += " and b.Boss like '%" + entity.Boss + "%'"; }
+                if (!string.IsNullOrEmpty(entity.CheckOutType)) { strCount += " and b.CheckOutType='" + entity.CheckOutType + "'"; }
                 //日期范围
-                //if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
-                //{
-                //    strCount += " and a.OP_DATE>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
-                //}
-                //if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
-                //{
-                //    strCount += " and a.OP_DATE<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
-                //}
+                if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.OP_DATE>='" + entity.StartDate.ToString("yyyy-MM-dd") + "'";
+                }
+                if ((entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
+                {
+                    strCount += " and a.OP_DATE<'" + entity.EndDate.AddDays(1).ToString("yyyy-MM-dd") + "'";
+                }
                 using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
                 {
                     using (DataTable idrCount = conn.ExecuteDataTable(cmd))
@@ -4941,6 +4944,7 @@ namespace House.Manager.Cargo
                 string strSQL = @" select wc.ID,wc.CompanyName,wc.Name,wc.Cellphone,wc.ClientNum,wc.Address,cc.ClientName from Tbl_WX_Client wc inner join Tbl_Cargo_Client cc on wc.ClientNum=cc.ClientNum where cc.DelFlag=0 and CompanyName is not null ";
                 if (entity.HouseID != 0) { strSQL += " and cc.HouseID = " + entity.HouseID; }
                 if (!string.IsNullOrEmpty(entity.HouseIDStr)) { strSQL += " and cc.HouseID in (" + entity.HouseIDStr + ")"; }
+
                 using (DbCommand command = conn.GetSqlStringCommond(strSQL))
                 {
                     using (DataTable dt = conn.ExecuteDataTable(command))
@@ -4955,7 +4959,7 @@ namespace House.Manager.Cargo
                                 ClientName = Convert.ToString(idr["ClientName"]),
                                 Cellphone = Convert.ToString(idr["Cellphone"]),
                                 Address = Convert.ToString(idr["Address"]),
-                                PinyinName = GetSpellCode(Convert.ToString(idr["CompanyName"])).ToLower()
+                                PinyinName = GetSpellCode(Convert.ToString(idr["CompanyName"])).ToLower(),
                             });
                         }
                     }
@@ -4987,6 +4991,7 @@ namespace House.Manager.Cargo
                 {
                     strSQL += " and wc.CompanyName like '%" + entity.CompanyName + "%'";
                 }
+                if (!string.IsNullOrEmpty(entity.OrderIDList)) { strSQL += " and wco.OrderID in (" + entity.OrderIDList + ")"; }
                 strSQL += " ) as A where RowNumber > (" + pNum + "* (" + pIndex + "-1))";
                 using (DbCommand command = conn.GetSqlStringCommond(strSQL))
                 {
@@ -5014,6 +5019,9 @@ namespace House.Manager.Cargo
                                 EndDate = string.IsNullOrEmpty(Convert.ToString(idr["EndDate"])) ? Convert.ToDateTime("0001-01-01") : Convert.ToDateTime(idr["EndDate"]),
                                 IsFollowQuantity = Convert.ToString(idr["IsFollowQuantity"]),
                                 IsSuperPosition = Convert.ToString(idr["IsSuperPosition"]),
+                                CouponType = Convert.ToString(idr["IsSuperPosition"]),
+                                ActualType = Convert.ToString(idr["ActualType"]),
+                                OrderID = string.IsNullOrEmpty(Convert.ToString(idr["OrderID"])) ? 0 : Convert.ToInt32(idr["OrderID"]),
                                 OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
                             });
                         }

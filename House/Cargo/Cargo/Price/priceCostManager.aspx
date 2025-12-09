@@ -90,8 +90,8 @@
                 columns.push({ title: '销售价', field: 'SalePrice', width: '50px', align: 'right' });
                 columns.push({ title: '产品采购价', field: 'UnitPrice', width: '50px', align: 'right' });
                 columns.push({ title: '批次', field: 'Batch', width: '50px' });
+                columns.push({ title: '供应商', field: 'Supplier', width: '80px' });
                 if (HID == "64") {
-                    columns.push({ title: '供应商', field: 'Supplier', width: '80px' });
                     columns.push({ title: '进货单号', field: 'PurchaseOrderID', width: '60px' });
                 } else {
                     columns.push({ title: '来源', field: 'Source', width: '90px', formatter: function (value) { return GetSourceName(value); } });

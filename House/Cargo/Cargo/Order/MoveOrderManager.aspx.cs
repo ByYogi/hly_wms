@@ -50,18 +50,21 @@ namespace Cargo.Order
             string tname = string.Empty;
             DataTable table = new DataTable();
             table.Columns.Add("移库单号", typeof(string));
+            table.Columns.Add("原产品ID", typeof(int));
             table.Columns.Add("产品名称", typeof(string));
             table.Columns.Add("品牌", typeof(string));
-            table.Columns.Add("原产品ID", typeof(int));
             table.Columns.Add("规格", typeof(string));
-            table.Columns.Add("型号", typeof(string));
             table.Columns.Add("花纹", typeof(string));
-            table.Columns.Add("货品代码", typeof(string));
             table.Columns.Add("载速", typeof(string));
+            table.Columns.Add("批次", typeof(string));
+            table.Columns.Add("产品编码", typeof(string));
+            table.Columns.Add("型号", typeof(string));
+            table.Columns.Add("货品代码", typeof(string));
             table.Columns.Add("移库数量", typeof(int));
             table.Columns.Add("单价", typeof(string));
-            table.Columns.Add("销售价", typeof(string));
-            table.Columns.Add("批次", typeof(string));
+            table.Columns.Add("小程序价", typeof(string));
+            table.Columns.Add("门店价", typeof(string));
+            table.Columns.Add("供应商", typeof(string));
             table.Columns.Add("货位代码", typeof(string));
             table.Columns.Add("所在区域", typeof(string));
             table.Columns.Add("产品来源", typeof(string));
@@ -69,6 +72,8 @@ namespace Cargo.Order
             table.Columns.Add("目标仓库", typeof(string));
             table.Columns.Add("新产品ID", typeof(int));
             table.Columns.Add("备注", typeof(string));
+            table.Columns.Add("花费天数", typeof(int));
+
             foreach (var it in MoveOrderExport)
             {
                 //if (MoveNoStr.IndexOf(it.MoveNo.Trim()) < 0)
@@ -76,27 +81,31 @@ namespace Cargo.Order
                 //    MoveNoStr += it.MoveNo.Trim() + "|";
                 //}
                 DataRow newRows = table.NewRow();
-                newRows["移库单号"] = it.MoveNo.Trim();
-                newRows["产品名称"] = it.ProductName.Trim();
-                newRows["品牌"] = it.TypeName.Trim();
+                newRows["移库单号"] = it.MoveNo;
                 newRows["原产品ID"] = it.ProductID;
-                newRows["规格"] = it.Specs.Trim();
-                newRows["型号"] = it.Model.Trim();
-                newRows["花纹"] = it.Figure.Trim();
-                newRows["货品代码"] = it.GoodsCode.Trim();
+                newRows["产品名称"] = it.ProductName;
+                newRows["品牌"] = it.TypeName;
+                newRows["规格"] = it.Specs;
+                newRows["花纹"] = it.Figure;
                 newRows["载速"] = it.LoadIndex + it.SpeedLevel.Trim();
+                newRows["批次"] = it.Batch;
+                newRows["产品编码"] = it.ProductCode;
+                newRows["型号"] = it.Model;
+                newRows["货品代码"] = it.GoodsCode;
                 newRows["移库数量"] = it.Piece;
                 newRows["单价"] = it.UnitPrice;
-                newRows["销售价"] = it.SalePrice;
-                newRows["批次"] = it.Batch.Trim();
-                newRows["货位代码"] = it.ContainerCode.Trim();
-                newRows["所在区域"] = it.FirstAreaName.Trim();
-                newRows["产品来源"] = it.SourceName.Trim();
+                newRows["小程序价"] = it.SalePrice;
+                newRows["门店价"] = it.TradePrice;
+                newRows["供应商"] = it.Supplier;
+                newRows["货位代码"] = it.ContainerCode;
+                newRows["所在区域"] = it.FirstAreaName;
+                newRows["产品来源"] = it.SourceName;
                 newRows["移库状态"] = GetText(it.MoveStatus.Trim(), "MoveStatus");
                 //GetText(it.MoveStatus);
-                newRows["目标仓库"] = it.NewHouseName.Trim();
+                newRows["目标仓库"] = it.NewHouseName;
                 newRows["新产品ID"] = it.NewProductID;
-                newRows["备注"] = it.Memo.Trim();
+                newRows["备注"] = it.Memo;
+                newRows["花费天数"] = it.SpendDays ?? 0;
 
                 table.Rows.Add(newRows);
             }
@@ -152,7 +161,7 @@ namespace Cargo.Order
                 newRows["原仓库"] = it.GetType().GetProperty("OldHouseName").GetValue(it, null).ToString();
                 newRows["目标仓库"] = it.GetType().GetProperty("NewHouseName").GetValue(it, null).ToString();
                 newRows["移库数量"] = it.GetType().GetProperty("MoveNum").GetValue(it, null).ToString();
-                newRows["移库品牌"] = it.GetType().GetProperty("TypeNames").GetValue(it, null).ToString(); 
+                newRows["移库品牌"] = it.GetType().GetProperty("TypeNames").GetValue(it, null).ToString();
                 newRows["备注"] = it.GetType().GetProperty("Memo").GetValue(it, null).ToString();
                 newRows["开单人"] = it.GetType().GetProperty("OPID").GetValue(it, null).ToString();
                 newRows["移库状态"] = GetText(it.GetType().GetProperty("MoveStatus").GetValue(it, null).ToString(), "MoveStatus");

@@ -11,6 +11,7 @@ using Newtonsoft.Json;
 using NPOI.HSSF.Record.Formula.Functions;
 using Senparc.Weixin.CommonAPIs;
 using Senparc.Weixin.Entities;
+using Senparc.Weixin.Helpers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -2522,6 +2523,7 @@ namespace Cargo.Client
             }
             queryEntity.ClientName = Convert.ToString(Request["ClientName"]);
             queryEntity.Boss = Convert.ToString(Request["Boss"]);
+            queryEntity.CheckOutType= Convert.ToString(Request["CheckOutType"]);
             if (!string.IsNullOrEmpty(Request["ClientNum"]))
             {
                 queryEntity.ClientNum = Convert.ToInt32(Request["ClientNum"]);
@@ -4401,6 +4403,23 @@ namespace Cargo.Client
             {
                 //string id = string.IsNullOrEmpty(Convert.ToString(Request["AccountID"])) ? "" : Request["AccountID"].ToString();
                 #region 赋值
+                //查询使用优惠卷信息
+                List<string> orderIDList = new List<string>();
+                foreach (Hashtable grid in GridRows)
+                {
+                    string orderID = grid["OrderID"] == null ? "" : Convert.ToString(grid["OrderID"]);
+                    if (!string.IsNullOrEmpty(orderID))
+                    {
+                        orderIDList.Add(orderID);
+                    }
+                }
+                List<WXCouponEntity> couponList = new List<WXCouponEntity>();
+                if (orderIDList.Count()>0) {
+
+                    Hashtable list = bus.QueryCouponList(1,1000,new WXCouponEntity() { OrderIDList = string.Join(",", orderIDList) });
+                    couponList = (List<WXCouponEntity>)list["rows"];
+                }
+                
 
                 List<CargoSuppClientAccountGoodsEntity> suppBillGoodsList = new List<CargoSuppClientAccountGoodsEntity>();
                 List<CargoSuppClientAccountGoodsEntity> houseBillGoodsList = new List<CargoSuppClientAccountGoodsEntity>();
@@ -4466,12 +4485,22 @@ namespace Cargo.Client
                         OrderNo = Convert.ToString(grid["OpenOrderNo"]);
                     }
 
-                    //查询优惠卷   平台卷
-                    if (Convert.ToString(grid["CouponType"]) == "0")
+                    
+                    foreach (var item in couponList.Where(w => w.OrderID == Convert.ToInt32(grid["OrderID"])))
                     {
-                        TotalCharge = TotalCharge + InsuranceFee;
-                        InsuranceFee = 0;
-                    }
+                        //查询优惠卷   平台卷
+                        if (item.CouponType=="0" && item.ActualType == "0") {
+                            TotalCharge = TotalCharge + item.Money;
+                            InsuranceFee -= item.Money;
+                        }
+                    }  
+
+                    //if (Convert.ToString(grid["CouponType"]) == "0")
+                    //{
+                    //    //合计总收入=合计总收入+优惠卷金额(优惠卷的钱被减去了)
+                    //    TotalCharge = TotalCharge + InsuranceFee;
+                    //    InsuranceFee = 0;
+                    //}
                    
                     //不计算出仓费    车友惠
                     //if (Convert.ToString(grid["ClientNum"])== "100143") {
@@ -4521,7 +4550,8 @@ namespace Cargo.Client
                     }
 
                     //开思订单、天猫订单
-                    if (grid["PayClientNum"].ToString() == "863602" || grid["PayClientNum"].ToString() == "165462")
+                    //251201  天猫伽美订单 516958、三头六臂订单  613469
+                    if (grid["PayClientNum"].ToString() == "863602" || grid["PayClientNum"].ToString() == "165462" || grid["PayClientNum"].ToString() == "516958" || grid["PayClientNum"].ToString() == "613469")
                     {
                         //供应商分账公式 = 进仓价 - 10 / 条(出仓费) - 配送费 - 超期费
                         //仓库分账公式 = 10 / 条(出仓费) + 配送费  +超期费
@@ -4700,6 +4730,7 @@ namespace Cargo.Client
         {
             string json = Request["submitData"];
             ArrayList GridRows = (ArrayList)JSON.Decode(json);
+            Common.WriteTextLog("一键分账 进入接口：" + GridRows);
             //CargoClientAccountEntity ent = new CargoClientAccountEntity();
             List<string> entAwb = new List<string>();
             CargoClientBus bus = new CargoClientBus();
@@ -4720,6 +4751,7 @@ namespace Cargo.Client
                 List<CargoSuppClientAccountEntity> suppBillList = new List<CargoSuppClientAccountEntity>();
                 List<CargoSuppClientAccountGoodsEntity> suppBillGoodsList = new List<CargoSuppClientAccountGoodsEntity>();
                 List<CargoSuppClientAccountGoodsEntity> houseBillGoodsList = new List<CargoSuppClientAccountGoodsEntity>();
+                Common.WriteTextLog("一键分账 开始赋值："+ GridRows);
                 foreach (Hashtable grid in GridRows)
                 {
                     if (Convert.ToInt32(grid["CheckStatus"]) == 1)
@@ -4779,11 +4811,14 @@ namespace Cargo.Client
                     bizContent.Add("notifyUrl", AppConstants.NOTIFYURL);//分账信息
 
                     string bizContentJson = JsonConvert.SerializeObject(bizContent);
+                    Common.WriteTextLog("一键分账 准备掉通联分账接口：" + bizContentJson);
+
                     SybWxPayService sybService = new SybWxPayService();
                     Dictionary<String, String> rsp = sybService.bill(bizContentJson);
-
+                    Common.WriteTextLog("一键分账 分账结束：" + rsp);
                     if ("000000".Equals(rsp["respCode"]))
                     {
+                        Common.WriteTextLog("一键分账 修改分账状态：" + rsp);
                         //修改分账信息的结算状态
                         CargoSuppClientAccountEntity entity = new CargoSuppClientAccountEntity();
                         entity.AccountNO = Convert.ToString(grid["AccountNO"]);
@@ -4793,7 +4828,6 @@ namespace Cargo.Client
                     }
 
                 }
-
                 #endregion
                 msg.Message += "分账成功";
                 msg.Result = true;

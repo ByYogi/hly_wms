@@ -3187,7 +3187,7 @@ Values @{tempTblVals}
             try
             {
                 entity.EnSafe();
-                string strSQL = @"select a.ProductName,a.Specs,a.Figure,a.Batch,a.Model,a.GoodsCode,a.LoadIndex,a.SpeedLevel,a.ProductCode,a.PackageNum,b.*,c.ContainerCode From Tbl_Cargo_Product as a inner join Tbl_Cargo_ProductTag as b on a.ProductID=b.ProductID inner join Tbl_Cargo_Container as c on b.ContainerID=c.ContainerID WHERE (1=1)";
+                string strSQL = @"select a.ProductName,a.Specs,a.Figure,a.Batch,a.Model,a.GoodsCode,a.LoadIndex,a.SpeedLevel,a.ProductCode,a.PackageNum,a.Supplier,b.*,c.ContainerCode From Tbl_Cargo_Product as a inner join Tbl_Cargo_ProductTag as b on a.ProductID=b.ProductID inner join Tbl_Cargo_Container as c on b.ContainerID=c.ContainerID WHERE (1=1)";
                 if (!entity.ProductID.Equals(0)) { strSQL += " and a.ProductID=" + entity.ProductID; }
                 if (!entity.ContainerID.Equals(0)) { strSQL += " and b.ContainerID=" + entity.ContainerID; }
                 if (!string.IsNullOrEmpty(entity.TagCode)) { strSQL += " and b.TagCode like '%" + entity.TagCode + "%'"; }
@@ -3229,6 +3229,7 @@ Values @{tempTblVals}
                                 MoveOrderNo = Convert.ToString(idr["MoveOrderNo"]),
                                 OrderNo = Convert.ToString(idr["OrderNo"]),
                                 MoveStatus = Convert.ToString(idr["MoveStatus"]),
+                                Supplier = Convert.ToString(idr["Supplier"]),
                             });
                             #endregion
                         }

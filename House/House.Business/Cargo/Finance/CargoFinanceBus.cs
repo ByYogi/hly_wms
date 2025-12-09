@@ -902,6 +902,7 @@ namespace House.Business.Cargo
                                     ccpr.OperaType = "0";
                                     ccpr.OP_ID = it.UserName;
                                     ccpr.IsAdd = true;
+                                    ccpr.Remark = "预收款返利";
                                     clientManager.UpdateClientPreRecord(ccpr);
                                 }
                             }

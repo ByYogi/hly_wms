@@ -12,6 +12,8 @@ namespace House.Entity.Cargo
     public class CargoDLTDataStatisEntity
     {
         public int HouseID { get; set; }
+        public int clickCount { get; set; }
+        public string YearMonth { get; set; }
         public string HouseName { get; set; }
 
         public string Area { get; set; }

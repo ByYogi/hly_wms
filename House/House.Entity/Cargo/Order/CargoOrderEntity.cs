@@ -26,6 +26,7 @@ namespace House.Entity.Cargo
         public int ShareHouseID { get; set; }
         public string ShareHouseName { get; set; }
         public string CouponType { get; set; }
+        //public string ActualType { get; set; }
         [Description("表主键")]
         public long OrderID { get; set; }
         [Description("订单号")]

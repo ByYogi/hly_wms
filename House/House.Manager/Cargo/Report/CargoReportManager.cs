@@ -3139,18 +3139,19 @@ inner join Tbl_WX_Client as a on a.ClientNum=b.ClientNum;
         public List<CargoDLTDataStatisEntity> HCYC_Stores_Statistics(CargoDLTDataStatisEntity entity, int DataType = 1)
         {
             List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
-            string strSQL = "SELECT OP_DATE FROM Tbl_Cargo_Client where 1=1";
+            string strSQL = "SELECT b.ClientNum,max(a.OP_DATE) as OP_DATE from Tbl_Cargo_Client as a inner join Tbl_WX_Client as b on a.ClientNum=b.ClientNum where 1=1";
             if (DataType == 2)
             {
                 if ((entity.StartDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.StartDate.ToString("yyyy-MM-dd") != "1900-01-01") && (entity.EndDate.ToString("yyyy-MM-dd") != "0001-01-01" && entity.EndDate.ToString("yyyy-MM-dd") != "1900-01-01"))
                 {
-                    strSQL += $@" and OP_DATE>='{entity.StartDate.ToString("yyyy-MM-dd")}' and OP_DATE<='{entity.EndDate.ToString("yyyy-MM-dd")}' ";
+                    strSQL += $@" and b.OP_DATE>='{entity.StartDate.ToString("yyyy-MM-dd")}' and b.OP_DATE<='{entity.EndDate.ToString("yyyy-MM-dd")}' ";
                 }
             }
             if (entity.HouseID != 0)
             {
                 strSQL += " and HouseID =" + entity.HouseID;
             }
+            strSQL += " group by b.ClientNum";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(cmd))
@@ -3161,6 +3162,42 @@ inner join Tbl_WX_Client as a on a.ClientNum=b.ClientNum;
                         {
                             //WxOpenID = Convert.ToString(idrCount["wxOpenID"]),
                             CreateDate = Convert.ToDateTime(idrCount["OP_DATE"]),
+                        });
+                    }
+                }
+            }
+            return (result);
+
+        }
+        public List<CargoDLTDataStatisEntity> HCYC_PageViews_Statistics(CargoDLTDataStatisEntity entity, int DataType = 1)
+        {
+            var startTime = entity.StartDate.ToString("yyyy-MM-01");
+            var entTime = Convert.ToDateTime(startTime).AddMonths(1).AddDays(-1).ToString("yyyy-MM-dd");
+            List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
+            string strSQL = $@"SELECT
+    ROW_NUMBER() OVER (ORDER BY a.HouseID DESC) AS RowNumber, a.HouseID, FORMAT(a.AccessTime, 'yyyy-MM-dd') AS YearMonth, COUNT(1) AS clickCount FROM Tbl_Cargo_ProductAccessDetails AS a INNER JOIN Tbl_Cargo_ProductSpec AS b ON a.ProductCode = b.ProductCode INNER JOIN Tbl_Cargo_ProductType AS c ON b.TypeID = c.TypeID INNER JOIN Tbl_Cargo_House AS cc ON a.HouseID = cc.HouseID";
+            if ((startTime != "0001-01-01" && startTime != "1900-01-01") && (entTime != "0001-01-01" && entTime != "1900-01-01"))
+            {
+                strSQL += $@" and a.AccessTime>='{startTime}' and a.AccessTime<='{entTime}' ";
+            }
+            if (entity.HouseID != 0)
+            {
+                strSQL += " and a.HouseID =" + entity.HouseID;
+            }
+            strSQL += $@" GROUP BY a.HouseID, FORMAT(a.AccessTime, 'yyyy-MM-dd')
+ORDER BY a.HouseID DESC, YearMonth;";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow idrCount in dt.Rows)
+                    {
+                        result.Add(new CargoDLTDataStatisEntity
+                        {
+                            //WxOpenID = Convert.ToString(idrCount["wxOpenID"]),
+                            HouseID = Convert.ToInt32(idrCount["HouseID"]),
+                            YearMonth = Convert.ToString(idrCount["YearMonth"]),
+                            clickCount = Convert.ToInt32(idrCount["clickCount"]),
                         });
                     }
                 }
@@ -3375,7 +3412,7 @@ inner join Tbl_WX_Client as a on a.ClientNum=b.ClientNum;
         public List<CargoDLTDataStatisEntity> QueryHCYC_BrandSpecsNum(CargoDLTDataStatisEntity entity)
         {
             List<CargoDLTDataStatisEntity> result = new List<CargoDLTDataStatisEntity>();
-            string strSQL = "SELECT top 100 T.TypeID, T.TypeName, d.Specs, d.Figure, SUM((case when OrderModel = 1 then -b.Piece else b.Piece end)) as TotalPiece, CONVERT(DECIMAL(10, 2), case when SUM((case when OrderModel = 1 then -b.Piece else b.Piece end) * b.ActSalePrice)=0 then 0 else SUM((case when OrderModel = 1 then -b.Piece else b.Piece end) * b.ActSalePrice) / SUM((case when OrderModel = 1 then -b.Piece else b.Piece end)) end) as UnitCharge FROM Tbl_Cargo_Order a join Tbl_Cargo_OrderGoods b on a.OrderNo = b.OrderNo and a.HouseID = b.HouseID join Tbl_Cargo_Product d on b.ProductID = d.ProductID and b.HouseID = d.HouseID LEFT JOIN Tbl_Cargo_ProductType T ON T.TypeID = d.TypeID where a.OrderType = 4 ";
+            string strSQL = "SELECT top 100 T.TypeID, T.TypeName, d.Specs, d.Figure, SUM((case when OrderModel = 1 then -b.Piece else b.Piece end)) as TotalPiece,   CONVERT(DECIMAL(10, 2), CASE WHEN COALESCE(SUM(CASE WHEN OrderModel = 1 THEN -b.Piece ELSE b.Piece END), 0) = 0 THEN 0 WHEN SUM(CASE WHEN OrderModel = 1 THEN -b.Piece ELSE b.Piece END * b.ActSalePrice) = 0 THEN 0  ELSE SUM(CASE WHEN OrderModel = 1 THEN -b.Piece ELSE b.Piece END * b.ActSalePrice) / SUM(CASE WHEN OrderModel = 1 THEN -b.Piece ELSE b.Piece END) END) as UnitCharge FROM Tbl_Cargo_Order a join Tbl_Cargo_OrderGoods b on a.OrderNo = b.OrderNo and a.HouseID = b.HouseID join Tbl_Cargo_Product d on b.ProductID = d.ProductID and b.HouseID = d.HouseID LEFT JOIN Tbl_Cargo_ProductType T ON T.TypeID = d.TypeID where a.OrderType = 4 ";
             if (entity.HouseID != 0)
             {
                 strSQL += " and a.HouseID =" + entity.HouseID;

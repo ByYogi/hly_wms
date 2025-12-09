@@ -45,6 +45,7 @@ namespace House.Entity.Cargo
         /// </summary>
         public int BundleNum { get; set; }
         public string ProductCode { get; set; }
+        public string Supplier { get; set; }
         /// <summary>
         /// 去NULL,替换危险字符
         /// </summary>

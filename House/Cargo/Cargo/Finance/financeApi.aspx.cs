@@ -5218,11 +5218,22 @@ namespace Cargo.Finance
                     List<CargoProductEntity> syncProduct = house.SyncTypeOrderNo(entity.CargoOrderNo);
                     foreach (CargoProductEntity product in syncProduct)
                     {
-
-                        if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
                         }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
+                        }
+                        if (Common.IsAllSyncStock(product.HouseID, product.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
+                        }
+                        //if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+                        //{
+                        //    RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
+                        //}
                     }
 
                     int IsAuto = 0;
@@ -5278,7 +5289,8 @@ namespace Cargo.Finance
                 order.OutHouseName = order.OutHouseName;
                 order.IsTransitFee = 0;
 
-                if (order.ClientNum == 165462 || order.ClientNum == 863602 || order.ClientNum == 613469)
+                //251201  天猫伽美订单 516958、三头六臂订单  613469
+                if (order.ClientNum == 165462 || order.ClientNum == 863602 || order.ClientNum == 613469 || order.ClientNum == 516958)
                 {
                     //天猫和开思 默认审核并结算
                     order.CheckStatus = "1";
@@ -5554,7 +5566,7 @@ namespace Cargo.Finance
                             HouseID = CenterOrder != null ? CenterHouse : item2.OutHouseID,
                             AreaID = CenterOrder != null ? CenterArea : item2.AreaID,
                             ContainerCode = CenterOrder != null ? ContainerCode : item2.ContainerCode,
-                            ActSalePrice = total,
+                            ActSalePrice = data.ActSalePrice,
                             RuleType = data.RuleType,
                             RuleID = data.RuleID,
                             RuleTitle = data.RuleTitle,
@@ -5681,16 +5693,15 @@ namespace Cargo.Finance
                 msg.Result = false;
             }
             //返回处理结果
-            string res = JSON.Encode(msg);
-            Response.Clear();
-            Response.Write(res);
-            Response.Flush();
+           
         //string res = JSON.Encode(msg);
         //Response.Write(res);
         ERROR:
             //返回处理结果
-            res = JSON.Encode(msg);
+            string res = JSON.Encode(msg);
+            Response.Clear();
             Response.Write(res);
+            Response.Flush();
         }
         /// <summary>
         /// 撤销退款申请

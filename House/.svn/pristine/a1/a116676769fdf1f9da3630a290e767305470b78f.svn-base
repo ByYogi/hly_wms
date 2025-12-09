@@ -1,0 +1,249 @@
+﻿using Cargo.QY;
+using Cargo.systempage;
+using DocumentFormat.OpenXml.Spreadsheet;
+using House.Business;
+using House.Business.Cargo;
+using House.Entity;
+using House.Entity.Cargo;
+using House.Entity.Cargo.Order;
+using House.Entity.Dto;
+using House.Manager;
+using iText.Layout.Element;
+using Newtonsoft.Json;
+using NPOI.HSSF.Record.Formula.Functions;
+using Senparc.Weixin.HttpUtility;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Security.Cryptography;
+using System.Security.Policy;
+using System.ServiceModel;
+using System.ServiceModel.Channels;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Web;
+using System.Windows.Interop;
+
+namespace Cargo.Interface
+{
+    /// <summary>
+    /// TMallApi 的摘要说明
+    /// </summary>
+    public class TMallApi : IHttpHandler
+    {
+        public void ProcessRequest(HttpContext context)
+        {
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+            LogBus logbus = new LogBus();
+
+            LogEntity log = new LogEntity();
+            log.IPAddress = "";
+            log.Moudle = "服务管理";
+            log.Status = "0";
+            log.NvgPage = "天猫接收发货通知单";
+            log.UserID = "2029";
+            log.Operate = "A";
+
+            // 读取请求体
+            using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8))
+            {
+                var requestBody = reader.ReadToEnd();
+                var param = context.Request.QueryString["apitype"];
+                // 解析 JSON 数据
+                var logData = new CargoCassMallEntity { SourceType = 0, SourceAction = "API", orderId = null, ResJson = requestBody };
+                if (param == "outhouse")
+                {
+                    // 使用 HttpUtility.ParseQueryString 解析
+                    // 它会返回一个 NameValueCollection
+                    // 2. 调用解析函数
+                    CargoTMallEntity cargoData = ParseToCargoTMallEntity(requestBody);
+                    logData.orderId = cargoData.outboundNoticeNo.ToString();
+                    nwBus.AddTMallDataLog(logData);
+                    if (cargoData != null)
+                    {
+                        //保存
+                        nwBus.SaveTMallOutHouseData(cargoData);
+                        log.Memo = "天猫 接收数据完成，数据：" + requestBody;
+                        logbus.InsertLog(log);
+                        // 返回 200 状态码
+                        context.Response.StatusCode = 200;
+                        context.Response.Write("'{\"code\":0,\"msg\":\"成功\",\"info\":{\"data\":\"1\"}}'");
+                    }
+                    else
+                    {
+                        log.Memo = "天猫 接收数据失败，数据：" + requestBody;
+                        logbus.InsertLog(log);
+                        // 返回 -1 失败 状态码
+                        context.Response.StatusCode = -1;
+                        context.Response.Write("'{\"code\":\"非0整数\",\"msg\":\"失败\",\"info\":null}'");
+                    }
+
+                }
+
+            }
+
+        }
+
+        /// <summary>
+        /// 将查询字符串解析为 CargoTMallEntity 对象
+        /// </summary>
+        /// <param name="queryString">查询字符串</param>
+        /// <returns>解析后的 CargoTMallEntity 对象</returns>
+        public static CargoTMallEntity ParseToCargoTMallEntity(string queryString)
+        {
+            var callbackData = HttpUtility.ParseQueryString(queryString);
+            var data = new CargoTMallEntity();
+
+            // --- 解析简单属性 ---
+            // 使用 TryParse 模式安全地转换，避免异常
+            data.id = long.TryParse(callbackData["id"], out long idVal) ? idVal : 0;
+            data.userId = long.TryParse(callbackData["userId"], out long userIdVal) ? userIdVal : 0;
+            data.consigneeCityId = long.TryParse(callbackData["consigneeCityId"], out long cityIdVal) ? cityIdVal : 0;
+            data.consigneeCountyId = long.TryParse(callbackData["consigneeCountyId"], out long countyIdVal) ? countyIdVal : 0;
+            data.consigneeProvinceId = long.TryParse(callbackData["consigneeProvinceId"], out long provinceIdVal) ? provinceIdVal : 0;
+
+            data.originBillFirstChannel = int.TryParse(callbackData["originBillFirstChannel"], out int firstChannelVal) ? firstChannelVal : 0;
+            data.originBillSecondChannel = int.TryParse(callbackData["originBillSecondChannel"], out int secondChannelVal) ? secondChannelVal : 0;
+            data.originBillThirdChannel = int.TryParse(callbackData["originBillThirdChannel"], out int thirdChannelVal) ? thirdChannelVal : 0;
+            data.originBillType = int.TryParse(callbackData["originBillType"], out int billTypeVal) ? billTypeVal : 0;
+            data.urgentLevel = int.TryParse(callbackData["urgentLevel"], out int urgentLevelVal) ? urgentLevelVal : 0;
+            data.isExpressSheetEncrypted = int.TryParse(callbackData["isExpressSheetEncrypted"], out int isEncryptedVal) ? isEncryptedVal : 0;
+            data.isAllowLack = int.TryParse(callbackData["isAllowLack"], out int isAllowLackVal) ? isAllowLackVal : 0;
+            data.isEncrypted = int.TryParse(callbackData["isEncrypted"], out int isMainEncryptedVal) ? isMainEncryptedVal : 0;
+
+            data.requireArriveTime = DateTime.TryParse(callbackData["requireArriveTime"], out DateTime arriveTime) ? arriveTime : default;
+            data.noticeCreateTime = DateTime.TryParse(callbackData["noticeCreateTime"], out DateTime createTime) ? createTime : default;
+            data.originBillTime = DateTime.TryParse(callbackData["originBillTime"], out DateTime billTime) ? billTime : default;
+            data.requireOutWarehouseTime = DateTime.TryParse(callbackData["requireOutWarehouseTime"], out DateTime outTime) ? outTime : default;
+            data.payTime = DateTime.TryParse(callbackData["payTime"], out DateTime payTimeVal) ? payTimeVal : default;
+
+            // 字符串类型直接赋值，?.?.? 操作符可以安全地处理 null 值
+            data.sendType = callbackData["sendType"];
+            data.consigneePhone = callbackData["consigneePhone"];
+            data.extend = callbackData["extend"];
+            data.customerContact = callbackData["customerContact"];
+            data.outboundNoticeNo = callbackData["outboundNoticeNo"];
+            data.originBillNo = callbackData["originBillNo"];
+            data.consigneeProvinceName = callbackData["consigneeProvinceName"];
+            data.consigneeCityName = callbackData["consigneeCityName"];
+            data.consigneeCountyName = callbackData["consigneeCountyName"];
+            data.warehouseCode = callbackData["warehouseCode"];
+            data.saleType = callbackData["saleType"];
+            data.warehouseName = callbackData["warehouseName"];
+            data.thirdWarehouseCode = callbackData["thirdWarehouseCode"];
+            data.buyerRemark = callbackData["buyerRemark"];
+            data.sellerRemark = callbackData["sellerRemark"];
+            data.deliverRemark = callbackData["deliverRemark"];
+            data.aliOaid = callbackData["aliOaid"];
+            data.consigneeContacts = callbackData["consigneeContacts"];
+            data.customerName = callbackData["customerName"];
+            data.consigneeDetail = callbackData["consigneeDetail"];
+            data.app_key = callbackData["app_key"];
+            data.sign = callbackData["sign"];
+            data.timestamp = callbackData["timestamp"];
+            data.is_test = callbackData["is_test"];
+            data.callback = callbackData["callback"];
+
+            // --- 解复杂的列表属性 noticeDetailList ---
+            //data.noticeDetailList = ParseNoticeDetailList(callbackData);
+            data.noticeDetailList = JsonConvert.DeserializeObject<List<OutboundNoticeDetailSpiPo>>(callbackData["noticeDetailList"]);
+
+            return data;
+        }
+
+        /// <summary>
+        /// 从 NameValueCollection 中解析出 noticeDetailList
+        /// </summary>
+        private static List<OutboundNoticeDetailSpiPo> ParseNoticeDetailList(NameValueCollection collection)
+        {
+            var detailList = new List<OutboundNoticeDetailSpiPo>();
+
+            // 找出所有与 noticeDetailList 相关的键
+            var listKeys = collection.AllKeys.Where(key => key != null && key.StartsWith("noticeDetailList")).ToList();
+
+            if (!listKeys.Any())
+            {
+                return detailList; // 如果没有相关键，返回空列表
+            }
+
+            // 使用正则表达式找出所有用到的索引，并确定最大索引，以确定列表大小
+            var indices = listKeys.Select(key =>
+            {
+                var match = Regex.Match(key, @"noticeDetailList\[(\d+)\]");
+                return match.Success ? int.Parse(match.Groups[1].Value) : -1;
+            }).Where(index => index != -1).Distinct().ToList();
+
+            if (!indices.Any())
+            {
+                return detailList;
+            }
+
+            // 按索引循环，创建并填充每个对象
+            foreach (var i in indices)
+            {
+                var detail = new OutboundNoticeDetailSpiPo();
+                string prefix = $"noticeDetailList[{i}].";
+
+                detail.skuId = long.TryParse(collection[$"{prefix}skuId"], out long skuId) ? skuId : 0;
+                detail.needOutboundNum = int.TryParse(collection[$"{prefix}needOutboundNum"], out int num) ? num : 0;
+                detail.goodsQuality = int.TryParse(collection[$"{prefix}goodsQuality"], out int quality) ? quality : 0;
+                detail.guaranteePeriod = long.TryParse(collection[$"{prefix}guaranteePeriod"], out long period) ? period : 0;
+                detail.skuName = collection[$"{prefix}skuName"];
+                detail.skuOrderCode = collection[$"{prefix}skuOrderCode"];
+
+                detailList.Add(detail);
+            }
+
+            return detailList;
+        }
+        /// <summary>
+        /// 添加播报
+        /// </summary>
+        //public void Broadcast(CargoTMallEntity dto)
+        //{
+        //    CargoHouseBus house = new CargoHouseBus();
+        //    var cassHouses = house.GetCassHouses();
+        //    var cassProducts = house.GetCassProDucts();
+        //    foreach (var item in dto.noticeDetailList)
+        //    {
+        //        //获取对应仓库
+        //        var cHouses = dto.thirdWarehouseCode;
+        //        var cassHouse = cassHouses.FirstOrDefault(a => cHouses.Contains(a.CassHouseCode));
+        //        var cassProduct = cassProducts.FirstOrDefault(a => item.PartsNum == a.CassCode);
+        //        CargoHouseEntity houseEnt = house.QueryCargoHouseByID(cassHouse.HouseID);
+
+        //        string proStr = cassProduct?.TypeName + " " + cassProduct?.Specs + " " + cassProduct?.Figure + " " + cassProduct?.LoadIndex + cassProduct?.SpeedLevel;
+
+        //        //添加播报
+        //        CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
+        //        cargoNewOrder.HouseName = "开思订单-" + houseEnt.Name;
+        //        cargoNewOrder.OrderNo = dto.OrderHeader.OrderId;
+        //        cargoNewOrder.OrderNum = item.Quantity.ToString();
+        //        cargoNewOrder.ClientInfo = dto.OrderHeader.Buyer.CompanyDisplayName + " " + dto.OrderPostalAddress.ContactNumber + " " + (dto.OrderPostalAddress.ProvinceGeoName + " " + dto.OrderPostalAddress.CityGeoName + " " + dto.OrderPostalAddress.Address);// "泰乐 华笙 广东省广州市白云区东平加油站左侧";
+        //        cargoNewOrder.ProductInfo = proStr;// "马牌 215/55R16 CC6 98V";
+        //        cargoNewOrder.DeliveryName = "急送";// "自提";
+        //        cargoNewOrder.ReceivePeople = "";
+        //        string hcno = JSON.Encode(cargoNewOrder);
+        //        //Common.WriteTextLog(hcno);
+        //        List<CargoVoiceBroadEntity> voiceBroadList = house.GetVoiceBroadList(new CargoVoiceBroadEntity { HouseID = houseEnt.HouseID });
+        //        foreach (var voice in voiceBroadList)
+        //        {
+        //            RedisHelper.SetString("NewOrderNotice_" + voice.LoginName, hcno);
+        //            //mc.Add("NewOrderNotice_" + voice.LoginName, hcno);
+        //        }
+        //    }
+
+        //}
+
+        public bool IsReusable
+        {
+            get
+            {
+                return false;
+            }
+        }
+    }
+}

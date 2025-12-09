@@ -202,6 +202,8 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TianMaoApiService.cs" />
+    <Compile Include="TuhuSync.cs" />
     <Compile Include="wxHttpUtility.cs" />
     <Compile Include="WXQYSendHelper.cs" />
   </ItemGroup>

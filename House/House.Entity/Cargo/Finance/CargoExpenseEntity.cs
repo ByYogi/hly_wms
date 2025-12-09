@@ -162,7 +162,7 @@ namespace House.Entity.Cargo
         public string Result { get; set; }
         public string Opera { get; set; }
         /// <summary>
-        /// 付款单位
+        /// 单位
         /// </summary>
         public string ChargeUnit { get; set; }
         /// <summary>

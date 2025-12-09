@@ -340,4 +340,18 @@ namespace House.Entity
     {
         public int failRow { get; set; }
     }
+
+    public class SyncEntity
+    {
+        public string Company { get; set; }
+        public List<SyncHouseID> SyncHouseID { get; set; }
+
+    }
+
+    public class SyncHouseID
+    {
+        public int HouseID { get; set; }
+        public string TypeID { get; set; }
+    }
+
 }

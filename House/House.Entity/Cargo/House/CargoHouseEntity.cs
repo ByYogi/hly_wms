@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -159,5 +160,89 @@ namespace House.Entity.Cargo
                 }
             }
         }
+    }
+
+    // 仍然需要这个响应模型来反序列化
+    public class TianMaoApiResponse
+    {
+        public int Code { get; set; }
+        public string Info { get; set; }
+        public string Msg { get; set; }
+    }
+    /// <summary>
+    /// 订单主信息
+    /// </summary>
+    public class TMallOrderInfo
+    {
+        /// <summary>
+        /// 唯一标识
+        /// </summary>
+        [JsonProperty("uniqueKey")]
+        public string uniqueKey { get; set; }
+        /// <summary>
+        /// 业务类型
+        /// </summary>
+        [JsonProperty("bizType")]
+        public int bizType { get; set; }
+
+        /// <summary>
+        /// 仓库编码（天猫仓库编码）
+        /// </summary>
+        [JsonProperty("warehouseCode")]
+        public string warehouseCode { get; set; }
+        public string supplyId { get; set; }
+
+        /// <summary>
+        /// 商品列表
+        /// </summary>
+        [JsonProperty("itemList")]
+        //public List<TMallOrderItem> ItemList { get; set; } = new List<TMallOrderItem>();
+        //public string ItemList { get; set; }
+        public List<TMallOrderItem> itemList { get; set; }
+
+        /// <summary>
+        /// 第三方仓库编码
+        /// </summary>
+        [JsonProperty("thirdWarehouseCode")]
+        public string thirdWarehouseCode { get; set; }
+
+        /// <summary>
+        /// 操作时间（毫秒时间戳）
+        /// </summary>
+        [JsonProperty("operateTime")]
+        public long operateTime { get; set; }
+
+        /// <summary>
+        /// 转换为DateTime（可选扩展方法）
+        /// </summary>
+        public DateTime GetOperateDateTime()
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(operateTime).LocalDateTime;
+        }
+    }
+
+    /// <summary>
+    /// 订单商品项
+    /// </summary>
+    public class TMallOrderItem
+    {
+
+        /// <summary>
+        /// 商品编码
+        /// </summary>
+        [JsonProperty("skuCode")]
+        public string skuCode { get; set; }
+
+        /// <summary>
+        /// 商品数量
+        /// </summary>
+        [JsonProperty("skuQuantity")]
+        public int skuQuantity { get; set; }
+
+        /// <summary>
+        /// 商品名称
+        /// </summary>
+        [JsonProperty("skuName")]
+        public string skuName { get; set; }
     }
 }

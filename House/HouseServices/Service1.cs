@@ -28,6 +28,7 @@ using System.ComponentModel;
 using System.Configuration;
 using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -61,15 +62,6 @@ namespace HouseServices
         {
             InitializeComponent();
 
-            System.Timers.Timer TuhuSyncTime = new System.Timers.Timer();
-            //全量同步
-            TuhuFullSync_Task();
-            //途虎商品同步
-            //TuhuSyncTime.Elapsed += TuhuSync_Task;
-            //TuhuSyncTime.Interval = 60 * 60 * 1000 * 2;//2小时跳动一次
-            //TuhuSyncTime.Enabled = true;
-            return;
-
 
             System.Timers.Timer time = new System.Timers.Timer();
             System.Timers.Timer snapTime = new System.Timers.Timer();
@@ -83,6 +75,9 @@ namespace HouseServices
             System.Timers.Timer RemoveOrderQuotaTime = new System.Timers.Timer();
             System.Timers.Timer AutomaticAvoidance = new System.Timers.Timer();
             System.Timers.Timer SalePieceStaticTime = new System.Timers.Timer();
+            System.Timers.Timer TuhuFullSyncTime = new System.Timers.Timer();
+            System.Timers.Timer TuhuIncrementalSyncTime = new System.Timers.Timer();
+            System.Timers.Timer TianmaoSyncTime = new System.Timers.Timer();
 
             //马牌订单和库存同步接口定时器
             ContiTime.Elapsed += ContiTime_Elapsed;
@@ -150,9 +145,22 @@ namespace HouseServices
             //每月和每日销量 生成静态化销量数据
             SalePieceStaticTime.Elapsed += GenerateDailySalesSnapshot;
             SalePieceStaticTime.Elapsed += GenerateMonthlySalesSnapshot;
-            AutomaticAvoidance.Interval = 60 * 60 * 1000 * 2;//2小时跳动一次
-            AutomaticAvoidance.Enabled = true;
+            SalePieceStaticTime.Interval = 60 * 60 * 1000 * 1;//1小时跳动一次
+            SalePieceStaticTime.Enabled = true;
 
+            //途虎商品同步
+            TuhuIncrementalSyncTime.Elapsed += TuhuIncrementalSync_Task; //增量同步
+            TuhuIncrementalSyncTime.Interval = 60 * 1000 * 5;//5分钟跳动一次
+            TuhuIncrementalSyncTime.Enabled = true;
+            TuhuFullSyncTime.Elapsed += TuhuFullSync_Task; //全量同步
+            TuhuFullSyncTime.Interval = 60 * 60 * 1000;//1小时跳动一次
+            TuhuFullSyncTime.Enabled = true;
+
+
+            //天猫商品同步
+            TianmaoSyncTime.Elapsed += TmallInventorySync; //全量同步
+            TianmaoSyncTime.Interval = 60 * 60 * 1000;//1小时跳动一次 测试阶段
+            TianmaoSyncTime.Enabled = true;
         }
 
 
@@ -226,9 +234,17 @@ namespace HouseServices
                     foreach (CargoProductEntity product in syncProduct)
                     {
 
-                        if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+                        if (IsAllSyncStock(product.HouseID, product.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
+                        }
+                        if (IsAllSyncStock(product.HouseID, product.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
+                        }
+                        if (IsAllSyncStock(product.HouseID, product.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
                         }
                     }
                 }
@@ -2514,10 +2530,17 @@ namespace HouseServices
                     List<CargoProductEntity> syncProduct = house.SyncTypeOrderNo(item.OrderNo);
                     foreach (CargoProductEntity product in syncProduct)
                     {
-
-                        if (product.SyncType == "2" || (product.SyncType == "1" && product.TypeID == 34))
+                        if (IsAllSyncStock(product.HouseID, product.TypeID, "Cass"))
                         {
                             RedisHelper.HashSet("OpenSystemStockSyc", "" + product.HouseID + "_" + product.TypeID + "_" + product.ProductCode + "", product.GoodsCode);
+                        }
+                        if (IsAllSyncStock(product.HouseID, product.TypeID, "DILE"))
+                        {
+                            RedisHelper.HashSet("HCYCHouseStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
+                        }
+                        if (IsAllSyncStock(product.HouseID, product.TypeID, "Tuhu"))
+                        {
+                            RedisHelper.HashSet("TuhuStockSyc", product.HouseID + "_" + product.TypeID + "_" + product.ProductCode, product.ProductCode);
                         }
                     }
                 }
@@ -2636,7 +2659,7 @@ namespace HouseServices
         {
             return Convert.ToDecimal(ConfigurationSettings.AppSettings["MarkupPrice"]);
         }
-        
+
         /// <summary>
         /// 南宁云仓加价类型
         /// </summary>
@@ -4403,11 +4426,20 @@ namespace HouseServices
                 foreach (CargoContainerShowEntity time in outHouseList)
                 {
                     CargoProductEntity syncProduct = house.SyncTypeProduct(time.ProductID.ToString());
-                    //34 马牌  1 同步马牌  2 同步全部品牌
-                    if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+
+                    if (IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                     {
-                        RedisHelper.HashSet("OpenSystemStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.GoodsCode);
+                        RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
                     }
+                    if (IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
+                    {
+                        RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                    }
+                    if (IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                    {
+                        RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                    }
+
                 }
                 bus.makeSureWxOrder(order, outHouseList, log);
 
@@ -6290,7 +6322,8 @@ namespace HouseServices
             }
             #endregion
 
-            //更新特价库存数
+            //更新特价库存数  10分钟一次
+            LogHelper.WriteLog("开始 更新特价库存数");
             HandleWeixinShelveData();
 
 
@@ -8011,14 +8044,20 @@ namespace HouseServices
         //昨日销量数据静态化
         void GenerateDailySalesSnapshot(object sender, ElapsedEventArgs e)
         {
-            CargoOrderBus orderBus = new CargoOrderBus();
-            orderBus.GenerateDailySalesSnapshot();
+            if (DateTime.Now.Hour.Equals(1))
+            {
+                CargoOrderBus orderBus = new CargoOrderBus();
+                orderBus.GenerateDailySalesSnapshot();
+            }
         }
         //上月月均销量数据静态化
         void GenerateMonthlySalesSnapshot(object sender, ElapsedEventArgs e)
         {
-            CargoOrderBus orderBus = new CargoOrderBus();
-            orderBus.GenerateMonthlySalesSnapshot();
+            if (DateTime.Now.Hour.Equals(1))
+            {
+                CargoOrderBus orderBus = new CargoOrderBus();
+                orderBus.GenerateMonthlySalesSnapshot();
+            }
         }
         #endregion
 
@@ -8197,325 +8236,238 @@ namespace HouseServices
         #endregion
 
         #region 途虎商品推送 推送在库数量与价格
-        public static class TuhuConfig
+        void TuhuFullSync_Task(object sender, ElapsedEventArgs e)
         {
-            // 通用配置
-            public static string Platform => Get("Tuhu.com.platform");
-            public static string AuthCode => Get("Tuhu.com.authCode");
-            public static Dictionary<int, string> Brands =>
-                Get("Tuhu.com.brands")
-                    .Split(',')
-                    .Select(x => x.Trim())
-                    .Select(x => x.Split('-'))
-                    .Where(parts => parts.Length == 2)
-                    .ToDictionary(
-                        parts => int.Parse(parts[0]),
-                        parts => parts[1]
-                    );
-            public static Dictionary<int, string> Houses =>
-                Get("Tuhu.com.houses")
-                    .Split(',')
-                    .Select(x => x.Trim())
-                    .Select(x => x.Split('-'))
-                    .Where(parts => parts.Length == 2)
-                    .ToDictionary(
-                        parts => int.Parse(parts[0]),
-                        parts => parts[1]
-                    );
-
-            // API 资源路径
-            public static string UrlPushSku => Get("Tuhu.urlpath.pushSku");
-            public static string UrlPushStock => Get("Tuhu.urlpath.pushStock");
-            public static string UrlPushPrice => Get("Tuhu.urlpath.pushPrice");
-            public static string UrlSkuDelete => Get("Tuhu.urlpath.skuDelete");
-            public static string UrlSkuDeleteAll => Get("Tuhu.urlpath.skuDeleteAll");
-
-            // 测试环境
-            public static string TestUrl => Get("Tuhu.test.url");
-            public static string TestAppId => Get("Tuhu.test.appid");
-            public static string TestAppSecret => Get("Tuhu.test.appsecret");
-
-            // 正式环境
-            public static string ProdUrl => Get("Tuhu.prod.url");
-            public static string ProdAppId => Get("Tuhu.prod.appid");
-            public static string ProdAppSecret => Get("Tuhu.prod.appsecret");
-
-            // 内部方法
-            private static string Get(string key)
+            //如果是02:00则同步全部商品数据
+            if (DateTime.Now.Hour.Equals(2))
             {
-                return ConfigurationManager.AppSettings[key] ?? "";
+                TuhuSync tuhuSync = new TuhuSync();
+                tuhuSync.TuhuFullSync();
             }
         }
-        public static string Sha256(string input)
+        void TuhuIncrementalSync_Task(object sender, ElapsedEventArgs e)
         {
-            using (var sha = System.Security.Cryptography.SHA256.Create())
-            {
-                var bytes = System.Text.Encoding.UTF8.GetBytes(input);
-                var hash = sha.ComputeHash(bytes);
-                return BitConverter.ToString(hash).Replace("-", "").ToLower();
-            }
+            TuhuSync tuhuSync = new TuhuSync();
+            tuhuSync.TuhuIncrementalSync();
         }
+        #endregion
+
+
+        #region 天猫库存同步 or 获取发货单
 
         /// <summary>
-        /// 限制每秒最多 50 次请求（QPS = 50）
-        /// </summary>
-        public static class RateLimiter
-        {
-            private static readonly object _lock = new object();
-            private static readonly Queue<long> _timestamps = new Queue<long>();
-            private const int MAX_QPS = 50;
-
-            public static void Wait()
-            {
-                lock (_lock)
-                {
-                    long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                    long oneSecondAgo = now - 1000;
-
-                    // 移除 1 秒前的请求时间戳
-                    while (_timestamps.Count > 0 && _timestamps.Peek() < oneSecondAgo)
-                    {
-                        _timestamps.Dequeue();
-                    }
-
-                    // 如果当前已经达到了 50 QPS，则等待
-                    if (_timestamps.Count >= MAX_QPS)
-                    {
-                        long waitMs = _timestamps.Peek() - oneSecondAgo;
-                        if (waitMs > 0)
-                            Thread.Sleep((int)waitMs);
-                    }
-
-                    // 记录本次请求时间戳
-                    _timestamps.Enqueue(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-                }
-            }
-        }
-
-
-        /// <summary>
-        /// 途虎全量推送商品数据
+        /// 云仓库存-库存同步（支持账面同步，增量加，增量减） 每批次20条
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        //void TuhuPush_Task(object sender, System.Timers.ElapsedEventArgs e)
-        void TuhuFullSync_Task()
+        private void TmallInventorySync(object sender, ElapsedEventArgs e)
         {
-            //机器人账号
+            // 配置参数
+            const string APP_KEY = "2025120243201";
+            const string APP_SECRET = "1d6c1fb8c356b5b405c674f4c572426d57362a9b";
+            const string API_URL = "https://opensandbox.tmallyc.com/api/inventory/skuInventorySyncFacade/inventoryChange";
+            const int BATCH_SIZE = 20;
+            const int BATCH_DELAY_MS = 1500;
             LogEntity log = new LogEntity();
             log.IPAddress = "";
             log.Moudle = "服务管理";
             log.Status = "0";
-            log.NvgPage = "途虎推送定时任务";
-            log.UserID = RobotID;
+            log.NvgPage = "天猫定时推送服务";
+            log.UserID = "2029";
             log.Operate = "A";
+            //获取当前时间戳，用于标识本次同步
+            var epochStart = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var currTIme = ((long)(DateTime.UtcNow - epochStart).TotalMilliseconds).ToString(CultureInfo.InvariantCulture);
 
-            //获取途虎Url连接信息
-            string tuhuUrl = TuhuConfig.TestUrl;
-
-
-
+            var apiService = new TianMaoApiService(APP_KEY, APP_SECRET, API_URL);
+            var houseBus = new CargoHouseBus();
             LogBus logbus = new LogBus();
-            CargoInterfaceBus bus = new CargoInterfaceBus();
-            // 记录途虎响应信息
-            List<string> skuPushResList = new List<string>();
-            List<string> pushStockResList = new List<string>();
-            List<string> pushPriceResList = new List<string>();
-            string skuDelAllRes = null;
+
             try
             {
-                //获取商品信息
-                var brandIDs = TuhuConfig.Brands.Keys.ToArray();
-                var houseIDs = TuhuConfig.Houses.Keys.ToArray();
-                var prductData = bus.QueryTuhuStockData(brandIDs, houseIDs);
-
-                // 公共：构建请求头
-                Dictionary<string, string> BuildHeaders()
+                // 获取库存数据
+                var stockDataList = houseBus.QueryToTMallStockData(new CargoContainerShowEntity
                 {
-                    string timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
-                    string nonceStr = Guid.NewGuid().ToString("N");
+                    HouseID = 93,
+                    TypeID = 34
+                });
 
-                    string sign = Sha256(
-                        $"appId={TuhuConfig.TestAppId}&nonceStr={nonceStr}&signType=sha256&timestamp={timestampMs}{TuhuConfig.TestAppSecret}"
-                    );
-
-                    return new Dictionary<string, string>
-                    {
-                        ["appid"] = TuhuConfig.TestAppId,
-                        ["noncestr"] = nonceStr,
-                        ["signType"] = "sha256",
-                        ["sign"] = sign,
-                        ["authType"] = "openapi",
-                        ["timestamp"] = timestampMs
-                    };
+                if (stockDataList == null || stockDataList.Count == 0)
+                {
+                    Console.WriteLine("没有需要同步的库存数据");
+                    log.Status = "1";
+                    log.Memo = $@"{currTIme}:没有需要同步的库存数据:";
+                    logbus.InsertLog(log);
+                    return;
                 }
 
-                // 公共：发送 POST JSON
-                string PostJson(string url, object body, Dictionary<string, string> headers)
+                var houseGroup = stockDataList.GroupBy(s => s.HouseID).ToList();
+
+                foreach (var itemHouse in houseGroup)
                 {
-                    //使用匿名方法跳过 SSL/TLS 证书校验
-                    ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
-                    ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
+                    var stockData = stockDataList.Where(a => a.HouseID == itemHouse.Key).ToList();
+                    // 分批处理
+                    int totalBatches = (int)Math.Ceiling((double)stockData.Count / BATCH_SIZE);
+                    int successCount = 0;
+                    int failCount = 0;
+                    var failMessages = new List<string>();
 
-                    var req = (HttpWebRequest)WebRequest.Create(url);
-                    req.Method = "POST";
-                    req.ContentType = "application/json";
-
-                    foreach (var h in headers)
-                        req.Headers[h.Key] = h.Value;
-
-                    string bodyJson = JsonConvert.SerializeObject(body);
-                    var bytes = Encoding.UTF8.GetBytes(bodyJson);
-                    req.ContentLength = bytes.Length;
-
-                    using (var stream = req.GetRequestStream())
-                        stream.Write(bytes, 0, bytes.Length);
-
-                    using (var res = req.GetResponse())
-                    using (var stream = res.GetResponseStream())
-                    using (var reader = new StreamReader(stream, Encoding.UTF8))
-                        return reader.ReadToEnd();
-                }
-
-                // ==================== 业务调用 ====================
-
-                // 构建通用头
-                var comheaders = BuildHeaders();
-
-                //删除指定商品
-                //var skuDelRes = PostJson(
-                //    TuhuConfig.TestUrl + TuhuConfig.UrlSkuDeleteAll,
-                //    new TuhuPushDto(TuhuConfig.Platform, TuhuConfig.AuthCode)
-                //    {
-                //        erpSkuCodes = prductData.Select(x => x.ProductCode).Take(50).ToList()
-                //    },
-                //    comheaders
-                //);
-
-                //删除所有商品
-                skuDelAllRes = PostJson(
-                    TuhuConfig.TestUrl + TuhuConfig.UrlSkuDeleteAll,
-                    new TuhuPushDto(TuhuConfig.Platform, TuhuConfig.AuthCode),
-                    comheaders
-                );
-
-                // 开始推送商品数据
-                // 每批 50 条
-                var batches = prductData
-                    .Select((x, i) => new { x, i })
-                    .GroupBy(x => x.i / 50)
-                    .Select(g => g.Select(x => x.x).ToList());
-
-                foreach (var batch in batches)
-                {
-                    // 1. 推送商品信息
-                    //var tuhuPushSkuBody = new TuhuPushDto()
-                    //{
-                    //    platform = TuhuConfig.Platform,
-                    //    authCode = TuhuConfig.AuthCode,
-                    //    skuInfos = batch.Select(x => new Tuhu_Sku
-                    //    {
-                    //        version = 1,
-                    //        erpSkuCode = x.ProductCode,
-                    //        ProductCode = x.ProductCode,
-                    //        GoodsCode = x.GoodsCode,
-                    //        TypeID = x.TypeID,
-                    //        TypeName = x.TypeName,
-                    //        Model = x.Model,
-                    //        Specs = x.Specs,
-                    //        Figure = x.Figure,
-                    //        HubDiameter = x.HubDiameter,
-                    //        LoadIndex = x.LoadIndex,
-                    //        SpeedLevel = x.SpeedLevel,
-                    //        Born = x.Born
-                    //    }).ToList()
-                    //};
-
-                    //RateLimiter.Wait();
-                    //var skuRes = PostJson(
-                    //    TuhuConfig.TestUrl + TuhuConfig.UrlPushSku,
-                    //    tuhuPushSkuBody,
-                    //    comheaders
-                    //);
-                    //skuPushResList.Add(skuRes);
-                    //continue;
-
-                    // 2. 推送库存
-                    RateLimiter.Wait();
-                    var tuhuPushStockBody = new TuhuPushDto()
+                    for (int i = 0; i < totalBatches; i++)
                     {
-                        platform = TuhuConfig.Platform,
-                        authCode = TuhuConfig.AuthCode,
-                        skuInfos = batch.Select(x => new Tuhu_Sku
+                        log.Status = "0";
+                        try
                         {
-                            version = 1,
-                            erpSkuCode = x.ProductCode,
-                            ProductCode = x.ProductCode,
-                            Piece = x.Piece,
-                        }).ToList()
-                    };
-                    var stockRes = PostJson(
-                        TuhuConfig.TestUrl + TuhuConfig.UrlPushStock,
-                        tuhuPushStockBody,
-                        comheaders
-                    );
-                    pushStockResList.Add(stockRes);
+                            // 获取当前批次数据
+                            var currentBatch = stockData.Skip(i * BATCH_SIZE).Take(BATCH_SIZE).ToList();
 
-                    // 3. 推送价格
-                    RateLimiter.Wait();
-                    var tuhuPushPriceBody = new TuhuPushDto()
-                    {
-                        platform = TuhuConfig.Platform,
-                        authCode = TuhuConfig.AuthCode,
-                        skuInfos = batch.Select(x => new Tuhu_Sku
+                            // 构建订单对象
+                            var mallOrder = new TMallOrderInfo
+                            {
+                                uniqueKey = $"GZ123_{Guid.NewGuid():N}",
+                                thirdWarehouseCode = itemHouse.Key.ToString(),
+                                bizType = 1,
+                                warehouseCode = "1010112055",
+                                supplyId = "353979647",//供应商ID
+                                itemList = currentBatch.Select(item => new TMallOrderItem
+                                {
+                                    //马牌用货品代码
+                                    skuCode = item.HouseID == 93 ? item.GoodsCode : item.ProductCode,
+                                    skuQuantity = item.Piece,
+                                    //skuName = item.Model + item.Figure
+                                }).ToList()
+                            };
+
+                            // 转换为字典格式
+                            var requestData = new Dictionary<string, string>
+                            {
+                                ["uniqueKey"] = mallOrder.uniqueKey,
+                                ["thirdWarehouseCode"] = mallOrder.thirdWarehouseCode,
+                                ["bizType"] = mallOrder.bizType.ToString(),
+                                ["warehouseCode"] = mallOrder.warehouseCode,
+                                ["itemList"] = Newtonsoft.Json.JsonConvert.SerializeObject(mallOrder.itemList),
+                                ["supplyId"] = mallOrder.supplyId,
+                            };
+                            // 发送请求
+                            string jsonResponse = apiService.SendRequest(requestData);
+
+                            // 判断结果(根据实际API返回调整)
+                            bool isSuccess = !string.IsNullOrEmpty(jsonResponse) && !jsonResponse.Contains("error");
+
+                            if (isSuccess)
+                            {
+                                successCount++;
+                                log.Memo = $@"{currTIme}:天猫同步详情:" + $"仓库 {itemHouse.Key.ToString()} 批次 {i + 1}/{totalBatches} 成功 ({currentBatch.Count}条)";
+                                logbus.InsertLog(log);
+                            }
+                            else
+                            {
+                                failCount++;
+                                string errorMsg = $"批次 {i + 1}/{totalBatches} 失败: {jsonResponse}";
+                                failMessages.Add(errorMsg);
+                                log.Status = "1";
+                                log.Memo = $@"{currTIme}:天猫同步失败详情:" + errorMsg;
+                                logbus.InsertLog(log);
+                            }
+
+                            // 批次间延迟
+                            if (i < totalBatches - 1)
+                            {
+                                System.Threading.Thread.Sleep(BATCH_DELAY_MS);
+                            }
+                        }
+                        catch (Exception ex)
                         {
-                            version = 1,
-                            erpSkuCode = x.ProductCode,
-                            SalePrice = x.SalePrice,
-                        }).ToList()
-                    };
-                    var priceRes = PostJson(
-                        TuhuConfig.TestUrl + TuhuConfig.UrlPushPrice,
-                        tuhuPushPriceBody,
-                        comheaders
-                    );
-                    pushPriceResList.Add(priceRes);
+                            failCount++;
+                            string errorMsg = $"批次 {i + 1}/{totalBatches} 异常: {ex.Message}";
+                            failMessages.Add(errorMsg);
+                            log.Status = "1";
+                            log.Memo = $@"{currTIme}:天猫同步失败详情:" + errorMsg;
+                            logbus.InsertLog(log);
+                        }
+                    }
+                    log.Status = "0";//重置
+                    // 输出结果统计
+                    log.Memo = $@"{currTIme}:仓库:[{itemHouse.Key}]天猫同步失败详情:" + $@"
+                    ========== 同步结果统计 ==========
+                    总数据: {stockData.Count}条
+                    总批次: {totalBatches}
+                    成功: {successCount} | 失败: {failCount}
+                    ";
+                    logbus.InsertLog(log);
+
+                    if (failMessages.Count > 0)
+                    {
+                        failMessages.ForEach(msg => Console.WriteLine($"  - {msg}"));
+                        log.Status = "1";
+                        log.Memo = $@"{currTIme}:仓库:[{itemHouse.Key}]:天猫同步失败详情:" + string.Join(",", failMessages);
+                        logbus.InsertLog(log);
+                    }
                 }
 
-                //记录日志
-                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品响应集：{string.Join(",", skuPushResList)}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
-                log.Memo = $"途虎商品同步成功。同步数量：{prductData.Count()}。{tuhuRes}";
+
+            }
+            catch (WebException webEx)
+            {
+                log.Status = "1";
+                log.Memo = $@"{currTIme}:天猫HTTP请求异常:" + webEx.Message;
                 logbus.InsertLog(log);
-                LogHelper.WriteLog("途虎商品同步成功");
+                if (webEx.Response is HttpWebResponse errorResponse)
+                {
+                    using (errorResponse)
+                    using (var reader = new StreamReader(errorResponse.GetResponseStream()))
+                    {
+                        log.Status = "1";
+                        log.Memo = $@"{currTIme}:天猫错误响应:" + reader.ReadToEnd();
+                        logbus.InsertLog(log);
+                    }
+                }
             }
             catch (Exception ex)
             {
-                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品响应集：{string.Join(",", skuPushResList)}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
                 log.Status = "1";
-                log.Memo = $"途虎商品同步失败。{tuhuRes}" + ex.FormatErr();
-                LogHelper.WriteLog("途虎商品同步失败\r\n\t" + ex.FormatErr());
-            }
-        }
-#pragma warning disable IDE0051
-        void TuhuIncrementalSync_Task()
-        {
-            string StProductCode = string.Empty;
-            HashEntry[] HCYCredisValues = RedisHelper.HashGetAll("TuhuStockSyc");
-            var dict = HCYCredisValues.ToDictionary(x => x.Name.ToString(), x => x.Value.ToString());
+                log.Memo = $@"{currTIme}:天猫同步异常:" + ex.ToString();
+                logbus.InsertLog(log);
 
-
-
-            foreach (RedisValue redisValue in HCYCredisValues)
-            {
-                string key = redisValue.ToString();//93_34_LTCT245452005
-                string ProductCodeV = Convert.ToString(RedisHelper.HashGet("HCYCHouseStockSyc", key));
-                int HouseID = Convert.ToInt32(key.Split('_')[0]);
-                //品牌ID
-                int TypeID = Convert.ToInt32(key.Split('_')[1]);
-                //产品编码
-                string ProductCode = Convert.ToString(key.Split('_')[2]);
+                // logBus.SaveLog(log);
             }
         }
         #endregion
+
+
+        /// <summary>
+        /// 判断该仓库，该品牌是否要向外部系统同步库存
+        /// </summary>
+        /// <param name="HouseID">仓库ID</param>
+        /// <param name="TypeID">品牌ID</param>
+        /// <param name="ThreeSystem">第三方系统代码 CASS，TUHU，DILE，TMAO</param>
+        /// <returns></returns>
+        private bool IsAllSyncStock(int HouseID, int TypeID, string ThreeSystem)
+        {
+            string resStr = RedisHelper.GetString("AAllThreeSystemStockSyc");
+
+            List<SyncEntity> syncEntities = JsonConvert.DeserializeObject<List<SyncEntity>>(resStr);
+            List<SyncHouseID> iDs = syncEntities.Where(c => c.Company.Equals(ThreeSystem)).SelectMany(cc => cc.SyncHouseID).ToList();
+
+            foreach (var id in iDs)
+            {
+                if (id.HouseID.Equals(HouseID))
+                {
+                    if (string.IsNullOrEmpty(id.TypeID)) { return true; }
+
+                    string[] strings = id.TypeID.Split(',');
+                    foreach (var strs in strings)
+                    {
+                        if (TypeID.Equals(Convert.ToInt32(strs)))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
     }
+
 }

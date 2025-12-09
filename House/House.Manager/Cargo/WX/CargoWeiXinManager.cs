@@ -2871,7 +2871,9 @@ select WXID, SUM(Cash) as FX From dbo.Tbl_Taobao_CashBack where WXID=" + entity.
                         result.CouponType = Convert.ToString(idr["CouponType"]);
                         result.TypeID = Convert.ToString(idr["TypeID"]);
                         result.TypeName = Convert.ToString(idr["TypeName"]);
+                        result.ActualType = Convert.ToString(idr["ActualType"]);
                         result.SuppClientNum = string.IsNullOrEmpty(Convert.ToString(idr["SuppClientNum"])) ? 0 : Convert.ToInt32(idr["SuppClientNum"]);
+                        result.ThrowGood = Convert.ToString(idr["ThrowGood"]);
                     }
                 }
             }

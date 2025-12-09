@@ -14,6 +14,7 @@ namespace House.Entity.Cargo
     [Serializable]
     public class CargoExterOrderAlloEntity
     {
+        public string OrderOwnerName { get; set; }
         public string ExterOrderAlloNo { get; set; }
         public int ExterOrderAlloNum { get; set; }
         public string OrderAlloType { get; set; }

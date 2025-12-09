@@ -3,16 +3,16 @@
 <asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
     <script src="../JS/Lodop/LodopFuncs.js" type="text/javascript"></script>
     <script src="../JS/Rotate/jQueryRotate.2.2.js" type="text/javascript"></script>
-    <style>
-          input#ATimeControl {
-      width: 17px;
-      height: 17px;
-      position: absolute;
-  }
-  /*禁用后添加背景色*/
-  input[disabled] + span.datebox {
-      background: #e1e1e1;
-  }
+    <style type="text/css">
+        input#ATimeControl {
+            width: 17px;
+            height: 17px;
+            position: absolute;
+        }
+        /*禁用后添加背景色*/
+        input[disabled] + span.datebox {
+            background: #e1e1e1;
+        }
     </style>
     <script type="text/javascript">
         //页面加载时执行
@@ -129,6 +129,21 @@
             });
             columns.push({
                 title: '送货单号', field: 'DeliveryOrderNo', width: '100px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '订单数量', field: 'OrderNum', width: '55px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '回告数量', field: 'ReplyNumber', width: '55px', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '入库数量', field: 'InPiece', width: '55px', formatter: function (value) {
                     return "<span title='" + value + "'>" + value + "</span>";
                 }
             });
@@ -363,21 +378,21 @@
                         else { return "<span title='未知'>未知</span>" }
                     }
                 });
-                columns.push({
-                    title: '订单数量', field: 'OrderNum', width: '55px', formatter: function (value) {
-                        return "<span title='" + value + "'>" + value + "</span>";
-                    }
-                });
-                columns.push({
-                    title: '回告数量', field: 'ReplyNumber', width: '55px', formatter: function (value) {
-                        return "<span title='" + value + "'>" + value + "</span>";
-                    }
-                });
-                columns.push({
-                    title: '入库数量', field: 'InPiece', width: '55px', formatter: function (value) {
-                        return "<span title='" + value + "'>" + value + "</span>";
-                    }
-                });
+                //columns.push({
+                //    title: '订单数量', field: 'OrderNum', width: '55px', formatter: function (value) {
+                //        return "<span title='" + value + "'>" + value + "</span>";
+                //    }
+                //});
+                //columns.push({
+                //    title: '回告数量', field: 'ReplyNumber', width: '55px', formatter: function (value) {
+                //        return "<span title='" + value + "'>" + value + "</span>";
+                //    }
+                //});
+                //columns.push({
+                //    title: '入库数量', field: 'InPiece', width: '55px', formatter: function (value) {
+                //        return "<span title='" + value + "'>" + value + "</span>";
+                //    }
+                //});
                 //columns.push({
                 //    title: '单价', field: 'UnitPrice', width: '55px', formatter: function (value) {
                 //        return "<span title='" + value + "'>" + value + "</span>";
@@ -474,6 +489,7 @@
                 fitColumns: true, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
                 singleSelect: false, //设置为 true，则只允许选中一行。
                 checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                showFooter: true,
                 idField: 'ID',
                 url: null,
                 toolbar: '#toolbar',
@@ -716,6 +732,21 @@
                     }
                 });
                 columns.push({
+                    title: '订单数量', field: 'OrderNum', width: '55px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '回告数量', field: 'ReplyNumber', width: '55px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
+                    title: '入库数量', field: 'InPiece', width: '55px', formatter: function (value) {
+                        return "<span title='" + value + "'>" + value + "</span>";
+                    }
+                });
+                columns.push({
                     title: '产品来源', field: 'Source', width: '80px', formatter: function (value) {
                         return "<span title='" + GetSourceName(value) + "'>" + GetSourceName(value) + "</span>";
                     }
@@ -785,16 +816,16 @@
                             else { return "<span title='未知'>未知</span>" }
                         }
                     });
-                    columns.push({
-                        title: '订单数量', field: 'OrderNum', width: '55px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    });
-                    columns.push({
-                        title: '入库数量', field: 'InPiece', width: '55px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    });
+                    //columns.push({
+                    //    title: '订单数量', field: 'OrderNum', width: '55px', formatter: function (value) {
+                    //        return "<span title='" + value + "'>" + value + "</span>";
+                    //    }
+                    //});
+                    //columns.push({
+                    //    title: '入库数量', field: 'InPiece', width: '55px', formatter: function (value) {
+                    //        return "<span title='" + value + "'>" + value + "</span>";
+                    //    }
+                    //});
                 } else {
                     columns.push({
                         title: '产品品牌', field: 'TypeName', width: '65px', formatter: function (value) {
@@ -867,21 +898,21 @@
                             else { return "<span title='未知'>未知</span>" }
                         }
                     });
-                    columns.push({
-                        title: '订单数量', field: 'OrderNum', width: '55px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    });
-                    columns.push({
-                        title: '回告数量', field: 'ReplyNumber', width: '55px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    });
-                    columns.push({
-                        title: '入库数量', field: 'InPiece', width: '55px', formatter: function (value) {
-                            return "<span title='" + value + "'>" + value + "</span>";
-                        }
-                    });
+                    //columns.push({
+                    //    title: '订单数量', field: 'OrderNum', width: '55px', formatter: function (value) {
+                    //        return "<span title='" + value + "'>" + value + "</span>";
+                    //    }
+                    //});
+                    //columns.push({
+                    //    title: '回告数量', field: 'ReplyNumber', width: '55px', formatter: function (value) {
+                    //        return "<span title='" + value + "'>" + value + "</span>";
+                    //    }
+                    //});
+                    //columns.push({
+                    //    title: '入库数量', field: 'InPiece', width: '55px', formatter: function (value) {
+                    //        return "<span title='" + value + "'>" + value + "</span>";
+                    //    }
+                    //});
                     //columns.push({
                     //    title: '单价', field: 'UnitPrice', width: '55px', formatter: function (value) {
                     //        return "<span title='" + value + "'>" + value + "</span>";
@@ -1226,7 +1257,7 @@
                 <td>
                     <input id="StartDate" class="easyui-datebox" style="width: 100px">~
      <input id="EndDate" class="easyui-datebox" style="width: 100px">
-                     <input type="checkbox" class="easyui-checkbox" id="ATimeControl" name="ATimeControl" checked onclick="TimeControlClick(this)" />
+                    <input type="checkbox" class="easyui-checkbox" id="ATimeControl" name="ATimeControl" checked onclick="TimeControlClick(this)" />
                 </td>
                 <td style="text-align: right;">所属仓库:
                 </td>
@@ -1275,8 +1306,8 @@
                 <td style="text-align: right;">预计到货时间:
                 </td>
                 <td>
-                    <input id="ETAStartDate" class="easyui-datebox"  data-options="editable: true" style="width: 100px">~
-                    <input id="ETAEndDate" class="easyui-datebox"  data-options="editable: true" style="width: 100px">
+                    <input id="ETAStartDate" class="easyui-datebox" data-options="editable: true" style="width: 100px">~
+                    <input id="ETAEndDate" class="easyui-datebox" data-options="editable: true" style="width: 100px">
                 </td>
                 <td style="text-align: right;">入库状态:
                 </td>

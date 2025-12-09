@@ -67,7 +67,6 @@ namespace Cargo.Interface
             //string session = context.Request.Headers["session"];
             //string timestamp = context.Request.Headers["timestamp"];
             //string sign = context.Request.Headers["sign"];
-
             // 读取请求体
             using (var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8))
             {
@@ -642,23 +641,26 @@ namespace Cargo.Interface
             foreach (CargoContainerShowEntity time in outHouseList)
             {
                 CargoProductEntity syncProduct = HouseBus.SyncTypeProduct(time.ProductID.ToString());
-                //34 马牌  1 同步马牌  2 同步全部品牌
-                if (syncProduct.SyncType == "2" || (syncProduct.SyncType == "1" && syncProduct.TypeID == 34))
+                if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Cass"))
                 {
-                    RedisHelper.HashSet("OpenSystemStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.GoodsCode);
+                    RedisHelper.HashSet("OpenSystemStockSyc", "" + syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode + "", syncProduct.GoodsCode);
                 }
-
-                //主仓缓存更改
-                if (HouseBus.IsAddCaching(syncProduct.HouseID, time.TypeID))
+                if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "DILE"))
                 {
                     RedisHelper.HashSet("HCYCHouseStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
                 }
-                RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                if (Common.IsAllSyncStock(syncProduct.HouseID, syncProduct.TypeID, "Tuhu"))
+                {
+                    RedisHelper.HashSet("TuhuStockSyc", syncProduct.HouseID + "_" + syncProduct.TypeID + "_" + syncProduct.ProductCode, syncProduct.ProductCode);
+                }
 
             }
 
             //保存生成仓库出库订单
             Bus.AddOrderInfo(ent, outHouseList, log);
+
+            log.Memo = $@"[{datas.OrderHeader.OrderId}]开思生成系统订单完成";
+            lw.WriteLog(log);
 
             if (ent.CheckOutType != null)
             {

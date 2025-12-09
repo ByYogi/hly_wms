@@ -250,7 +250,7 @@
                         formatter: function (val, row, index) { if (val == "0") { return "现金"; } else if (val == "1") { return "银行卡"; } else if (val == "2") { return "微信"; } else if (val == "3") { return "油卡"; } else { return ""; } }
                     },
                     {
-                        title: '付款单位', field: 'ChargeUnit', width: '100px', formatter: function (value) {
+                        title: '单位', field: 'ChargeUnit', width: '100px', formatter: function (value) {
                             if (value != null && value != "") {
                                 return "<span title='" + value + "'>" + value + "</span>";
                             }
@@ -499,7 +499,7 @@
                             <textarea name="Reason" id="AReason" rows="3" style="width: 410px;"></textarea>
                         </td>
 
-                        <td style="text-align: right;">付款单位:
+                        <td style="text-align: right;">单位:
                         </td>
                         <td>
                             <input name="ChargeUnit" id="ChargeUnit" class="easyui-combobox" style="width: 160px;" data-options="required:true" />
@@ -743,11 +743,15 @@
                     { id: '湖北省狄乐汽车服务有限公司', name: '湖北省狄乐汽车服务有限公司' },
                     { id: '南宁粤信旺宁贸易有限公司', name: '南宁粤信旺宁贸易有限公司' },
                     { id: '广通慧采汽配供应链（广州）有限公司', name: '广通慧采汽配供应链（广州）有限公司' },
-                    { id: '广州狄安祺达轮胎有限公司', name: '广州狄安祺达轮胎有限公司' }
+                    { id: '广州狄安祺达轮胎有限公司', name: '广州狄安祺达轮胎有限公司' },
+                    { id: '新疆正诚昌荣汽车服务有限公司', name: '新疆正诚昌荣汽车服务有限公司' },
+                    { id: '乌鲁木齐广通实业发展有限公司', name: '乌鲁木齐广通实业发展有限公司' },
+                    { id: '广州富添盛汽车用品有限公司', name: '广州富添盛汽车用品有限公司' },
+                    { id: '震亚（广州）汽车用品销售有限公司', name: '震亚（广州）汽车用品销售有限公司' },
                 ],
                 // 选中变化时的简单回调（可选）
                 onChange: function (newId) {
-                    console.log('选中付款单位：', $(this).combobox('getText'));
+                   // console.log('选中单位：', $(this).combobox('getText'));
                 }
             });
             var datenow = new Date();

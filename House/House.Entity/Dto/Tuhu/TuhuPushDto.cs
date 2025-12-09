@@ -10,8 +10,10 @@ namespace House.Entity.Dto.Tuhu
     {
         public string platform { get; set; }
         public string authCode { get; set; }
-        public List<Tuhu_Sku> skuInfos { get; set; }
         public List<string> erpSkuCodes { get; set; }
+        public List<Tuhu_Sku> skuInfos { get; set; }
+        public List<Tuhu_Stock> stockInfos { get; set; }
+        public List<Tuhu_Price> priceInfos { get; set; }
 
         public TuhuPushDto() { }
         public TuhuPushDto(string platform, string authCode, List<Tuhu_Sku> skuInfos = null)
@@ -40,5 +42,20 @@ namespace House.Entity.Dto.Tuhu
         public string SpeedLevel { get; set; }
         public string Born { get; set; }
 
+    }
+
+    public class Tuhu_Stock
+    {
+        public int version { get; set; }
+        public string erpSkuCode { get; set; } //我方SKU编码（ProductCode）
+        public string tuhuSkuCode { get; set; } //途虎SKU编码
+        public int Piece { get; set; }
+    }
+    public class Tuhu_Price
+    {
+        public int version { get; set; }
+        public string erpSkuCode { get; set; } //我方SKU编码（ProductCode）
+        public string tuhuSkuCode { get; set; } //途虎SKU编码
+        public decimal SalePrice { get; set; }
     }
 }
