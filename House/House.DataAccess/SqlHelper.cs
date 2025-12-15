@@ -225,7 +225,7 @@ namespace House.DataAccess
 
         #endregion
 
-        #region 
+        #region
 
         public void BulkInsertData<T>(List<T> list, string tableName)
         {
@@ -248,6 +248,30 @@ namespace House.DataAccess
                 }
             }
         }
+
+        /// <summary>
+        /// 批量插入数据（使用现有连接，支持本地临时表#）
+        /// </summary>
+        /// <typeparam name="T">数据类型</typeparam>
+        /// <param name="list">数据列表</param>
+        /// <param name="tableName">目标表名</param>
+        /// <param name="existingConnection">现有的数据库连接（必须已打开）</param>
+        public void BulkInsertData<T>(List<T> list, string tableName, SqlConnection existingConnection)
+        {
+            if (list.Count > 0 && existingConnection != null)
+            {
+                var dataTable = ConvertToDataTable(list);
+                SqlBulkCopy bulkCopy = new SqlBulkCopy(existingConnection);
+                foreach (DataColumn dcPrepped in dataTable.Columns)
+                {
+                    bulkCopy.ColumnMappings.Add(dcPrepped.ColumnName, dcPrepped.ColumnName);
+                }
+                bulkCopy.BulkCopyTimeout = 60;
+                bulkCopy.DestinationTableName = tableName;
+                bulkCopy.WriteToServer(dataTable);
+            }
+        }
+
         public static DataTable ConvertToDataTable<T>(IList<T> data)
         {
             var properties = TypeDescriptor.GetProperties(typeof(T));

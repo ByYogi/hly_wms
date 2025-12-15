@@ -252,6 +252,7 @@
     <Compile Include="Dto\Order\CargoRpl\CargoRplOrderGoodsDto.cs" />
     <Compile Include="Dto\Base\PaginationBase.cs" />
     <Compile Include="Dto\Order\CargoRpl\RplOrderGenerationParam.cs" />
+    <Compile Include="Dto\ProductQueryParam.cs" />
     <Compile Include="Dto\Purchase\RealFactoryPODetailDto.cs" />
     <Compile Include="Dto\TempProducts.cs" />
     <Compile Include="Dto\Tuhu\TuhuPushDto.cs" />
