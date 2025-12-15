@@ -3826,71 +3826,6 @@ Values @{tempTblVals}
             }
             return result;
         }
-
-        /// <summary>
-        /// 根据HouseID列表和ProductCode列表精确查询前置仓产品（使用临时表+BulkInsert高效查询）
-        /// </summary>
-        /// <param name="houseIDs">仓库ID列表</param>
-        /// <param name="productCodes">产品编码列表</param>
-        /// <returns></returns>
-        public List<CargoProductEntity> QueryProductByHouseIDsAndCodes(IEnumerable<int> houseIDs, IEnumerable<string> productCodes)
-        {
-            List<CargoProductEntity> result = new List<CargoProductEntity>();
-            if (!houseIDs.Any() || !productCodes.Any()) return result;
-
-            var houseIDSet = new HashSet<int>(houseIDs.Distinct());
-            var codeList = productCodes.Distinct().ToList();
-
-            // 只用 ProductCode 查询，避免笛卡尔积导致临时表过大
-            var queryParams = codeList.Select(code => new ProductQueryParam { ProductCode = code, HouseID = 0 }).ToList();
-
-            // 创建临时表
-            string createTempTableSQL = @"
-IF OBJECT_ID('tempdb..##ProductQueryTemp') IS NOT NULL DROP TABLE ##ProductQueryTemp;
-CREATE TABLE ##ProductQueryTemp(
-    ProductCode NVARCHAR(50),
-    HouseID INT
-);";
-
-            // 查询SQL（使用INNER JOIN临时表，只匹配ProductCode）
-            string querySQL = $@"
-SELECT p.ProductID, p.SpecsType, p.ProductCode, p.BatchYear, p.TypeID, p.HouseID, p.SuppClientNum, p.ShareHouseID
-FROM Tbl_Cargo_Product p
-INNER JOIN ##ProductQueryTemp t ON p.ProductCode = t.ProductCode
-WHERE p.SpecsType = '5'
-AND p.HouseID IN ({string.Join(",", houseIDSet)});";
-
-            using (DbCommand command = conn.GetSqlStringCommond(createTempTableSQL))
-            {
-                command.Connection.Open();
-                command.ExecuteNonQuery();
-
-                // 批量插入ProductCode到临时表
-                conn.BulkInsertData(queryParams, "##ProductQueryTemp");
-
-                // 执行查询
-                command.CommandText = querySQL;
-                using (DataTable dd = conn.ExecuteDataTable(command))
-                {
-                    foreach (DataRow row in dd.Rows)
-                    {
-                        result.Add(new CargoProductEntity
-                        {
-                            ProductID = row.Field<long>("ProductID"),
-                            SpecsType = row.Field<string>("SpecsType") ?? "",
-                            ProductCode = row.Field<string>("ProductCode") ?? "",
-                            BatchYear = row.Field<int?>("BatchYear") ?? 0,
-                            TypeID = row.Field<int>("TypeID"),
-                            HouseID = row.Field<int?>("HouseID") ?? 0,
-                            SuppClientNum = row.Field<int?>("SuppClientNum") ?? 0,
-                            ShareHouseID = row.Field<int?>("ShareHouseID") ?? 0,
-                        });
-                    }
-                }
-            }
-            return result;
-        }
-
         /// <summary>
         /// 获取所有产品
         /// </summary>
@@ -5869,14 +5804,5 @@ WHERE (1=1) ";
         //                conn.ExecuteNonQuery(cmd);
         //            }
         //        }
-    }
-
-    /// <summary>
-    /// 产品查询参数（用于BulkInsert临时表）
-    /// </summary>
-    public class ProductQueryParam
-    {
-        public string ProductCode { get; set; }
-        public int HouseID { get; set; }
     }
 }

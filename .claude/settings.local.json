@@ -8,7 +8,8 @@
       "Bash(svn info:*)",
       "Bash(svn log:*)",
       "Bash(sqlcmd:*)",
-      "Bash(where /R d:HLYProjectsWMS LocalCache.db)"
+      "Bash(where /R d:HLYProjectsWMS LocalCache.db)",
+      "Bash(powershell -Command:*)"
     ],
     "deny": [],
     "ask": []

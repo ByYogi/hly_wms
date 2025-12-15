@@ -414,12 +414,12 @@ namespace Cargo
         protected void Page_Load(object sender, EventArgs e)
         {
 
-            //CargoInterfaceBus bus = new CargoInterfaceBus();
-            //    List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 93, TypeID = 9, ProductCode = "LTYH215501704" });
-            //if (entities.Count > 0)
-            //{
-            //    bus.SaveNextDayProductData(entities, false);
-            //}
+            CargoInterfaceBus bus = new CargoInterfaceBus();
+            List<CargoProductEntity> entities = bus.QueryNextDayStockSync(new CargoProductEntity { HouseID = 93 });
+            if (entities.Count > 0)
+            {
+                bus.SaveNextDayProductData(entities, false);
+            }
 
             return;
             CargoHouseBus houseBus = new CargoHouseBus();

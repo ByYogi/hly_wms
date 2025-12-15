@@ -2892,6 +2892,10 @@
     <Compile Include="Interface\UnionPaySuccess.aspx.designer.cs">
       <DependentUpon>UnionPaySuccess.aspx</DependentUpon>
     </Compile>
+    <Compile Include="Interface\Utils\EncryptUtils.cs" />
+    <Compile Include="Interface\Utils\OpenApiEncryptedService.cs" />
+    <Compile Include="Interface\Utils\SignUtil.cs" />
+    <Compile Include="Interface\Utils\TypeUtils.cs" />
     <Compile Include="Interface\WeiChatRoute.ashx.cs">
       <DependentUpon>WeiChatRoute.ashx</DependentUpon>
     </Compile>

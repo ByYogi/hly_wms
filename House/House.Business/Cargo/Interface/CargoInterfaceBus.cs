@@ -1299,25 +1299,13 @@ namespace House.Business.Cargo
             CargoHouseBus house = new CargoHouseBus();
 
             var allProduct = new List<CargoProductEntity>();
-            //if (isFull)
-            //{
-            //全量
+
+            // 优化：只查询 list 中涉及的 HouseID 和 ProductCode，避免全表扫描
             var houseIDs = list.Select(x => x.HouseID).Distinct().ToList();
+            var productCodes = list.Select(x => x.ProductCode).Distinct().ToList();
             allProduct = prodctMan.QueryProductByHousIDs(houseIDs);
-            //}
-            //else
-            //{
-            //    //增量
-            //    var dataItem = list.FirstOrDefault();
-            //var prodList = list.Select(x => x.ProductCode).Distinct().ToList();
-            //allProduct = prodctMan.QueryProductByHousIDs(
-            //    new CargoProductEntity
-            //    {
-            //        HouseID = dataItem.HouseID,
-            //        TypeID = dataItem.TypeID,
-            //        ProductCodeStr = $@"'{string.Join("','", prodList)}'"
-            //    });
-            //}
+            allProduct = prodctMan.QueryProductByHouseIDsAndCodes(houseIDs, productCodes);
+
             var toUpdateContainerGoods = new List<CargoContainerGoodsEntity>();
             var toAddProductDict = new Dictionary<string, CargoProductEntity>();
 
