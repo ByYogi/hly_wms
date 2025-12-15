@@ -157,24 +157,21 @@ namespace HouseServices
                 }
 
                 //记录日志
-                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
-                log.Memo = $"途虎商品全量同步成功。同步数量：{prductData.Count()}。{tuhuRes}";
+                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                log.Memo = $"途虎商品同步成功。同步数量：{prductData.Count()}。{tuhuRes}";
                 logbus.InsertLog(log);
-                LogHelper.WriteLog("途虎商品全量同步成功");
+                LogHelper.WriteLog("途虎商品同步成功");
             }
             catch (Exception ex)
             {
-                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
                 log.Status = "1";
-                log.Memo = $"途虎商品全量同步失败。{tuhuRes}\r\n" + ex.FormatErr();
+                log.Memo = $"途虎商品同步失败。{tuhuRes}" + ex.FormatErr();
                 logbus.InsertLog(log);
-                LogHelper.WriteLog("途虎商品全量同步失败\r\n" + ex.FormatErr());
+                LogHelper.WriteLog("途虎商品同步失败\r\n\t" + ex.FormatErr());
             }
         }
 
-        /// <summary>
-        /// 途虎增量推送商品数据
-        /// </summary>
         public void TuhuIncrementalSync()
         {
             //机器人账号
@@ -193,29 +190,18 @@ namespace HouseServices
             CargoInterfaceBus bus = new CargoInterfaceBus();
             // 记录途虎响应信息
             List<string> pushStockResList = new List<string>();
-            List<string> pushPriceResList = new List<string>();
             try
             {
                 //获取商品信息
                 HashEntry[] HCYCredisValues = RedisHelper.HashGetAll("TuhuStockSyc");
-                if(HCYCredisValues == null || HCYCredisValues.Length ==0)
-                {
-                    return;
-                }
                 var dict = HCYCredisValues.ToDictionary(x => x.Name.ToString(), x => x.Value.ToString());
                 var confHouseIDs = TuhuConfig.Houses.Keys.ToList();
                 var confBrandIDs = TuhuConfig.Brands.Keys.ToList();
                 var willAsyncHouseIDs = dict.Keys.Select(x => Convert.ToInt32(x.Split('_')[0])).Distinct().Where(x => confHouseIDs.Contains(x)).ToArray();
-                var willAsyncBrandIDs = dict.Keys.Select(x => Convert.ToInt32(x.Split('_')[1])).Distinct().Where(x => confBrandIDs.Contains(x)).ToArray();
+                var willAsyncBrandIDs = dict.Keys.Select(x => Convert.ToInt32(x.Split('_')[1])).Distinct().Where(x => TuhuConfig.Brands.Keys.ToArray().Contains(x)).ToArray();
                 var filterHouseIDs = confHouseIDs.Where(x => willAsyncHouseIDs.Contains(x)).ToArray();
                 var filterBrandIDs = confBrandIDs.Where(x => willAsyncBrandIDs.Contains(x)).ToArray();
                 var productCodes = dict.Values.ToArray();
-                if(filterBrandIDs.Length == 0 || filterHouseIDs.Length == 0)
-                {
-                    RedisHelper.HashDeleteAll("TuhuStockSyc");
-                    return;
-                }
-
                 var prductData = bus.QueryTuhuStockData(filterBrandIDs, filterHouseIDs, productCodes);
 
                 // ==================== 业务调用 ====================
@@ -235,10 +221,11 @@ namespace HouseServices
                     {
                         platform = TuhuConfig.Platform,
                         authCode = TuhuConfig.Test.AuthCode,
-                        stockInfos = batch.Select(x => new Tuhu_Stock
+                        skuInfos = batch.Select(x => new Tuhu_Sku
                         {
                             version = 1,
                             erpSkuCode = x.ProductCode,
+                            ProductCode = x.ProductCode,
                             Piece = x.Piece,
                         }).ToList()
                     };
@@ -247,7 +234,6 @@ namespace HouseServices
                         tuhuPushStockBody,
                         comheaders
                     );
-                    pushStockResList.Add(stockRes);
 
                     // 推送价格
                     RateLimiter.Wait();
@@ -267,12 +253,13 @@ namespace HouseServices
                         tuhuPushPriceBody,
                         comheaders
                     );
-                    pushPriceResList.Add(priceRes);
+
+                    pushStockResList.Add(stockRes);
                 }
                 RedisHelper.HashDeleteAll("TuhuStockSyc");
 
                 //记录日志
-                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}";
                 log.Memo = $"途虎商品库存增量同步成功。同步数量：{prductData.Count()}。{tuhuRes}";
                 logbus.InsertLog(log);
                 LogHelper.WriteLog("途虎商品库存增量同步成功");
@@ -280,11 +267,11 @@ namespace HouseServices
             }
             catch (Exception ex)
             {
-                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}";
                 log.Status = "1";
-                log.Memo = $"途虎商品库存增量同步失败。{tuhuRes}\r\n" + ex.FormatErr();
+                log.Memo = $"途虎商品库存增量同步失败。{tuhuRes}" + ex.FormatErr();
                 logbus.InsertLog(log);
-                LogHelper.WriteLog("途虎商品库存增量同步失败\r\n" + ex.FormatErr());
+                LogHelper.WriteLog("途虎商品库存增量同步失败\r\n\t" + ex.FormatErr());
             }
         }
     }
@@ -295,28 +282,16 @@ namespace HouseServices
         {
             using (var sha = System.Security.Cryptography.SHA256.Create())
             {
-                var bytes = Encoding.UTF8.GetBytes(input);
+                var bytes = System.Text.Encoding.UTF8.GetBytes(input);
                 var hash = sha.ComputeHash(bytes);
                 return BitConverter.ToString(hash).Replace("-", "").ToLower();
             }
         }
 
-        /// <summary>
-        /// 获取当前时间戳
-        /// </summary>
-        /// <returns></returns>
-        public static long GetUnixTimestampMilliseconds()
-        {
-            // 兼容 .NET Framework 4.5.1
-            var utc = DateTime.UtcNow;
-            var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-            return (long)(utc - epoch).TotalMilliseconds;
-        }
         // 公共：构建请求头
         public static Dictionary<string, string> BuildHeaders()
         {
-            //string timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
-            string timestampMs = GetUnixTimestampMilliseconds().ToString(); //获取当前时间戳，兼容 .NET Framework 4.5.1
+            string timestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
             string nonceStr = Guid.NewGuid().ToString("N");
 
             string sign = Sha256(
@@ -375,7 +350,7 @@ namespace HouseServices
         {
             lock (_lock)
             {
-                long now = TuhuHandle.GetUnixTimestampMilliseconds();
+                long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 long oneSecondAgo = now - 1000;
 
                 // 移除 1 秒前的请求时间戳
@@ -393,7 +368,7 @@ namespace HouseServices
                 }
 
                 // 记录本次请求时间戳
-                _timestamps.Enqueue(TuhuHandle.GetUnixTimestampMilliseconds());
+                _timestamps.Enqueue(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
             }
         }
     }

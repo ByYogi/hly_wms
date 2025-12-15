@@ -157,24 +157,21 @@ namespace HouseServices
                 }
 
                 //记录日志
-                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
-                log.Memo = $"途虎商品全量同步成功。同步数量：{prductData.Count()}。{tuhuRes}";
+                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                log.Memo = $"途虎商品同步成功。同步数量：{prductData.Count()}。{tuhuRes}";
                 logbus.InsertLog(log);
-                LogHelper.WriteLog("途虎商品全量同步成功");
+                LogHelper.WriteLog("途虎商品同步成功");
             }
             catch (Exception ex)
             {
-                string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
+                string tuhuRes = $"\r\n删除所有商品响应：{skuDelAllRes}\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
                 log.Status = "1";
-                log.Memo = $"途虎商品全量同步失败。{tuhuRes}\r\n" + ex.FormatErr();
+                log.Memo = $"途虎商品同步失败。{tuhuRes}\r\n" + ex.FormatErr();
                 logbus.InsertLog(log);
-                LogHelper.WriteLog("途虎商品全量同步失败\r\n" + ex.FormatErr());
+                LogHelper.WriteLog("途虎商品同步失败\r\n" + ex.FormatErr());
             }
         }
 
-        /// <summary>
-        /// 途虎增量推送商品数据
-        /// </summary>
         public void TuhuIncrementalSync()
         {
             //机器人账号
@@ -295,7 +292,7 @@ namespace HouseServices
         {
             using (var sha = System.Security.Cryptography.SHA256.Create())
             {
-                var bytes = Encoding.UTF8.GetBytes(input);
+                var bytes = System.Text.Encoding.UTF8.GetBytes(input);
                 var hash = sha.ComputeHash(bytes);
                 return BitConverter.ToString(hash).Replace("-", "").ToLower();
             }

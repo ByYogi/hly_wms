@@ -62,6 +62,10 @@ namespace HouseServices
         {
             InitializeComponent();
 
+            TuhuSync tuhuSync = new TuhuSync();
+            tuhuSync.TuhuFullSync();
+            return;
+
             System.Timers.Timer time = new System.Timers.Timer();
             System.Timers.Timer snapTime = new System.Timers.Timer();
             System.Timers.Timer pushFiveTime = new System.Timers.Timer();
@@ -8386,7 +8390,7 @@ namespace HouseServices
                     }
                     log.Status = "0";//重置
                     // 输出结果统计
-                    log.Memo = $@"{currTIme}:仓库:[{itemHouse.Key}]天猫同步详情:" + $@"
+                    log.Memo = $@"{currTIme}:仓库:[{itemHouse.Key}]天猫同步失败详情:" + $@"
                     ========== 同步结果统计 ==========
                     总数据: {stockData.Count}条
                     总批次: {totalBatches}
@@ -8398,7 +8402,7 @@ namespace HouseServices
                     {
                         failMessages.ForEach(msg => Console.WriteLine($"  - {msg}"));
                         log.Status = "1";
-                        log.Memo = $@"{currTIme}:仓库:[{itemHouse.Key}]:天猫同步完成详情:" + string.Join(",", failMessages);
+                        log.Memo = $@"{currTIme}:仓库:[{itemHouse.Key}]:天猫同步失败详情:" + string.Join(",", failMessages);
                         logbus.InsertLog(log);
                     }
                 }

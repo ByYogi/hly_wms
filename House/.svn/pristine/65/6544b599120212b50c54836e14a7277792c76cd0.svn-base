@@ -66,8 +66,8 @@
 
 		<!--途虎接口通用配置-->
 		<add key="Tuhu.com.platform" value="diLe" />
-		<add key="Tuhu.com.brands" value="9-优科豪马,39-固特异,32-邓禄普,34-马牌" />
-		<add key="Tuhu.com.houses" value="93-东平云仓" />
+		<add key="Tuhu.com.brands" value="9-优科豪马,18-普利司通,31-韩泰,39-固特异,32-邓禄普,34-马牌" />
+		<add key="Tuhu.com.houses" value="93-东平云仓,107-从化云仓,129-花都云仓" />
 		<add key="Tuhu.urlpath.pushSku" value="/erp/standard/push/sku" />
 		<add key="Tuhu.urlpath.pushStock" value="/erp/standard/push/stock" />
 		<add key="Tuhu.urlpath.pushPrice" value="/erp/standard/push/price" />

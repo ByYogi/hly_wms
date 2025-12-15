@@ -172,9 +172,6 @@ namespace HouseServices
             }
         }
 
-        /// <summary>
-        /// 途虎增量推送商品数据
-        /// </summary>
         public void TuhuIncrementalSync()
         {
             //机器人账号
@@ -295,7 +292,7 @@ namespace HouseServices
         {
             using (var sha = System.Security.Cryptography.SHA256.Create())
             {
-                var bytes = Encoding.UTF8.GetBytes(input);
+                var bytes = System.Text.Encoding.UTF8.GetBytes(input);
                 var hash = sha.ComputeHash(bytes);
                 return BitConverter.ToString(hash).Replace("-", "").ToLower();
             }

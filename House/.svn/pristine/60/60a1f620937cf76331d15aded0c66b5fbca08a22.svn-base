@@ -3905,6 +3905,15 @@ INNER JOIN productPiece pp ON p.ProductID = pp.ProductID
                                 isEncrypted = idr["isEncrypted"] != DBNull.Value ? Convert.ToInt32(idr["isEncrypted"]) : 0,
 
                                 // ======================================
+                                // DateTime类型（空值默认DateTime.MinValue）
+                                // ======================================
+                                requireArriveTime = idr["requireArriveTime"] != DBNull.Value ? Convert.ToDateTime(idr["requireArriveTime"]) : DateTime.MinValue,
+                                noticeCreateTime = idr["noticeCreateTime"] != DBNull.Value ? Convert.ToDateTime(idr["noticeCreateTime"]) : DateTime.MinValue,
+                                originBillTime = idr["originBillTime"] != DBNull.Value ? Convert.ToDateTime(idr["originBillTime"]) : DateTime.MinValue,
+                                requireOutWarehouseTime = idr["requireOutWarehouseTime"] != DBNull.Value ? Convert.ToDateTime(idr["requireOutWarehouseTime"]) : DateTime.MinValue,
+                                payTime = idr["payTime"] != DBNull.Value ? Convert.ToDateTime(idr["payTime"]) : DateTime.MinValue,
+
+                                // ======================================
                                 // string类型（无验证，直接转换）
                                 // ======================================
                                 sendType = Convert.ToString(idr["sendType"]),
@@ -4011,7 +4020,7 @@ SELECT @@IDENTITY
                     cdid = Convert.ToInt64(conn.ExecuteScalar(cmd));
                 }
 
-                SaveTMallOutHouseGoodsData(entity.noticeDetailLists, cdid);
+                SaveTMallOutHouseGoodsData(entity.noticeDetailList, cdid);
             }
             catch (Exception EX)
             {
