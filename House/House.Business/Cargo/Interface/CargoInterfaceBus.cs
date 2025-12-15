@@ -1645,6 +1645,16 @@ namespace House.Business.Cargo
         {
             return man.QueryTuhuStockData(typeIDs, houseIDs, productCodes);
         }
+
+        /// <summary>
+        /// 查询途虎商品代码映射
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Dictionary<string,string> QueryTuhuProdCodes(string[] productCodes)
+        {
+            return man.QueryTuhuProdCodes(productCodes);
+        }
         #endregion
 
         #region 天猫

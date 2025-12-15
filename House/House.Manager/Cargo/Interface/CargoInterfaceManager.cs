@@ -3864,6 +3864,17 @@ INNER JOIN productPiece pp ON p.ProductID = pp.ProductID
             
             return result;
         }
+
+
+        /// <summary>
+        /// 查询途虎商品代码映射
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public Dictionary<string, string> QueryTuhuProdCodes(string[] productCodes)
+        {
+
+        }
         #endregion
 
         #region 天猫
