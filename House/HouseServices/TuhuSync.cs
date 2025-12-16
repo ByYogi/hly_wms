@@ -334,7 +334,7 @@ namespace HouseServices
                 //记录日志
                 string tuhuRes = $"\r\n同步商品库存响应集：{string.Join(",", pushStockResList)}\r\n同步商品价格响应集：{string.Join(",", pushPriceResList)}";
                 string unmappedInfo = unmappedProducts.Count > 0 ? $"\r\n未映射商品数：{unmappedProducts.Count}" : "";
-                log.Memo = $"途虎商品库存增量同步成功。同步数量：{groupedData.Count}（分组后）。{unmappedInfo}{tuhuRes}";
+                log.Memo = $"途虎商品库存增量同步成功。同步数量：{groupedData.Count}。{unmappedInfo}{tuhuRes}";
                 logbus.InsertLog(log);
                 LogHelper.WriteLog("途虎商品库存增量同步成功");
 
