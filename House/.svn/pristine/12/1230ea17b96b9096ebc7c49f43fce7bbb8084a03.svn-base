@@ -237,7 +237,7 @@ namespace HouseServices
                 string unmappedInfo = unmappedCount > 0 ? $"未映射商品数：{unmappedCount}\r\n\t{string.Join("\r\n\t", unmappedProducts)}" : "";
 
                 log.Memo = $"途虎商品全量同步完成 | 耗时{elapsed:F1}秒\r\n" +
-                          $"统计：配置获取原始数据{originalCount}条 → 途虎编码映射后{mappedProducts.Count()}条 => 途虎编码1对多分组后{mappedCount}条\r\n" +
+                          $"统计：原始{originalCount}条 → 映射过滤后{mappedProducts.Count()}条 => 分组后{mappedCount}条\r\n" +
                           (skuDelAllRes != null ? "删除商品响应：" + skuDelAllRes : "") +
                           $"{pushStats}\r\n" +
                           $"{oneToMultInfo}\r\n" +
@@ -338,7 +338,6 @@ namespace HouseServices
                     RedisHelper.HashDeleteAll("TuhuStockSyc");
                     return;
                 }
-                int redisCount = dict.Values.Count();
 
                 stage = "查询商品数据";
                 var prductData = bus.QueryTuhuStockData(filterBrandIDs, filterHouseIDs, productCodes);
@@ -512,7 +511,7 @@ namespace HouseServices
 
 
                 log.Memo = $"途虎商品库存增量同步完成 | 耗时{elapsed:F1}秒\r\n" +
-                          $"统计：原始Redis{redisCount}条 → 过滤后{originalCount}条 → 映射后{mappedProducts.Count()}条 => 分组后{mappedCount}条\r\n" +
+                          $"统计：原始{originalCount}条 → 映射过滤后{mappedProducts.Count()}条 => 分组后{mappedCount}条\r\n" +
                           $"{pushStats}\r\n" +
                           $"{oneToMultInfo}\r\n" +
                           $"{unmappedInfo}\r\n" +

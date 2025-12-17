@@ -42,8 +42,7 @@ namespace HouseServices
             log.Operate = "A";
 
             //获取途虎Url连接信息
-            string tuhuUrl = TuhuConfig.Prod.Url;
-            string authCode = TuhuConfig.Prod.AuthCode;
+            string tuhuUrl = TuhuConfig.Test.Url;
 
             LogBus logbus = new LogBus();
             CargoInterfaceBus bus = new CargoInterfaceBus();
@@ -81,30 +80,25 @@ namespace HouseServices
                 //);
 
                 //删除所有商品
-                //stage = "删除所有商品";
-                //skuDelAllRes = TuhuHandle.PostJson(
-                //    tuhuUrl + TuhuConfig.UrlSkuDeleteAll,
-                //    new TuhuPushDto(TuhuConfig.Platform, authCode),
-                //    comheaders
-                //);
-
-                stage = "过滤获取有映射的商品";
-                var mappedProducts = prductData
-                    .Where(x => tuhuCodeMaps.ContainsKey(x.ProductCode)); // 只处理有映射的商品
+                stage = "删除所有商品";
+                skuDelAllRes = TuhuHandle.PostJson(
+                    TuhuConfig.Test.Url + TuhuConfig.UrlSkuDeleteAll,
+                    new TuhuPushDto(TuhuConfig.Platform, TuhuConfig.Test.AuthCode),
+                    comheaders
+                );
 
                 // 开始推送商品数据
                 stage = "构建分组数据";
                 // 根据 TuhuCode 分组，汇总库存，拼接 ProductCodes
-                var groupedData = mappedProducts
+                var groupedData = prductData
+                    .Where(x => tuhuCodeMaps.ContainsKey(x.ProductCode)) // 只处理有映射的商品
                     .GroupBy(x => tuhuCodeMaps[x.ProductCode]) // 按 TuhuCode 分组
                     .Select(g => new
                     {
                         TuhuCode = g.Key,
                         ProductCodes = string.Join(",", g.Select(x => x.ProductCode)),
-                        MappedCount = g.Count(),
                         Piece = g.Sum(x => x.Piece),
-                        g.First().ProductName,
-                        g.First().SalePrice,
+                        SalePrice = g.First().SalePrice,
                         FirstPorductCode = g.First().ProductCode,
                         FirstProduct = g.First() // 用于获取其他商品信息
                     })
@@ -117,6 +111,7 @@ namespace HouseServices
                     .ToList();
                 if (groupedData.Count == 0 && unmappedProducts.Count > 0)
                 {
+                    log.Status = "2"; // 警告状态
                     log.Memo = $"没有有效的映射可同步商品数据\r\n未映射商品数：{unmappedProducts.Count}\r\n未映射编码：{string.Join(",", unmappedProducts)}\r\n数据：{JSON.Encode(new { groupedData, unmappedProducts })}";
                     logbus.InsertLog(log);
                     return;
@@ -141,14 +136,12 @@ namespace HouseServices
                     var tuhuPushSkuBody = new TuhuPushDto()
                     {
                         platform = TuhuConfig.Platform,
-                        authCode = authCode,
+                        authCode = TuhuConfig.Test.AuthCode,
                         skuInfos = batch.Select(x => new Tuhu_Sku
                         {
                             version = 1,
                             erpSkuCode = x.TuhuCode,
-                            tuhuSkuCode = x.TuhuCode,
                             ProductCode = x.FirstPorductCode,
-                            ProductName = x.ProductName,
                             ProductCodes = x.ProductCodes,
                             GoodsCode = x.FirstProduct.GoodsCode,
                             TypeID = x.FirstProduct.TypeID,
@@ -165,7 +158,7 @@ namespace HouseServices
 
                     RateLimiter.Wait();
                     var skuRes = TuhuHandle.PostJson(
-                        tuhuUrl + TuhuConfig.UrlPushSku,
+                        TuhuConfig.Test.Url + TuhuConfig.UrlPushSku,
                         tuhuPushSkuBody,
                         comheaders
                     );
@@ -178,7 +171,7 @@ namespace HouseServices
                     var tuhuPushStockBody = new TuhuPushDto()
                     {
                         platform = TuhuConfig.Platform,
-                        authCode = authCode,
+                        authCode = TuhuConfig.Test.AuthCode,
                         stockInfos = batch.Select(x => new Tuhu_Stock
                         {
                             version = 1,
@@ -188,7 +181,7 @@ namespace HouseServices
                         }).ToList()
                     };
                     var stockRes = TuhuHandle.PostJson(
-                        tuhuUrl + TuhuConfig.UrlPushStock,
+                        TuhuConfig.Test.Url + TuhuConfig.UrlPushStock,
                         tuhuPushStockBody,
                         comheaders
                     );
@@ -201,7 +194,7 @@ namespace HouseServices
                     var tuhuPushPriceBody = new TuhuPushDto()
                     {
                         platform = TuhuConfig.Platform,
-                        authCode = authCode,
+                        authCode = TuhuConfig.Test.AuthCode,
                         priceInfos = batch.Select(x => new Tuhu_Price
                         {
                             version = 1,
@@ -210,7 +203,7 @@ namespace HouseServices
                         }).ToList()
                     };
                     var priceRes = TuhuHandle.PostJson(
-                        tuhuUrl + TuhuConfig.UrlPushPrice,
+                        TuhuConfig.Test.Url + TuhuConfig.UrlPushPrice,
                         tuhuPushPriceBody,
                         comheaders
                     );
@@ -222,6 +215,7 @@ namespace HouseServices
                 var elapsed = (DateTime.Now - startTime).TotalSeconds;
                 int mappedCount = groupedData.Count;
                 int unmappedCount = unmappedProducts.Count;
+                decimal mappingRate = originalCount > 0 ? (decimal)mappedCount / originalCount * 100 : 0;
 
                 // 构建推送统计信息
                 string pushStats = $"SKU推送：{batches.Count - skuFailCount}/{batches.Count}";
@@ -231,17 +225,19 @@ namespace HouseServices
                 pushStats += $"\r\n价格推送：{batches.Count - priceFailCount}/{batches.Count}";
                 if (priceFailCount > 0) pushStats += $"（失败{priceFailCount}批）";
 
-                var mappedMaltProduct = groupedData.Where(x => x.MappedCount > 1).ToArray(); 
-                string oneToMultInfo = mappedMaltProduct.Count() > 0 ?
-                    $"一对多映射商品数：{mappedMaltProduct.Count()}\r\n\t{string.Join("\r\n\t", mappedMaltProduct.Select(x => x.TuhuCode + "\r\n\t\t" + x.ProductCodes))}" : "";
-                string unmappedInfo = unmappedCount > 0 ? $"未映射商品数：{unmappedCount}\r\n\t{string.Join("\r\n\t", unmappedProducts)}" : "";
+                string unmappedInfo = unmappedCount > 0 ? $"未映射商品数：{unmappedCount}，未映射编码：{string.Join(",", unmappedProducts)}" : "";
+
+                // 判断日志级别
+                if (skuFailCount > 0 || stockFailCount > 0 || priceFailCount > 0 || unmappedCount > 0)
+                {
+                    log.Status = "2"; // 部分成功/警告
+                }
 
                 log.Memo = $"途虎商品全量同步完成 | 耗时{elapsed:F1}秒\r\n" +
-                          $"统计：配置获取原始数据{originalCount}条 → 途虎编码映射后{mappedProducts.Count()}条 => 途虎编码1对多分组后{mappedCount}条\r\n" +
-                          (skuDelAllRes != null ? "删除商品响应：" + skuDelAllRes : "") +
+                          $"统计：原始{originalCount}条 → 分组后{mappedCount}条 | 映射覆盖率{mappingRate:F1}%\r\n" +
                           $"{pushStats}\r\n" +
-                          $"{oneToMultInfo}\r\n" +
-                          $"{unmappedInfo}\r\n";
+                          $"{unmappedInfo}\r\n" +
+                          $"删除商品响应：{skuDelAllRes}";
 
                 logbus.InsertLog(log);
                 LogHelper.WriteLog("途虎商品全量同步成功");
@@ -299,17 +295,14 @@ namespace HouseServices
             log.Operate = "A";
 
             //获取途虎Url连接信息
-            string tuhuUrl = TuhuConfig.Prod.Url;
-            string authCode = TuhuConfig.Prod.AuthCode;
+            string tuhuUrl = TuhuConfig.Test.Url;
 
             LogBus logbus = new LogBus();
             CargoInterfaceBus bus = new CargoInterfaceBus();
             // 记录途虎响应信息
-            List<string> skuPushResList = new List<string>();
             List<string> pushStockResList = new List<string>();
             List<string> pushPriceResList = new List<string>();
             // 记录请求body（增量同步数据少，记录完整请求）
-            List<TuhuPushDto> skuRequestBodies = new List<TuhuPushDto>();
             List<TuhuPushDto> stockRequestBodies = new List<TuhuPushDto>();
             List<TuhuPushDto> priceRequestBodies = new List<TuhuPushDto>();
             try
@@ -333,12 +326,12 @@ namespace HouseServices
                 var productCodes = dict.Values.ToArray();
                 if(filterBrandIDs.Length == 0 || filterHouseIDs.Length == 0)
                 {
+                    log.Status = "2"; // 警告状态
                     log.Memo = $"没有有效的品牌或仓库。\r\n" + JSON.Encode(dict);
                     logbus.InsertLog(log);
                     RedisHelper.HashDeleteAll("TuhuStockSyc");
                     return;
                 }
-                int redisCount = dict.Values.Count();
 
                 stage = "查询商品数据";
                 var prductData = bus.QueryTuhuStockData(filterBrandIDs, filterHouseIDs, productCodes);
@@ -351,25 +344,18 @@ namespace HouseServices
                 // 构建通用头
                 var comheaders = TuhuHandle.BuildHeaders();
 
-                stage = "过滤获取有映射的商品";
-                var mappedProducts = prductData
-                    .Where(x => tuhuCodeMaps.ContainsKey(x.ProductCode)); // 只处理有映射的商品
-
                 stage = "构建分组数据";
                 // 根据 TuhuCode 分组，汇总库存，拼接 ProductCodes
-
-                var groupedData = mappedProducts
+                var groupedData = prductData
+                    .Where(x => tuhuCodeMaps.ContainsKey(x.ProductCode)) // 只处理有映射的商品
                     .GroupBy(x => tuhuCodeMaps[x.ProductCode]) // 按 TuhuCode 分组
                     .Select(g => new
                     {
                         TuhuCode = g.Key,
                         ProductCodes = string.Join(",", g.Select(x => x.ProductCode)),
-                        MappedCount = g.Count(),
                         Piece = g.Sum(x => x.Piece),
-                        g.First().SalePrice,
-                        g.First().ProductName,
-                        FirstPorductCode = g.First().ProductCode,
-                        FirstProduct = g.First() // 用于获取其他商品信息
+                        SalePrice = g.First().SalePrice,
+                        FirstPorductCode = g.First().ProductCode
                     })
                     .ToList();
 
@@ -380,8 +366,8 @@ namespace HouseServices
                     .ToList();
                 if (groupedData.Count == 0 && unmappedProducts.Count > 0)
                 {
+                    log.Status = "2"; // 警告状态
                     log.Memo = $"没有有效的映射可同步商品数据\r\n未映射商品数：{unmappedProducts.Count}\r\n未映射编码：{string.Join(",", unmappedProducts)}\r\n数据：{JSON.Encode(new { groupedData, unmappedProducts })}";
-                    RedisHelper.HashDeleteAll("TuhuStockSyc");
                     logbus.InsertLog(log);
                     return;
                 }
@@ -395,56 +381,19 @@ namespace HouseServices
                     .ToList();
 
                 int batchIndex = 0;
-                int skuFailCount = 0, stockFailCount = 0, priceFailCount = 0;
+                int stockFailCount = 0, priceFailCount = 0;
 
                 foreach (var batch in batches)
                 {
                     batchIndex++;
 
-                    stage = "推送商品信息";
-                    // 1. 推送商品信息
-                    var tuhuPushSkuBody = new TuhuPushDto()
-                    {
-                        platform = TuhuConfig.Platform,
-                        authCode = authCode,
-                        skuInfos = batch.Select(x => new Tuhu_Sku
-                        {
-                            version = 1,
-                            erpSkuCode = x.TuhuCode,
-                            tuhuSkuCode = x.TuhuCode,
-                            ProductCode = x.FirstPorductCode,
-                            ProductName = x.ProductName,
-                            ProductCodes = x.ProductCodes,
-                            GoodsCode = x.FirstProduct.GoodsCode,
-                            TypeID = x.FirstProduct.TypeID,
-                            TypeName = x.FirstProduct.TypeName,
-                            Model = x.FirstProduct.Model,
-                            Specs = x.FirstProduct.Specs,
-                            Figure = x.FirstProduct.Figure,
-                            HubDiameter = x.FirstProduct.HubDiameter,
-                            LoadIndex = x.FirstProduct.LoadIndex,
-                            SpeedLevel = x.FirstProduct.SpeedLevel,
-                            Born = x.FirstProduct.Born
-                        }).ToList()
-                    };
-                    skuRequestBodies.Add(tuhuPushSkuBody); // 记录请求body
-
-                    RateLimiter.Wait();
-                    var skuRes = TuhuHandle.PostJson(
-                        tuhuUrl + TuhuConfig.UrlPushSku,
-                        tuhuPushSkuBody,
-                        comheaders
-                    );
-                    skuPushResList.Add(skuRes);
-                    if (!IsSuccessResponse(skuRes)) skuFailCount++;
-
                     stage = "推送库存信息";
-                    // 2. 推送库存
+                    // 推送库存
                     RateLimiter.Wait();
                     var tuhuPushStockBody = new TuhuPushDto()
                     {
                         platform = TuhuConfig.Platform,
-                        authCode = authCode,
+                        authCode = TuhuConfig.Test.AuthCode,
                         stockInfos = batch.Select(x => new Tuhu_Stock
                         {
                             version = 1,
@@ -455,7 +404,7 @@ namespace HouseServices
                     };
                     stockRequestBodies.Add(tuhuPushStockBody); // 记录请求body
                     var stockRes = TuhuHandle.PostJson(
-                        tuhuUrl + TuhuConfig.UrlPushStock,
+                        TuhuConfig.Test.Url + TuhuConfig.UrlPushStock,
                         tuhuPushStockBody,
                         comheaders
                     );
@@ -463,12 +412,12 @@ namespace HouseServices
                     if (!IsSuccessResponse(stockRes)) stockFailCount++;
 
                     stage = "推送价格信息";
-                    // 3. 推送价格
+                    // 推送价格
                     RateLimiter.Wait();
                     var tuhuPushPriceBody = new TuhuPushDto()
                     {
                         platform = TuhuConfig.Platform,
-                        authCode = authCode,
+                        authCode = TuhuConfig.Test.AuthCode,
                         priceInfos = batch.Select(x => new Tuhu_Price
                         {
                             version = 1,
@@ -478,7 +427,7 @@ namespace HouseServices
                     };
                     priceRequestBodies.Add(tuhuPushPriceBody); // 记录请求body
                     var priceRes = TuhuHandle.PostJson(
-                        tuhuUrl + TuhuConfig.UrlPushPrice,
+                        TuhuConfig.Test.Url + TuhuConfig.UrlPushPrice,
                         tuhuPushPriceBody,
                         comheaders
                     );
@@ -491,32 +440,30 @@ namespace HouseServices
                 var elapsed = (DateTime.Now - startTime).TotalSeconds;
                 int mappedCount = groupedData.Count;
                 int unmappedCount = unmappedProducts.Count;
+                decimal mappingRate = originalCount > 0 ? (decimal)mappedCount / originalCount * 100 : 0;
 
                 // 构建推送统计信息
-                string pushStats = $"SKU推送：{batches.Count - skuFailCount}/{batches.Count}";
-                if (skuFailCount > 0) pushStats += $"（失败{skuFailCount}批）";
-                pushStats += $"\r\n库存推送：{batches.Count - stockFailCount}/{batches.Count}";
+                string pushStats = $"库存推送：{batches.Count - stockFailCount}/{batches.Count}";
                 if (stockFailCount > 0) pushStats += $"（失败{stockFailCount}批）";
                 pushStats += $"\r\n价格推送：{batches.Count - priceFailCount}/{batches.Count}";
                 if (priceFailCount > 0) pushStats += $"（失败{priceFailCount}批）";
 
-                var mappedMaltProduct = groupedData.Where(x => x.MappedCount > 1).ToArray();
-                string oneToMultInfo = mappedMaltProduct.Count() > 0 ?
-                    $"一对多映射商品数：{mappedMaltProduct.Count()}\r\n\t{string.Join("\r\n\t", mappedMaltProduct.Select(x => x.TuhuCode + "\r\n\t\t" + x.ProductCodes))}" : "";
-                string unmappedInfo = unmappedCount > 0 ? $"未映射商品数：{unmappedCount}\r\n\t {string.Join("\r\n\t", unmappedProducts)}" : "";
+                string unmappedInfo = unmappedCount > 0 ? $"未映射商品数：{unmappedCount}，未映射编码：{string.Join(",", unmappedProducts)}" : "";
 
                 // 序列化请求body
-                string skuRequestJson = JsonConvert.SerializeObject(skuRequestBodies, Formatting.Indented);
                 string stockRequestJson = JsonConvert.SerializeObject(stockRequestBodies, Formatting.Indented);
                 string priceRequestJson = JsonConvert.SerializeObject(priceRequestBodies, Formatting.Indented);
 
+                // 判断日志级别
+                if (stockFailCount > 0 || priceFailCount > 0 || unmappedCount > 0)
+                {
+                    log.Status = "2"; // 部分成功/警告
+                }
 
                 log.Memo = $"途虎商品库存增量同步完成 | 耗时{elapsed:F1}秒\r\n" +
-                          $"统计：原始Redis{redisCount}条 → 过滤后{originalCount}条 → 映射后{mappedProducts.Count()}条 => 分组后{mappedCount}条\r\n" +
+                          $"统计：原始{originalCount}条 → 分组后{mappedCount}条 | 映射覆盖率{mappingRate:F1}%\r\n" +
                           $"{pushStats}\r\n" +
-                          $"{oneToMultInfo}\r\n" +
                           $"{unmappedInfo}\r\n" +
-                          $"=== 商品推送请求Body ===\r\n{skuRequestJson}\r\n" +
                           $"=== 库存推送请求Body ===\r\n{stockRequestJson}\r\n" +
                           $"=== 价格推送请求Body ===\r\n{priceRequestJson}";
 
@@ -529,7 +476,6 @@ namespace HouseServices
                 var elapsed = (DateTime.Now - startTime).TotalSeconds;
                 log.Status = "1";
                 log.Memo = $"途虎商品库存增量同步失败 | 失败阶段：{stage} | 耗时{elapsed:F1}秒\r\n" +
-                          $"SKU响应：{string.Join(",", skuPushResList)}\r\n" +
                           $"库存响应：{string.Join(",", pushStockResList)}\r\n" +
                           $"价格响应：{string.Join(",", pushPriceResList)}\r\n" +
                           $"异常详情：{ex.FormatErr()}";
@@ -570,12 +516,12 @@ namespace HouseServices
             string nonceStr = Guid.NewGuid().ToString("N");
 
             string sign = Sha256(
-                $"appId={TuhuConfig.Prod.AppId}&nonceStr={nonceStr}&signType=sha256&timestamp={timestampMs}{TuhuConfig.Prod.AppSecret}"
+                $"appId={TuhuConfig.Test.AppId}&nonceStr={nonceStr}&signType=sha256&timestamp={timestampMs}{TuhuConfig.Test.AppSecret}"
             );
 
             return new Dictionary<string, string>
             {
-                ["appid"] = TuhuConfig.Prod.AppId,
+                ["appid"] = TuhuConfig.Test.AppId,
                 ["noncestr"] = nonceStr,
                 ["signType"] = "sha256",
                 ["sign"] = sign,
