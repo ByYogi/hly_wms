@@ -83,6 +83,7 @@ namespace HouseServices
             System.Timers.Timer TuhuFullSyncTime = new System.Timers.Timer();
             System.Timers.Timer TuhuIncrementalSyncTime = new System.Timers.Timer();
             System.Timers.Timer TianmaoSyncTime = new System.Timers.Timer();
+            System.Timers.Timer TianmaoSyncTimeV2 = new System.Timers.Timer();
             System.Timers.Timer CassMallSyncTime = new System.Timers.Timer();
 
             //马牌订单和库存同步接口定时器
@@ -167,6 +168,11 @@ namespace HouseServices
             TianmaoSyncTime.Elapsed += TmallInventorySync; //全量同步
             TianmaoSyncTime.Interval = 60 * 60 * 1000;//1小时跳动一次 测试阶段
             TianmaoSyncTime.Enabled = true;
+
+            //天猫商品发货
+            TianmaoSyncTimeV2.Elapsed += SendDeliveryNotice_Tmall; //
+            TianmaoSyncTimeV2.Interval = 5 * 60 * 1000;//5分钟跳动一次 测试阶段
+            TianmaoSyncTimeV2.Enabled = true;
 
 
             //开思发货通知
@@ -598,6 +604,8 @@ namespace HouseServices
             log.UserID = RobotID;
             log.Operate = "A";
 
+            ErrMessage msg = new ErrMessage(); msg.Message = "";
+            msg.Result = true;
             CargoInterfaceBus bus = new CargoInterfaceBus();
             CargoOrderBus orderBus = new CargoOrderBus();
             CargoHouseBus house = new CargoHouseBus();
@@ -662,12 +670,14 @@ namespace HouseServices
                     {
                         IsAllTrue = false;
                         LogHelper.WriteLog(Convert.ToString(row["ProductCode"]) + "商品库存不足");
+                        msg.Result = false;
                         continue;
                     }
                     if (stockList.Sum(c => c.StockNum) < piece)
                     {
                         IsAllTrue = false;
                         LogHelper.WriteLog(Convert.ToString(row["ProductCode"]) + "商品库存不足");
+                        msg.Result = false;
                         continue;
                     }
                     IsAllTrue = true;
@@ -702,12 +712,14 @@ namespace HouseServices
                     if (stockList.Count <= 0)
                     {
                         LogHelper.WriteLog("商品库存不足");
+                        msg.Result = false;
                         continue;
                     }
                     if (stockList.Sum(c => c.StockNum) < piece)
                     {
                         LogHelper.WriteLog("商品库存不足");
                         //LogHelper.WriteLog(productBasic[0].Specs + " " + productBasic[0].Figure + "库存不足");
+                        msg.Result = false;
                         continue;
                     }
                     //减库存规则，一周期早的先出先进先出，二数量和库存数刚好一样的先出
@@ -830,71 +842,73 @@ namespace HouseServices
 
 
                 ent.goodsList = entDest;
+                if (msg.Result) {
+                    //保存生成仓库出库订单
+                    orderBus.AddOrderInfo(ent, outHouseList, log);
 
-                //保存生成仓库出库订单
-                orderBus.AddOrderInfo(ent, outHouseList, log);
+                    #region 推送好来运系统
 
-                #region 推送好来运系统
-
-                if (ent.HouseID.Equals(93))
-                {
-                    //内部订单 || ent.HouseID.Equals(98)
-                    orderBus.SaveHlyOrderData(outHouseList, ent);
-                }
-                else
-                {
-                    orderBus.InsertCargoOrderPush(new CargoOrderPushEntity
+                    if (ent.HouseID.Equals(93))
                     {
-                        OrderNo = ent.OrderNo,
-                        Dep = ent.Dep,
-                        Dest = ent.Dest,
-                        Piece = ent.Piece,
-                        TransportFee = ent.TransportFee,
-                        ClientNum = ent.ClientNum.ToString(),
-                        AcceptAddress = ent.AcceptAddress,
-                        AcceptCellphone = ent.AcceptCellphone,
-                        AcceptTelephone = ent.AcceptTelephone,
-                        AcceptPeople = ent.AcceptPeople,
-                        AcceptUnit = ent.AcceptUnit,
-                        HouseID = ent.HouseID.ToString(),
-                        HouseName = ent.OutHouseName,
-                        OP_ID = RobotID,
-                        PushType = "0",
-                        PushStatus = "0",
-                        LogisID = houseEnt.HouseID.Equals(97) || houseEnt.HouseID.Equals(95) || houseEnt.HouseID.Equals(101) ? 62 : houseEnt.HouseID.Equals(136) ? 383 : 34
-                    }, log);
+                        //内部订单 || ent.HouseID.Equals(98)
+                        orderBus.SaveHlyOrderData(outHouseList, ent);
+                    }
+                    else
+                    {
+                        orderBus.InsertCargoOrderPush(new CargoOrderPushEntity
+                        {
+                            OrderNo = ent.OrderNo,
+                            Dep = ent.Dep,
+                            Dest = ent.Dest,
+                            Piece = ent.Piece,
+                            TransportFee = ent.TransportFee,
+                            ClientNum = ent.ClientNum.ToString(),
+                            AcceptAddress = ent.AcceptAddress,
+                            AcceptCellphone = ent.AcceptCellphone,
+                            AcceptTelephone = ent.AcceptTelephone,
+                            AcceptPeople = ent.AcceptPeople,
+                            AcceptUnit = ent.AcceptUnit,
+                            HouseID = ent.HouseID.ToString(),
+                            HouseName = ent.OutHouseName,
+                            OP_ID = RobotID,
+                            PushType = "0",
+                            PushStatus = "0",
+                            LogisID = houseEnt.HouseID.Equals(97) || houseEnt.HouseID.Equals(95) || houseEnt.HouseID.Equals(101) ? 62 : houseEnt.HouseID.Equals(136) ? 383 : 34
+                        }, log);
+
+                    }
+
+                    #endregion
+
+                    //更新原仓库订单的关联订单
+                    bus.UpdateOrderOpenNo(new CargoOrderEntity { HouseID = oriHouseID, OrderNo = oriOrderNo, OpenOrderNo = ent.OrderNo });
+
+                    //删除已经保存订单成功的Key
+                    RedisHelper.HashDelete("NextDayOrderShareSync", key);
+                    LogHelper.WriteLog("订单：" + oriOrderNo + "保存成功");
+
+
+                    #region 次日达订单推送
+                    //CargoHouseEntity houseEnt = house.QueryCargoHouseByID(ord.HouseID);
+                    string fkfs = ent.CheckOutType.Equals("3") ? "货到付款" : ent.CheckOutType.Equals("10") ? "预付款" : "现付";
+                    string shf = "次日达";
+                    string tit = "次日达";
+                    QySendInfoEntity send = new QySendInfoEntity();
+                    send.title = tit + " 有新订单";
+                    //推送给提交人
+                    send.msgType = msgType.textcard;
+                    send.agentID = "1000003";//消息通知的应用
+                    send.AgentSecret = "VkkRCESh5hxT8FStrYa0jWjIg0ux--M670SoFFyuimM";
+                    //send.toUser = qup.ApplyID;<div>订单金额：" + ord.TotalCharge.ToString("F2") + "</div>
+                    send.toTag = houseEnt.HCYCOrderPushTagID.ToString();
+                    //send.toTag = "19";
+                    send.content = "<div></div><div>出库仓库：" + houseEnt.Name + "-出库" + "</div><div>商城订单号：" + ent.WXOrderNo + "</div><div>出库订单号：" + ent.OrderNo + "</div><div>订单数量：" + ent.Piece.ToString() + "</div><div>订单金额：" + ent.TotalCharge.ToString("F2") + "</div><div>货物信息：" + outHouseList.FirstOrDefault().GoodsName + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>门店名称：" + ent.AcceptUnit + "</div><div>收货信息：" + ent.AcceptPeople + " " + ent.AcceptCellphone + "</div><div>收货地址：" + ent.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
+                    send.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + ent.OrderNo;
+                    LogHelper.WriteLog("次日达订单通知：" + send.content);
+                    WXQYSendHelper.DLTQYPushInfo(send);
+                    #endregion
 
                 }
-
-                #endregion
-
-                //更新原仓库订单的关联订单
-                bus.UpdateOrderOpenNo(new CargoOrderEntity { HouseID = oriHouseID, OrderNo = oriOrderNo, OpenOrderNo = ent.OrderNo });
-
-                //删除已经保存订单成功的Key
-                RedisHelper.HashDelete("NextDayOrderShareSync", key);
-                LogHelper.WriteLog("订单：" + oriOrderNo + "保存成功");
-
-
-                #region 次日达订单推送
-                //CargoHouseEntity houseEnt = house.QueryCargoHouseByID(ord.HouseID);
-                string fkfs = ent.CheckOutType.Equals("3") ? "货到付款" : ent.CheckOutType.Equals("10") ? "预付款" : "现付";
-                string shf = "次日达";
-                string tit = "次日达";
-                QySendInfoEntity send = new QySendInfoEntity();
-                send.title = tit + " 有新订单";
-                //推送给提交人
-                send.msgType = msgType.textcard;
-                send.agentID = "1000003";//消息通知的应用
-                send.AgentSecret = "VkkRCESh5hxT8FStrYa0jWjIg0ux--M670SoFFyuimM";
-                //send.toUser = qup.ApplyID;<div>订单金额：" + ord.TotalCharge.ToString("F2") + "</div>
-                send.toTag = houseEnt.HCYCOrderPushTagID.ToString();
-                //send.toTag = "19";
-                send.content = "<div></div><div>出库仓库：" + houseEnt.Name + "-出库" + "</div><div>商城订单号：" + ent.WXOrderNo + "</div><div>出库订单号：" + ent.OrderNo + "</div><div>订单数量：" + ent.Piece.ToString() + "</div><div>订单金额：" + ent.TotalCharge.ToString("F2") + "</div><div>货物信息：" + outHouseList.FirstOrDefault().GoodsName + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>门店名称：" + ent.AcceptUnit + "</div><div>收货信息：" + ent.AcceptPeople + " " + ent.AcceptCellphone + "</div><div>收货地址：" + ent.AcceptAddress + "</div><div>请仓管人员留意尽快出库！</div>";
-                send.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + ent.OrderNo;
-                LogHelper.WriteLog("次日达订单通知：" + send.content);
-                WXQYSendHelper.DLTQYPushInfo(send);
-                #endregion
 
             }
             #endregion
@@ -8438,6 +8452,126 @@ namespace HouseServices
             {
                 log.Status = "1";
                 log.Memo = $@"{currTIme}:天猫同步异常:" + ex.ToString();
+                logbus.InsertLog(log);
+
+                // logBus.SaveLog(log);
+            }
+        }
+
+        private void SendDeliveryNotice_Tmall(object sender, ElapsedEventArgs e)
+        {
+            // 配置参数
+            const string APP_KEY = "2025120243201";
+            const string APP_SECRET = "1d6c1fb8c356b5b405c674f4c572426d57362a9b";
+            const string API_URL = "https://opensandbox.tmallyc.com/api/scfgoods/ycCloudOutboundFacade/stockOutByOriginNo";
+            const int BATCH_DELAY_MS = 1500;
+
+            LogEntity log = new LogEntity();
+            log.IPAddress = "";
+            log.Moudle = "服务管理";
+            log.Status = "0";
+            log.NvgPage = "天猫-发货通知";
+            log.UserID = "2029";
+            log.Operate = "A";
+            var Bus = new CargoOrderBus();
+            LogBus logbus = new LogBus();
+            CargoInterfaceBus nwBus = new CargoInterfaceBus();
+
+            var apiService = new TianMaoApiService(APP_KEY, APP_SECRET, API_URL);
+            try
+            {
+                //获取天猫订单未推送的订单
+                var orderList = Bus.QueryNoDeliveryPushData_Tmall();
+
+                log.Memo = $@"天猫维度出库详情 1：数据列表:{JsonConvert.SerializeObject(orderList)}";
+                logbus.InsertLog(log);
+
+                foreach (var item in orderList)
+                {
+                    log.Status = "0";
+
+                    try
+                    {
+                        // 转换为字典格式
+                        var requestData = new Dictionary<string, string>();
+
+                        // 1. 添加 OutboundDto 基础属性（简单类型）
+                        requestData.Add("outboundContact", item.outboundContact ?? string.Empty);
+                        requestData.Add("originBillNo", item.originBillNo ?? string.Empty);
+                        requestData.Add("idempotentNo", item.idempotentNo ?? string.Empty);
+                        requestData.Add("logisticsNo", item.logisticsNo ?? string.Empty);
+                        requestData.Add("logisticsName", item.logisticsName ?? string.Empty);
+                        // DateTime 格式化：统一为 "yyyy-MM-dd HH:mm:ss" 格式
+                        requestData.Add("outboundTime", item.outboundTime.ToString("yyyy-MM-dd HH:mm:ss"));
+
+                        // 2. 处理嵌套列表：序列化为 JSON 字符串
+                        var detailListJson = Newtonsoft.Json.JsonConvert.SerializeObject(item.outboundDetailList);
+                        requestData.Add("outboundDetailList", detailListJson);
+
+                        requestData.Add("syncType", item.syncType.ToString()); // int 转字符串
+                        requestData.Add("remark", item.remark ?? string.Empty);
+                        requestData.Add("logisticsCode", item.logisticsCode ?? string.Empty);
+                        requestData.Add("outboundContactPhone", item.outboundContactPhone ?? string.Empty);
+
+                        log.Memo = $@"[{item.originBillNo}]天猫维度出库详情 2：已处理待推送的数据:{JsonConvert.SerializeObject(requestData)}";
+                        logbus.InsertLog(log);
+
+                        // 发送请求 {"code":-7001,"msg":"物流单号和发货联系人不能全空","info":null}
+                        string jsonResponse = apiService.SendRequest(requestData);
+
+                        log.Memo = $@"[{item.originBillNo}]天猫维度出库详情 3：天猫返回的数据:{JsonConvert.SerializeObject(requestData)}";
+                        logbus.InsertLog(log);
+
+                        // 判断结果(根据实际API返回调整)
+                        bool isSuccess = !string.IsNullOrEmpty(jsonResponse) && !jsonResponse.Contains("error");
+
+                        if (isSuccess)
+                        {
+                            log.Memo = $@"[{item.originBillNo}]天猫维度出库详情：返回参数:{jsonResponse}";
+                            logbus.InsertLog(log);
+                        }
+                        else
+                        {
+                            log.Status = "1";
+                            log.Memo = $@"[{item.originBillNo}]天猫维度出库失败详情:" + jsonResponse;
+                            logbus.InsertLog(log);
+                        }
+
+                        //回写订单推送状态
+                        Bus.UpdateTMallDeliveryPushStatus(item.originBillNo, "1");
+
+                        // 批次间延迟
+                        System.Threading.Thread.Sleep(BATCH_DELAY_MS);
+                    }
+                    catch (Exception ex)
+                    {
+                        log.Status = "1";
+                        log.Memo = $@"天猫维度出库失败详情:" + ex.ToString();
+                        logbus.InsertLog(log);
+                    }
+                }
+
+            }
+            catch (WebException webEx)
+            {
+                log.Status = "1";
+                log.Memo = $@"天猫HTTP请求异常:" + webEx.Message;
+                logbus.InsertLog(log);
+                if (webEx.Response is HttpWebResponse errorResponse)
+                {
+                    using (errorResponse)
+                    using (var reader = new StreamReader(errorResponse.GetResponseStream()))
+                    {
+                        log.Status = "1";
+                        log.Memo = $@"天猫错误响应:" + reader.ReadToEnd();
+                        logbus.InsertLog(log);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                log.Status = "1";
+                log.Memo = $@"天猫推送异常:" + ex.ToString();
                 logbus.InsertLog(log);
 
                 // logBus.SaveLog(log);

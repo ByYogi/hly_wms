@@ -1438,6 +1438,7 @@ namespace Cargo.Interface
             string Supplier = string.Empty;
             int SuppClientNum = 0;
             string SupplierAddress = string.Empty;
+            string PurchaseSupplier = string.Empty;
             if (!HouseID.Equals(62))
             {
                 CargoFactoryOrderEntity factoryOrderEntity = new CargoFactoryOrderEntity();
@@ -1525,6 +1526,7 @@ namespace Cargo.Interface
                     SuppClientNum = string.IsNullOrEmpty(productUnitPrice.SuppClientNum) ? 0 : Convert.ToInt32(productUnitPrice.SuppClientNum);
                     ProductCode = productUnitPrice.ProductCode;
                     SupplierAddress = productUnitPrice.SupplierAddress;
+                    PurchaseSupplier = productUnitPrice.PurchaseSupplier;
                     //20231011狄乐汽服仓库匹配成本价//供应商进仓来源匹配成本价
                     if (HouseID.Equals(65) || productUnitPrice.Source.Equals(83))
                     {
@@ -1716,7 +1718,7 @@ namespace Cargo.Interface
                     }
                 }
             }
-            inter.scanTagInCargo(new CargoProductEntity { ProductName = ProductName, GoodsCode = GoodsCode, HouseID = HouseID, TypeID = TypeID, Specs = Specs, Figure = Figure, Model = Model, Batch = Batch, ContainerCode = ContainerCode, TagCode = TagCode, BatchYear = bYear, BatchWeek = bWeek, InCargoID = DateTime.Now.ToString("MMdd") + Common.GetRandomSixNum().ToString(), OPID = UserID, LoadIndex = LoadIndex, SpeedLevel = SpeedLevel, Meridian = "R", TreadWidth = TreadWidth, FlatRatio = flatRadio, HubDiameter = HubDiameter, InCargoStatus = "1", InHouseTime = DateTime.Now, OperaType = "1", Born = Born, Assort = Assort, TyreCode = TyreCode, Numbers = Convert.ToInt32(InCargoNum), ParentID = parentID, Source = Source, SourceOrderNo = SourceOrderNo, BelongMonth = BelongMonth, UnitPrice = unitPrice, NextDayPrice = NextDayPrice, WholesalePrice = WholesalePrice, FinalCostPrice = finalCostPrice, CostPrice = costPrice, InHousePrice = InHousePrice, TaxCostPrice = taxCostPrice, NoTaxCostPrice = noTaxCostPrice, TradePrice = tradePrice, SalePrice = salePrice, HLYReturnID = HLYReturnID, BelongDepart = BelongDepart, Company = Company, SpecsType = SpecsType, Supplier = Supplier, SuppClientNum = SuppClientNum, ProductCode = ProductCode, SupplierAddress = SupplierAddress, Package = Package, PackageNum = Convert.ToInt32(PackageNum), GoodsClass = GoodsClass, OwnerShip = cargoFactoryOrder.OwnerShip, TyreModel = TyreModel, QalityRemark = QalityRemark }, log);
+            inter.scanTagInCargo(new CargoProductEntity { ProductName = ProductName, GoodsCode = GoodsCode, HouseID = HouseID, TypeID = TypeID, Specs = Specs, Figure = Figure, Model = Model, Batch = Batch, ContainerCode = ContainerCode, TagCode = TagCode, BatchYear = bYear, BatchWeek = bWeek, InCargoID = DateTime.Now.ToString("MMdd") + Common.GetRandomSixNum().ToString(), OPID = UserID, LoadIndex = LoadIndex, SpeedLevel = SpeedLevel, Meridian = "R", TreadWidth = TreadWidth, FlatRatio = flatRadio, HubDiameter = HubDiameter, InCargoStatus = "1", InHouseTime = DateTime.Now, OperaType = "1", Born = Born, Assort = Assort, TyreCode = TyreCode, Numbers = Convert.ToInt32(InCargoNum), ParentID = parentID, Source = Source, SourceOrderNo = SourceOrderNo, BelongMonth = BelongMonth, UnitPrice = unitPrice, NextDayPrice = NextDayPrice, WholesalePrice = WholesalePrice, FinalCostPrice = finalCostPrice, CostPrice = costPrice, InHousePrice = InHousePrice, TaxCostPrice = taxCostPrice, NoTaxCostPrice = noTaxCostPrice, TradePrice = tradePrice, SalePrice = salePrice, HLYReturnID = HLYReturnID, BelongDepart = BelongDepart, Company = Company, SpecsType = SpecsType, Supplier = Supplier, SuppClientNum = SuppClientNum, ProductCode = ProductCode, SupplierAddress = SupplierAddress, Package = Package, PackageNum = Convert.ToInt32(PackageNum), GoodsClass = GoodsClass, OwnerShip = cargoFactoryOrder.OwnerShip, TyreModel = TyreModel, QalityRemark = QalityRemark, PurchaseSupplier = PurchaseSupplier }, log);
 
         ERR:
             //JSON  

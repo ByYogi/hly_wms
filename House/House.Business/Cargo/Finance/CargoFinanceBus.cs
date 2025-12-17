@@ -1690,7 +1690,7 @@ namespace House.Business.Cargo
                     if (!string.IsNullOrEmpty(entity.OpenOrderAwbStatus)) openOrderAwbStatus = Convert.ToInt32(entity.OpenOrderAwbStatus);
                     var AwbStatus = orderAwbStatus >= 2 || openOrderAwbStatus >= 2;
 
-                    if ((entity.ThrowGood == "23" && !AwbStatus) || (entity.ThrowGood == "22" && wXOrder.OrderStatus == "0"))//订单未出库 
+                    if ((entity.ThrowGood == "23" && !AwbStatus) || (entity.ThrowGood == "22" && wXOrder.OrderStatus == "0") || (entity.ThrowGood == "26" && wXOrder.OrderStatus == "0"))//订单未出库 
                     {
                         //1、已支付未出库-【删除仓库出库订单】并审核通过
                         busOrder.DeleteOrderInfo(new List<CargoOrderEntity>() { new CargoOrderEntity { OrderNo = entity.CargoOrderNo, OrderID = entity.OrderID, DeleteID = "2029", DeleteName = "机器人" } }, log);

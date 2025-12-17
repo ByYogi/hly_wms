@@ -1183,7 +1183,7 @@
                 <td class="AcceptUnit">
                     <input id="AcceptUnit" class="easyui-textbox" data-options="prompt:'请输入客户名称'" style="width: 100px" />
                 </td>
-                 <td style="text-align: right;">店代码:
+                <td style="text-align: right;">店代码:
                 </td>
                 <td>
                     <input id="shopCode" class="easyui-textbox" data-options="prompt:'请输入店代码'" style="width: 100px" />
@@ -1193,7 +1193,7 @@
                 <td class="ACreateAwb">
                     <input id="ACreateAwb" class="easyui-textbox" data-options="prompt:'请输入开单员'" style="width: 100px" />
                 </td>
-                 <td class="AHAwbNo" style="text-align: right;">副单号码:
+                <td class="AHAwbNo" style="text-align: right;">副单号码:
                 </td>
                 <td class="AHAwbNo">
                     <input id="AHAwbNo" class="easyui-textbox" data-options="prompt:'请输入副单号码(发票号)'" style="width: 100px" />
@@ -1731,6 +1731,153 @@
                                 <option value="德邦快递">德邦快递</option>
                                 <option value="达达快递">达达快递</option>
                                 <option value="跨越速运">跨越速运</option>
+                                <option value="BESTQJT">百世快运</option>
+                                <option value="ESB">E速宝</option>
+                                <option value="LTS">联昊通</option>
+                                <option value="DBL">德邦物流</option>
+                                <option value="POSTB">邮政快递包裹</option>
+                                <option value="XFWL">信丰物流</option>
+                                <option value="EYB">邮政电商标快EYB</option>
+                                <option value="XB">新邦物流</option>
+                                <option value="LB">龙邦速递</option>
+                                <option value="BEST">百世物流</option>
+                                <option value="HOAU">天地华宇</option>
+                                <option value="UAPEX">全一快递</option>
+                                <option value="SHQ">华强物流</option>
+                                <option value="FEDEX">联邦快递</option>
+                                <option value="SURE">速尔快运</option>
+                                <option value="FAST">快捷快递</option>
+                                <option value="GTO">国通快递</option>
+                                <option value="ZTO">中通快递</option>
+                                <option value="DBKD">德邦快递</option>
+                                <option value="UC">优速快递</option>
+                                <option value="QFKD">全峰快递</option>
+                                <option value="TTKDEX">天天快递</option>
+                                <option value="YTO">圆通速递</option>
+                                <option value="HTKY">极兔速递</option>
+                                <option value="YUNDA">韵达快递</option>
+                                <option value="EMS">EMS</option>
+                                <option value="STO">申通快递</option>
+                                <option value="SF">顺丰速运</option>
+                                <option value="ZJS">宅急送</option>
+                                <option value="BHWL">保宏物流</option>
+                                <option value="MGSD">美国速递</option>
+                                <option value="UNIPS">发网</option>
+                                <option value="DFH">东方汇</option>
+                                <option value="YC">远长</option>
+                                <option value="DISTRIBUTOR_13484485">顺心捷达</option>
+                                <option value="DISTRIBUTOR_1710055">邮政标准快递</option>
+                                <option value="GZLT">飞远配送</option>
+                                <option value="WND">WnDirect</option>
+                                <option value="DISTRIBUTOR_30292473">大食品商家自配</option>
+                                <option value="DISTRIBUTOR_30464910">丰网速运</option>
+                                <option value="DISTRIBUTOR_13159132">菜鸟大件-日日顺配</option>
+                                <option value="DISTRIBUTOR_13148625">菜鸟大件-中铁配</option>
+                                <option value="PKGJWL">派易国际物流77</option>
+                                <option value="DISTRIBUTOR_13222803">中通快运</option>
+                                <option value="DISTRIBUTOR_30493846">平安达腾飞快递</option>
+                                <option value="DISTRIBUTOR_13211725">跨越速运</option>
+                                <option value="YUD">长发</option>
+                                <option value="DTW">大田</option>
+                                <option value="CYEXP">长宇</option>
+                                <option value="POST">中国邮政</option>
+                                <option value="HQSY">环球速运</option>
+                                <option value="YTKD">运通快递</option>
+                                <option value="ZTKY01">中铁快运</option>
+                                <option value="SHWL">盛辉物流</option>
+                                <option value="LHT">联昊通速递</option>
+                                <option value="CJKD">城际快递</option>
+                                <option value="ZY_MZ">168 美中快递</option>
+                                <option value="CFWL">春风物流</option>
+                                <option value="HF">汇丰物流</option>
+                                <option value="CHTWL">诚通物流</option>
+                                <option value="CSTD">畅顺通达</option>
+                                <option value="CITY100">城市100</option>
+                                <option value="BNTWL">奔腾物流</option>
+                                <option value="ANEKY">安能快运</option>
+                                <option value="AYCA">澳邮专线</option>
+                                <option value="BETWL">百腾物流</option>
+                                <option value="LJS">立即送</option>
+                                <option value="CTG">联合运通</option>
+                                <option value="ZY_XDKD">迅达快递</option>
+                                <option value="STWL">速腾快递</option>
+                                <option value="ALKJWL">阿里跨境电商物流</option>
+                                <option value="SFGJ">顺丰国际</option>
+                                <option value="JYM">加运美</option>
+                                <option value="ETONG">E通速递</option>
+                                <option value="ZY_HTONG">华通快运</option>
+                                <option value="XIAOBI">晓毕物流</option>
+                                <option value="JD">京东快递</option>
+                                <option value="HTB56">徽托邦物流</option>
+                                <option value="YLFWL">一路发物流</option>
+                                <option value="ZTWY">中天万运</option>
+                                <option value="ST">速通物流</option>
+                                <option value="BFAY">八方安运</option>
+                                <option value="BDT">八达通</option>
+                                <option value="ESDEX">卓志速运</option>
+                                <option value="ZY_TZKD">天泽快递</option>
+                                <option value="ANNTO">安得物流</option>
+                                <option value="MLWL">明亮物流</option>
+                                <option value="TJS">特急送</option>
+                                <option value="RQ">荣庆物流</option>
+                                <option value="MDM">门对门快递</option>
+                                <option value="HRWL01">韩润物流</option>
+                                <option value="HTWL">鸿泰物流</option>
+                                <option value="WJWL">万家物流</option>
+                                <option value="ZTWL">中铁物流</option>
+                                <option value="HDKD">汇达快递</option>
+                                <option value="AJ">安捷快递</option>
+                                <option value="AX">安迅物流</option>
+                                <option value="YD">韵达速递</option>
+                                <option value="YJWL">云聚物流</option>
+                                <option value="ZY_XGX">新干线快递</option>
+                                <option value="CBO">CBO钏博物流</option>
+                                <option value="CNPEX">CNPEX中邮快递</option>
+                                <option value="DSWL">D速物流</option>
+                                <option value="ZY_ETD">ETD</option>
+                                <option value="ZY_TPAK">TrakPak</option>
+                                <option value="YZTSY">一站通速运</option>
+                                <option value="YTFH">一统飞鸿</option>
+                                <option value="STSD">三态速递</option>
+                                <option value="SDWL">上大物流</option>
+                                <option value="ZYKD">中邮快递</option>
+                                <option value="AMAZON">亚马逊物流</option>
+                                <option value="JGSD">京广速递</option>
+                                <option value="YLSY">亿领速运</option>
+                                <option value="ZY_XDSY">信达速运</option>
+                                <option value="GSD">共速达</option>
+                                <option value="GD">冠达</option>
+                                <option value="BJXKY">北极星快运</option>
+                                <option value="HXLWL">华夏龙物流</option>
+                                <option value="DML">大马鹿</option>
+                                <option value="ZY_TTHT">天天海淘</option>
+                                <option value="HLYSD">好来运快递</option>
+                                <option value="AXD">安鲜达</option>
+                                <option value="KBSY">快8速运</option>
+                                <option value="KFW">快服务</option>
+                                <option value="KTKD">快淘快递</option>
+                                <option value="KSDWL">快速递物流</option>
+                                <option value="HLWL">恒路物流</option>
+                                <option value="CND">承诺达</option>
+                                <option value="JGWL">景光物流</option>
+                                <option value="ZHN">智汇鸟</option>
+                                <option value="TJDGJWL">泰捷达物流</option>
+                                <option value="AUODEXPRESS">澳德物流</option>
+                                <option value="ABGJ">澳邦国际</option>
+                                <option value="BCTWL">百城通物流</option>
+                                <option value="BFDF">百福东方</option>
+                                <option value="JYSY">精英速运</option>
+                                <option value="WPE">维普恩</option>
+                                <option value="YF">耀飞快递</option>
+                                <option value="LHKD">蓝弧快递</option>
+                                <option value="ZY_BYECO">贝易购</option>
+                                <option value="XDEXPRESS">迅达速递</option>
+                                <option value="TYWL01">通用物流</option>
+                                <option value="HTKD">青岛恒通快递</option>
+                                <option value="DNWL">丹鸟物流</option>
+                                <option value="ZMKM">芝麻开门</option>
+                                <option value="KY">跨越速运</option>
+                                <option value="JT">极兔速递</option>
                             </select>
                         </td>
                     </tr>
@@ -2217,7 +2364,7 @@
                 });
             }
         }
-  
+
         //批量打印拣货单
         function massPrintOrder() {
 

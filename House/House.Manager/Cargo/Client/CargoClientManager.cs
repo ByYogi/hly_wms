@@ -5742,7 +5742,7 @@ namespace House.Manager.Cargo
                                 OtherExpensesFee = Convert.ToDecimal(idr["OtherExpensesFee"]),
                                 OtherFee = Convert.ToDecimal(idr["OtherFee"]),
                                 OrderModel = Convert.ToString(idr["OrderModel"]),
-                                //OrderNo = Convert.ToString(idr["AccountNO"]),
+                                OpenOrderNo = Convert.ToString(idr["OpenOrderNo"]),
                                 //OrderNo = Convert.ToString(idr["AccountNO"]),
                                 //OrderNo = Convert.ToString(idr["AccountNO"]),
                             });

@@ -2316,6 +2316,45 @@ group by  orderId
             }
             return result;
         }
+        public List<OrderWayDetail> QueryCassMallWayDetails(OrderHeader entity)
+        {
+            List<OrderWayDetail> result = new List<OrderWayDetail>();
+            try
+            {
+                #region 获取订单明细
+                //string strSQL = @" SELECT TOP " + pNum + "* FROM (SELECT DISTINCT ROW_NUMBER() OVER(ORDER BY a.InCreateStatus asc,a.OPDATE DESC) AS RowNumber,a.*,b.Name as HouseName from dbo.Tbl_Cargo_ContiOrder as a inner join tbl_Cargo_house as b on a.HouseID=b.HouseID WHERE (1=1)";
+                string strSQL = $@" 
+               select * from Tbl_Cargo_CassMallOrderWayDetails 
+                where 1=1 ";
+
+                if (!string.IsNullOrEmpty(entity.OrderId)) { strSQL += $@" and orderId ='{entity.OrderId}'"; }
+                #endregion
+
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    #region 获取数据
+                    using (DataTable dd = conn.ExecuteDataTable(command))
+                    {
+                        Common.Common.ReplaceDBNullWithDefault(dd);
+                        foreach (DataRow idr in dd.Rows)
+                        {
+                            result.Add(new OrderWayDetail
+                            {
+                                OrderId = Convert.ToString(idr["orderId"]),
+                                CompanyId = Convert.ToString(idr["companyId"]),
+                                CompanyName = Convert.ToString(idr["companyName"]),
+                            });
+                        }
+                    }
+                    #endregion
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException(ex.Message);
+            }
+            return result;
+        }
         public List<CargoProductMappingEntity> GetProductMapping(OrderItem entity)
         {
             List<CargoProductMappingEntity> result = new List<CargoProductMappingEntity>();
@@ -3066,6 +3105,7 @@ group by  orderId
 
             // Step 1: 创建临时表（和正式表字段保持一致）
             string createTempTableSql = @"
+            IF OBJECT_ID('tempdb..##TempProducts') IS NOT NULL DROP TABLE ##TempProducts;
             CREATE TABLE ##TempProducts (
                 ProductID BIGINT, Piece INT,
                 Supplier NVARCHAR(100), SuppClientNum INT, SpecsType NVARCHAR(50), ProductCode NVARCHAR(100),
@@ -3972,6 +4012,75 @@ INNER JOIN productPiece pp ON p.ProductID = pp.ProductID
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
             return result;
         }
+
+        public List<CargoTMallEntity> QueryStockTMallData(CargoTMallEntity entity)
+        {
+            List<CargoTMallEntity> result = new List<CargoTMallEntity>();
+            try
+            {
+                string strSQL = $@"
+                    select * from Tbl_Cargo_TMallOrder where isnull(IsDeliveryPush,0)=0 and OutboundNoticeNo='{entity.outboundNoticeNo}'";
+                using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+                {
+                    using (DataTable dt = conn.ExecuteDataTable(command))
+                    {
+                        foreach (DataRow idr in dt.Rows)
+                        {
+                            result.Add(new CargoTMallEntity
+                            {
+                                // ======================================
+                                // long类型（空值默认0）
+                                // ======================================
+                                userId = idr["userId"] != DBNull.Value ? Convert.ToInt64(idr["userId"]) : 0,
+                                consigneeCityId = idr["consigneeCityId"] != DBNull.Value ? Convert.ToInt64(idr["consigneeCityId"]) : 0,
+                                consigneeCountyId = idr["consigneeCountyId"] != DBNull.Value ? Convert.ToInt64(idr["consigneeCountyId"]) : 0,
+                                consigneeProvinceId = idr["consigneeProvinceId"] != DBNull.Value ? Convert.ToInt64(idr["consigneeProvinceId"]) : 0,
+                                id = idr["id"] != DBNull.Value ? Convert.ToInt64(idr["id"]) : 0,
+
+                                // ======================================
+                                // int类型（空值默认0）
+                                // ======================================
+                                originBillFirstChannel = idr["originBillFirstChannel"] != DBNull.Value ? Convert.ToInt32(idr["originBillFirstChannel"]) : 0,
+                                originBillSecondChannel = idr["originBillSecondChannel"] != DBNull.Value ? Convert.ToInt32(idr["originBillSecondChannel"]) : 0,
+                                originBillThirdChannel = idr["originBillThirdChannel"] != DBNull.Value ? Convert.ToInt32(idr["originBillThirdChannel"]) : 0,
+                                isExpressSheetEncrypted = idr["isExpressSheetEncrypted"] != DBNull.Value ? Convert.ToInt32(idr["isExpressSheetEncrypted"]) : 0,
+                                originBillType = idr["originBillType"] != DBNull.Value ? Convert.ToInt32(idr["originBillType"]) : 0,
+                                urgentLevel = idr["urgentLevel"] != DBNull.Value ? Convert.ToInt32(idr["urgentLevel"]) : 0,
+                                isAllowLack = idr["isAllowLack"] != DBNull.Value ? Convert.ToInt32(idr["isAllowLack"]) : 0,
+                                isEncrypted = idr["isEncrypted"] != DBNull.Value ? Convert.ToInt32(idr["isEncrypted"]) : 0,
+
+                                // ======================================
+                                // string类型（无验证，直接转换）
+                                // ======================================
+                                sendType = Convert.ToString(idr["sendType"]),
+                                consigneePhone = Convert.ToString(idr["consigneePhone"]),
+                                extend = Convert.ToString(idr["extend"]),
+                                customerContact = Convert.ToString(idr["customerContact"]),
+                                outboundNoticeNo = Convert.ToString(idr["outboundNoticeNo"]),
+                                originBillNo = Convert.ToString(idr["originBillNo"]),
+                                consigneeProvinceName = Convert.ToString(idr["consigneeProvinceName"]),
+                                consigneeCityName = Convert.ToString(idr["consigneeCityName"]),
+                                consigneeCountyName = Convert.ToString(idr["consigneeCountyName"]),
+                                warehouseCode = Convert.ToString(idr["warehouseCode"]),
+                                saleType = Convert.ToString(idr["saleType"]),
+                                warehouseName = Convert.ToString(idr["warehouseName"]),
+                                thirdWarehouseCode = Convert.ToString(idr["thirdWarehouseCode"]),
+                                buyerRemark = Convert.ToString(idr["buyerRemark"]),
+                                sellerRemark = Convert.ToString(idr["sellerRemark"]),
+                                deliverRemark = Convert.ToString(idr["deliverRemark"]),
+                                aliOaid = Convert.ToString(idr["aliOaid"]),
+                                consigneeContacts = Convert.ToString(idr["consigneeContacts"]),
+                                customerName = Convert.ToString(idr["customerName"]),
+                                consigneeDetail = Convert.ToString(idr["consigneeDetail"]),
+
+                            });
+                        }
+                    }
+                }
+            }
+            catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
+            return result;
+        }
         public void AddTMallDataLog(CargoCassMallEntity entity)
         {
             try
@@ -4049,6 +4158,26 @@ SELECT @@IDENTITY
                 }
 
                 SaveTMallOutHouseGoodsData(entity.noticeDetailLists, cdid);
+            }
+            catch (Exception EX)
+            {
+
+                throw new ApplicationException(EX.Message);
+            }
+
+        }
+        public void DelTmallOrder(operateNoticeSpiPo entity)
+        {
+            try
+            {
+                string strSQL = $@"
+;delete from Tbl_Cargo_TMallOrderGoods where PID in(select a.Id from Tbl_Cargo_TMallOrder as a where a.OutboundNoticeNo='{entity.noticeNo}')
+;delete from Tbl_Cargo_TMallOrder where OutboundNoticeNo='{entity.noticeNo}'
+";
+                using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+                {
+                    conn.ExecuteScalar(cmd);
+                }
             }
             catch (Exception EX)
             {

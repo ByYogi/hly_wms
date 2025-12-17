@@ -6250,6 +6250,7 @@ where a.OpenOrderNo is not null and a.OpenOrderNo <> '' ";
                                 OrderModel = Convert.ToString(idr["OrderModel"]),
                                 OtherExpensesFee = Convert.ToDecimal(idr["OtherExpensesFee"]),
                                 OtherFee = Convert.ToDecimal(idr["OtherFee"]),
+                                OpenOrderNo = Convert.ToString(idr["OpenOrderNo"]),
                             });
                             #endregion
                         }

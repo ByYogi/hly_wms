@@ -1268,12 +1268,12 @@ Values @{tempTblVals}
             string strSQL = String.Empty;
             if (entity.HouseID == 64)
             {
-                strSQL = @"INSERT INTO Tbl_Cargo_FactoryOrder (FacOrderNo,OrderType,HouseID,TypeID,Model,Specs,LoadIndex,SpeedLevel,Figure,GoodsCode,Batch,OrderNum,ReplyNumber,InPiece,InCargoStatus,SalePrice,UnitPrice,CostPrice,TaxCostPrice,NoTaxCostPrice,TradePrice,SaleMoney,ReceiveName,ReceiveCity,ReceiveMobile,BelongMonth,Born,Assort,Source,ProductName,WhetherTax,HLYReturnID,SourceHouse,OP_DATE,OP_Name,BelongDepart,Company,SpecsType,Supplier,SuppClientNum,SupplierAddress,ProductCode,BusinessID,OwnerShip) VALUES (@FacOrderNo,@OrderType,@HouseID,@TypeID,@Model,@Specs,@LoadIndex,@SpeedLevel,@Figure,@GoodsCode,@Batch,@OrderNum,@ReplyNumber,@InPiece,@InCargoStatus,@SalePrice,@UnitPrice,@CostPrice,@TaxCostPrice,@NoTaxCostPrice,
-    @TradePrice,@SaleMoney,@ReceiveName,@ReceiveCity,@ReceiveMobile,@BelongMonth,@Born,@Assort,@Source,@ProductName,@WhetherTax,@HLYReturnID,@SourceHouse,@OP_DATE,@OP_Name,@BelongDepart,@Company,@SpecsType,@Supplier,@SuppClientNum,@SupplierAddress,@ProductCode,@BusinessID,@OwnerShip)";
+                strSQL = @"INSERT INTO Tbl_Cargo_FactoryOrder (FacOrderNo,OrderType,HouseID,TypeID,Model,Specs,LoadIndex,SpeedLevel,Figure,GoodsCode,Batch,OrderNum,ReplyNumber,InPiece,InCargoStatus,SalePrice,UnitPrice,CostPrice,TaxCostPrice,NoTaxCostPrice,TradePrice,SaleMoney,ReceiveName,ReceiveCity,ReceiveMobile,BelongMonth,Born,Assort,Source,ProductName,WhetherTax,HLYReturnID,SourceHouse,OP_DATE,OP_Name,BelongDepart,Company,SpecsType,Supplier,SuppClientNum,SupplierAddress,ProductCode,BusinessID,OwnerShip,PurchaseSupplier) VALUES (@FacOrderNo,@OrderType,@HouseID,@TypeID,@Model,@Specs,@LoadIndex,@SpeedLevel,@Figure,@GoodsCode,@Batch,@OrderNum,@ReplyNumber,@InPiece,@InCargoStatus,@SalePrice,@UnitPrice,@CostPrice,@TaxCostPrice,@NoTaxCostPrice,
+    @TradePrice,@SaleMoney,@ReceiveName,@ReceiveCity,@ReceiveMobile,@BelongMonth,@Born,@Assort,@Source,@ProductName,@WhetherTax,@HLYReturnID,@SourceHouse,@OP_DATE,@OP_Name,@BelongDepart,@Company,@SpecsType,@Supplier,@SuppClientNum,@SupplierAddress,@ProductCode,@BusinessID,@OwnerShip,@PurchaseSupplier)";
             }
             else
             {
-                strSQL = @"INSERT INTO Tbl_Cargo_FactoryOrder (FacOrderNo,OrderType,HouseID,TypeID,Model,Specs,LoadIndex,SpeedLevel,Figure,GoodsCode,Batch,OrderNum,ReplyNumber,InPiece,InCargoStatus,SalePrice,UnitPrice,CostPrice,InHousePrice,TradePrice,SaleMoney,ReceiveName,ReceiveCity,ReceiveMobile,BelongMonth,Born,Assort,Source,ProductName,WhetherTax,HLYReturnID,SourceHouse,OP_DATE,OP_Name,BelongDepart,Company,SpecsType,Supplier,SuppClientNum,SupplierAddress,ProductCode,BusinessID,OwnerShip) VALUES (@FacOrderNo,@OrderType,@HouseID,@TypeID,@Model,@Specs,@LoadIndex,@SpeedLevel,@Figure,@GoodsCode,@Batch,@OrderNum,@ReplyNumber,@InPiece,@InCargoStatus,@SalePrice,@UnitPrice,@CostPrice,@InHousePrice,@TradePrice,@SaleMoney,@ReceiveName,@ReceiveCity,@ReceiveMobile,@BelongMonth,@Born,@Assort,@Source,@ProductName,@WhetherTax,@HLYReturnID,@SourceHouse,@OP_DATE,@OP_Name,@BelongDepart,@Company,@SpecsType,@Supplier,@SuppClientNum,@SupplierAddress,@ProductCode,@BusinessID,@OwnerShip)";
+                strSQL = @"INSERT INTO Tbl_Cargo_FactoryOrder (FacOrderNo,OrderType,HouseID,TypeID,Model,Specs,LoadIndex,SpeedLevel,Figure,GoodsCode,Batch,OrderNum,ReplyNumber,InPiece,InCargoStatus,SalePrice,UnitPrice,CostPrice,InHousePrice,TradePrice,SaleMoney,ReceiveName,ReceiveCity,ReceiveMobile,BelongMonth,Born,Assort,Source,ProductName,WhetherTax,HLYReturnID,SourceHouse,OP_DATE,OP_Name,BelongDepart,Company,SpecsType,Supplier,SuppClientNum,SupplierAddress,ProductCode,BusinessID,OwnerShip,PurchaseSupplier) VALUES (@FacOrderNo,@OrderType,@HouseID,@TypeID,@Model,@Specs,@LoadIndex,@SpeedLevel,@Figure,@GoodsCode,@Batch,@OrderNum,@ReplyNumber,@InPiece,@InCargoStatus,@SalePrice,@UnitPrice,@CostPrice,@InHousePrice,@TradePrice,@SaleMoney,@ReceiveName,@ReceiveCity,@ReceiveMobile,@BelongMonth,@Born,@Assort,@Source,@ProductName,@WhetherTax,@HLYReturnID,@SourceHouse,@OP_DATE,@OP_Name,@BelongDepart,@Company,@SpecsType,@Supplier,@SuppClientNum,@SupplierAddress,@ProductCode,@BusinessID,@OwnerShip,@PurchaseSupplier)";
             }
             try
             {
@@ -1346,6 +1346,7 @@ Values @{tempTblVals}
                     conn.AddInParameter(cmd, "@ProductCode", DbType.String, entity.ProductCode);
                     conn.AddInParameter(cmd, "@OwnerShip", DbType.String, entity.OwnerShip);
                     conn.AddInParameter(cmd, "@BusinessID", DbType.String, string.IsNullOrEmpty(entity.BusinessID) ? "0" : entity.BusinessID);
+                    conn.AddInParameter(cmd, "@PurchaseSupplier", DbType.String, entity.PurchaseSupplier);
                     conn.ExecuteNonQuery(cmd);
                 }
             }
@@ -2288,6 +2289,7 @@ Values @{tempTblVals}
                                 result.SuppClientNum = Convert.ToString(idr["SuppClientNum"]);
                                 result.SupplierAddress = Convert.ToString(idr["SupplierAddress"]);
                                 result.ProductCode = Convert.ToString(idr["ProductCode"]);
+                                result.PurchaseSupplier = Convert.ToString(idr["PurchaseSupplier"]);
                             }
                         }
                     }
@@ -2424,6 +2426,7 @@ Values @{tempTblVals}
                                 result.ProductCode = Convert.ToString(idr["ProductCode"]);
                                 result.Source = Convert.ToInt32(idr["Source"]);
                                 result.Supplier = Convert.ToString(idr["Supplier"]);
+                                result.PurchaseSupplier = Convert.ToString(idr["PurchaseSupplier"]);
                             }
                         }
                     }

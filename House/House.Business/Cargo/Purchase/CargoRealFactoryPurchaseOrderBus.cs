@@ -157,6 +157,7 @@ namespace House.Business.Cargo
                                 SupplierAddress = item.SupplierAddress,
                                 OwnerShip = item.OwnerShip,
                                 GoodsClass = item.GoodsClass,
+                                PurchaseSupplier = item.PurchaseSupplier,
                             });
 
                             CargoContainerGoodsEntity containerGoodsEntity = new CargoContainerGoodsEntity();

@@ -57,48 +57,69 @@ namespace Cargo.Interface
                 logbus.InsertLog(log);
                 #region test
                 //加密 and 解密 test
-                //CargoTMallEntity cargoData22 = ParseToCargoTMallEntityV2(dataStr);
-                //var requestBody2 = OpenApiEncryptedService.PostAsyncV2(cargoData22);
+                //CargoTMallEntity cargoData223 = ParseToCargoTMallEntityV2(dataStr);
+                ////operateNoticeSpiPo cargoData22 = ParseToStockCargoTMallEntityV2(dataStr);
+                //var requestBody2 = OpenApiEncryptedService.PostAsyncV2(cargoData223);
                 //var requestBody = EncryptUtils.Decrypt(requestBody2);
                 //解密test
+                //dataStr = $@"O9ROZfnPPz+4mg5TtC1w+AbS94T0weRL96aXjxL8b107hIDdE1i8t/1Kjycd+LNzihUN+nmGAzXkCGpksGCpfyR8x0MwI45mqin/cMqcL4hsDgRjFdt5LSjhwn91feFKTORy2wAJYPSf+2cEJs+9ojDJFIdKK/vPa1EZknY29I79vxVPRW5rYrMbvwkyzFgzJOS+7Tlej5NApYd7RP1RHHcZnT4nylyDZfm0LItiHeYxTzS+s68v44noOPdV4y8NhHgyxcFeWMTl9SZJk6AEps7NMLJUFg34JR9VEz7XtFRsqF9OAfARlvMHvpJ4ZnwH";
                 //dataStr = $@"LPaJIOLj0P98B6Y1oy96X0kaJsxU4KawwfG7M8hMZQbIVwy2ZeadbW1OXf/g0dFnb7WYpLZmZF03fWxZgqhnAdoxwXXi+Pz7XebAS1dgWVBLTIjqs3Sxv/9nmSq9cY78FkU/NCkWHZRid2uHtSI3QQBuiJg/aYj4TuvmSizqzR2Cp0+I/OIZ4uywW4X4LlmLEluJMN9/vWgxHXBJyLCxB/d8417p2+q6uTg6HKzFLp+XOj8buMx1wBMqD9+UyzS1sRNdusnaRkDHBCV4Un2fl1AyAlBYdjb4vgGSZJHUFYWO5DmeoVcU/oGLOFqoTOmzo6sCRssEZSxj0MKECPZz89p7RaZf0Fo62ZNRk0k0hD0werrZUL5c8HRGYoSYuUOhrl6TjiwK5EYry3lwI8KoJSvLNNjtl4rjm/z4EYSo785c9rG3fp1hVaaiM/QUI930lvgM9wx5E/hqhZaHq8T+t90bgACEUyxrARkproIz+A313XbveMLYpL0+cwezbcW0aDzE+jJnV+gwxafo7WcSU6ovJN5WgalNe6XWcmO27TwKCk97bGezzo2TIrlEZIIKOGfqRlb1iuQndbotUy2chE2M/YJ8P8hWkOIFbNfcblNRMMpeNGpZDNbVjKcuOBvWxpTydboakvkSGaaelxoM2a4RF1wXdw+uT71hqy+k1IccvmxQLV3P2Pzu66RoDzz5n/WXTIQhjUZ8oxi33crMLeBdW0iNn18b+YJMwv/rCPfa8lSkuSVZrnWQgaD6obOw90saI7w8B3/gvj7h8xz8/ZKK91iN2X1XeGhAoS5Qf++1eNdpW6NpVSmWzAhpV2Fde0qNjNAILic1S5IMxlUkpBjKBoetY6XWYFsNBZqalENPf75i0Nu79DgD6x92TlUdNsZwF6bzrvdCsfMtC3RY+L4ALVeapN8xSKKnfRLnD5GpFgvh4DvAgQ9jLn/rl3hrWBZkoNidgXbkPMK2dVNq1yCrYqTmhu94KvX/CepAcjvQmJWA3wwZVMsh2QlqNDLt2F8sUVtJisamF7vQwnU1W/2akpU/UeHRyKkZPjmBk/psHg6ViV3J6A0MXnQoF383KAlSQTJEw3112yDBLSawbA4Xei9c1Aujsijisw/wbcv0v3TorVEvjB9Pv/sYr9IxGn8zQmr9/dGk/vIdGB4CSz5bp/hbDkFqArslr+FNNIX5i3Y/ZPu6TYP2U8eNgFLFRr4gyW9wo/EKgIvQdIiNu5tQRHGw+lHAIlz/dawPxGxxhGE9CsosMzF2OvgJ80vB4pPor4kA8Xq3u1GlXbxQzdXocLSMOx1ycFzSK+Qh/9T5i2cnVtkZO78s4HubIT59JVPVr+kxu0zy0MA29HlnqGkNljEQWwbBlsoI5pa5GGUFItSSeoL/mdYFXKOGxUcFkmqgH0zGhYVcV48fmr2KJ6qfkn7XiWeTk0mer4MNQ0M79vRhnkU1D7s71JR/89RYKS3dPuBl4wnKFyRHxIRR/iyQpVT3CA1FNU8uOU+XQzZzJ5ai9XWJTFe64FlpEGkGHTSj8SP8//n0XMuTBSf3EAP1Du6kDtG9DKL0i1hpIHKH4YLn8QXe7XLZqrqxyt/X1LSFjkCQjVYPZ4mdgG5bp//Hq6a3EnDmg0tBbtcZmQe7QnAOZqFHT6rYnJvm93x9aI85fhE0bvJTaxsB5jsO5Jhvs47vC3IPpj57RGj/dZids2Qhg4vY5RZR7GNHqXtfx8hymYX03G8nGDC8iRrTksyQrSp1cSJnAguagV+HOnLNO/Yc5rQKZXFLjmM4nwf0";
                 #endregion
                 var requestBody = EncryptUtils.Decrypt(dataStr);
-                //var param = context.Request.QueryString["apitype"];
-                var param = "outhouse";
                 log.Memo = $@"天猫 接收数据成功，加密：{dataStr}数据 解密：" + requestBody;
                 logbus.InsertLog(log);
                 // 解析 JSON 数据
                 var logData = new CargoCassMallEntity { SourceType = 0, SourceAction = "API", orderId = null, ResJson = requestBody };
-                if (param == "outhouse")
+                // 使用 HttpUtility.ParseQueryString 解析
+                // 它会返回一个 NameValueCollection
+                // 2. 调用解析函数
+                CargoTMallEntity cargoData = null;
+                operateNoticeSpiPo cargoDataCancelled = null;
+                if (requestBody.Contains("originBillNo"))
                 {
-                    // 使用 HttpUtility.ParseQueryString 解析
-                    // 它会返回一个 NameValueCollection
-                    // 2. 调用解析函数
-                    CargoTMallEntity cargoData = ParseToCargoTMallEntity(requestBody);
+                    log.Memo = "天猫 发货通知单下发 requestBody:"+ requestBody;
+                    logbus.InsertLog(log);
+                    cargoData = ParseToCargoTMallEntity(requestBody);
+                }
+                else if(requestBody.Contains("operateType"))
+                {
+                    log.Memo = "天猫 发货通知单取消 requestBody:" + requestBody;
+                    logbus.InsertLog(log);
+                    cargoDataCancelled = ParseToCargoTMallCancelledEntity(requestBody);
+                }
+                  
+                if (cargoData != null && !string.IsNullOrEmpty(cargoData.originBillNo))
+                {
                     logData.orderId = cargoData.outboundNoticeNo.ToString();
                     nwBus.AddTMallDataLog(logData);
-                    if (cargoData != null)
-                    {
-                        //保存
-                        nwBus.SaveTMallOutHouseData(cargoData);
-                        log.Memo = "天猫 接收数据并保存完成";
-                        logbus.InsertLog(log);
-                        // 返回 200 状态码
-                        context.Response.StatusCode = 200;
-                        context.Response.Write("{\"code\":0,\"msg\":\"成功\",\"info\":{\"data\":\"1\"}}");
-                    }
-                    else
-                    {
-                        log.Memo = "天猫 接收数据失败，数据：" + requestBody;
-                        logbus.InsertLog(log);
-                        // 返回 -1 失败 状态码
-                        context.Response.StatusCode = -1;
-                        context.Response.Write("{\"code\":\"-1\",\"msg\":\"失败\",\"info\":null}");
-                    }
+                    //保存数据
+                    nwBus.SaveTMallOutHouseData(cargoData);
+                    log.Memo = "天猫 接收数据并保存完成";
+                    logbus.InsertLog(log);
+                    
+                }
+                else if (cargoDataCancelled != null && cargoDataCancelled.operateType == 1)
+                {
+                    logData = new CargoCassMallEntity { SourceType = 0, SourceAction = "Cancelled", orderId = null, ResJson = requestBody };
+                    logData.orderId = cargoDataCancelled.noticeNo;
+                    nwBus.AddTMallDataLog(logData);
 
+                    var isSuccess= nwBus.DelTmallOrder(cargoDataCancelled);
+                    if (!isSuccess)
+                    {
+                        context.Response.StatusCode = -1;
+                        context.Response.Write("{\"code\":-1,\"msg\":\"未查询到相关订单或订单已出库\",\"info\":{\"data\":\"1\"}}");
+                        return;
+                    }
+                    log.Status = !isSuccess ? "1" : "0";
+                    log.Memo = log.Status == "1" ? "未查询到相关订单或订单已出库" : "发货通知单取消";
+                    logbus.InsertLog(log);
+                    cargoDataCancelled = ParseToCargoTMallCancelledEntity(requestBody);
                 }
 
+                // 返回 200 状态码
+                context.Response.StatusCode = 200;
+                context.Response.Write("{\"code\":0,\"msg\":\"成功\",\"info\":{\"data\":\"1\"}}");
             }
 
         }
@@ -124,6 +145,19 @@ namespace Cargo.Interface
             {
                 dataItem.noticeDetailLists = JsonConvert.DeserializeObject<List<OutboundNoticeDetailSpiPo>>(dataItem.noticeDetailList);
             }
+
+            return dataItem;
+
+        }
+        /// <summary>
+        /// 将查询字符串解析为 CargoTMallEntity 对象
+        /// </summary>
+        /// <param name="queryString">查询字符串</param>
+        /// <returns>解析后的 CargoTMallEntity 对象</returns>
+        public static operateNoticeSpiPo ParseToCargoTMallCancelledEntity(string rawJson)
+        {
+            // 步骤1：反序列化JSON数组为Key-Value列表
+            var dataItem = JsonConvert.DeserializeObject<operateNoticeSpiPo>(rawJson);
 
             return dataItem;
 
@@ -193,6 +227,26 @@ namespace Cargo.Interface
             //data.noticeDetailList = ParseNoticeDetailList(callbackData);
             data.noticeDetailLists = JsonConvert.DeserializeObject<List<OutboundNoticeDetailSpiPo>>(callbackData["noticeDetailList"]);
 
+            return data;
+        }
+
+        /// <summary>
+        /// 将查询字符串解析为 CargoTMallEntity 对象
+        /// </summary>
+        /// <param name="queryString">查询字符串</param>
+        /// <returns>解析后的 CargoTMallEntity 对象</returns>
+        public static operateNoticeSpiPo ParseToStockCargoTMallEntityV2(string queryString)
+        {
+            var callbackData = HttpUtility.ParseQueryString(queryString);
+            var data = new operateNoticeSpiPo();
+
+            // --- 解析简单属性 ---
+            // 使用 TryParse 模式安全地转换，避免异常
+            data.supplierCode = callbackData["supplierCode"].ToString();
+            data.warehouseCode = callbackData["warehouseCode"].ToString();
+            data.thirdWarehouseCode = callbackData["thirdWarehouseCode"].ToString();
+            data.operateType = Convert.ToInt32(callbackData["operateType"]);
+            data.noticeNo = callbackData["noticeNo"].ToString();
             return data;
         }
 

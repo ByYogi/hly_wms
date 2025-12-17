@@ -406,7 +406,7 @@ namespace Supplier.Order
             if (!string.IsNullOrEmpty(Convert.ToString(Request["StartDate"]))) { queryEntity.StartDate = Convert.ToDateTime(Request["StartDate"]); }
             if (!string.IsNullOrEmpty(Convert.ToString(Request["EndDate"]))) { queryEntity.EndDate = Convert.ToDateTime(Request["EndDate"]); }
             queryEntity.OrderType = "4";//微信小程序下单
-            //queryEntity.ThrowGood = "22";//即日达订单
+            queryEntity.ThrowGood = "22";//即日达订单
             queryEntity.OrderNo = Convert.ToString(Request["OrderNo"]);
             queryEntity.CargoPermisID = UserInfor.SettleHouseID.ToString();
             queryEntity.SuppClientNum = Convert.ToInt32(UserInfor.LoginName);

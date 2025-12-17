@@ -329,7 +329,7 @@ namespace Cargo.Purchase
                 newRows["采购单号"] = it.PurOrderNo;
                 newRows["开单时间"] = it.CreateDate?.ToString("yyyy-MM-dd");
                 newRows["需求部门"] = it.PurDepart;
-                newRows["物权方"] =  ownershipDicts.TryGetValue(it.OwnerShip.GetValueOrDefault(), out string ownershipStr) ? ownershipStr : "";
+                newRows["物权方"] = ownershipDicts.TryGetValue(it.OwnerShip.GetValueOrDefault(), out string ownershipStr) ? ownershipStr : "";
                 newRows["是否含税"] = it.WhetherTax;
                 newRows["供应商"] = it.PurchaserName;
                 newRows["采购单类型"] = it.PurchaseType;
@@ -1005,7 +1005,7 @@ namespace Cargo.Purchase
                             entProduct.ProductCode = Convert.ToString(row["ProductCode"]);
                             entProduct.OwnerShip = Convert.ToString(Request["OwnerShip"]);
                             entProduct.GoodsClass = "0";
-
+                            entProduct.PurchaseSupplier = Convert.ToString(Request["PurchaserName"]);//采购供应商
                             entProduct.PurchaserID = Convert.ToInt32(Request["PurchaserID"]);
                             entProduct.PurchaserName = Convert.ToString(Request["PurchaserName"]);
                             entProduct.DeliveryBoss = Convert.ToString(Request["DeliveryBoss"]);
@@ -1107,7 +1107,7 @@ namespace Cargo.Purchase
                     List<CargoProductEntity> productList = new List<CargoProductEntity>();
                     CargoContainerEntity containerEntity = house.QueryTopOneContainer(new CargoContainerEntity { HouseID = pur.HouseID });
                     CargoHouseEntity che = house.QueryCargoHouse(new CargoHouseEntity { HouseID = pur.HouseID });
-                   
+
                     foreach (var gent in pur.orderGoodsEntities)
                     {
                         string batch = gent.Batch;
@@ -1123,7 +1123,7 @@ namespace Cargo.Purchase
                             bYear = Convert.ToInt32(batch.Substring(1, 2));
                         }
                         CargoProductSpecEntity cpse = productBus.GetProductSpecByProductCode(gent.ProductCode);
-                        CargoProductBasicPriceEntity priceEntity = priceBus.QueryBasicPriceData(new CargoProductBasicPriceEntity { ProductCode = cpse.ProductCode, GoodsCode = cpse.GoodsCode, Specs= cpse.Specs });
+                        CargoProductBasicPriceEntity priceEntity = priceBus.QueryBasicPriceData(new CargoProductBasicPriceEntity { ProductCode = cpse.ProductCode, GoodsCode = cpse.GoodsCode, Specs = cpse.Specs });
                         factoryList.Add(new CargoFactoryOrderEntity
                         {
                             HouseID = pur.HouseID,//到仓仓库
@@ -1155,7 +1155,7 @@ namespace Cargo.Purchase
                             ReplyNumber = gent.ReplyPiece,
                             InPiece = ent.PurchaseInStoreType.Equals("1") ? gent.Piece : 0,
                             InCargoStatus = ent.PurchaseInStoreType.Equals("1") ? 1 : 0,
-                            SalePrice = priceEntity==null?0: priceEntity.SalePrice,
+                            SalePrice = priceEntity == null ? 0 : priceEntity.SalePrice,
                             InHousePrice = priceEntity == null ? 0 : priceEntity.InHousePrice,
                             UnitPrice = Convert.ToDouble(gent.PurchasePrice),
                             CostPrice = Convert.ToDouble(gent.PurchasePrice),
@@ -1182,7 +1182,8 @@ namespace Cargo.Purchase
                             BusinessID = Convert.ToString(Request["BusinessID"]),
                             OwnerShip = Convert.ToString(Request["OwnerShip"]),
                             GoodsClass = "0",
-                            PushStatus = "0"
+                            PushStatus = "0",
+                            PurchaseSupplier = Convert.ToString(Request["PurchaserName"])
                         });
 
                         productList.Add(new CargoProductEntity
@@ -1214,7 +1215,8 @@ namespace Cargo.Purchase
                             Supplier = ent.PurDepart,
                             GoodsName = cpse.ProductName,
                             OwnerShip = Convert.ToString(Request["OwnerShip"]),
-                            GoodsClass = "0"
+                            GoodsClass = "0",
+                            PurchaseSupplier = Convert.ToString(Request["PurchaserName"])
                         });
                     }
                     bus.AddPurchaseOrderInfo(ent, productList, factoryList, log);
@@ -4236,7 +4238,7 @@ namespace Cargo.Purchase
                 queryEntity.PurchaserID = Convert.ToInt32(Request["PurchaserID"]);
             }
             queryEntity.CheckStatus = "0";//未结算
-            queryEntity.ApplyStatus= "3";//已结束
+            queryEntity.ApplyStatus = "3";//已结束
             //分页
             int pageIndex = 1;
             int pageSize = 10000;
@@ -4252,7 +4254,8 @@ namespace Cargo.Purchase
         /// <summary>
         /// 保存分账账单
         /// </summary>
-        public void savePurchaseBillAccount() {
+        public void savePurchaseBillAccount()
+        {
             ErrMessage msg = new ErrMessage(); msg.Message = "";
             msg.Result = true;
             string json = Request["submitData"];
@@ -4270,10 +4273,10 @@ namespace Cargo.Purchase
                 List<CargoRealPurchaseAccountGoodsEntity> accountGoods = new List<CargoRealPurchaseAccountGoodsEntity>();
                 //账单明细
                 int PurchaserID = 0;
-                string PurchaserName ="";
+                string PurchaserName = "";
                 foreach (Hashtable grid in GridRows)
                 {
-                    PurchaserID= Convert.ToInt32(grid["PurchaserID"]);
+                    PurchaserID = Convert.ToInt32(grid["PurchaserID"]);
                     PurchaserName = Convert.ToString(grid["PurchaserName"]);
                     CargoRealPurchaseAccountGoodsEntity goods = new CargoRealPurchaseAccountGoodsEntity();
                     goods.PurOrderID = Convert.ToInt32(grid["PurOrderID"]);
@@ -4287,7 +4290,7 @@ namespace Cargo.Purchase
 
 
                 CargoRealPurchaseAccountEntity bill = new CargoRealPurchaseAccountEntity();
-                bill.AccountNO= Common.GetMaxAccountNoNum("BP");
+                bill.AccountNO = Common.GetMaxAccountNoNum("BP");
                 bill.AccountTitle = $"{PurchaserName}{DateTime.Now.ToString("yyyyMM")}采购分账账单-手工";
                 bill.CreateDate = DateTime.Now;
                 bill.PurchaserID = PurchaserID;
@@ -4296,13 +4299,13 @@ namespace Cargo.Purchase
                 bill.TransportFee = accountGoods.Sum(w => w.TransportFee);//本期订总金额
                 bill.OtherFee = accountGoods.Sum(w => w.OtherFee);//其他费用
                 bill.Total = accountGoods.Sum(w => w.TotalCharge);//账单金额
-                
+
                 bill.Memo = Convert.ToString(Request["Memo"]);
                 bill.CheckStatus = 0;
                 bill.OPID = UserInfor.LoginName;
                 bill.OPDATE = DateTime.Now;
                 bill.goodsList = accountGoods;
-                
+
                 //添加账单信息
                 CargoRealFactoryPurchaseOrderBus bus = new CargoRealFactoryPurchaseOrderBus();
                 bus.AddPurchaseBillAccount(bill, log);

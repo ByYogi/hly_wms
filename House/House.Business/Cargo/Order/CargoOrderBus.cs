@@ -3230,7 +3230,7 @@ namespace House.Business.Cargo
                             }
                         }
                         man.OesPreOrderConfirm(entity);
-                        log.Memo = "采购订单号：" + entity.OrderNo + "，出发站：" + entity.Dep + "，到达站：" + entity.Dest + "，件数：" + entity.Piece.ToString() + "，费用：" + entity.TotalCharge.ToString() + "，收货人：" + entity.AcceptPeople + "，电话：" + entity.AcceptTelephone + "/" + entity.AcceptCellphone + "，制单人：" + entity.CreateAwb + "，制单时间：" + entity.CreateDate.ToString("yyyy-MM-dd HH:mm:ss") + "，业务员：" + entity.SaleManName + "，物流公司名称：" + entity.LogisticName + "，物流公司单号：" + entity.LogisAwbNo;
+                        log.Memo = "采购订单号：" + entity.OrderNo + "，出发站：" + entity.Dep + "，到达站：" + entity.Dest + "，件数：" + entity.Piece.ToString() + "，费用：" + entity.TotalCharge.ToString() + "，收货人：" + entity.AcceptPeople + "，电话：" + entity.AcceptTelephone + "/" + entity.AcceptCellphone + "，制单人：" + entity.CreateAwb + "，制单时间：" + entity.CreateDate.ToString("yyyy-MM-dd HH:mm:ss") + "，业务员：" + entity.SaleManName + "，物流公司名称：" + entity.LogisticName + "，供应商：" + entity.PurchaserName;
                         lw.WriteLog(log);
                         scope.Complete();
                     }
@@ -5581,6 +5581,19 @@ namespace House.Business.Cargo
         public void UpdateCassDeliveryPushStatus(string orderId,string status)
         {
             man.UpdateCassDeliveryPushStatus(orderId, status);
+        }
+
+        #endregion
+
+        #region 天猫
+        public List<OutboundDto> QueryNoDeliveryPushData_Tmall()
+        {
+            return man.QueryNoDeliveryPushData_Tmall();
+        }
+
+        public void UpdateTMallDeliveryPushStatus(string orderId, string status)
+        {
+            man.UpdateTMallDeliveryPushStatus(orderId, status);
         }
 
         #endregion

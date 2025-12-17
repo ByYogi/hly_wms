@@ -16228,7 +16228,7 @@ SELECT @newNo AS nextNo;
                 entity.EnSafe();
                 #region 组装查询SQL语句
                 string strSQL = @" SELECT TOP " + pNum + " *  FROM ";
-                strSQL += "(SELECT DISTINCT ROW_NUMBER() OVER (ORDER BY a.CreateDate DESC) AS RowNumber,a.*,b.Name as HouseName,b.Cellphone as HouseCellphone,c.CompanyName from Tbl_WX_Order as a inner join tbl_Cargo_house as b on a.HouseID=b.HouseID inner join Tbl_WX_Client as c on a.WXID=c.ID Where (1=1) ";
+                strSQL += "(SELECT DISTINCT ROW_NUMBER() OVER (ORDER BY a.CreateDate DESC) AS RowNumber,a.*,b.Name as HouseName,b.Cellphone as HouseCellphone,c.CompanyName,d.OrderNo as CargoOrderNo from Tbl_WX_Order as a inner join Tbl_Cargo_Order as d on a.OrderNo=d.WxOrderNo inner join tbl_Cargo_house as b on a.HouseID=b.HouseID inner join Tbl_WX_Client as c on a.WXID=c.ID Where (1=1) ";
 
                 //订单编号 
                 if (!string.IsNullOrEmpty(entity.OrderNo)) { strSQL += " and a.OrderNo = '" + entity.OrderNo.ToUpper() + "'"; }
@@ -16243,13 +16243,13 @@ SELECT @newNo AS nextNo;
                 }
                 //订单类型
                 if (!string.IsNullOrEmpty(entity.OrderType)) { strSQL += " and a.OrderType='" + entity.OrderType + "'"; }
-                if (!string.IsNullOrEmpty(entity.ThrowGood)) { strSQL += " and a.ThrowGood='" + entity.ThrowGood + "'"; }
+                if (!string.IsNullOrEmpty(entity.ThrowGood)) { strSQL += " and d.ThrowGood='" + entity.ThrowGood + "'"; }
                 if (!string.IsNullOrEmpty(entity.OrderStatus)) { strSQL += " and a.OrderStatus='" + entity.OrderStatus + "'"; }
                 if (!string.IsNullOrEmpty(entity.PayStatus)) { strSQL += " and a.PayStatus='" + entity.PayStatus + "'"; }
                 ////客户名称
                 if (!string.IsNullOrEmpty(entity.Name)) { strSQL += " and a.Name like '%" + entity.Name + "%'"; }
                 //送货方式
-                if (!entity.SuppClientNum.Equals(0)) { strSQL += " and a.SuppClientNum=" + entity.SuppClientNum; }
+                if (!entity.SuppClientNum.Equals(0)) { strSQL += " and d.SuppClientNum=" + entity.SuppClientNum; }
 
                 strSQL += " ) A ";
                 strSQL += " WHERE RowNumber > (" + pNum + "* (" + pIndex + "-1)) order by A.RowNumber";
@@ -16265,6 +16265,7 @@ SELECT @newNo AS nextNo;
                             {
                                 ID = Convert.ToInt64(idr["ID"]),
                                 OrderNo = Convert.ToString(idr["OrderNo"]),
+                                CargoOrderNo = Convert.ToString(idr["CargoOrderNo"]),
                                 WXID = Convert.ToInt64(idr["WXID"]),
                                 Piece = Convert.ToInt32(idr["Piece"]),
                                 TransitFee = Convert.ToDecimal(idr["TransitFee"]),
@@ -16310,7 +16311,7 @@ SELECT @newNo AS nextNo;
                 }
                 resHT["rows"] = result;
                 #region 总数目
-                string strCount = @"Select Count(*) as TotalCount from Tbl_WX_Order as a Where (1=1)";
+                string strCount = @"Select Count(*) as TotalCount from Tbl_WX_Order as a inner join Tbl_Cargo_Order as d on a.OrderNo=d.WxOrderNo Where (1=1)";
 
 
                 //订单编号 
@@ -16326,13 +16327,13 @@ SELECT @newNo AS nextNo;
                 }
                 //订单类型
                 if (!string.IsNullOrEmpty(entity.OrderType)) { strCount += " and a.OrderType='" + entity.OrderType + "'"; }
-                if (!string.IsNullOrEmpty(entity.ThrowGood)) { strCount += " and a.ThrowGood='" + entity.ThrowGood + "'"; }
+                if (!string.IsNullOrEmpty(entity.ThrowGood)) { strCount += " and d.ThrowGood='" + entity.ThrowGood + "'"; }
                 if (!string.IsNullOrEmpty(entity.OrderStatus)) { strCount += " and a.OrderStatus='" + entity.OrderStatus + "'"; }
                 if (!string.IsNullOrEmpty(entity.PayStatus)) { strCount += " and a.PayStatus='" + entity.PayStatus + "'"; }
                 ////客户名称
                 if (!string.IsNullOrEmpty(entity.Name)) { strCount += " and a.Name like '%" + entity.Name + "%'"; }
                 //送货方式
-                if (!entity.SuppClientNum.Equals(0)) { strCount += " and a.SuppClientNum=" + entity.SuppClientNum; }
+                if (!entity.SuppClientNum.Equals(0)) { strCount += " and d.SuppClientNum=" + entity.SuppClientNum; }
                 using (DbCommand cmd = conn.GetSqlStringCommond(strCount))
                 {
                     using (DataTable idrCount = conn.ExecuteDataTable(cmd))
@@ -17995,6 +17996,7 @@ where a.IsDeliveryPush=0 and b.AwbStatus>1 AND A.OrderDateTime> DATEADD(month, -
             return result;
         }
 
+     
         public List<shipmentItem> QueryNoDeliveryPushDataGoods(CargoOrderEntity entity)
         {
             List<shipmentItem> result = new List<shipmentItem>();
@@ -18034,5 +18036,88 @@ select * from Tbl_Cargo_OrderGoods where OrderNo='{entity.OrderNo}'
                 conn.ExecuteNonQuery(command);
             }
         }
+        public void UpdateTMallDeliveryPushStatus(string orderId, string status)
+        {
+            string strSQL = "update Tbl_Cargo_TMallOrder set IsDeliveryPush=@IsDeliveryPush,DeliveryPushTime=getdate() where originBillNo=@orderId";
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(command, "@IsDeliveryPush", DbType.String, status);
+                conn.AddInParameter(command, "@orderId", DbType.String, orderId);
+                conn.ExecuteNonQuery(command);
+            }
+        }
+
+        public List<OutboundDto> QueryNoDeliveryPushData_Tmall()
+        {
+            List<OutboundDto> result = new List<OutboundDto>();
+            string strSQL = $@"
+--已出库未推送的订单
+select a.Id, a.originBillNo, b.OrderNo,OpenExpressName,OpenExpressNum,AwbStatus,LogisAwbNo,c.LogisticName,OutCargoTime from Tbl_Cargo_TMallOrder as a
+inner join Tbl_Cargo_Order as b on a.originBillNo=b.OpenOrderNo
+left join Tbl_Cargo_Logistic as c on b.LogisID=c.ID
+where a.IsDeliveryPush=0 and AwbStatus>1 and isnull(OutCargoTime,'')<>'' and CheckStatus=1 and FinanceSecondCheck=1 and isnull(OpenExpressNum,'')<>''
+";
+
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        result.Add(new OutboundDto
+                        {
+                            outboundContact = "",
+                            originBillNo = Convert.ToString(idr["originBillNo"]),
+                            idempotentNo = $"GZ123_{Guid.NewGuid():N}",
+                            logisticsNo = Convert.ToString(idr["LogisAwbNo"]),
+                            logisticsName = Convert.ToString(idr["LogisticName"]),
+                            outboundTime = Convert.ToDateTime(idr["OutCargoTime"]),
+                            outboundDetailList = QueryNoDeliveryPushDataGoods_Tmall(new CargoOrderEntity {OrderNo = Convert.ToString(idr["OrderNo"]) }), // 子项列表初始化，添加子数据
+                            outboundContactPhone = "13873312771",//陈鑫宇
+                            syncType = 1,
+                            remark = "",
+                            logisticsCode = Convert.ToString(idr["OpenExpressNum"]),
+                        });
+                    }
+                }
+            }
+
+            return result;
+        }
+
+
+        public List<OutboundDetail> QueryNoDeliveryPushDataGoods_Tmall(CargoOrderEntity entity)
+        {
+            List<OutboundDetail> result = new List<OutboundDetail>();
+            string strSQL = $@"
+select b.Piece,d.SkuId,(case when TypeID=34 then GoodsCode else ProductCode end) as ProductCode from Tbl_Cargo_Order as a
+inner join Tbl_Cargo_OrderGoods as b on a.OrderNo=b.OrderNo
+inner join Tbl_Cargo_Product as e on b.ProductID=e.ProductID
+inner join Tbl_Cargo_TMallOrder as c on a.OpenOrderNo=c.originBillNo
+inner join Tbl_Cargo_TMallOrderGoods as d on c.Id=d.PID and ((e.TypeID=34 and SkuOrderCode=e.GoodsCode) or (e.TypeID<>34 and SkuOrderCode=e.ProductCode))
+where a.OrderNo='{entity.OrderNo}'
+";
+
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        #region 
+                        result.Add(new OutboundDetail
+                        {
+                            skuId = long.Parse(idr["SkuId"].ToString()),
+                            outboundNum = Convert.ToInt32(idr["Piece"]),
+                            skuOrderCode = Convert.ToString(idr["ProductCode"])
+                        });
+                        #endregion
+                    }
+                }
+            }
+
+            return result;
+        }
+
     }
 }

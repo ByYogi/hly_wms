@@ -58,6 +58,7 @@ namespace Cargo.Client
             table.Columns.Add("序号", typeof(int));
             table.Columns.Add("账单号", typeof(string));
             table.Columns.Add("订单号", typeof(string));
+            table.Columns.Add("共享订单号", typeof(string));
             table.Columns.Add("账单名称", typeof(string));
             table.Columns.Add("供应商名称", typeof(string));
             table.Columns.Add("所属仓库", typeof(string));
@@ -82,6 +83,7 @@ namespace Cargo.Client
                     newRows["序号"] = i;
                     newRows["账单号"] = it.AccountNO;
                     newRows["订单号"] = item.OrderNo;
+                    newRows["共享订单号"] = item.OpenOrderNo;
                     newRows["账单名称"] = it.AccountTitle;
                     newRows["供应商名称"] = it.ClientName;
                     newRows["所属仓库"] = it.HouseName;

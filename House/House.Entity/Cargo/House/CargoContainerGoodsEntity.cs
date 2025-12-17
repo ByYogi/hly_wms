@@ -96,8 +96,7 @@ namespace House.Entity.Cargo
         /// 云仓二批次日达价
         /// </summary>
         public decimal NextDayPrice { get; set; }
-
-        
+        public string ProductIDStr { get; set; }
 
     }
 }

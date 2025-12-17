@@ -253,4 +253,37 @@ namespace House.Entity.Cargo.Order
         /// </summary>
         public long skuId { get; set; }
     }
+
+    // 出库详情子项类
+    public class OutboundDetail
+    {
+        public long skuId { get; set; }
+        public int outboundNum { get; set; }
+        public string skuOrderCode { get; set; }
+    
+    }
+
+    // 出库主类
+    public class OutboundDto
+    {
+        public string outboundContact { get; set; }
+        public string originBillNo { get; set; }
+        public string idempotentNo { get; set; }
+        public string logisticsNo { get; set; }
+        public string logisticsName { get; set; }
+        public DateTime outboundTime { get; set; }
+        public List<OutboundDetail> outboundDetailList { get; set; }
+        public string logisticsCode { get; set; }
+        public string outboundContactPhone { get; set; }
+        public int syncType { get; set; }
+        public string remark { get; set; }
+    }
+    public class operateNoticeSpiPo
+    {
+        public string supplierCode { get; set; }
+        public string warehouseCode { get; set; }
+        public string thirdWarehouseCode { get; set; }
+        public int operateType { get; set; }
+        public string noticeNo { get; set; }
+    }
 }

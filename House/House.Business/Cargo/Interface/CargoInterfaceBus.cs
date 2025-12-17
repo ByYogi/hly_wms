@@ -263,7 +263,7 @@ namespace House.Business.Cargo
                         //4.修改产品入库状态
                         productMan.UpdateCargoProductStatus(new CargoProductEntity { InHouseTime = now, InCargoStatus = "1", ProductID = did });
                         productEntity.ProductID = did;
-                        log.Memo = "入库操作：所属仓库：" + entity.HouseID.ToString() + "，产品名称：" + entity.ProductName + "，规格：" + entity.Specs + "，花纹：" + entity.Figure + "，产品来源：" + entity.Source + "，型号：" + entity.Model + "，货品代码：" + entity.GoodsCode + "，周期批次：" + entity.Batch + "，载重指数：" + entity.LoadIndex.ToString() + "，速度级别：" + entity.SpeedLevel + "，货位代码：" + entity.ContainerCode + "，标签编码：" + entity.TagCode + "，入库数量：" + entity.Numbers.ToString() + "，操作人：" + log.UserID + "，产品ID：" + did.ToString() + "，归属部门：" + entity.BelongDepart + ",轮胎类型：" + entity.TyreModel + ",质量描述：" + entity.QalityRemark;
+                        log.Memo = "入库操作：所属仓库：" + entity.HouseID.ToString() + "，产品名称：" + entity.ProductName + "，规格：" + entity.Specs + "，花纹：" + entity.Figure + "，产品来源：" + entity.Source + "，型号：" + entity.Model + "，货品代码：" + entity.GoodsCode + "，周期批次：" + entity.Batch + "，载重指数：" + entity.LoadIndex.ToString() + "，速度级别：" + entity.SpeedLevel + "，货位代码：" + entity.ContainerCode + "，标签编码：" + entity.TagCode + "，入库数量：" + entity.Numbers.ToString() + "，操作人：" + log.UserID + "，产品ID：" + did.ToString() + "，归属部门：" + entity.BelongDepart + ",轮胎类型：" + entity.TyreModel + ",质量描述：" + entity.QalityRemark + ",采购供应商:" + entity.PurchaseSupplier;
 
                         ////5.修改工厂订单导入表产品id
                         //foman.UpdateProductID(new CargoFactoryOrderEntity { ProductID = did.ToString(), ProductName = entity.ProductName, GoodsCode = entity.GoodsCode, HouseID = entity.HouseID, TypeID = entity.TypeID, Specs = entity.Specs, Figure = entity.Figure, Model = entity.Model, LoadIndex = entity.LoadIndex.ToString(), SpeedLevel = entity.SpeedLevel, Born = entity.Born, Assort = entity.Assort, Source = Convert.ToInt32(entity.Source), FacOrderNo = entity.SourceOrderNo, BelongMonth = entity.BelongMonth }); 
@@ -305,7 +305,7 @@ namespace House.Business.Cargo
 
                         //3.修改产品表产品数量，增加一条
                         productMan.UpdateCargoProductPiece(new CargoProductEntity { ProductID = productEntity.ProductID, Numbers = entity.Numbers, IsAdd = true });
-                        log.Memo = "入库修改库存操作：所属仓库：" + entity.HouseID.ToString() + "，产品名称：" + entity.ProductName + "，规格：" + entity.Specs + "，花纹：" + entity.Figure + "，产品来源：" + entity.Source + "，型号：" + entity.Model + "，货品代码：" + entity.GoodsCode + "，周期批次：" + entity.Batch + "，载重指数：" + entity.LoadIndex.ToString() + "，速度级别：" + entity.SpeedLevel + "，货位代码：" + entity.ContainerCode + "，标签编码：" + entity.TagCode + "，产品ID:" + productEntity.ProductID.ToString() + "，入库数量：" + entity.Numbers.ToString() + "，库存表ID：" + productEntity.ContainerGoodsID.ToString() + "，货位ID：" + productEntity.ContainerID.ToString() + "，操作人：" + log.UserID + ",归属部门：" + entity.BelongDepart + ",轮胎类型：" + entity.TyreModel + ",质量描述：" + entity.QalityRemark;
+                        log.Memo = "入库修改库存操作：所属仓库：" + entity.HouseID.ToString() + "，产品名称：" + entity.ProductName + "，规格：" + entity.Specs + "，花纹：" + entity.Figure + "，产品来源：" + entity.Source + "，型号：" + entity.Model + "，货品代码：" + entity.GoodsCode + "，周期批次：" + entity.Batch + "，载重指数：" + entity.LoadIndex.ToString() + "，速度级别：" + entity.SpeedLevel + "，货位代码：" + entity.ContainerCode + "，标签编码：" + entity.TagCode + "，产品ID:" + productEntity.ProductID.ToString() + "，入库数量：" + entity.Numbers.ToString() + "，库存表ID：" + productEntity.ContainerGoodsID.ToString() + "，货位ID：" + productEntity.ContainerID.ToString() + "，操作人：" + log.UserID + ",归属部门：" + entity.BelongDepart + ",轮胎类型：" + entity.TyreModel + ",质量描述：" + entity.QalityRemark + ",采购供应商:" + entity.PurchaseSupplier;
                     }
                     //新增产品标签表数据
                     productMan.AddCargoProductTag(new CargoProductTagEntity { ProductID = productEntity.ProductID, TagCode = entity.TagCode, InCargoStatus = "1", InCargoType = "0", InCargoTime = DateTime.Now, InCargoOperID = entity.OPID, ContainerID = productEntity.ContainerID, TyreCode = entity.TyreCode });
@@ -1627,6 +1627,11 @@ namespace House.Business.Cargo
             return man.QueryCassMallGiftItems(entity);
         }
 
+        public List<OrderWayDetail> QueryCassMallWayDetails(OrderHeader entity)
+        {
+            return man.QueryCassMallWayDetails(entity);
+        }
+
         public List<CargoProductMappingEntity> GetProductMapping(OrderItem order)
         {
             return man.GetProductMapping(order);
@@ -1651,7 +1656,7 @@ namespace House.Business.Cargo
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
-        public Dictionary<string,string> QueryTuhuProdCodes(string[] productCodes)
+        public Dictionary<string, string> QueryTuhuProdCodes(string[] productCodes)
         {
             return man.QueryTuhuProdCodes(productCodes);
         }
@@ -1666,10 +1671,21 @@ namespace House.Business.Cargo
         public void SaveTMallOutHouseData(CargoTMallEntity entity)
         {
             var isExistsData = man.QueryTMallData(entity);
-            if (isExistsData.Count==0)
+            if (isExistsData.Count == 0)
             {
                 man.SaveTMallOutHouseData(entity);
             }
+        }
+
+        public bool DelTmallOrder(operateNoticeSpiPo entity)
+        {
+            var isExistsData = man.QueryStockTMallData(new CargoTMallEntity {outboundNoticeNo=entity.noticeNo });
+            if (isExistsData.Count>0)
+            {
+                man.DelTmallOrder(entity);
+                return true;
+            }
+            return false;
         }
         #endregion
     }

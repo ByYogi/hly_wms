@@ -5097,7 +5097,7 @@ namespace Cargo.Finance
             #region 赋值
             queryEntity.PayStatus = "2,3";//“申请退款、已退款”状态
             queryEntity.OrderType = "4";//订单类型：云配小程序商场订单
-            queryEntity.ThrowGood = "22,23";//即日达、次日达订单
+            queryEntity.ThrowGood = "22,23,26,27";//即日达、次日达订单
             if (!string.IsNullOrEmpty(Request["CargoOrderNo"]))
             {
                 queryEntity.CargoOrderNo = Convert.ToString(Request["CargoOrderNo"]);//仓储订单号

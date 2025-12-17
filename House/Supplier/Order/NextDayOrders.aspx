@@ -132,7 +132,12 @@
                     { title: '', field: 'ID', checkbox: true, width: '30px' },
                     { title: '开单时间', field: 'CreateDate', width: '130px', formatter: DateTimeFormatter },
                     {
-                        title: '订单号', field: 'OrderNo', width: '120px', formatter: function (value) {
+                        title: '小程序单号', field: 'OrderNo', width: '120px', formatter: function (value) {
+                            return "<span title='" + value + "'>" + value + "</span>";
+                        }
+                    },
+                    {
+                        title: '出库单号', field: 'CargoOrderNo', width: '120px', formatter: function (value) {
                             return "<span title='" + value + "'>" + value + "</span>";
                         }
                     },

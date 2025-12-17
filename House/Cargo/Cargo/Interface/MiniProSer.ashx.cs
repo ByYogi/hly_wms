@@ -4100,6 +4100,9 @@ namespace Cargo.Interface
                 int pieceSum = 0;
                 string proStr = string.Empty;
 
+                // 共享仓库处理
+                int shareHouseID = 0;
+                string shareHouseName = "";
                 foreach (var itt in goodList)
                 {
                     Common.WriteTextLog("要准备开始减库存了");
@@ -4137,13 +4140,12 @@ namespace Cargo.Interface
                     }
 
                     // 减库存规则，一周期早的先出先进先出，二数量和库存数刚好一样的先出
+                    
                     foreach (var it in stockList)
                     {
                         if (it.StockNum <= 0) { continue; }
 
-                        // 共享仓库处理
-                        int shareHouseID = 0;
-                        string shareHouseName = "";
+                        
                         if (!it.ShareHouseID.Equals(0))
                         {
                             if (YPOrderType.Equals("23"))
@@ -4405,6 +4407,10 @@ namespace Cargo.Interface
                 ent.ClientID = wxUser.ClientID;
                 ent.OrderNo = supplierOrderNo;
                 ent.OutHouseName = houseEnt.Name;
+                //共享仓库
+                ent.ShareHouseID = shareHouseID;
+                ent.ShareHouseName = shareHouseName;
+
 
                 // 订单总数量
                 ent.Piece = oNum + GiftNum;

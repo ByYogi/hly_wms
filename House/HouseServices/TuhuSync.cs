@@ -136,6 +136,7 @@ namespace HouseServices
                 foreach (var batch in batches)
                 {
                     batchIndex++;
+                    int currentVersion = VersionGenerator.GetNextVersion(); // 为本批次生成唯一版本号
 
                     // 1. 推送商品信息（只在第一次同步时推送，后续只推送库存和价格即可）
                     var tuhuPushSkuBody = new TuhuPushDto()
@@ -144,7 +145,7 @@ namespace HouseServices
                         authCode = authCode,
                         skuInfos = batch.Select(x => new Tuhu_Sku
                         {
-                            version = 1,
+                            version = currentVersion,
                             erpSkuCode = x.TuhuCode,
                             tuhuSkuCode = x.TuhuCode,
                             ProductCode = x.FirstPorductCode,
@@ -181,7 +182,7 @@ namespace HouseServices
                         authCode = authCode,
                         stockInfos = batch.Select(x => new Tuhu_Stock
                         {
-                            version = 1,
+                            version = currentVersion,
                             erpSkuCode = x.TuhuCode,
                             ProductCodes = x.ProductCodes,
                             Piece = x.Piece,
@@ -204,7 +205,7 @@ namespace HouseServices
                         authCode = authCode,
                         priceInfos = batch.Select(x => new Tuhu_Price
                         {
-                            version = 1,
+                            version = currentVersion,
                             erpSkuCode = x.TuhuCode,
                             SalePrice = x.SalePrice,
                         }).ToList()
@@ -400,6 +401,7 @@ namespace HouseServices
                 foreach (var batch in batches)
                 {
                     batchIndex++;
+                    int currentVersion = VersionGenerator.GetNextVersion(); // 为本批次生成唯一版本号
 
                     stage = "推送商品信息";
                     // 1. 推送商品信息
@@ -409,7 +411,7 @@ namespace HouseServices
                         authCode = authCode,
                         skuInfos = batch.Select(x => new Tuhu_Sku
                         {
-                            version = 1,
+                            version = currentVersion,
                             erpSkuCode = x.TuhuCode,
                             tuhuSkuCode = x.TuhuCode,
                             ProductCode = x.FirstPorductCode,
@@ -447,7 +449,7 @@ namespace HouseServices
                         authCode = authCode,
                         stockInfos = batch.Select(x => new Tuhu_Stock
                         {
-                            version = 1,
+                            version = currentVersion,
                             erpSkuCode = x.TuhuCode,
                             ProductCodes = x.ProductCodes,
                             Piece = x.Piece,
@@ -471,7 +473,7 @@ namespace HouseServices
                         authCode = authCode,
                         priceInfos = batch.Select(x => new Tuhu_Price
                         {
-                            version = 1,
+                            version = currentVersion,
                             erpSkuCode = x.TuhuCode,
                             SalePrice = x.SalePrice,
                         }).ToList()
@@ -701,6 +703,23 @@ namespace HouseServices
         private static string Get(string key)
         {
             return ConfigurationManager.AppSettings[key] ?? "";
+        }
+    }
+
+    /// <summary>
+    /// 版本号生成器，保证每次请求的version唯一且递增
+    /// </summary>
+    static class VersionGenerator
+    {
+        // 使用当前时间戳后8位作为初始值，避免每次重启都从1开始
+        private static int _counter = (int)(DateTime.Now.Ticks % 100000000);
+
+        /// <summary>
+        /// 获取下一个版本号（线程安全）
+        /// </summary>
+        public static int GetNextVersion()
+        {
+            return Interlocked.Increment(ref _counter);
         }
     }
 }

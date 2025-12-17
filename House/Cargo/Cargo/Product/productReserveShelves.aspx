@@ -724,9 +724,21 @@
             for (var i = 0; i < rows.length; i++) {
                 rows[i].Memo = "";
             }
+           
             $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定下架该商品？', function (r) {
                 if (r) {
-                    var json = JSON.stringify(rows)
+                    var json = JSON.stringify(rows.map(a => {
+                        return {
+                            OnSaleID: a.OnSaleID, 
+                            ProductName: a.ProductName,
+                            SaleType: a.SaleType, 
+                            Model: a.Model, 
+                            GoodsCode: a.GoodsCode, 
+                            Figure: a.Figure, 
+                            TypeID: a.TypeID, 
+                            OnSaleNum: a.ShelvesNum 
+                        };
+                    }));
                     $.ajax({
                         url: 'productApi.aspx?method=UnLoadReserveshelves',
                         type: 'post', dataType: 'json', data: { data: json },

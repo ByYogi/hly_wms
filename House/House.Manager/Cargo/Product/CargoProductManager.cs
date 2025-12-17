@@ -820,7 +820,7 @@ namespace House.Manager.Cargo
         {
             entity.EnSafe();
             Int64 did = 0;
-            string strSQL = @"INSERT INTO Tbl_Cargo_Product(ProductName,TypeID,Model,GoodsCode,Specs,Figure,TreadWidth,FlatRatio,Meridian,HubDiameter,LoadIndex,SpeedLevel,SpeedMax,Size,Weight,UnitPrice,Numbers,FinalCostPrice,CostPrice,InHousePrice,TaxCostPrice,NoTaxCostPrice,TradePrice,SalePrice,Package,PackageNum,PackageWeight,OP_DATE,Batch,BatchYear,BatchWeek,HouseID,Source,SourceOrderNo,BelongMonth,OperaType,Born,Assort,BelongDepart,Company,SpecsType,Supplier,SuppClientNum,SupplierAddress,ProductCode,GoodsName,NextDayPrice,WholesalePrice,OwnerShip,GoodsClass,TyreModel,QalityRemark) VALUES (@ProductName,@TypeID,@Model,@GoodsCode,@Specs,@Figure,@TreadWidth,@FlatRatio,@Meridian,@HubDiameter,@LoadIndex,@SpeedLevel,@SpeedMax,@Size,@Weight,@UnitPrice,@Numbers,@FinalCostPrice,@CostPrice,@InHousePrice,@TaxCostPrice,@NoTaxCostPrice,@TradePrice,@SalePrice,@Package,@PackageNum,@PackageWeight,@OP_DATE,@Batch,@BatchYear,@BatchWeek,@HouseID,@Source,@SourceOrderNo,@BelongMonth,@OperaType,@Born,@Assort,@BelongDepart,@Company,@SpecsType,@Supplier,@SuppClientNum,@SupplierAddress,@ProductCode,@GoodsName,@NextDayPrice,@WholesalePrice,@OwnerShip,@GoodsClass,@TyreModel,@QalityRemark)SELECT @@IDENTITY";
+            string strSQL = @"INSERT INTO Tbl_Cargo_Product(ProductName,TypeID,Model,GoodsCode,Specs,Figure,TreadWidth,FlatRatio,Meridian,HubDiameter,LoadIndex,SpeedLevel,SpeedMax,Size,Weight,UnitPrice,Numbers,FinalCostPrice,CostPrice,InHousePrice,TaxCostPrice,NoTaxCostPrice,TradePrice,SalePrice,Package,PackageNum,PackageWeight,OP_DATE,Batch,BatchYear,BatchWeek,HouseID,Source,SourceOrderNo,BelongMonth,OperaType,Born,Assort,BelongDepart,Company,SpecsType,Supplier,SuppClientNum,SupplierAddress,ProductCode,GoodsName,NextDayPrice,WholesalePrice,OwnerShip,GoodsClass,TyreModel,QalityRemark,PurchaseSupplier) VALUES (@ProductName,@TypeID,@Model,@GoodsCode,@Specs,@Figure,@TreadWidth,@FlatRatio,@Meridian,@HubDiameter,@LoadIndex,@SpeedLevel,@SpeedMax,@Size,@Weight,@UnitPrice,@Numbers,@FinalCostPrice,@CostPrice,@InHousePrice,@TaxCostPrice,@NoTaxCostPrice,@TradePrice,@SalePrice,@Package,@PackageNum,@PackageWeight,@OP_DATE,@Batch,@BatchYear,@BatchWeek,@HouseID,@Source,@SourceOrderNo,@BelongMonth,@OperaType,@Born,@Assort,@BelongDepart,@Company,@SpecsType,@Supplier,@SuppClientNum,@SupplierAddress,@ProductCode,@GoodsName,@NextDayPrice,@WholesalePrice,@OwnerShip,@GoodsClass,@TyreModel,@QalityRemark,@PurchaseSupplier)SELECT @@IDENTITY";
             try
             {
                 using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
@@ -877,6 +877,7 @@ namespace House.Manager.Cargo
                     conn.AddInParameter(cmd, "@GoodsClass", DbType.String, entity.GoodsClass);
                     conn.AddInParameter(cmd, "@TyreModel", DbType.String, entity.TyreModel);
                     conn.AddInParameter(cmd, "@QalityRemark", DbType.String, entity.QalityRemark);
+                    conn.AddInParameter(cmd, "@PurchaseSupplier", DbType.String, entity.PurchaseSupplier);
                     //conn.ExecuteNonQuery(cmd);
                     did = Convert.ToInt64(conn.ExecuteScalar(cmd));
                 }
@@ -3799,39 +3800,37 @@ Values @{tempTblVals}
             // 只用 ProductCode 查询，避免笛卡尔积导致临时表过大
             var queryParams = codeList.Select(code => new ProductQueryParam { ProductCode = code }).ToList();
 
-            // 创建全局临时表
+            // 步骤1: 创建全局临时表（独立连接，避免DTC）
             string createTempTableSQL = @"
-IF OBJECT_ID('tempdb..##ProductQueryTemp') IS NOT NULL DROP TABLE ##ProductQueryTemp;
-CREATE TABLE ##ProductQueryTemp(
+IF OBJECT_ID('tempdb..##ProductQueryParmTemp') IS NOT NULL DROP TABLE ##ProductQueryParmTemp;
+CREATE TABLE ##ProductQueryParmTemp(
     ProductCode NVARCHAR(50) NOT NULL
 );";
+            using (DbCommand createCommand = conn.GetSqlStringCommond(createTempTableSQL))
+            {
+                conn.ExecuteNonQuery(createCommand);
+            }
 
-            // 创建索引SQL（BulkInsert后再创建索引更高效）
-            string createIndexSQL = @"CREATE NONCLUSTERED INDEX IX_Temp_ProductCode ON ##ProductQueryTemp(ProductCode);";
+            // 步骤2: 批量插入数据（BulkInsertData内部使用独立连接）
+            conn.BulkInsertData(queryParams, "##ProductQueryParmTemp");
 
-            // 查询SQL（WITH NOLOCK避免锁等待）
+            // 步骤3: 创建索引并查询数据（独立连接，避免DTC）
+            string createIndexSQL = @"CREATE NONCLUSTERED INDEX IX_Temp_ProductCode ON ##ProductQueryParmTemp(ProductCode);";
             string querySQL = $@"
 SELECT p.ProductID, p.SpecsType, p.ProductCode, p.BatchYear, p.TypeID, p.HouseID, p.SuppClientNum, p.ShareHouseID
 FROM Tbl_Cargo_Product p WITH(NOLOCK)
-INNER JOIN ##ProductQueryTemp t ON p.ProductCode = t.ProductCode
+INNER JOIN ##ProductQueryParmTemp t ON p.ProductCode = t.ProductCode
 WHERE p.SpecsType = '5'
 AND p.HouseID IN ({string.Join(",", houseIDSet)});";
 
-            using (DbCommand command = conn.GetSqlStringCommond(createTempTableSQL))
+            using (DbCommand queryCommand = conn.GetSqlStringCommond(createIndexSQL))
             {
-                command.Connection.Open();
-                command.ExecuteNonQuery();
-
-                // 批量插入ProductCode到临时表
-                conn.BulkInsertData(queryParams, "##ProductQueryTemp");
-
-                // 创建索引（数据插入后创建索引比先创建索引再插入更快）
-                command.CommandText = createIndexSQL;
-                command.ExecuteNonQuery();
+                // 创建索引
+                conn.ExecuteNonQuery(queryCommand);
 
                 // 执行查询
-                command.CommandText = querySQL;
-                using (DataTable dd = conn.ExecuteDataTable(command))
+                queryCommand.CommandText = querySQL;
+                using (DataTable dd = conn.ExecuteDataTable(queryCommand))
                 {
                     foreach (DataRow row in dd.Rows)
                     {
@@ -5676,7 +5675,7 @@ WHERE (1=1) ";
                                 Title = Convert.ToString(idr["Title"]),
                                 Memo = Convert.ToString(idr["Memo"]),
                                 FileName = Convert.ToString(idr["FileName"]),
-                                //OnSaleID = Convert.ToInt64(idr["OnSaleID"]),
+                                ID = Convert.ToInt64(idr["RowNumber"]),
                                 Consume = string.IsNullOrEmpty(Convert.ToString(idr["Consume"])) ? 0 : Convert.ToInt32(idr["Consume"]),
                                 ProductPrice = string.IsNullOrEmpty(Convert.ToString(idr["ProductPrice"])) ? 0 : Convert.ToDecimal(idr["ProductPrice"]),
                                 SigningPrice = string.IsNullOrEmpty(Convert.ToString(idr["SigningPrice"])) ? 0 : Convert.ToDecimal(idr["SigningPrice"]),

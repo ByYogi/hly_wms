@@ -33,6 +33,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Data;
 using System.Globalization;
 using System.IO;
@@ -2735,6 +2736,20 @@ namespace Cargo.Order
                             decimal trFee = 0.00M; decimal OverDayFee = 0.00M; int pieceN = 0; int pieceSum = 0;
                             string outID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString();//出库单号
                             string SuppClientNum = "";
+
+                            //判断库存信息
+                            List<string> ProductIDStr = new List<string>();
+                            
+                            foreach (Hashtable row in GridRows)
+                            {
+                                ProductIDStr.Add(row["ProductID"].ToString());
+                            }
+                            List<CargoContainerGoodsEntity> contList = new List<CargoContainerGoodsEntity>();
+                            if (ProductIDStr.Count()>0) {
+                                contList = house.QueryCargoContainerGoodsByProductID(new CargoContainerGoodsEntity { ProductIDStr = string.Join(",", ProductIDStr) });
+                            }
+
+
                             foreach (Hashtable row in GridRows)
                             {
                                 //查询基础规格
@@ -2921,6 +2936,18 @@ namespace Cargo.Order
                                             OP_ID = UserInfor.LoginName.Trim()
                                         });
                                         pieceN = Convert.ToInt32(row["InPiece"]) - Convert.ToInt32(row["Piece"]);
+                                        //核对库存
+                                        CargoContainerGoodsEntity cont = contList.Where(w => w.ProductID == Convert.ToInt64(row["ProductID"]) && w.ContainerID == Convert.ToInt32(row["ContainerID"])).FirstOrDefault();
+                                        if (cont==null) {
+                                            msg.Message = "无库存信息，请核对";
+                                            msg.Result = false;
+                                        }
+                                        if (cont.Piece<pieceN)
+                                        {
+                                            msg.Message = "出库数量与明细不一致，请核对";
+                                            msg.Result = false;
+                                        }
+
                                         trFee += pieceN * Convert.ToDecimal(row["ActSalePrice"]);
                                         CargoContainerShowEntity cargo = new CargoContainerShowEntity();
                                         cargo.OrderNo = ent.OrderNo;//订单号
@@ -21185,6 +21212,7 @@ namespace Cargo.Order
                 var goods = interfaceBus.QueryCassMallOrderGoods(new OrderHeader { OrderId = row.OrderId });
                 var Adjustments = interfaceBus.QueryCassMallItemAdjustments(new OrderHeader { OrderId = row.OrderId });
                 var GiftItems = interfaceBus.QueryCassMallGiftItems(new OrderHeader { OrderId = row.OrderId });
+                var WayDetails = interfaceBus.QueryCassMallWayDetails(new OrderHeader { OrderId = row.OrderId }).FirstOrDefault();
 
                 CargoOrderEntity ent = new CargoOrderEntity();
                 List<CargoOrderGoodsEntity> entDest = new List<CargoOrderGoodsEntity>();
@@ -21221,9 +21249,14 @@ namespace Cargo.Order
                 ent.LogisID = areaEntity.LogisID;
                 ent.Rebate = 0;
                 ent.CheckOutType = clientEntity.CheckOutType;// "5";//Convert.ToString(row["CheckOutType"]);
-                                                             //ent.ReturnAwb = string.IsNullOrEmpty(Convert.ToString(row["ReturnAwb"])) ? 0 : Convert.ToInt32(row["ReturnAwb"]);
+                var DeliveryType = "0";
+                if (WayDetails!=null)
+                {
+                    DeliveryType = WayDetails.CompanyId == "PICKED_INSTORE" ? "1" : "0";
+                }
+                //ent.ReturnAwb = string.IsNullOrEmpty(Convert.ToString(row["ReturnAwb"])) ? 0 : Convert.ToInt32(row["ReturnAwb"]);
                 ent.TrafficType = "0";// Convert.ToString(row["TrafficType"]);
-                ent.DeliveryType = "0";//Convert.ToString(row["DeliveryType"]);
+                ent.DeliveryType = DeliveryType;//Convert.ToString(row["DeliveryType"]);
                 ent.AcceptUnit = clientEntity.ClientName;//Convert.ToString(row["AcceptUnit"]);取公司名称
                 ent.AcceptAddress = order_.AcceptAddress;
                 ent.AcceptPeople = order_.AcceptPeople;

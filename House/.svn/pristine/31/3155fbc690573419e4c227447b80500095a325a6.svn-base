@@ -1,0 +1,289 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace House.Entity.Cargo.Order
+{
+    /// <summary>
+    /// 出库通知SPI实体
+    /// </summary>
+    public class CargoTMallEntity
+    {
+        /// <summary>
+        /// 用户ID
+        /// </summary>
+        public long userId { get; set; }
+
+        /// <summary>
+        /// 市编码ID
+        /// </summary>
+        public long consigneeCityId { get; set; }
+
+        /// <summary>
+        /// 配送类型（1到店2到家3无需配送）
+        /// </summary>
+        public string sendType { get; set; }
+
+        /// <summary>
+        /// 收货人手机号
+        /// </summary>
+        public string consigneePhone { get; set; }
+
+        /// <summary>
+        /// 一级渠道
+        /// </summary>
+        public int originBillFirstChannel { get; set; }
+
+        /// <summary>
+        /// 二级渠道
+        /// </summary>
+        public int originBillSecondChannel { get; set; }
+
+        /// <summary>
+        /// 三级渠道
+        /// </summary>
+        public int originBillThirdChannel { get; set; }
+
+        /// <summary>
+        /// 要求送达时间
+        /// </summary>
+        public long requireArriveTime { get; set; }
+        public DateTime requireArriveTime_Actual { get; set; }
+
+        /// <summary>
+        /// 打印面单是否加密0否1是为空（null）时表示不关注，没具体要求
+        /// </summary>
+        public int isExpressSheetEncrypted { get; set; }
+
+        /// <summary>
+        /// 扩展信息
+        /// </summary>
+        public string extend { get; set; }
+
+        /// <summary>
+        /// 买家联系电话【非空】【wms】
+        /// </summary>
+        public string customerContact { get; set; }
+
+        /// <summary>
+        /// 出库通知单号
+        /// </summary>
+        public string outboundNoticeNo { get; set; }
+
+        /// <summary>
+        /// 业务单号（比如交易订单号、采购单号、调拨单号）
+        /// </summary>
+        public string originBillNo { get; set; }
+
+        /// <summary>
+        /// 单据类型（1:销售单4:退供单5：调拨单6:报废单7:补发单）
+        /// </summary>
+        public int originBillType { get; set; }
+
+        /// <summary>
+        /// 是否紧急1：一般；2：紧急
+        /// </summary>
+        public int urgentLevel { get; set; }
+
+        /// <summary>
+        /// 省编码名称
+        /// </summary>
+        public string consigneeProvinceName { get; set; }
+
+        /// <summary>
+        /// 市编码名称
+        /// </summary>
+        public string consigneeCityName { get; set; }
+
+        /// <summary>
+        /// 区编码名称
+        /// </summary>
+        public string consigneeCountyName { get; set; }
+
+        /// <summary>
+        /// 仓库编码
+        /// </summary>
+        public string warehouseCode { get; set; }
+
+        /// <summary>
+        /// 1:经销2:代销
+        /// </summary>
+        public string saleType { get; set; }
+
+        /// <summary>
+        /// 仓库名称
+        /// </summary>
+        public string warehouseName { get; set; }
+
+        /// <summary>
+        /// 三方仓库code
+        /// </summary>
+        public string thirdWarehouseCode { get; set; }
+
+        /// <summary>
+        /// 创建时间
+        /// </summary>
+        public long noticeCreateTime { get; set; }
+        public DateTime noticeCreateTime_Actual { get; set; }
+
+        /// <summary>
+        /// 买家备注
+        /// </summary>
+        public string buyerRemark { get; set; }
+
+        /// <summary>
+        /// 卖家备注
+        /// </summary>
+        public string sellerRemark { get; set; }
+
+        /// <summary>
+        /// 发货备注
+        /// </summary>
+        public string deliverRemark { get; set; }
+
+        /// <summary>
+        /// 业务单据提单（创建）时间
+        /// </summary>
+        public long originBillTime { get; set; }
+        public DateTime originBillTime_Actual { get; set; }
+
+        /// <summary>
+        /// 最晚出库时间
+        /// </summary>
+        public long requireOutWarehouseTime { get; set; }
+        public DateTime requireOutWarehouseTime_Actual { get; set; }
+
+        /// <summary>
+        /// 明细
+        /// </summary>
+        public string noticeDetailList { get; set; }
+        public List<OutboundNoticeDetailSpiPo> noticeDetailLists { get; set; }
+
+        /// <summary>
+        /// 是否允许缺出0否1是
+        /// </summary>
+        public int isAllowLack { get; set; }
+
+        /// <summary>
+        /// 是否密文0否1是
+        /// </summary>
+        public int isEncrypted { get; set; }
+
+        /// <summary>
+        /// 阿里oaID
+        /// </summary>
+        public string aliOaid { get; set; }
+
+        /// <summary>
+        /// 收货人姓名
+        /// </summary>
+        public string consigneeContacts { get; set; }
+
+        /// <summary>
+        /// 买家姓名
+        /// </summary>
+        public string customerName { get; set; }
+
+        /// <summary>
+        /// 支付时间
+        /// </summary>
+        public long payTime { get; set; }
+        public DateTime payTime_Actual { get; set; }
+
+        /// <summary>
+        /// 收货人详细地址
+        /// </summary>
+        public string consigneeDetail { get; set; }
+
+        /// <summary>
+        /// 区编码ID
+        /// </summary>
+        public long consigneeCountyId { get; set; }
+
+        /// <summary>
+        /// 省编码ID
+        /// </summary>
+        public long consigneeProvinceId { get; set; }
+
+        /// <summary>
+        /// 出库通知单id
+        /// </summary>
+        public long id { get; set; }
+        public string app_key { get; set; }
+        public string sign { get; set; }
+        public string timestamp { get; set; }
+        public string is_test { get; set; }
+        public string callback { get; set; }
+    }
+
+    /// <summary>
+    /// 出库通知明细SPI实体
+    /// </summary>
+    public class OutboundNoticeDetailSpiPo
+    {
+        /// <summary>
+        /// sku名称
+        /// </summary>
+        public string skuName { get; set; }
+
+        /// <summary>
+        /// 需出库数量
+        /// </summary>
+        public int needOutboundNum { get; set; }
+
+        /// <summary>
+        /// 三方商家编码
+        /// </summary>
+        public string skuOrderCode { get; set; }
+
+        /// <summary>
+        /// 品质类型（1：好件、2：残次品、3：坏件）
+        /// </summary>
+        public int goodsQuality { get; set; }
+
+        /// <summary>
+        /// 保质期类型（1：正常、2：临期、4：年份，此字段是用2的n次方表示）
+        /// </summary>
+        public long guaranteePeriod { get; set; }
+
+        /// <summary>
+        /// skuId
+        /// </summary>
+        public long skuId { get; set; }
+    }
+
+    // 出库详情子项类
+    public class OutboundDetail
+    {
+        public long skuId { get; set; }
+        public int outboundNum { get; set; }
+        public string skuOrderCode { get; set; }
+    
+    }
+
+    // 出库主类
+    public class OutboundDto
+    {
+        public string outboundContact { get; set; }
+        public string originBillNo { get; set; }
+        public string idempotentNo { get; set; }
+        public string logisticsNo { get; set; }
+        public string logisticsName { get; set; }
+        public DateTime outboundTime { get; set; }
+        public List<OutboundDetail> outboundDetailList { get; set; }
+        public string logisticsCode { get; set; }
+        public string outboundContactPhone { get; set; }
+        public int syncType { get; set; }
+        public string remark { get; set; }
+    }
+    public class operateNoticeSpiPo
+    {
+        public string supplierCode { get; set; }
+        public string warehouseCode { get; set; }
+        public string thirdWarehouseCode { get; set; }
+        public int operateType { get; set; }
+        public string noticeNo { get; set; }
+    }
+}

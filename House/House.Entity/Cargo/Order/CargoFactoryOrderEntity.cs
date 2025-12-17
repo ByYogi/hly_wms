@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -12,7 +13,10 @@ namespace House.Entity.Cargo
     [Serializable]
     public class CargoFactoryOrderEntity
     {
-
+        /// <summary>
+        /// 采购供应商
+        /// </summary>
+        public string PurchaseSupplier { get; set; }
         /// <summary>
         /// 货物物权分类  业务类型(物权)
         /// </summary>
@@ -285,7 +289,7 @@ namespace House.Entity.Cargo
         public string BusinessID { get; set; }
         public int BundleNum { get; set; }
         public int HubDiameter { get; set; }
-        
+
         /// <summary>
         /// 去NULL,替换危险字符
         /// </summary>

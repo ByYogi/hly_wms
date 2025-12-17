@@ -15,6 +15,8 @@ namespace House.Entity.Cargo
     [Serializable]
     public class CargoProductEntity
     {
+        [Description("采购供应商")]
+        public string PurchaseSupplier { get; set; }
         [Description("锁定人")]
         public string LockStockName { get; set; }
         [Description("锁定日期")]

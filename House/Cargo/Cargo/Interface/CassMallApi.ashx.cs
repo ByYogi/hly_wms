@@ -250,6 +250,7 @@ namespace Cargo.Interface
                 var goods = interfaceBus.QueryCassMallOrderGoods(new OrderHeader { OrderId = datas.OrderHeader.OrderId });
                 var Adjustments = interfaceBus.QueryCassMallItemAdjustments(new OrderHeader { OrderId = datas.OrderHeader.OrderId });
                 var GiftItems = interfaceBus.QueryCassMallGiftItems(new OrderHeader { OrderId = datas.OrderHeader.OrderId });
+                var WayDetails = interfaceBus.QueryCassMallWayDetails(new OrderHeader { OrderId = datas.OrderHeader.OrderId }).FirstOrDefault();
 
                 CargoOrderEntity ent = new CargoOrderEntity();
                 List<CargoOrderGoodsEntity> entDest = new List<CargoOrderGoodsEntity>();
@@ -279,9 +280,13 @@ namespace Cargo.Interface
                 ent.LogisID = areaEntity.LogisID;
                 ent.Rebate = 0;
                 ent.CheckOutType = clientEntity.CheckOutType;// "5";//Convert.ToString(row["CheckOutType"]);
-                                                             //ent.ReturnAwb = string.IsNullOrEmpty(Convert.ToString(row["ReturnAwb"])) ? 0 : Convert.ToInt32(row["ReturnAwb"]);
+                var DeliveryType = "0";
+                if (WayDetails != null)
+                {
+                    DeliveryType = WayDetails.CompanyId == "PICKED_INSTORE" ? "1" : "0";
+                }
                 ent.TrafficType = "0";// Convert.ToString(row["TrafficType"]);
-                ent.DeliveryType = "0";//Convert.ToString(row["DeliveryType"]);
+                ent.DeliveryType = DeliveryType;//Convert.ToString(row["DeliveryType"]);
                 ent.AcceptUnit = clientEntity.ClientName;//Convert.ToString(row["AcceptUnit"]);取公司名称
                 ent.AcceptAddress = AcceptAddress;
                 ent.AcceptPeople = AcceptPeople;

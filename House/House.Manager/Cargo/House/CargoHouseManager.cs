@@ -3157,10 +3157,19 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
         public List<CargoContainerGoodsEntity> QueryCargoContainerGoodsByProductID(CargoContainerGoodsEntity entity)
         {
             List<CargoContainerGoodsEntity> list = new List<CargoContainerGoodsEntity>();
-            string strQ = @"Select * from Tbl_Cargo_ContainerGoods Where ProductID=@ProductID";
+            string strQ = @"Select * from Tbl_Cargo_ContainerGoods Where (1=1)";
+            if (entity.ProductID!=0)
+            {
+                strQ += @" and ProductID = " + entity.ProductID ;
+            }
+
+            if (!string.IsNullOrEmpty(entity.ProductIDStr)) {
+                strQ += @" and ProductID in ("+ entity.ProductIDStr + ")";
+            }
+
             using (DbCommand cmdQ = conn.GetSqlStringCommond(strQ))
             {
-                conn.AddInParameter(cmdQ, "@ProductID", DbType.Int64, entity.ProductID);
+                //conn.AddInParameter(cmdQ, "@ProductID", DbType.Int64, entity.ProductID);
                 using (DataTable dd = conn.ExecuteDataTable(cmdQ))
                 {
                     foreach (DataRow idr in dd.Rows)
