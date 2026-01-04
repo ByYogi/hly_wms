@@ -1,0 +1,535 @@
+﻿<%@ Page Title="创建拣货计划" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="orderCreatePicekPlan.aspx.cs" Inherits="Cargo.Order.orderCreatePicekPlan" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+    <style type="text/css">
+        .filter-container {
+            overflow-x: auto;
+            overflow-y: hidden;
+            min-width: 1200px;
+        }
+
+        .filter-table {
+            width: 100%;
+            min-width: 1200px;
+            table-layout: fixed;
+        }
+
+            .filter-table td {
+                padding: 2px;
+                vertical-align: middle;
+            }
+
+                .filter-table td.label {
+                    text-align: right;
+                    width: 70px;
+                    white-space: nowrap;
+                    font-size: 12px;
+                }
+
+                .filter-table td.control {
+                    width: 100px;
+                }
+
+                .filter-table td.control-wide {
+                    width: 180px; /* 用于开单时间的双日期控件 */
+                }
+        /* 统一控件宽度样式 */
+        .unified-textbox {
+            width: 100px !important;
+        }
+
+        .unified-combobox {
+            width: 100px !important;
+        }
+
+        .unified-datebox {
+            width: 85px !important;
+        }
+    </style>
+    <script type="text/javascript">
+        //页面加载显示遮罩层
+        var pc;
+        $.parser.onComplete = function () {
+            if (pc) {
+                clearTimeout(pc);
+            }
+            pc = setTimeout(closemask, 10);
+        }
+        //关闭加载中遮罩层
+        function closemask() {
+            $("#Loading").fadeOut("normal", function () {
+                $(this).remove();
+            });
+        }
+        window.onload = function () {
+            adjustment();
+            $.ajaxSetup({ async: true });
+            $.getJSON("../Client/clientApi.aspx?method=QueryAllUpClientDep", function (data) {
+                UpClientDep = data;
+            });
+        }
+        $(window).resize(function () {
+            adjustment();
+        });
+        function adjustment() {
+            var height = Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true);
+            $('#dg').datagrid({ height: height - 50 });
+        }
+        $(document).ready(function () {
+            $('#dg').datagrid({
+                width: '100%',
+                loadMsg: '数据加载中请稍候...',
+                autoRowHeight: false, //行高是否自动
+                collapsible: true, //是否可折叠
+                pagination: true, //分页是否显示
+                pageSize: Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), //每页多少条
+                pageList: [Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28), Math.floor((Number($(window).height()) - $("div[name='SelectDiv1']").outerHeight(true) - 58) / 28) * 2],
+                fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                singleSelect: false, //设置为 true，则只允许选中一行。
+                checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                idField: 'PickID',
+                url: null,
+                toolbar: '#toolbar',
+                columns: [[
+                    { title: '', field: 'PickID', checkbox: true, width: '30px' },
+                    { title: '订单号', field: 'OrderNo', width: '100px' },
+                    { title: '型号', field: 'Model', width: '60px' },
+                    { title: '规格', field: 'Specs', width: '80px' },
+                    { title: '花纹', field: 'Figure', width: '90px' },
+                    { title: '批次', field: 'Batch', width: '50px' },
+                    { title: '速级', field: 'SpeedLevel', width: '50px' },
+                    { title: '载重', field: 'LoadIndex', width: '50px' },
+                    { title: '品牌', field: 'TypeName', width: '60px' },
+                    { title: '货品代码', field: 'GoodsCode', width: '60px' },
+                    { title: '产品来源', field: 'SourceName', width: '70px' },
+                    { title: '开单品牌', field: 'ShowTypeName', width: '60px' },
+                    { title: '开单编码', field: 'ShowGoodsCode', width: '70px' },
+                    {
+                        title: '归属部门', field: 'BelongDepart', width: '100px', formatter: function (value) {
+                            return "<span title='" + GetUpClientDepName(value) + "'>" + GetUpClientDepName(value) + "</span>";
+                        }
+                    },
+                    {
+                        title: '规格类型', field: 'SpecsType', width: '65px', formatter: function (val, row, index) {
+                            if (val == "0") { return "<span title='分配规格'>分配规格</span>"; }
+                            else if (val == "1") { return "<span title='普通规格'>普通规格</span>"; }
+                            else if (val == "2") { return "<span title='特价分配规格'>特价分配规格</span>"; }
+                            else if (val == "3") { return "<span title='手工单'>手工单</span>"; }
+                            else { return ""; }
+                        }
+                    },
+                    { title: '货位代码', field: 'ContainerCode', width: '80px' },
+                    { title: '所在区域', field: 'AreaName', width: '60px' },
+                    { title: '所在仓库', field: 'FirstAreaName', width: '80px' },
+                    { title: '一级区域', field: 'LevelAreaName', width: '80px' },
+                    { title: '产品ID', field: 'ProductID', width: '60px' },
+                    {
+                        title: '生成状态', field: 'PickStatus', width: '65px', formatter: function (val, row, index) {
+                            if (val == "0") { return "<span title='0'>未生成</span>"; }
+                            else if (val == "1") { return "<span title='1'>已生成</span>"; }
+                            else { return "未知状态"; }
+                        }
+                    },
+                    {
+                        title: '时效类型', field: 'ValidityType', width: '65px', formatter: function (val, row, index) {
+                            if (val == "0") { return "<span title='0'>普通</span>"; }
+                            else if (val == "1") { return "<span title='1'>紧急</span>"; }
+                            else { return "未知状态"; }
+                        }
+                    },
+                    { title: '拣货计划单号', field: 'PickPlanNo', width: '110px' },
+                ]],
+                onClickRow: function (index, row) {
+                    $('#dg').datagrid('clearSelections');
+                    $('#dg').datagrid('selectRow', index);
+                },
+                onDblClickRow: function (index, row) {
+                    $('#dgShowData').dialog('open').dialog('setTitle', '拣货计划单号' + row.PickPlanNo + "详细数据");
+                    $('#dgDriver').datagrid({
+                        width: '100%',
+                        height: '480px',
+                        title: '', //标题内容
+                        loadMsg: '数据加载中请稍候...',
+                        autoRowHeight: false, //行高是否自动
+                        collapsible: true, //是否可折叠
+                        pagination: false, //分页是否显示
+                        fitColumns: false, //设置为 true，则会自动扩大或缩小列的尺寸以适应网格的宽度并且防止水平滚动
+                        singleSelect: true, //设置为 true，则只允许选中一行。
+                        checkOnSelect: true, //如果设置为 true，当用户点击某一行时，则会选中/取消选中复选框。如果设置为 false 时，只有当用户点击了复选框时，才会选中/取消选中复选框
+                        rownumbers: true,
+                        idField: 'Code',
+                        url: null,
+                        columns: [[
+                            {
+                                title: '订单号', field: 'OrderNo', width: '100px'
+                            },
+                            { title: '产品名称', field: 'ProductName', width: '180px' },
+                            { title: '货品代码', field: 'GoodsCode', width: '120px' },
+                            { title: '货位编码', field: 'ContainerCode', width: '100px' },
+                            { title: '数量', field: 'Piece', width: '70px', align: 'right' },
+                            { title: '扫描数量', field: 'ScanPiece', width: '70px', align: 'right' },
+                            //{ title: '物流公司运单号', field: 'LogisAwbNo', width: '80px' },
+                            //{ title: '出发站', field: 'Dep', width: '70px' },
+                            //{ title: '到达站', field: 'Dest', width: '70px' },
+                            {
+                                title: '扫描状态', field: 'ScanStatus', width: '80px', formatter: function (val, row, index) {
+                                    if (val == "1") { return "已扫描"; }
+                                    else if (val == "2") { return "扫描中"; }
+                                    else { return "未扫描"; }
+                                }
+                            },
+                            { title: '扫描人', field: 'ScanUserID', width: '80px' },
+                            { title: '坑位号', field: 'PitNum', width: '60px' },
+                            { title: '客户名称', field: 'AcceptUnit', width: '80px' },
+                            { title: '客户联系人', field: 'AcceptPeople', width: '80px' },
+                            //{ title: '客户联系电话', field: 'AcceptTelephone', width: '100px' },
+                            {
+                                title: '客户手机', field: 'AcceptCellphone', width: '100px'
+                            },
+                        ]],
+                        rowStyler: function (index, row) {
+                            if (row.ScanStatus == "0") { return "background-color:#FCC7C7"; }
+                            if (row.ScanStatus == "2") { return "background-color:#D7D59C"; }
+                        },
+                    })
+                    var gridOpts = $('#dgDriver').datagrid('options');
+                    gridOpts.url = 'orderApi.aspx?method=QueryOrderPickPlanGoods&PickPlanNo=' + row.PickPlanNo;
+                }
+            });
+            function myformatter1(date) {
+                var y = date.getFullYear();
+                var m = date.getMonth() + 1;
+                var d = date.getDate() - 7;
+
+                return y + '-' + (m < 10 ? ('0' + m) : m) + '-'
+                    + (d < 10 ? ('0' + d) : d);
+            }
+            function myformatter2(date) {
+                var y = date.getFullYear();
+                var m = date.getMonth() + 1;
+                var d = date.getDate();
+
+                return y + '-' + (m < 10 ? ('0' + m) : m) + '-'
+                    + (d < 10 ? ('0' + d) : d);
+            }
+            var curr_time = new Date();
+            $("#StartDate").datebox({
+                value: myformatter1(curr_time)
+            });
+            $("#EndDate").datebox({
+                value: myformatter2(curr_time)
+            });
+            $('#StartDate').datebox('textbox').bind('focus', function () { $('#StartDate').datebox('showPanel'); });
+            $('#EndDate').datebox('textbox').bind('focus', function () { $('#EndDate').datebox('showPanel'); });
+
+
+            // 初始化区域大仓下拉框，并添加级联功能
+            $('#SID').combobox({
+                url: '../House/houseApi.aspx?method=CargoPermisionHouse',
+                valueField: 'HouseID',
+                textField: 'Name',
+                panelHeight: 200,
+                onSelect: function (rec) {
+                    // 清空所属仓库下拉框
+                    $('#HAID').combobox('clear');
+                    // 重新加载所属仓库数据
+                    var url = '../House/houseApi.aspx?method=QueryALLArea&pid=0&hid=' + rec.HouseID;
+                    $('#HAID').combobox('reload', url);
+                    // 清空一级区域下拉框
+                    $('#HSID').combobox('clear');
+
+                    // 设置所属仓库的级联事件
+                    $('#HAID').combobox({
+                        panelHeight: 200,
+                        onSelect: function (fai) {
+                            // 清空一级区域下拉框
+                            $('#HSID').combobox('clear');
+                            // 重新加载一级区域数据
+                            var url = '../House/houseApi.aspx?method=QueryALLArea&hid=' + rec.HouseID + '&pid=' + fai.AreaID;
+                            $('#HSID').combobox('reload', url);
+                        }
+                    });
+                }
+            });
+
+            // 初始化到达站多选下拉框
+            $('#Dest').combobox({
+                url: '../systempage/sysService.aspx?method=QueryAllCity',
+                valueField: 'CityName',
+                textField: 'CityName',
+                multiple: true,
+                panelHeight: 200
+            });
+
+            // 初始化业务名称下拉框
+            $('#BusinessID').combobox({
+                url: '../Client/clientApi.aspx?method=QueryBusinessIDDefault',
+                valueField: 'ID',
+                textField: 'DepName',
+                panelHeight: 200
+            });
+
+            // 初始化一级产品下拉框，并添加级联功能
+            $('#APID').combobox({
+                url: '../Product/productApi.aspx?method=QueryALLOneProductType',
+                valueField: 'TypeID',
+                textField: 'TypeName',
+                panelHeight: 200,
+                onSelect: function (rec) {
+                    // 清空二级产品下拉框
+                    $('#ASID').combobox('clear');
+                    // 重新加载二级产品数据
+                    $('#ASID').combobox({
+                        url: '../Product/productApi.aspx?method=QueryALLOneProductType&PID=' + rec.TypeID,
+                        valueField: 'TypeID',
+                        textField: 'TypeName',
+                        AddField: 'PinyinName',
+                        panelHeight: 200,
+                        filter: function (q, row) {
+                            var opts = $(this).combobox('options');
+                            return row[opts.textField].indexOf(q) >= 0 || row[opts.AddField].indexOf(q) >= 0;
+                        }
+                    });
+                }
+            });
+
+            // 初始化时效类型下拉框
+            $('#ValidityType').combobox({
+                data: [
+                    { value: '', text: '全部' },
+                    { value: '0', text: '普通' },
+                    { value: '1', text: '紧急' }
+                ],
+                valueField: 'value',
+                textField: 'text',
+                panelHeight: 'auto'
+            });
+
+            // 初始化生成状态下拉框
+            $('#PickStatus').combobox({
+                data: [
+                    { value: '-1', text: '全部' },
+                    { value: '0', text: '未生成' },
+                    { value: '1', text: '已生成' }
+                ],
+                valueField: 'value',
+                textField: 'text',
+                panelHeight: 'auto',
+                value: '0'  // 默认选中"未生成"
+            });
+
+        })
+
+        // 根据公司部门ID获取部门名称
+        function GetUpClientDepName(value) {
+            var name = '';
+            if (value != "") {
+                for (var i = 0; i < UpClientDep.length; i++) {
+                    if (UpClientDep[i].ID == value) {
+                        name = UpClientDep[i].DepName;
+                        break;
+                    }
+                }
+            }
+            return name;
+        }
+
+        function dosearch() {
+            debugger;
+            var HouseID = '';
+            var HouseIDs = $("#SID").combobox('getData')
+            HouseID = $("#SID").combobox('getValue')
+
+            // 获取到达站多选值
+            var destValues = $("#Dest").combobox('getValues');
+            var destString = destValues ? destValues.join(',') : '';
+
+            //$('#dg').datagrid('clearSelections');
+            var gridOpts = $('#dg').datagrid('options');
+            gridOpts.url = 'orderApi.aspx?method=QueryOrderPickPlanList';
+            $('#dg').datagrid('load', {
+                // 原有参数
+                StartDate: $('#StartDate').datebox('getValue'),
+                EndDate: $('#EndDate').datebox('getValue'),
+                PickStatus: $("#PickStatus").combobox('getValue'),
+                HouseID: HouseID,
+                // 新增参数
+                FirstAreaID: $("#HAID").combobox('getValue'),
+                ParentAreaID: $("#HSID").combobox('getValue'),
+                AcceptUnit: $('#AcceptUnit').textbox('getValue'),
+                AcceptPeople: $('#AcceptPeople').textbox('getValue'),
+                Dest: destString,
+                shopCode: $('#shopCode').textbox('getValue'),
+                ACreateAwb: $('#ACreateAwb').textbox('getValue'),
+                BusinessID: $("#BusinessID").combobox('getValue'),
+                ValidityType: $("#ValidityType").combobox('getValue'),
+                ParentTypeID: $("#APID").combobox('getValue'),
+                TypeID: $("#ASID").combobox('getValue'),
+                ASpecs: $('#ASpecs').textbox('getValue'),
+                AFigureTd: $('#AFigureTd').textbox('getValue'),
+                AGoodsCode: $('#AGoodsCode').textbox('getValue')
+            });
+        }
+        function closedgShowData() {
+            $('#dgShowData').dialog('close');
+        }
+
+        function GeneratePickingPlan() {
+
+        }
+    </script>
+
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+    <div id="saPanel" name="SelectDiv1" class="easyui-panel" title="筛选条件" style="width: 100%;"
+        data-options="iconCls:'icon-search',collapsible:true">
+        <div class="filter-container">
+            <table class="filter-table" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td class="label">区域大仓:</td>
+                    <td class="control">
+                        <select class="easyui-combobox unified-combobox" id="SID" panelheight="200"></select>
+                    </td>
+                    <td class="label">一级产品:</td>
+                    <td class="control">
+                        <select class="easyui-combobox unified-combobox" id="APID" panelheight="200"></select>
+                    </td>
+                    <td class="label">客户名称:</td>
+                    <td class="control">
+                        <input id="AcceptUnit" class="easyui-textbox unified-textbox" />
+                    </td>
+                    <td class="label">收货人:</td>
+                    <td class="control">
+                        <input id="AcceptPeople" class="easyui-textbox unified-textbox" />
+                    </td>
+                    <td class="label">到达站:</td>
+                    <td class="control">
+                        <select class="easyui-combobox unified-combobox" id="Dest" panelheight="200"
+                            data-options="multiple:true">
+                        </select>
+                    </td>
+                    <td class="label">店代码:</td>
+                    <td class="control">
+                        <input id="shopCode" class="easyui-textbox unified-textbox" />
+                    </td>
+                    <td class="label">开单人:</td>
+                    <td class="control">
+                        <input id="ACreateAwb" class="easyui-textbox unified-textbox" />
+                    </td>
+
+                </tr>
+                <tr>
+                    <td class="label">所属仓库:</td>
+                    <td class="control">
+                        <select class="easyui-combobox unified-combobox" id="HAID" panelheight="200" data-options="valueField:'AreaID',textField:'Name'"></select>
+                    </td>
+                    <td class="label">二级产品:</td>
+                    <td class="control">
+                        <select class="easyui-combobox unified-combobox" id="ASID" panelheight="200"></select>
+                    </td>
+                    <td class="label">货品代码:</td>
+                    <td class="control">
+                        <input id="AGoodsCode" class="easyui-textbox unified-textbox" />
+                    </td>
+                    <td class="label">业务名称:</td>
+                    <td class="control">
+                        <select class="easyui-combobox unified-combobox" id="BusinessID" panelheight="300"></select>
+                    </td>
+                    <td class="label">时效类型:</td>
+                    <td class="control">
+                        <select class="easyui-combobox unified-combobox" id="ValidityType" panelheight="auto"></select>
+                    </td>
+                    <td class="label">生成状态:</td>
+                    <td class="control">
+                        <select class="easyui-combobox unified-combobox" id="PickStatus" panelheight="auto"></select>
+                    </td>
+
+
+                    <td class="label">规格:</td>
+                    <td class="control">
+                        <input id="ASpecs" class="easyui-textbox unified-textbox" />
+                    </td>
+
+                </tr>
+                <tr>
+
+                    <td class="label">一级区域:</td>
+                    <td class="control">
+                        <select class="easyui-combobox unified-combobox" id="HSID" panelheight="200" data-options="valueField:'AreaID',textField:'Name'"></select>
+                    </td>
+
+
+
+                    <!-- 空位 -->
+                    <td class="label">开单时间:</td>
+                    <td colspan="3" class="control-wide">
+                        <input id="StartDate" class="easyui-datebox unified-datebox" />~
+                        <input id="EndDate" class="easyui-datebox unified-datebox" />
+                    </td>
+                    <td class="label">花纹:</td>
+                    <td class="control">
+                        <input id="AFigureTd" class="easyui-textbox unified-textbox" />
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <table id="dg" class="easyui-datagrid">
+    </table>
+    <div id="toolbar">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-search" plain="false" onclick="dosearch()">&nbsp;查&nbsp;询&nbsp;</a>&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-reload" plain="false" onclick="GeneratePickingPlan()">生成拣货计划</a>&nbsp;&nbsp;
+    </div>
+    <div id="dgShowData" class="easyui-dialog" style="width: 1000px; height: 600px; padding: 0px"
+        closed="true" buttons="#dgShowData-buttons">
+        <table id="dgDriver" class="easyui-datagrid">
+        </table>
+    </div>
+    <div id="dgShowData-buttons">
+        <a href="#" class="easyui-linkbutton" iconcls="icon-application_put" plain="false" onclick="Export()">&nbsp;导&nbsp;出&nbsp;</a>&nbsp;&nbsp;&nbsp;&nbsp;
+        <a href="#" class="easyui-linkbutton" iconcls="icon-cancel" onclick="closedgShowData()">&nbsp;关&nbsp;闭&nbsp;</a>
+        <form runat="server" id="fm1">
+            <asp:Button ID="btnExport" runat="server" Style="display: none;" Text="导出" OnClick="btnExport_Click" />
+        </form>
+    </div>
+
+    <script type="text/javascript">
+        function DelItem() {
+            var rows = $('#dg').datagrid('getSelections');
+            if (rows == null || rows == "") {
+                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择要删除的数据！', 'warning');
+                return;
+            }
+            for (var i = 0; i < rows.length; i++) {
+                if (rows[i].PickStatus != 0) {
+                    $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', rows[i].PickPlanNo + '已拣货无法删除！', 'warning'); return;
+                }
+            }
+            $.messager.confirm('<%= Cargo.Common.GetSystemNameAndVersion()%>', '确定删除？', function (r) {
+                if (r) {
+                    $.messager.progress({ msg: '请稍后,正在保存中...' });
+                    var json = JSON.stringify(rows)
+                    $.ajax({
+                        url: 'orderApi.aspx?method=DelOrderPickPlan',
+                        type: 'post', dataType: 'json', data: { data: json },
+                        success: function (text) {
+                            $.messager.progress("close");
+                            //var result = eval('(' + msg + ')');
+                            if (text.Result == true) {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '删除成功!', 'info');
+                                $('#dg').datagrid('reload');
+                            }
+                            else {
+                                $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', text.Message, 'warning');
+                            }
+                        }
+                    });
+                }
+            });
+        }
+        function Export() {
+            var obj = document.getElementById("<%=btnExport.ClientID %>");
+            obj.click();
+        }
+    </script>
+</asp:Content>

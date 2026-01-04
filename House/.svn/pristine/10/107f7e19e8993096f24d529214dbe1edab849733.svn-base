@@ -1,0 +1,1103 @@
+﻿<%@ Page Title="客户档案详情" Language="C#" MasterPageFile="~/Site.Master" AutoEventWireup="true" CodeBehind="CustomerProfileManagerDetail.aspx.cs" Inherits="Cargo.Client.CustomerProfileManagerDetail" %>
+
+<asp:Content ID="Content1" ContentPlaceHolderID="head" runat="server">
+
+  <!-- 关键内联样式 - 防止FOUC -->
+  <style>
+    /* 立即隐藏Vue模板语法 */
+    [v-cloak] { display: none !important; }
+    
+    /* 页面渐入效果 */
+    #app {
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out;
+    }
+    #app.vue-loaded {
+      opacity: 1;
+    }
+    
+    /* 基础加载样式 */
+    .page-container {
+      min-height: 100vh;
+      background-color: #f5f7fa;
+    }
+  </style>
+
+  <!-- 预加载关键资源 -->
+  <link rel="preload" href="../JS/NewVue/vue.js" as="script">
+  <link rel="preload" href="../JS/CustomerProfileManager/detail-app.js" as="script">
+
+      <!-- Element UI CSS -->
+<%--  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"/>--%>
+    <link href="../JS/NewVue/element-ui/css/index.css" rel="stylesheet" />
+  
+  <!-- 自定义样式 -->
+  <link rel="stylesheet" href="../JS/CustomerProfileManager/css/variables.css"/>
+  <link rel="stylesheet" href="../JS/CustomerProfileManager/css/main.css"/>
+  <link rel="stylesheet" href="../JS/CustomerProfileManager/css/components.css"/>
+  <link rel="stylesheet" href="../JS/CustomerProfileManager/css/responsive.css"/>
+  <link rel="stylesheet" href="../JS/CustomerProfileManager/css/ranking.css"/>
+  <link rel="stylesheet" href="../JS/CustomerProfileManager/css/detail.css"/>
+
+</asp:Content>
+<asp:Content ID="Content2" ContentPlaceHolderID="ContentPlaceHolder1" runat="server">
+
+     <div id="app" v-cloak>
+  <!-- 页面容器 -->
+  <div class="page-container">
+
+      <!-- 在新标签页打开按钮 - 独占一行 -->
+      <div v-if="isInIframe" class="new-tab-button-section">
+        <el-button
+          icon="el-icon-link"
+          size="small"
+          type="primary"
+          plain
+          class="open-new-tab-btn standalone-btn"
+          @click="openInNewTab">
+          在新标签页打开
+        </el-button>
+      </div>
+
+      <!-- 返回按钮区域 -->
+      <div class="back-button-section">
+        <el-button
+          icon="el-icon-arrow-left"
+          size="small"
+          type="primary"
+          plain
+          @click="goBack">
+          返回客户列表
+        </el-button>
+      </div>
+    
+          <!-- 客户基本信息卡片区域 -->
+          <div class="customer-info-section">
+            <el-card class="customer-info-card customer-info-card2" v-loading="customerInfoLoading">
+              <div slot="header" class="customer-info-header">
+                <h3 class="customer-title">客户档案详情</h3>
+                <div class="customer-actions">
+                  <el-button icon="el-icon-edit" size="small" type="primary" @click="editCustomer">编辑</el-button>
+                  <el-button icon="el-icon-refresh" size="small" @click="refreshCustomerInfo">刷新</el-button>
+                </div>
+              </div>
+              
+              <div class="customer-info-content">
+                <!-- 新的布局：左侧客户信息，右侧统计卡片 -->
+                <div class="customer-profile-layout">
+                  <!-- 左侧：客户基本信息 -->
+                  <div class="customer-left-section">
+                    <div class="customer-info-card">
+                      <div class="customer-avatar-info">
+                        <div class="customer-avatar-container">
+                          <div class="customer-avatar" :class="getAvatarTheme(customerInfo.name)">
+                            {{ getCustomerInitial(customerInfo.name) }}
+                          </div>
+                          <!-- 头像挂件 -->
+                          <div class="avatar-accessories">
+                            <!-- VIP皇冠挂件 -->
+                            <div v-if="customerInfo.customerType === 'VIP客户'" class="avatar-accessory crown">
+                              <i class="el-icon-medal"></i>
+                            </div>
+                            <!-- 企业徽章挂件 -->
+                            <div v-else-if="customerInfo.customerType === '企业客户'" class="avatar-accessory enterprise">
+                              <i class="el-icon-office-building"></i>
+                            </div>
+                            <!-- 普通客户徽章挂件
+                            <div v-else-if="customerInfo.customerType === '普通客户'" class="avatar-accessory regular">
+                              <i class="el-icon-user"></i>
+                            </div> -->
+                            <!-- 活跃度星星挂件 -->
+                            <div v-if="customerInfo.activityLevel === '高度活跃'" class="avatar-accessory star">
+                              <i class="el-icon-star-on"></i>
+                            </div>
+                            <!-- 新客户标识 -->
+                            <div v-if="isNewCustomer(customerInfo.createTime)" class="avatar-accessory new-badge">
+                              NEW
+                            </div>
+                          </div>
+                        </div>
+                        <div class="customer-basic-details">
+                          <div class="customer-name">{{ customerInfo.name || '巫先生' }}</div>
+                          <div class="customer-id">客户ID: {{ customerInfo.id || '1001' }}</div>
+                          <div class="customer-tags">
+                            <el-tag class="customer-type-badge" :type="getCustomerTypeColor(customerInfo.customerType)">
+                              {{ customerInfo.customerType || 'VIP客户' }}
+                            </el-tag>
+                            <el-tag class="activity-level-badge" :type="getActivityLevelColor(customerInfo.activityLevel)">
+                              {{ customerInfo.activityLevel || '中等活跃' }}
+                            </el-tag>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div class="customer-contact-info">
+                        <div class="contact-item">
+                          <i class="el-icon-phone"></i>
+                          <span>{{ customerInfo.phone || '18824188149' }}</span>
+                        </div>
+                        <div class="contact-item">
+                          <i class="el-icon-location"></i>
+                          <span>{{ customerInfo.warehouse || '车安库' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- 右侧：统计卡片 -->
+                  <div class="customer-right-section">
+                    <div class="stats-grid">
+                      <div class="stat-item orders">
+                        <div class="stat-label">总订单数</div>
+                        <div class="stat-value">{{ customerInfo.totalOrders || 12 }}</div>
+                      </div>
+                      <div class="stat-item consumption">
+                        <div class="stat-label">总消费金额</div>
+                        <div class="stat-value">¥{{ formatCurrency(customerInfo.totalConsumption) || '15800' }}</div>
+                      </div>
+                      <div class="stat-item register">
+                        <div class="stat-label">注册日期</div>
+                        <div class="stat-value">{{ formatDate(customerInfo.registerDate) || '2023-05-15' }}</div>
+                      </div>
+                      <div class="stat-item visit">
+                        <div class="stat-label">最后访问</div>
+                        <div class="stat-value">{{ formatDateTime(customerInfo.lastVisit) || '2025-11-01 10:49:41' }}</div>
+                      </div>
+                      <div class="stat-item recent-order">
+                        <div class="stat-label">最近回访时间</div>
+                        <div class="stat-value">{{ customerInfo.lastOrder || '2025-10-28 15:30:00' }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 客户偏好区域 -->
+                <div class="customer-preferences-section">
+                  <div class="preferences-header">
+                    <h4 class="preferences-title">客户偏好</h4>
+                    <el-button icon="el-icon-question" size="mini" type="text" @click="editPreferences">如何分析</el-button>
+                  </div>
+                  <div class="preferences-content">
+                    <div class="preference-tags">
+                      <div class="preference-category">
+                        <span class="category-label">轮胎系列：</span>
+                        <el-tag size="small" type="primary">韩系轮胎</el-tag>
+                        <el-tag size="small" type="success">K125系列</el-tag>
+                      </div>
+                      <div class="preference-category">
+                        <span class="category-label">规格偏好：</span>
+                        <el-tag size="small" type="warning">225/50R18</el-tag>
+                        <el-tag size="small" type="info">215/55R17</el-tag>
+                      </div>
+                      <div class="preference-category">
+                        <span class="category-label">品牌偏好：</span>
+                        <el-tag size="small" type="primary">米其林</el-tag>
+                        <el-tag size="small" type="success">韩泰</el-tag>
+                        <el-tag size="small" type="warning">倍耐力</el-tag>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 客户备注区域 -->
+                <div class="customer-notes-section">
+                  <div class="notes-header">
+                    <h4 class="notes-title">客户备注</h4>
+                    <el-button icon="el-icon-edit" size="mini" type="text" @click="editNotes">编辑</el-button>
+                  </div>
+                  <div class="notes-content">
+                    {{ customerInfo.notes || '该客户是车安库的VIP客户，主要采购韩系轮胎，偏好225/50R18规格的产品。近期有多次消费记录，可能有采购商需求。建议定期跟进护客户关系。' }}
+                  </div>
+                  <div class="notes-meta">
+                    更新人：{{ customerInfo.noteUpdater || '系统管理员' }} | 更新时间：{{ customerInfo.noteUpdateTime || '2025-11-01 10:45:00' }}
+                  </div>
+                </div>
+              </div>
+            </el-card>
+          </div>
+
+      <!-- 主要内容区域 - 图表分析 -->
+      <div class="chart-analysis-section">
+        <div class="chart-container">
+          <!-- 左侧：消费趋势折线图 -->
+          <div class="chart-left">
+            <el-card class="chart-card">
+              <div slot="header" class="chart-header">
+                <h3 class="chart-title">消费趋势分析</h3>
+                <div class="chart-actions">
+                  <el-select v-model="trendPeriod" size="small" @change="handleTrendPeriodChange">
+                    <el-option label="近7天" value="week"></el-option>
+                    <el-option label="近30天" value="month"></el-option>
+                    <el-option label="近3个月" value="quarter"></el-option>
+                    <el-option label="近一年" value="year"></el-option>
+                  </el-select>
+                </div>
+              </div>
+              <div class="chart-content" v-loading="trendChartLoading">
+                <div id="trendChart" style="width: 100%; height: 300px;"></div>
+              </div>
+            </el-card>
+          </div>
+          
+          <!-- 右侧：品牌偏好饼图 -->
+          <div class="chart-right">
+            <el-card class="chart-card">
+              <div slot="header" class="chart-header">
+                <h3 class="chart-title">品牌偏好分析</h3>
+                <div class="chart-actions">
+                  <el-button icon="el-icon-refresh" size="small" @click="refreshBrandChart">刷新</el-button>
+                </div>
+              </div>
+              <div class="chart-content" v-loading="brandChartLoading">
+                <div id="brandChart" style="width: 100%; height: 300px;"></div>
+              </div>
+            </el-card>
+          </div>
+        </div>
+      </div>
+
+      <!-- 客户详情表格区域 -->
+      <div class="customer-details-section">
+        <el-card class="details-card">
+          <div slot="header" class="details-header">
+            <h3 class="details-title">客户偏好</h3>
+            <div class="details-actions">
+              <el-input
+                v-model="searchKeyword"
+                placeholder="搜索产品..."
+                size="small"
+                style="width: 200px; margin-right: 10px;"
+                prefix-icon="el-icon-search"
+                @input="handleSearch">
+              </el-input>
+              <el-button icon="el-icon-refresh" size="small" @click="refreshCustomerDetails">刷新</el-button>
+            </div>
+          </div>
+          <div class="details-content">
+            <!-- 客户常用内容标签展示 -->
+            <div class="customer-frequent-tags" style="margin-bottom: 20px;">
+              <div class="frequent-tags-container">
+                <el-tag
+                  v-for="(item, index) in frequentItems"
+                  :key="index"
+                  :type="getFrequentTagType(item.type)"
+                  size="medium"
+                  class="frequent-tag"
+                  @click="handleFrequentTagClick(item)">
+                  <span class="tag-name">{{ item.name }}</span>
+                  <span class="tag-count">{{ item.count }}次</span>
+                  <span class="tag-category">{{ item.category }}</span>
+                </el-tag>
+              </div>
+            </div>
+            
+            <el-table :data="paginatedCustomerDetails" stripe v-loading="detailsLoading" class="customer-preference-table">
+              <el-table-column prop="productName" label="产品名称" min-width="150">
+                <template slot-scope="scope">
+                  <div class="product-name-cell">
+                    <span class="product-name">{{ scope.row.productName }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="specification" label="规格" min-width="120">
+                <template slot-scope="scope">
+                  <el-tag size="small" :type="getSpecificationTagType(scope.row.specification)">
+                    {{ scope.row.specification }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="brand" label="品牌" min-width="100">
+                <template slot-scope="scope">
+                  <el-tag size="small" :type="getBrandTagType(scope.row.brand)">
+                    {{ scope.row.brand }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="stockCount" label="库存数量" min-width="100" align="center">
+                <template slot-scope="scope">
+                  <span class="stock-count" :class="getStockCountClass(scope.row.stockCount)">
+                    {{ scope.row.stockCount }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="lastUpdateTime" label="最近更新时间" min-width="160" align="center">
+                <template slot-scope="scope">
+                  <span class="update-time">{{ scope.row.lastUpdateTime }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" min-width="140" align="center">
+                <template slot-scope="scope">
+                  <el-button
+                    size="mini"
+                    type="text"
+                    @click="viewProductDetail(scope.row)"
+                    class="action-btn">
+                    查看相关产品
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            
+            <!-- 分页 -->
+            <div class="pagination-wrapper" style="margin-top: 20px; text-align: right;">
+              <el-pagination
+                @size-change="handleCustomerPreferencesPageSizeChange"
+                @current-change="handleCustomerPreferencesPageChange"
+                :current-page="customerPreferencesPagination.page"
+                :page-sizes="[5, 10, 20, 50]"
+                :page-size="customerPreferencesPagination.pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="customerPreferencesPagination.total">
+              </el-pagination>
+            </div>
+          </div>
+        </el-card>
+      </div>
+
+      <!-- 排行榜区域 -->
+      <div class="ranking-section">
+        <div class="ranking-container">
+          <!-- 左侧：消费TOP10排行榜 -->
+          <div class="ranking-left">
+            <el-card class="ranking-card">
+              <div slot="header" class="ranking-header">
+                <div class="ranking-title-wrapper">
+                  <i class="el-icon-pie-chart ranking-icon"></i>
+                  <h3 class="ranking-title">消费TOP10</h3>
+                </div>
+                <div class="ranking-actions">
+                  <el-button icon="el-icon-refresh" size="small" @click="refreshConsumptionRanking">刷新</el-button>
+                </div>
+              </div>
+              <div class="ranking-content" v-loading="consumptionRankingLoading">
+                <div class="ranking-chart">
+                  <div class="chart-legend">
+                    <span class="legend-item">
+                      <span class="legend-color consumption-color"></span>
+                      <span class="legend-text">消费金额</span>
+                    </span>
+                  </div>
+                  <div class="chart-bars">
+                    <div
+                      v-for="(item, index) in consumptionRanking"
+                      :key="index"
+                      class="bar-item"
+                      :class="{ 'top-three': index < 3 }">
+                      <div class="bar-label">
+                        <span class="product-name">{{ item.productName }}</span>
+                        <span class="product-spec">{{ item.specification }}</span>
+                      </div>
+                      <div class="bar-container">
+                        <div
+                          class="bar-fill consumption-bar"
+                          :style="{ width: getConsumptionBarWidth(item.amount) + '%' }">
+                        </div>
+                      </div>
+                      <div class="bar-value">
+                        <span class="value-amount">¥{{ formatCurrency(item.amount) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="chart-footer">
+                    <span class="data-source">数据来源：最近3个月的消费记录</span>
+                  </div>
+                </div>
+              </div>
+            </el-card>
+          </div>
+          
+          <!-- 右侧：下单TOP10排行榜 -->
+          <div class="ranking-right">
+            <el-card class="ranking-card">
+              <div slot="header" class="ranking-header">
+                <div class="ranking-title-wrapper">
+                  <i class="el-icon-s-data ranking-icon"></i>
+                  <h3 class="ranking-title">下单TOP10</h3>
+                </div>
+                <div class="ranking-actions">
+                  <el-button icon="el-icon-refresh" size="small" @click="refreshOrderRanking">刷新</el-button>
+                </div>
+              </div>
+              <div class="ranking-content" v-loading="orderRankingLoading">
+                <div class="ranking-chart">
+                  <div class="chart-legend">
+                    <span class="legend-item">
+                      <span class="legend-color order-color"></span>
+                      <span class="legend-text">下单次数</span>
+                    </span>
+                    <span class="legend-item">
+                      <span class="legend-color total-color"></span>
+                      <span class="legend-text">总金额</span>
+                    </span>
+                  </div>
+                  <div class="chart-bars">
+                    <div
+                      v-for="(item, index) in orderRanking"
+                      :key="index"
+                      class="bar-item"
+                      :class="{ 'top-three': index < 3 }">
+                      <div class="bar-label">
+                        <span class="product-name">{{ item.productName }}</span>
+                        <span class="product-spec">{{ item.specification }}</span>
+                      </div>
+                      <div class="bar-container">
+                        <div
+                          class="bar-fill order-bar"
+                          :style="{ width: getOrderBarWidth(item.orderCount) + '%' }">
+                        </div>
+                      </div>
+                      <div class="bar-value">
+                        <span class="value-count">{{ item.orderCount }}次</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="chart-footer">
+                    <span class="data-source">数据来源：所有历史下单记录</span>
+                  </div>
+                </div>
+              </div>
+            </el-card>
+          </div>
+        </div>
+      </div>
+
+      <!-- 订单记录表格 -->
+      <div class="order-history-section">
+        <el-card class="order-history-card">
+          <!-- 标签页导航 -->
+          <div class="record-tabs-header">
+            <div class="tabs-navigation">
+              <div
+                class="tab-item"
+                :class="{ active: activeTab === 'order' }"
+                @click="switchTab('order')">
+                <i class="el-icon-s-order"></i>
+                <span>订单记录</span>
+              </div>
+              <div
+                class="tab-item"
+                :class="{ active: activeTab === 'browse' }"
+                @click="switchTab('browse')">
+                <i class="el-icon-view"></i>
+                <span>浏览记录</span>
+              </div>
+              <div
+                class="tab-item"
+                :class="{ active: activeTab === 'search' }"
+                @click="switchTab('search')">
+                <i class="el-icon-search"></i>
+                <span>搜索记录</span>
+              </div>
+            </div>
+            
+            <!-- 右侧操作区域 -->
+            <div class="tabs-actions">
+              <el-button
+                icon="el-icon-filter"
+                size="small"
+                type="text"
+                @click="showFilterDialog = true">
+                筛选
+              </el-button>
+              <el-input
+                v-model="searchKeyword"
+                placeholder="搜索..."
+                size="small"
+                style="width: 200px;"
+                prefix-icon="el-icon-search"
+                @input="handleSearch">
+              </el-input>
+            </div>
+          </div>
+          
+          <!-- 表格内容区域 -->
+          <div class="record-content">
+            <!-- 订单记录表格 -->
+            <div v-show="activeTab === 'order'" class="tab-content">
+              <el-table
+                :data="orderHistory"
+                stripe
+                v-loading="orderHistoryLoading"
+                @row-click="handleOrderRowClick"
+                class="record-table">
+                <el-table-column type="index" label="订单ID" min-width="80" align="center"></el-table-column>
+                <el-table-column prop="orderDate" label="下单日期" min-width="120" align="center"></el-table-column>
+                <el-table-column prop="productName" label="品牌" min-width="120" align="center"></el-table-column>
+                <el-table-column prop="specification" label="规格" min-width="140" align="center"></el-table-column>
+                <el-table-column prop="status" label="花纹" min-width="120" align="center"></el-table-column>
+                <el-table-column prop="quantity" label="数量" min-width="80" align="center"></el-table-column>
+                <el-table-column prop="totalAmount" label="金额" min-width="120" align="center">
+                  <template slot-scope="scope">
+                    ¥{{ formatCurrency(scope.row.totalAmount) }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" min-width="120" align="center">
+                  <template slot-scope="scope">
+                    <el-button size="mini" type="text" @click="viewOrderDetail(scope.row)">查看详情</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+            
+            <!-- 浏览记录表格 -->
+            <div v-show="activeTab === 'browse'" class="tab-content">
+              <el-table
+                :data="browseHistory"
+                stripe
+                v-loading="browseHistoryLoading"
+                class="record-table">
+                <el-table-column type="index" label="浏览ID" min-width="80" align="center"></el-table-column>
+                <el-table-column prop="browseDate" label="浏览日期" min-width="120" align="center"></el-table-column>
+                <el-table-column prop="productName" label="品牌" min-width="120" align="center"></el-table-column>
+                <el-table-column prop="specification" label="规格" min-width="140" align="center"></el-table-column>
+                <el-table-column prop="pattern" label="花纹" min-width="120" align="center"></el-table-column>
+                <el-table-column prop="viewCount" label="浏览次数" min-width="100" align="center"></el-table-column>
+                <el-table-column prop="duration" label="浏览时长" min-width="120" align="center"></el-table-column>
+                <el-table-column label="操作" min-width="120" align="center">
+                  <template slot-scope="scope">
+                    <el-button size="mini" type="text" @click="viewBrowseDetail(scope.row)">查看详情</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+            
+            <!-- 搜索记录表格 -->
+            <div v-show="activeTab === 'search'" class="tab-content">
+              <el-table
+                :data="searchHistory"
+                stripe
+                v-loading="searchHistoryLoading"
+                class="record-table">
+                <el-table-column type="index" label="搜索ID" min-width="80" align="center"></el-table-column>
+                <el-table-column prop="searchDate" label="搜索日期" min-width="120" align="center"></el-table-column>
+                <el-table-column prop="keyword" label="搜索关键词" min-width="150" align="center"></el-table-column>
+                <el-table-column prop="category" label="搜索分类" min-width="120" align="center"></el-table-column>
+                <el-table-column prop="resultCount" label="结果数量" min-width="100" align="center"></el-table-column>
+                <el-table-column prop="searchCount" label="搜索次数" min-width="100" align="center"></el-table-column>
+                <el-table-column prop="lastSearch" label="最后搜索时间" min-width="150" align="center"></el-table-column>
+                <el-table-column label="操作" min-width="120" align="center">
+                  <template slot-scope="scope">
+                    <el-button size="mini" type="text" @click="viewSearchDetail(scope.row)">查看详情</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
+            
+            <!-- 分页 -->
+            <div class="pagination-wrapper">
+              <div class="pagination-info">
+                显示第 1 到第 5 条记录，共 5 条记录
+              </div>
+              <el-pagination
+                @size-change="handlePageSizeChange"
+                @current-change="handlePageChange"
+                :current-page="currentPagination.page"
+                :page-sizes="[10, 20, 50, 100]"
+                :page-size="currentPagination.pageSize"
+                layout="prev, pager, next"
+                :total="currentPagination.total"
+                class="custom-pagination">
+              </el-pagination>
+            </div>
+          </div>
+        </el-card>
+      </div>
+      
+      <!-- 筛选对话框 -->
+      <el-dialog
+        title="筛选条件"
+        :visible.sync="showFilterDialog"
+        width="500px">
+        <el-form :model="filterForm" label-width="80px">
+          <el-form-item label="日期范围">
+            <el-date-picker
+              v-model="filterForm.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期">
+            </el-date-picker>
+          </el-form-item>
+          <el-form-item label="品牌">
+            <el-select v-model="filterForm.brand" placeholder="请选择品牌" clearable>
+              <el-option label="韩泰" value="韩泰"></el-option>
+              <el-option label="米其林" value="米其林"></el-option>
+              <el-option label="倍耐力" value="倍耐力"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="规格">
+            <el-input v-model="filterForm.specification" placeholder="请输入规格"></el-input>
+          </el-form-item>
+        </el-form>
+        <div slot="footer" class="dialog-footer">
+          <el-button @click="resetFilter">重置</el-button>
+          <el-button type="primary" @click="applyFilter">应用筛选</el-button>
+        </div>
+      </el-dialog>
+
+      <!-- 图标记录区域 -->
+      <div class="icon-records-section">
+        <el-card class="icon-records-card">
+          <div slot="header" class="icon-records-header">
+            <h3 class="icon-records-title">相关记录</h3>
+            <div class="icon-records-actions">
+              <el-button icon="el-icon-refresh" size="small" @click="refreshIconRecords">刷新</el-button>
+            </div>
+          </div>
+          
+          <div class="icon-records-content">
+            <div class="icon-records-grid" v-loading="iconRecordsLoading">
+              <div 
+                v-for="record in iconRecords" 
+                :key="record.id" 
+                class="icon-record-item"
+                @click="handleIconRecordClick(record)">
+                <div class="icon-record-icon">
+                  <i :class="record.icon" :style="{ color: record.color }"></i>
+                </div>
+                <div class="icon-record-info">
+                  <div class="record-title">{{ record.title }}</div>
+                  <div class="record-count">{{ record.count }}</div>
+                  <div class="record-time">{{ record.updateTime }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+      </div>
+    </div>
+
+  <!-- 客户编辑对话框 -->
+  <el-dialog
+    title="编辑客户信息"
+    :visible.sync="editDialogVisible"
+    width="600px"
+    @close="resetEditForm">
+    <el-form
+      ref="editForm"
+      :model="editForm"
+      :rules="editFormRules"
+      label-width="100px">
+      <el-form-item label="客户名称" prop="name">
+        <el-input v-model="editForm.name" placeholder="请输入客户名称"></el-input>
+      </el-form-item>
+      <el-form-item label="联系人" prop="contact">
+        <el-input v-model="editForm.contact" placeholder="请输入联系人"></el-input>
+      </el-form-item>
+      <el-form-item label="联系电话" prop="phone">
+        <el-input v-model="editForm.phone" placeholder="请输入联系电话"></el-input>
+      </el-form-item>
+      <el-form-item label="邮箱地址" prop="email">
+        <el-input v-model="editForm.email" placeholder="请输入邮箱地址"></el-input>
+      </el-form-item>
+      <el-form-item label="客户状态" prop="status">
+        <el-select v-model="editForm.status" placeholder="请选择状态">
+          <el-option label="活跃" value="活跃"></el-option>
+          <el-option label="待激活" value="待激活"></el-option>
+          <el-option label="已停用" value="已停用"></el-option>
+        </el-select>
+      </el-form-item>
+      <el-form-item label="备注信息">
+        <el-input
+          v-model="editForm.remark"
+          type="textarea"
+          :rows="3"
+          placeholder="请输入备注信息">
+        </el-input>
+      </el-form-item>
+    </el-form>
+    <div slot="footer" class="dialog-footer">
+      <el-button @click="editDialogVisible = false">取消</el-button>
+      <el-button type="primary" @click="saveCustomerEdit" :loading="saveLoading">
+        保存
+      </el-button>
+    </div>
+  </el-dialog>
+
+  <!-- 订单详情对话框 -->
+  <el-dialog
+    title="订单详情"
+    :visible.sync="orderDetailDialogVisible"
+    width="800px">
+    <div v-if="selectedOrder" class="order-detail-content">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="订单号">{{ selectedOrder.orderNo }}</el-descriptions-item>
+        <el-descriptions-item label="下单日期">{{ selectedOrder.orderDate }}</el-descriptions-item>
+        <el-descriptions-item label="产品名称">{{ selectedOrder.productName }}</el-descriptions-item>
+        <el-descriptions-item label="规格">{{ selectedOrder.specification }}</el-descriptions-item>
+        <el-descriptions-item label="数量">{{ selectedOrder.quantity }}</el-descriptions-item>
+        <el-descriptions-item label="单价">¥{{ formatCurrency(selectedOrder.unitPrice) }}</el-descriptions-item>
+        <el-descriptions-item label="总金额">¥{{ formatCurrency(selectedOrder.totalAmount) }}</el-descriptions-item>
+        <el-descriptions-item label="订单状态">
+          <el-tag :type="getOrderStatusColor(selectedOrder.status)">{{ selectedOrder.status }}</el-tag>
+        </el-descriptions-item>
+      </el-descriptions>
+    </div>
+    <div slot="footer" class="dialog-footer">
+      <el-button @click="orderDetailDialogVisible = false">关闭</el-button>
+    </div>
+  </el-dialog>
+
+  <!-- 客户偏好分析对话框 -->
+  <el-dialog
+    title="客户偏好分析方法"
+    :visible.sync="preferencesAnalysisDialogVisible"
+    width="600px"
+    class="preferences-analysis-dialog">
+    <div class="analysis-content">
+      <div class="analysis-intro">
+        <p>客户偏好通过统计各类分析方法下数据得出：</p>
+      </div>
+      
+      <div class="analysis-methods">
+        <div class="method-section">
+          <h4 class="method-title">1. 订单数据分析</h4>
+          <p class="method-description">分析客户历史订单中的轮胎类型、规格和品牌，统计各化，在客户历史各类订单中：</p>
+          <ul class="method-details">
+            <li>韩系品牌占比60% (3/5)</li>
+            <li>225/50R18规格占比60% (3/5)</li>
+            <li>K127轮胎规格占比40% (2/5)</li>
+          </ul>
+        </div>
+
+        <div class="method-section">
+          <h4 class="method-title">2. 浏览记录分析</h4>
+          <p class="method-description">分析客户浏览记录中的产品，收藏夹大类的产品列，在客户历史浏览记录中：</p>
+          <ul class="method-details">
+            <li>韩系品牌占比60% (3/5)</li>
+            <li>225/50R18规格占比60% (3/5)</li>
+            <li>K127轮胎规格占比60% (3/5)</li>
+          </ul>
+        </div>
+
+        <div class="method-section">
+          <h4 class="method-title">3. 搜索记录分析</h4>
+          <p class="method-description">分析客户的搜索关键词，了解其搜索习惯和产品，在客户的条件搜索中：</p>
+          <ul class="method-details">
+            <li>与韩系相关的搜索占比60% (3/5)</li>
+            <li>包含225/50R18的搜索占比20% (1/5)</li>
+            <li>包含K127轮胎规格的搜索占比20% (1/5)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="analysis-chart">
+        <h4 class="chart-title">数据来源权重占比</h4>
+        <div class="chart-container">
+          <div class="chart-item">
+            <div class="chart-label">订单记录</div>
+            <div class="chart-bar">
+              <div class="chart-fill" style="width: 50%; background-color: #409EFF;"></div>
+            </div>
+            <div class="chart-value">50%</div>
+          </div>
+          <div class="chart-item">
+            <div class="chart-label">浏览记录</div>
+            <div class="chart-bar">
+              <div class="chart-fill" style="width: 30%; background-color: #67C23A;"></div>
+            </div>
+            <div class="chart-value">30%</div>
+          </div>
+          <div class="chart-item">
+            <div class="chart-label">搜索记录</div>
+            <div class="chart-bar">
+              <div class="chart-fill" style="width: 20%; background-color: #E6A23C;"></div>
+            </div>
+            <div class="chart-value">20%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="analysis-conclusion">
+        <p><strong>分析结论：</strong>综合以上三类数据，该客户的主要偏好为韩系轮胎，K127轮胎规格占比25%R18规格，建议重点推荐相关产品。</p>
+      </div>
+    </div>
+    
+    <div slot="footer" class="dialog-footer">
+      <el-button type="primary" @click="preferencesAnalysisDialogVisible = false">了解了</el-button>
+    </div>
+  </el-dialog>
+</div>
+
+  <!-- JavaScript 库 -->
+  <script type="text/javascript" src="../JS/NewVue/vue.js"></script>
+  <script type="text/javascript" src="../JS/NewVue/element-ui.js"></script>
+  <script type="text/javascript" src="../JS/NewVue/echarts.min.js"></script>
+  <script type="text/javascript" src="../JS/NewVue/axios.min.js"></script>
+
+  <!-- 工具函数 -->
+  <script type="text/javascript" src="../JS/CustomerProfileManager/utils/constants.js"></script>
+  <script type="text/javascript" src="../JS/CustomerProfileManager/utils/formatter.js"></script>
+  <script type="text/javascript" src="../JS/CustomerProfileManager/utils/api.js"></script>
+
+  <!-- 模拟数据 - 支持根据客户ID动态生成 -->
+  <script type="text/javascript">
+      // 客户详情页面模拟数据生成器
+      window.CustomerDetailMockData = {
+          // 根据客户ID生成客户基本信息
+          generateCustomerInfo: function (customerId) {
+              const customers = {
+                  '879934': {
+                      id: 879934,
+                      name: '范文龙',
+                      customerType: '个人客户',
+                      contact: '范文龙',
+                      phone: '13802578357',
+                      email: 'fanwenlong@example.com',
+                      warehouse: '湖北仓库',
+                      lastOrder: '2025-10-28',
+                      status: '活跃',
+                      totalConsumption: 125680.50,
+                      createTime: '2024-01-15',
+                      remark: '个人客户',
+                      activityLevel: '中等活跃'
+                  },
+                  '103254': {
+                      id: 103254,
+                      name: '李明华',
+                      customerType: 'VIP客户',
+                      contact: '李明华',
+                      phone: '13912345678',
+                      email: 'liminghua@example.com',
+                      warehouse: '广东仓库',
+                      lastOrder: '2025-11-15',
+                      status: '活跃',
+                      totalConsumption: 256800.00,
+                      createTime: '2023-08-20',
+                      remark: 'VIP客户',
+                      activityLevel: '高度活跃'
+                  },
+                  '103255': {
+                      id: 103255,
+                      name: '张伟强',
+                      customerType: '企业客户',
+                      contact: '张伟强',
+                      phone: '13698765432',
+                      email: 'zhangweiqiang@example.com',
+                      warehouse: '上海仓库',
+                      lastOrder: '2025-11-20',
+                      status: '活跃',
+                      totalConsumption: 189500.75,
+                      createTime: '2024-03-10',
+                      remark: '企业客户',
+                      activityLevel: '高度活跃'
+                  }
+              };
+
+              return customers[customerId] || {
+                  id: customerId,
+                  name: '客户信息',
+                  customerType: '普通客户',
+                  contact: '-',
+                  phone: '-',
+                  email: '-',
+                  warehouse: '-',
+                  lastOrder: '-',
+                  status: '活跃',
+                  totalConsumption: 0,
+                  createTime: '-',
+                  remark: ''
+              };
+          },
+
+          // 消费趋势数据
+          trendData: {
+              week: {
+                  categories: ['12-11', '12-12', '12-13', '12-14', '12-15', '12-16', '12-17'],
+                  data: [1200, 1500, 800, 2200, 1800, 2500, 1900]
+              },
+              month: {
+                  categories: ['11-18', '11-25', '12-02', '12-09', '12-16'],
+                  data: [8500, 12000, 9800, 15600, 11200]
+              },
+              quarter: {
+                  categories: ['10月', '11月', '12月'],
+                  data: [35000, 42000, 48680]
+              },
+              year: {
+                  categories: ['2024-01', '2024-02', '2024-03', '2024-04', '2024-05', '2024-06', '2024-07', '2024-08', '2024-09', '2024-10', '2024-11', '2024-12'],
+                  data: [8500, 12000, 15600, 18200, 22000, 19800, 25600, 28900, 31200, 35000, 42000, 48680]
+              }
+          },
+
+          // 品牌偏好数据
+          brandData: [
+              { name: '米其林', value: 35, color: '#409EFF' },
+              { name: '韩泰', value: 25, color: '#67C23A' },
+              { name: '倍耐力', value: 20, color: '#E6A23C' },
+              { name: '固特异', value: 12, color: '#F56C6C' },
+              { name: '其他', value: 8, color: '#909399' }
+          ],
+
+          // 客户详细信息
+          customerDetails: [
+              { category: '基本信息', item: '注册时间', value: '2024-01-15', updateTime: '2024-01-15 10:30:00' },
+              { category: '基本信息', item: '最后登录', value: '2025-11-01 15:30:00', updateTime: '2025-11-01 15:30:00' },
+              { category: '消费信息', item: '累计消费金额', value: '¥125,680.50', updateTime: '2025-10-28 16:45:00' },
+              { category: '消费信息', item: '累计订单数', value: '68', updateTime: '2025-10-28 16:45:00' },
+              { category: '消费信息', item: '平均订单金额', value: '¥1,848.24', updateTime: '2025-10-28 16:45:00' },
+              { category: '偏好信息', item: '偏好品牌', value: '米其林', updateTime: '2025-10-28 16:45:00' },
+              { category: '偏好信息', item: '偏好规格', value: '225/50R18', updateTime: '2025-10-28 16:45:00' },
+              { category: '活跃度', item: '活跃水平', value: '中等', updateTime: '2025-11-01 15:30:00' },
+              { category: '活跃度', item: '近三月订单数', value: '5', updateTime: '2025-10-28 16:45:00' },
+              { category: '活跃度', item: '近三月消费额', value: '¥8,650.00', updateTime: '2025-10-28 16:45:00' }
+          ],
+
+          // 消费TOP10排行
+          consumptionRanking: [
+              { productName: '米其林 Primacy 4', specification: '225/50R18', amount: 25680.00, quantity: 12 },
+              { productName: '韩泰 Ventus S1 noble2', specification: '215/55R17', amount: 18900.00, quantity: 15 },
+              { productName: '倍耐力 P Zero', specification: '235/45R18', amount: 15600.00, quantity: 8 },
+              { productName: '固特异 Eagle F1', specification: '245/40R18', amount: 12800.00, quantity: 6 },
+              { productName: '马牌 ContiSportContact', specification: '205/60R16', amount: 11200.00, quantity: 10 },
+              { productName: '优科豪马 ADVAN Sport', specification: '225/60R17', amount: 9800.00, quantity: 7 },
+              { productName: '邓禄普 SP Sport Maxx', specification: '215/65R16', amount: 8900.00, quantity: 9 },
+              { productName: '玲珑 GREEN-Max', specification: '225/55R18', amount: 7600.00, quantity: 8 },
+              { productName: '朝阳 RP76', specification: '195/65R15', amount: 6500.00, quantity: 12 },
+              { productName: '回力 WR068', specification: '185/60R14', amount: 5200.00, quantity: 15 }
+          ],
+
+          // 下单TOP10排行
+          orderRanking: [
+              { productName: '米其林 Primacy 4', specification: '225/50R18', orderCount: 12, lastOrderDate: '2025-10-28' },
+              { productName: '韩泰 Ventus S1 noble2', specification: '215/55R17', orderCount: 10, lastOrderDate: '2025-10-25' },
+              { productName: '朝阳 RP76', specification: '195/65R15', orderCount: 8, lastOrderDate: '2025-10-20' },
+              { productName: '回力 WR068', specification: '185/60R14', orderCount: 7, lastOrderDate: '2025-10-15' },
+              { productName: '倍耐力 P Zero', specification: '235/45R18', orderCount: 6, lastOrderDate: '2025-10-10' },
+              { productName: '马牌 ContiSportContact', specification: '205/60R16', orderCount: 5, lastOrderDate: '2025-10-08' },
+              { productName: '固特异 Eagle F1', specification: '245/40R18', orderCount: 4, lastOrderDate: '2025-10-05' },
+              { productName: '优科豪马 ADVAN Sport', specification: '225/60R17', orderCount: 4, lastOrderDate: '2025-09-28' },
+              { productName: '邓禄普 SP Sport Maxx', specification: '215/65R16', orderCount: 3, lastOrderDate: '2025-09-25' },
+              { productName: '玲珑 GREEN-Max', specification: '225/55R18', orderCount: 3, lastOrderDate: '2025-09-20' }
+          ],
+
+          // 订单历史记录
+          orderHistory: [
+              {
+                  orderNo: 'ORD202510280001',
+                  orderDate: '2025-10-28',
+                  productName: '米其林 Primacy 4',
+                  specification: '225/50R18',
+                  quantity: 4,
+                  unitPrice: 1280.00,
+                  totalAmount: 5120.00,
+                  status: '已完成'
+              },
+              {
+                  orderNo: 'ORD202510250002',
+                  orderDate: '2025-10-25',
+                  productName: '韩泰 Ventus S1 noble2',
+                  specification: '215/55R17',
+                  quantity: 2,
+                  unitPrice: 980.00,
+                  totalAmount: 1960.00,
+                  status: '已完成'
+              },
+              {
+                  orderNo: 'ORD202510200003',
+                  orderDate: '2025-10-20',
+                  productName: '朝阳 RP76',
+                  specification: '195/65R15',
+                  quantity: 6,
+                  unitPrice: 450.00,
+                  totalAmount: 2700.00,
+                  status: '已完成'
+              },
+              {
+                  orderNo: 'ORD202510150004',
+                  orderDate: '2025-10-15',
+                  productName: '回力 WR068',
+                  specification: '185/60R14',
+                  quantity: 8,
+                  unitPrice: 320.00,
+                  totalAmount: 2560.00,
+                  status: '已完成'
+              },
+              {
+                  orderNo: 'ORD202510100005',
+                  orderDate: '2025-10-10',
+                  productName: '倍耐力 P Zero',
+                  specification: '235/45R18',
+                  quantity: 2,
+                  unitPrice: 1580.00,
+                  totalAmount: 3160.00,
+                  status: '已完成'
+              }
+          ],
+
+          // 图标记录
+          iconRecords: [
+              {
+                  id: 1,
+                  title: '访问记录',
+                  count: 156,
+                  icon: 'el-icon-view',
+                  color: '#409EFF',
+                  updateTime: '2025-11-01'
+              },
+              {
+                  id: 2,
+                  title: '咨询记录',
+                  count: 23,
+                  icon: 'el-icon-chat-dot-round',
+                  color: '#67C23A',
+                  updateTime: '2025-10-28'
+              },
+              {
+                  id: 3,
+                  title: '投诉记录',
+                  count: 2,
+                  icon: 'el-icon-warning',
+                  color: '#E6A23C',
+                  updateTime: '2025-09-15'
+              },
+              {
+                  id: 4,
+                  title: '退货记录',
+                  count: 1,
+                  icon: 'el-icon-refresh-left',
+                  color: '#F56C6C',
+                  updateTime: '2025-08-20'
+              },
+              {
+                  id: 5,
+                  title: '评价记录',
+                  count: 45,
+                  icon: 'el-icon-star-on',
+                  color: '#E6A23C',
+                  updateTime: '2025-10-25'
+              },
+              {
+                  id: 6,
+                  title: '收藏记录',
+                  count: 12,
+                  icon: 'el-icon-collection',
+                  color: '#909399',
+                  updateTime: '2025-10-20'
+              }
+          ],
+
+          // 客户偏好产品数据
+          customerPreferences: [
+              { productName: '韩泰', specification: '225/50R18', brand: '韩泰', stockCount: 28, lastUpdateTime: '2025-11-01 10:50:23' },
+              { productName: '225/50R18', specification: '225/50R18', brand: '规格', stockCount: 22, lastUpdateTime: '2025-11-01 10:50:23' },
+              { productName: 'K127防爆', specification: 'K127防爆', brand: '花纹', stockCount: 18, lastUpdateTime: '2025-11-01 10:48:15' },
+              { productName: '95W', specification: '95W', brand: '在线', stockCount: 15, lastUpdateTime: '2025-11-01 10:44:28' },
+              { productName: '康佳森', specification: '康佳森', brand: '韩泰', stockCount: 12, lastUpdateTime: '2025-11-01 10:45:30' },
+              { productName: 'K3000 plus', specification: 'K3000 plus', brand: '花纹', stockCount: 10, lastUpdateTime: '2025-11-01 10:45:30' },
+              { productName: '215/50ZR17', specification: '215/50ZR17', brand: '规格', stockCount: 8, lastUpdateTime: '2025-11-01 10:40:10' },
+              { productName: '防爆轮胎', specification: '防爆轮胎', brand: '防爆轮胎', stockCount: 6, lastUpdateTime: '2025-10-31 16:20:45' }
+          ],
+
+          // 获取客户信息的便捷方法
+          get customerInfo() {
+              const urlParams = new URLSearchParams(window.location.search);
+              const customerId = urlParams.get('id') || '103253';
+              return this.generateCustomerInfo(customerId);
+          }
+      };
+  </script>
+
+  <!-- Vue 应用 -->
+  <script type="text/javascript" src="../JS/CustomerProfileManager/detail-app.js"></script>
+</asp:Content>

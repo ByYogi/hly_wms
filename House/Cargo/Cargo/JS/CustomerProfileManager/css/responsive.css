@@ -1,0 +1,471 @@
+/* 响应式样式文件 - 移动端适配 */
+
+/* 大屏幕样式 (≥1200px) */
+@media (min-width: 1200px) {
+  .page-container {
+    max-width: 98%;
+    padding: var(--spacing-lg) var(--spacing-md);
+  }
+  
+  .kpi-section {
+    grid-template-columns: repeat(6, 1fr);
+    gap: var(--spacing-sm);
+  }
+  
+  .chart-container {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  .chart-left {
+    flex: 7;
+    min-width: 0;
+    overflow: hidden;
+  }
+  
+  .chart-right {
+    flex: 3;
+    min-width: 0;
+    overflow: hidden;
+  }
+}
+
+/* 桌面端样式 (992px - 1199px) */
+@media (min-width: 992px) and (max-width: 1199px) {
+  .page-container {
+    max-width: 96%;
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+  
+  .kpi-section {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+  }
+  
+  .chart-container {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  .chart-left {
+    flex: 7;
+    min-width: 0;
+    overflow: hidden;
+  }
+  
+  .chart-right {
+    flex: 3;
+    min-width: 0;
+    overflow: hidden;
+  }
+}
+
+/* 平板端样式 (768px - 991px) */
+@media (min-width: 768px) and (max-width: 991px) {
+  .page-container {
+    max-width: 94%;
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+  
+  .kpi-section {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+  }
+  
+  .chart-container {
+    display: flex;
+    gap: 16px;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  .chart-left {
+    flex: 7;
+    min-width: 0;
+    overflow: hidden;
+  }
+  
+  .chart-right {
+    flex: 3;
+    min-width: 0;
+    overflow: hidden;
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-bar__actions {
+    margin-left: 0;
+    margin-top: var(--spacing-md);
+  }
+  
+  .table-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-md);
+  }
+  
+  .table-actions {
+    justify-content: flex-start;
+  }
+}
+
+/* 移动端样式 (≤767px) */
+@media (max-width: 767px) {
+  .page-container {
+    max-width: 100%;
+    padding: var(--spacing-sm);
+  }
+  
+  .page-header {
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .page-title {
+    font-size: var(--font-size-lg);
+  }
+  
+  .page-subtitle {
+    font-size: var(--font-size-xs);
+  }
+  
+  /* KPI卡片移动端适配 */
+  .kpi-section {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+  
+  .kpi-card {
+    padding: var(--spacing-md);
+  }
+  
+  .kpi-card__value {
+    font-size: var(--font-size-xl);
+  }
+  
+  /* 图表移动端适配 */
+  .chart-section {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .chart-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  
+  .chart-left,
+  .chart-right {
+    flex: none;
+    min-width: auto;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    padding: var(--spacing-md);
+  }
+  
+  .chart-panel__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+  }
+  
+  .chart-panel__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  /* 筛选栏移动端适配 */
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-md);
+  }
+  
+  .filter-bar__item {
+    width: 100%;
+  }
+  
+  .filter-bar__actions {
+    margin-left: 0;
+    justify-content: stretch;
+  }
+  
+  .filter-bar__actions .el-button {
+    flex: 1;
+  }
+  
+  /* 仓库详细移动端适配 */
+  .warehouse-section {
+    margin: 0 calc(-1 * var(--spacing-sm));
+    border-radius: 0;
+  }
+
+  .warehouse-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+
+  .warehouse-actions {
+    justify-content: stretch;
+  }
+
+  .warehouse-actions .el-button {
+    flex: 1;
+  }
+
+  .warehouse-table {
+    padding: var(--spacing-md);
+  }
+
+  .warehouse-table .el-table__header-wrapper,
+  .warehouse-table .el-table__body-wrapper {
+    overflow-x: auto;
+  }
+
+  .warehouse-table .el-table {
+    min-width: 600px;
+    font-size: var(--font-size-xs);
+    margin-top: var(--spacing-xs);
+  }
+
+  .warehouse-table .el-table .cell {
+    padding-left: var(--spacing-xs);
+    padding-right: var(--spacing-xs);
+  }
+
+  .warehouse-table .el-table td,
+  .warehouse-table .el-table th {
+    padding: var(--spacing-sm) var(--spacing-xs);
+  }
+
+  /* 表格移动端适配 */
+  .table-section {
+    margin: 0 calc(-1 * var(--spacing-sm));
+    border-radius: 0;
+  }
+  
+  .table-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+  
+  .table-actions {
+    justify-content: stretch;
+  }
+  
+  .table-actions .el-button {
+    flex: 1;
+  }
+  
+  /* 表格横向滚动 */
+  .el-table {
+    font-size: var(--font-size-xs);
+  }
+  
+  .el-table .cell {
+    padding-left: var(--spacing-xs);
+    padding-right: var(--spacing-xs);
+  }
+  
+  /* 隐藏部分表格列 */
+  .el-table .hidden-sm {
+    display: none !important;
+  }
+  
+  /* 分页移动端适配 */
+  .table-pagination {
+    justify-content: center;
+    padding: var(--spacing-md);
+  }
+  
+  .el-pagination {
+    text-align: center;
+  }
+  
+  .el-pagination .el-pagination__sizes,
+  .el-pagination .el-pagination__jump {
+    display: none;
+  }
+  
+  /* 对话框移动端适配 */
+  .el-dialog {
+    width: 95% !important;
+    margin-top: 5vh !important;
+  }
+  
+  .el-dialog__header {
+    padding: var(--spacing-md);
+  }
+  
+  .el-dialog__body {
+    padding: var(--spacing-md);
+  }
+  
+  .el-dialog__footer {
+    padding: var(--spacing-md);
+  }
+  
+  /* 表单移动端适配 */
+  .el-form-item {
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .el-form-item__label {
+    line-height: 1.2;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  /* 按钮移动端适配 */
+  .dialog-footer .el-button {
+    width: 100%;
+    margin-left: 0;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .dialog-footer .el-button:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* 超小屏幕适配 (≤480px) */
+@media (max-width: 480px) {
+  .page-container {
+    max-width: 100%;
+    padding: var(--spacing-xs);
+  }
+  
+  .page-header {
+    padding: var(--spacing-sm);
+  }
+  
+  .kpi-card {
+    padding: var(--spacing-sm);
+  }
+  
+  .chart-section {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .chart-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .chart-left,
+  .chart-right {
+    padding: var(--spacing-sm);
+  }
+  
+  .warehouse-section {
+    margin: 0 calc(-1 * var(--spacing-xs));
+  }
+
+  .warehouse-header {
+    padding: var(--spacing-sm);
+  }
+
+  .warehouse-title {
+    font-size: var(--font-size-sm);
+  }
+
+  .warehouse-table {
+    padding: var(--spacing-sm);
+  }
+
+  .warehouse-table .el-table {
+    min-width: 500px;
+    margin-top: var(--spacing-xs);
+  }
+
+  .warehouse-table .el-table td,
+  .warehouse-table .el-table th {
+    padding: var(--spacing-xs) var(--spacing-xs);
+  }
+
+  .table-header {
+    padding: var(--spacing-sm);
+  }
+  
+  .table-pagination {
+    padding: var(--spacing-sm);
+  }
+}
+
+/* 横屏适配 */
+@media (orientation: landscape) and (max-height: 600px) {
+  .chart-container {
+    height: 250px;
+  }
+  
+  .el-dialog {
+    margin-top: 2vh !important;
+  }
+}
+
+/* 高分辨率屏幕适配 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .kpi-card__icon,
+  .chart-panel__actions .el-button [class*="el-icon-"] {
+    transform: scale(0.9);
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .page-container {
+    max-width: none;
+    padding: 0;
+    background: white;
+  }
+  
+  .filter-bar,
+  .table-actions,
+  .warehouse-actions,
+  .chart-panel__actions,
+  .el-pagination {
+    display: none !important;
+  }
+  
+  .page-header,
+  .chart-section,
+  .warehouse-section,
+  .table-section {
+    box-shadow: none;
+    border: 1px solid #ddd;
+  }
+  
+  .kpi-section {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
+    page-break-inside: avoid;
+  }
+  
+  .chart-container {
+    height: 300px;
+  }
+}

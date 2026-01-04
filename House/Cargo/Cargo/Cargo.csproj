@@ -438,7 +438,25 @@
     <Content Include="BigData\js\ztree\jquery.ztree.exedit-3.5.min.js" />
     <Content Include="BigData\js\ztree\jquery.ztree.exedit.js" />
     <Content Include="Client\clientBillManager.aspx" />
+    <Content Include="Client\clientManagerApi.aspx" />
     <Content Include="Client\CouponManager.aspx" />
+    <Content Include="Client\CustomerProfileManager.aspx" />
+    <Content Include="JS\CustomerProfileManager\app.js" />
+    <Content Include="JS\CustomerProfileManager\components\ChartPanel.js" />
+    <Content Include="JS\CustomerProfileManager\components\CustomerFilterBar.js" />
+    <Content Include="JS\CustomerProfileManager\components\DataTable.js" />
+    <Content Include="JS\CustomerProfileManager\components\FilterBar.js" />
+    <Content Include="JS\CustomerProfileManager\components\KpiCard.js" />
+    <Content Include="JS\CustomerProfileManager\components\RankingPanel.js" />
+    <Content Include="JS\CustomerProfileManager\components\WarehouseTable.js" />
+    <Content Include="JS\CustomerProfileManager\css\components.css" />
+    <Content Include="JS\CustomerProfileManager\css\main.css" />
+    <Content Include="JS\CustomerProfileManager\css\ranking.css" />
+    <Content Include="JS\CustomerProfileManager\css\responsive.css" />
+    <Content Include="JS\CustomerProfileManager\css\variables.css" />
+    <Content Include="JS\CustomerProfileManager\utils\api.js" />
+    <Content Include="JS\CustomerProfileManager\utils\constants.js" />
+    <Content Include="JS\CustomerProfileManager\utils\formatter.js" />
     <Content Include="Client\dealerClientManager.aspx" />
     <Content Include="Client\PurchaserManager.aspx" />
     <Content Include="Client\SaleClientManager.aspx" />
@@ -642,6 +660,11 @@
     <Content Include="JS\FloatNavi\quick_links.js" />
     <Content Include="JS\MUI\js\showLoading.js" />
     <Content Include="JS\MUI\js\TryeBrand2.js" />
+    <Content Include="JS\NewVue\axios.min.js" />
+    <Content Include="JS\NewVue\echarts.min.js" />
+    <Content Include="JS\NewVue\element-ui.js" />
+    <Content Include="JS\NewVue\element-ui\css\index.css" />
+    <Content Include="JS\NewVue\vue.js" />
     <Content Include="JS\Rotate\jQueryRotate.2.2.js" />
     <Content Include="JS\vue.js" />
     <Content Include="LogisTrack.aspx" />
@@ -839,6 +862,7 @@
     <Content Include="YFLogisTrack.aspx" />
     <Content Include="Interface\CassMallApi.ashx" />
     <Content Include="Interface\TMallApi.ashx" />
+    <Content Include="JS\NewVue\element-ui\css\fonts\element-icons.woff" />
     <None Include="packages.config" />
     <None Include="Service References\Neway\neway.disco" />
     <None Include="Service References\Neway\configuration91.svcinfo" />
@@ -2614,12 +2638,26 @@
     <Compile Include="Client\clientBillManager.aspx.designer.cs">
       <DependentUpon>clientBillManager.aspx</DependentUpon>
     </Compile>
+    <Compile Include="Client\clientManagerApi.aspx.cs">
+      <DependentUpon>clientManagerApi.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Client\clientManagerApi.aspx.designer.cs">
+      <DependentUpon>clientManagerApi.aspx</DependentUpon>
+    </Compile>
     <Compile Include="Client\CouponManager.aspx.cs">
       <DependentUpon>CouponManager.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
     </Compile>
     <Compile Include="Client\CouponManager.aspx.designer.cs">
       <DependentUpon>CouponManager.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Client\CustomerProfileManager.aspx.cs">
+      <DependentUpon>CustomerProfileManager.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Client\CustomerProfileManager.aspx.designer.cs">
+      <DependentUpon>CustomerProfileManager.aspx</DependentUpon>
     </Compile>
     <Compile Include="Client\dealerClientManager.aspx.cs">
       <DependentUpon>dealerClientManager.aspx</DependentUpon>

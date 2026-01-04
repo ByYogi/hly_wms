@@ -1,0 +1,271 @@
+/* 排行榜面板样式 */
+.ranking-panel {
+    padding: 20px;
+    height: 100%;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.ranking-header {
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+    .ranking-header h3 {
+        font-size: 16px;
+        font-weight: 500;
+        color: #1a1a1a;
+        margin: 0;
+    }
+
+.ranking-actions {
+    display: flex;
+    gap: 8px;
+}
+
+    .ranking-actions .el-button {
+        padding: 5px 12px;
+        font-size: 12px;
+    }
+
+/* Element UI Tabs 自定义样式 */
+.ranking-tabs .el-tabs__header {
+    margin: 0 0 16px 0;
+}
+
+.ranking-tabs .el-tabs__nav-wrap::after {
+    height: 1px;
+    background-color: #E9ECEF;
+}
+
+.ranking-tabs .el-tabs__item {
+    font-size: 14px;
+    color: #666666;
+    padding: 0 16px;
+    height: 40px;
+    line-height: 40px;
+}
+
+    .ranking-tabs .el-tabs__item.is-active {
+        color: #1890FF;
+        font-weight: 500;
+    }
+
+.ranking-tabs .el-tabs__active-bar {
+    background-color: #1890FF;
+}
+
+/* 排行榜表格样式 */
+.ranking-table {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.table-header {
+    display: flex;
+    background: #F8F9FA;
+    padding: 12px 16px;
+    border-radius: 6px 6px 0 0;
+    font-weight: 500;
+    color: #495057;
+    font-size: 14px;
+    border-bottom: 1px solid #E9ECEF;
+}
+
+.table-body {
+    max-height: 320px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+    min-height: 200px;
+}
+
+.table-row {
+    display: flex;
+    padding: 12px 16px;
+    border-bottom: 1px solid #F1F3F4;
+    transition: background-color 0.2s;
+    align-items: center;
+}
+
+    .table-row:hover {
+        background-color: #F8F9FA;
+    }
+
+    .table-row:last-child {
+        border-bottom: none;
+    }
+
+/* 用户活跃排行和用户价值排行的列宽 */
+.ranking-tabs .el-tab-pane[aria-labelledby*="active"] .col-rank,
+.ranking-tabs .el-tab-pane[aria-labelledby*="value"] .col-rank {
+    width: 60px;
+    flex-shrink: 0;
+}
+
+.ranking-tabs .el-tab-pane[aria-labelledby*="active"] .col-name,
+.ranking-tabs .el-tab-pane[aria-labelledby*="value"] .col-name {
+    flex: 1;
+    min-width: 0;
+}
+
+.ranking-tabs .el-tab-pane[aria-labelledby*="active"] .col-value,
+.ranking-tabs .el-tab-pane[aria-labelledby*="value"] .col-value {
+    width: 80px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+/* 热销产品排行的列宽 */
+.ranking-tabs .el-tab-pane[aria-labelledby*="product"] .col-rank {
+    width: 50px;
+    flex-shrink: 0;
+}
+
+.ranking-tabs .el-tab-pane[aria-labelledby*="product"] .col-code {
+    width: 100px;
+    flex-shrink: 0;
+}
+
+.ranking-tabs .el-tab-pane[aria-labelledby*="product"] .col-brand {
+    width: 80px;
+    flex-shrink: 0;
+}
+
+.ranking-tabs .el-tab-pane[aria-labelledby*="product"] .col-spec {
+    flex: 1;
+    min-width: 0;
+}
+
+.ranking-tabs .el-tab-pane[aria-labelledby*="product"] .col-sales {
+    width: 70px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+/* 排名数字样式 */
+.rank-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666666;
+    background: #F5F5F5;
+}
+
+    .rank-number.rank-first {
+        background: linear-gradient(135deg, #FFD700, #FFA500);
+        color: #ffffff;
+    }
+
+    .rank-number.rank-second {
+        background: linear-gradient(135deg, #C0C0C0, #A9A9A9);
+        color: #ffffff;
+    }
+
+    .rank-number.rank-third {
+        background: linear-gradient(135deg, #CD7F32, #B8860B);
+        color: #ffffff;
+    }
+
+/* 前三名行高亮 */
+.table-row.top-three {
+    background: linear-gradient(90deg, rgba(24,144,255,0.02), rgba(24,144,255,0.01));
+}
+
+    .table-row.top-three:hover {
+        background: linear-gradient(90deg, rgba(24,144,255,0.05), rgba(24,144,255,0.02));
+    }
+
+/* 空数据状态 */
+.empty-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: #999;
+    font-size: 14px;
+}
+
+    .empty-data i {
+        font-size: 48px;
+        margin-bottom: 12px;
+        color: #d9d9d9;
+    }
+
+    .empty-data span {
+        color: #999;
+    }
+
+/* 加载状态 */
+.table-body .el-loading-mask {
+    border-radius: 0;
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* 更新时间 */
+.update-time {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #F1F3F4;
+    font-size: 12px;
+    color: #8C8C8C;
+    text-align: right;
+}
+
+/* 文字溢出处理 */
+.col-name,
+.col-brand,
+.col-spec {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 数值样式 */
+.col-value,
+.col-sales {
+    font-weight: 500;
+    color: #1a1a1a;
+}
+
+/* 响应式设计 */
+@media (max-width: 1200px) {
+    .ranking-panel {
+        padding: 16px;
+    }
+
+    .table-header,
+    .table-row {
+        padding: 10px 12px;
+    }
+
+    .ranking-tabs .el-tab-pane[aria-labelledby*="product"] .col-spec {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .ranking-panel {
+        margin-top: 16px;
+    }
+
+    .table-body {
+        max-height: 280px;
+    }
+
+    .ranking-tabs .el-tabs__item {
+        padding: 0 12px;
+        font-size: 13px;
+    }
+}
