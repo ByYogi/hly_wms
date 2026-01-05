@@ -1987,5 +1987,29 @@ namespace House.Business.Cargo
             return List;
         }
         #endregion
+
+        #region 出库标签报表
+        /// <summary>
+        /// 查询出库标签报表数据
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <returns></returns>
+        public List<CargoOutboundLabelReportEntity> QueryOutboundLabelReport(CargoOutboundLabelReportEntity entity)
+        {
+            return man.QueryOutboundLabelReport(entity);
+        }
+
+        /// <summary>
+        /// 查询出库标签报表数据（分页版本）
+        /// </summary>
+        /// <param name="entity">查询条件</param>
+        /// <param name="pageIndex">页码（从1开始）</param>
+        /// <param name="pageSize">每页条数</param>
+        /// <returns>包含total和rows的Hashtable</returns>
+        public Hashtable QueryOutboundLabelReportPaged(CargoOutboundLabelReportEntity entity, int pageIndex, int pageSize)
+        {
+            return man.QueryOutboundLabelReportPaged(entity, pageIndex, pageSize);
+        }
+        #endregion
     }
 }

@@ -81,8 +81,6 @@
     <Compile Include="Cargo\Client\CargoClientTypeIDEntity.cs" />
     <Compile Include="Cargo\Client\CargoPurchaserEntity.cs" />
     <Compile Include="Cargo\Client\CargoSpecialVIPNumEntity.cs" />
-    <Compile Include="Cargo\Client\CargoSuppClientAccountEntity.cs" />
-    <Compile Include="Cargo\Client\CargoSuppClientAccountGoodsEntity.cs" />
     <Compile Include="Cargo\Client\CargoUpClientEntity.cs" />
     <Compile Include="Cargo\Client\ClientSessionEntity.cs" />
     <Compile Include="Cargo\Conti\CargoContiSaleOrderRespEntity.cs" />
@@ -189,6 +187,7 @@
     <Compile Include="Cargo\Report\CargoMonthStatisEntity.cs" />
     <Compile Include="Cargo\Report\CargoOrderOutTimeEntity.cs" />
     <Compile Include="Cargo\Report\CargoReportMoveContainerEntity.cs" />
+    <Compile Include="Cargo\Report\CargoOutboundLabelReportEntity.cs" />
     <Compile Include="Cargo\Report\CargoSaleStockStatisEntity.cs" />
     <Compile Include="Cargo\Report\CargoStocktakingEntity.cs" />
     <Compile Include="Cargo\Report\CargoLeaderCookpitEntity.cs" />

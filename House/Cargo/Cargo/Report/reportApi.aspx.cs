@@ -1,9 +1,11 @@
-﻿using House.Business;
+﻿using Cargo.Extensions;
+using House.Business;
 using House.Business.Cargo;
 using House.Entity;
 using House.Entity.Cargo;
 using House.Entity.Cargo.House;
 using House.Entity.Cargo.Product;
+using House.Entity.Cargo.Report;
 using House.Entity.House;
 using NPOI.HSSF.Record.Formula.Functions;
 using Org.BouncyCastle.Asn1.Ocsp;
@@ -11,6 +13,7 @@ using Senparc.Weixin.MP.TenPayLibV3;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data;
 using System.Drawing.Design;
 using System.EnterpriseServices.CompensatingResourceManager;
 using System.Linq;
@@ -864,6 +867,8 @@ namespace Cargo.Report
             Response.Clear();
             Response.Write(json);
         }
+
+
         public List<CargoReportMoveContainerEntity> MoveContainerReport
         {
             get
@@ -2872,6 +2877,251 @@ namespace Cargo.Report
             Response.Write(json);
         }
 
+        #endregion
+
+        #region 出库标签报表
+        /// <summary>
+        /// 查询出库标签报表数据（支持服务端分页）
+        /// </summary>
+        public void QueryOutboundLabelReport()
+        {
+            CargoOutboundLabelReportEntity queryEntity = new CargoOutboundLabelReportEntity();
+
+            // 出库时间范围
+            queryEntity.StartDate = Request.GetDateTime("StartDate");
+            queryEntity.EndDate = Request.GetDateTime("EndDate");
+
+            // 仓库ID
+            int? houseID = Request.GetInt("HouseID");
+            if (houseID.HasValue && houseID.Value > 0)
+            {
+                queryEntity.HouseID = houseID.Value;
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            }
+
+            // 库区
+            int? areaID = Request.GetInt("AreaID");
+            if (areaID.HasValue && areaID.Value > 0)
+            {
+                queryEntity.AreaID = areaID.Value;
+            }
+
+            // 分区
+            int? subAreaID = Request.GetInt("SubAreaID");
+            if (subAreaID.HasValue && subAreaID.Value > 0)
+            {
+                queryEntity.SubAreaID = subAreaID.Value;
+            }
+
+            // 货架
+            int? sectionID = Request.GetInt("SectionID");
+            if (sectionID.HasValue && sectionID.Value > 0)
+            {
+                queryEntity.SectionID = sectionID.Value;
+            }
+
+            // 品类
+            int? categoryID = Request.GetInt("CategoryID");
+            if (categoryID.HasValue && categoryID.Value > 0)
+            {
+                queryEntity.CategoryID = categoryID.Value;
+            }
+
+            // 品牌
+            int? typeID = Request.GetInt("TypeID");
+            if (typeID.HasValue && typeID.Value > 0)
+            {
+                queryEntity.TypeID = typeID.Value;
+            }
+
+            // 分页参数
+            int? pageIndex = Request.GetInt("page");
+            int? pageSize = Request.GetInt("rows");
+
+            CargoReportBus bus = new CargoReportBus();
+            Hashtable result = bus.QueryOutboundLabelReportPaged(queryEntity, pageIndex ?? 1, pageSize ?? 20);
+
+            // 返回JSON
+            string json = JSON.Encode(result);
+            Response.Clear();
+            Response.Write(json);
+            Response.Flush();
+        }
+
+        /// <summary>
+        /// 导出出库标签报表数据
+        /// </summary>
+        public void ExportOutboundLabelReport()
+        {
+            CargoOutboundLabelReportEntity queryEntity = new CargoOutboundLabelReportEntity();
+
+            // 出库时间范围
+            queryEntity.StartDate = Request.GetDateTime("StartDate");
+            queryEntity.EndDate = Request.GetDateTime("EndDate");
+
+            // 仓库ID
+            int? houseID = Request.GetInt("HouseID");
+            if (houseID.HasValue && houseID.Value > 0)
+            {
+                queryEntity.HouseID = houseID.Value;
+            }
+            else
+            {
+                queryEntity.CargoPermisID = UserInfor.CargoPermisID;
+            }
+
+            // 库区
+            int? areaID = Request.GetInt("AreaID");
+            if (areaID.HasValue && areaID.Value > 0)
+            {
+                queryEntity.AreaID = areaID.Value;
+            }
+
+            // 分区
+            int? subAreaID = Request.GetInt("SubAreaID");
+            if (subAreaID.HasValue && subAreaID.Value > 0)
+            {
+                queryEntity.SubAreaID = subAreaID.Value;
+            }
+
+            // 货架
+            int? sectionID = Request.GetInt("SectionID");
+            if (sectionID.HasValue && sectionID.Value > 0)
+            {
+                queryEntity.SectionID = sectionID.Value;
+            }
+
+            // 品类
+            int? categoryID = Request.GetInt("CategoryID");
+            if (categoryID.HasValue && categoryID.Value > 0)
+            {
+                queryEntity.CategoryID = categoryID.Value;
+            }
+
+            // 品牌
+            int? typeID = Request.GetInt("TypeID");
+            if (typeID.HasValue && typeID.Value > 0)
+            {
+                queryEntity.TypeID = typeID.Value;
+            }
+
+            CargoReportBus bus = new CargoReportBus();
+            List<CargoOutboundLabelReportEntity> list = bus.QueryOutboundLabelReport(queryEntity);
+
+            if (list.Count <= 0) { return; }
+
+            // 获取归属部门映射数据
+            CargoClientBus clientBus = new CargoClientBus();
+            List<CargoUpClientEntity> upClientList = clientBus.QueryAllUpClientDep(new CargoUpClientEntity());
+            Dictionary<string, string> upClientDepDict = new Dictionary<string, string>();
+            foreach (var upClient in upClientList)
+            {
+                if (!upClientDepDict.ContainsKey(upClient.ID.ToString()))
+                {
+                    upClientDepDict.Add(upClient.ID.ToString(), upClient.DepName);
+                }
+            }
+
+            // 创建DataTable用于导出
+            DataTable table = new DataTable();
+            table.Columns.AddRange(new DataColumn[]
+            {
+                new DataColumn("仓库", typeof(string)),
+                new DataColumn("出库时间", typeof(string)),
+                new DataColumn("标签号", typeof(string)),
+                new DataColumn("出库人", typeof(string)),
+                new DataColumn("订单号", typeof(string)),
+                new DataColumn("品牌", typeof(string)),
+                new DataColumn("产品编码", typeof(string)),
+                new DataColumn("产品名称", typeof(string)),
+                new DataColumn("型号", typeof(string)),
+                new DataColumn("规格", typeof(string)),
+                new DataColumn("花纹", typeof(string)),
+                new DataColumn("载速", typeof(string)),
+                new DataColumn("批次", typeof(string)),
+                new DataColumn("商品码", typeof(string)),
+                new DataColumn("供应商", typeof(string)),
+                new DataColumn("来源", typeof(string)),
+                new DataColumn("库区", typeof(string)),
+                new DataColumn("分区", typeof(string)),
+                new DataColumn("货架", typeof(string)),
+                new DataColumn("货位号", typeof(string)),
+                new DataColumn("归属部门", typeof(string)),
+                new DataColumn("规格类型", typeof(string)),
+                new DataColumn("品类", typeof(string))
+            });
+
+            foreach (var item in list)
+            {
+                DataRow newRow = table.NewRow();
+                newRow["仓库"] = item.HouseName;
+                newRow["出库时间"] = item.OutCargoTime.ToString("yyyy-MM-dd HH:mm:ss");
+                newRow["标签号"] = item.TagCode;
+                newRow["出库人"] = item.OutCargoOperID;
+                newRow["订单号"] = item.OrderNo;
+                newRow["品牌"] = item.TypeName;
+                newRow["产品编码"] = item.ProductCode;
+                newRow["产品名称"] = item.ProductName;
+                newRow["型号"] = item.Model;
+                newRow["规格"] = item.Specs;
+                newRow["花纹"] = item.Figure;
+                newRow["载速"] = item.LoadSpeed;
+                newRow["批次"] = item.Batch;
+                newRow["商品码"] = item.GoodsCode;
+                newRow["供应商"] = item.Supplier;
+                newRow["来源"] = item.SourceName;
+                newRow["库区"] = item.AreaName;
+                newRow["分区"] = item.SubAreaName;
+                newRow["货架"] = item.SectionName;
+                newRow["货位号"] = item.ContainerCode;
+
+                // BelongDepart映射 - 使用Dictionary查找
+                if (!string.IsNullOrEmpty(item.BelongDepart) && upClientDepDict.ContainsKey(item.BelongDepart))
+                {
+                    newRow["归属部门"] = upClientDepDict[item.BelongDepart];
+                }
+                else
+                {
+                    newRow["归属部门"] = "";
+                }
+
+                // SpecsType映射
+                switch (item.SpecsType)
+                {
+                    case "0":
+                        newRow["规格类型"] = "分配规格";
+                        break;
+                    case "1":
+                        newRow["规格类型"] = "普通规格";
+                        break;
+                    case "2":
+                        newRow["规格类型"] = "特价分配规格";
+                        break;
+                    case "3":
+                        newRow["规格类型"] = "手工单";
+                        break;
+                    case "4":
+                        newRow["规格类型"] = "极速达";
+                        break;
+                    case "5":
+                        newRow["规格类型"] = "次日达";
+                        break;
+                    default:
+                        newRow["规格类型"] = "";
+                        break;
+                }
+
+                // CategoryName
+                newRow["品类"] = item.CategoryName;
+
+                table.Rows.Add(newRow);
+            }
+
+            ToExcel.DataTableToExcel(table, "", "出库标签报表" + DateTime.Now.ToString("yyMMddHHmmss"));
+        }
         #endregion
 
     }

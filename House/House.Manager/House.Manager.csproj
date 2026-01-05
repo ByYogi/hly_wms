@@ -57,6 +57,7 @@
     <Compile Include="Cargo\QY\QiyeManager.cs" />
     <Compile Include="Cargo\Report\CargoBigDataViewManager.cs" />
     <Compile Include="Cargo\Report\CargoReportManager.cs" />
+    <Compile Include="Cargo\Report\CargoReportManager.OutboundLabel.cs" />
     <Compile Include="Cargo\SecKill\CargoSecKillManager.cs" />
     <Compile Include="Cargo\Static\CargoStaticManager.cs" />
     <Compile Include="Cargo\WX\CargoWeiXinManager.cs" />

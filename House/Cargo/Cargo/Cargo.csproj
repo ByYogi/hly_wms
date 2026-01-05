@@ -765,6 +765,7 @@
     <Content Include="Report\ClientArrearsStatistics.aspx" />
     <Content Include="Report\LeaderCookpit.aspx" />
     <Content Include="Report\OrderStatistics.aspx" />
+    <Content Include="Report\outboundLabelReport.aspx" />
     <Content Include="Report\PunctuationMap.aspx" />
     <Content Include="Report\reportAgeingDetail.aspx" />
     <Content Include="Report\reportApi.aspx" />
@@ -3587,6 +3588,13 @@
     </Compile>
     <Compile Include="Report\OrderStatistics.aspx.designer.cs">
       <DependentUpon>OrderStatistics.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="Report\outboundLabelReport.aspx.cs">
+      <DependentUpon>outboundLabelReport.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="Report\outboundLabelReport.aspx.designer.cs">
+      <DependentUpon>outboundLabelReport.aspx</DependentUpon>
     </Compile>
     <Compile Include="Report\PunctuationMap.aspx.cs">
       <DependentUpon>PunctuationMap.aspx</DependentUpon>

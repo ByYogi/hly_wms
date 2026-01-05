@@ -238,7 +238,8 @@
                         target="_self">&nbsp;每日仓库报表&nbsp;</a>&nbsp;&nbsp;<a class="easyui-linkbutton" iconcls="icon-chart_bar" plain="false" href="../Report/saleManReport.aspx" target="_self">
                             &nbsp;每日业务员报表&nbsp;</a>&nbsp;&nbsp;<a class="easyui-linkbutton" iconcls="icon-chart_bar" style="color: Red;"
                                 plain="false" href="../Report/reportMoveContainer.aspx" target="_self">
-                            &nbsp;每日移库报表&nbsp;</a>
+                            &nbsp;每日移库报表&nbsp;</a>&nbsp;&nbsp;
+                    <a class="easyui-linkbutton" iconcls="icon-chart_bar" plain="false" href="../Report/outboundLabelReport.aspx" target="_self">&nbsp;出库标签报表&nbsp;</a>
                 </td>
             </tr>
         </table>

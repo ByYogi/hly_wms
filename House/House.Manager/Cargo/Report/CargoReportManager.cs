@@ -21,7 +21,7 @@ namespace House.Manager.Cargo
     /// <summary>
     /// 数据统计数据库操作类
     /// </summary>
-    public class CargoReportManager
+    public partial class CargoReportManager
     {
         private SqlHelper conn = new SqlHelper();
         #region 访问备货明细
@@ -7023,6 +7023,146 @@ order by a2.Piece desc;
 
 
         }
+        #endregion
+
+        #region 出库标签报表
+        /// <summary>
+        /// 查询出库标签报表数据（全部数据，用于导出）
+        /// 注意：修改此方法时需同步修改 QueryOutboundLabelReportPaged 方法，或修改 CargoReportManager.OutboundLabel.cs 中的辅助方法
+        /// </summary>
+        /// <param name="entity">查询条件</param>
+        /// <returns>出库标签报表数据列表</returns>
+        public List<CargoOutboundLabelReportEntity> QueryOutboundLabelReport(CargoOutboundLabelReportEntity entity)
+        {
+            List<CargoOutboundLabelReportEntity> result = new List<CargoOutboundLabelReportEntity>();
+
+            try
+            {
+                // 使用辅助方法构建SQL
+                DbCommand cmd;
+                string sql = BuildOutboundLabelReportSQL(entity, out cmd);
+
+                // 添加排序和递归限制
+                sql = sql + " ORDER BY a.OutCargoTime DESC OPTION (MAXRECURSION 10) ";
+                cmd.CommandText = sql;
+
+                using (DataTable dt = conn.ExecuteDataTable(cmd))
+                {
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        result.Add(MapToOutboundLabelReportEntity(row));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("查询出库标签报表数据失败：" + ex.Message);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 查询出库标签报表数据（分页版本）
+        /// 注意：修改此方法时需同步修改 QueryOutboundLabelReport 方法，或修改 CargoReportManager.OutboundLabel.cs 中的辅助方法
+        /// </summary>
+        /// <param name="entity">查询条件</param>
+        /// <param name="pageIndex">页码（从1开始）</param>
+        /// <param name="pageSize">每页条数</param>
+        /// <returns>包含total和rows的Hashtable</returns>
+        public Hashtable QueryOutboundLabelReportPaged(CargoOutboundLabelReportEntity entity, int pageIndex, int pageSize)
+        {
+            Hashtable result = new Hashtable();
+            List<CargoOutboundLabelReportEntity> rows = new List<CargoOutboundLabelReportEntity>();
+            int total = 0;
+
+            try
+            {
+                // 使用辅助方法构建基础SQL
+                DbCommand cmdBase;
+                string baseSQL = BuildOutboundLabelReportSQL(entity, out cmdBase);
+
+                // 1. 先查询总数
+                // CTE不能放在子查询内，需要找到主查询SELECT的位置（在CTE结束的 ) 之后）
+                // CTE结束位置特征是 ")\r\nSELECT" 或 ")\nSELECT"
+                int cteEndIndex = baseSQL.IndexOf(")\r\nSELECT");
+                if (cteEndIndex < 0) cteEndIndex = baseSQL.IndexOf(")\nSELECT");
+
+                // 容错：如果找不到标准的 CTE 结束标记，尝试查找最后一个 ) 后面的 SELECT
+                if (cteEndIndex < 0)
+                {
+                    // 查找所有 ")\r\nSELECT" 或 ")\nSELECT" 的位置，取最后一个
+                    int lastCteEnd = -1;
+                    int pos = 0;
+                    while ((pos = baseSQL.IndexOf(")SELECT", pos, StringComparison.Ordinal)) >= 0)
+                    {
+                        lastCteEnd = pos;
+                        pos++;
+                    }
+                    if (lastCteEnd >= 0)
+                    {
+                        cteEndIndex = lastCteEnd;
+                    }
+                }
+
+                if (cteEndIndex < 0)
+                {
+                    throw new ApplicationException("无法定位 CTE 结束位置，请检查 SQL 格式");
+                }
+
+                int mainSelectIndex = baseSQL.IndexOf("SELECT", cteEndIndex + 1);
+                // 使用 " FROM " 带空格避免匹配子查询中的 FROM
+                int mainFromIndex = baseSQL.IndexOf(" FROM ", mainSelectIndex, StringComparison.OrdinalIgnoreCase);
+                // 容错：如果找不到带空格的 FROM，尝试不带空格的 FROM
+                if (mainFromIndex < 0) mainFromIndex = baseSQL.IndexOf("FROM", mainSelectIndex, StringComparison.OrdinalIgnoreCase);
+
+                if (mainFromIndex < 0)
+                {
+                    throw new ApplicationException("无法定位主查询的 FROM 关键字，请检查 SQL 格式");
+                }
+
+                // 构建count SQL：保留CTE部分 + SELECT COUNT(*) + FROM及后续部分
+                string countSQL = baseSQL.Substring(0, mainSelectIndex) + "SELECT COUNT(*) " + baseSQL.Substring(mainFromIndex) + " OPTION (MAXRECURSION 10) ";
+
+                using (DbCommand cmdCount = conn.GetSqlStringCommond(countSQL))
+                {
+                    AddOutboundLabelReportParameters(cmdCount, entity);
+                    total = Convert.ToInt32(conn.ExecuteScalar(cmdCount));
+                }
+
+                // 2. 查询分页数据
+                if (total > 0)
+                {
+                    int offset = (pageIndex - 1) * pageSize;
+                    string pagedSQL = baseSQL + " ORDER BY a.OutCargoTime DESC OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY OPTION (MAXRECURSION 10) ";
+
+                    using (DbCommand cmdData = conn.GetSqlStringCommond(pagedSQL))
+                    {
+                        AddOutboundLabelReportParameters(cmdData, entity);
+                        conn.AddInParameter(cmdData, "@Offset", DbType.Int32, offset);
+                        conn.AddInParameter(cmdData, "@PageSize", DbType.Int32, pageSize);
+
+                        using (DataTable dt = conn.ExecuteDataTable(cmdData))
+                        {
+                            foreach (DataRow row in dt.Rows)
+                            {
+                                rows.Add(MapToOutboundLabelReportEntity(row));
+                            }
+                        }
+                    }
+                }
+
+                result["total"] = total;
+                result["rows"] = rows;
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("查询出库标签报表数据失败：" + ex.Message);
+            }
+
+            return result;
+        }
+
         #endregion
     }
 }
