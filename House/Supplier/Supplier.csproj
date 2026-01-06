@@ -1537,6 +1537,7 @@
     <Compile Include="Common\Common.cs" />
     <Compile Include="Common\CookiesHelper.cs" />
     <Compile Include="Common\JSON.cs" />
+    <Compile Include="Common\OtherFeeRatio.cs" />
     <Compile Include="Common\RedisHelper.cs" />
     <Compile Include="Common\ToExcel.cs" />
     <Compile Include="Common\Union\AppConstants.cs" />

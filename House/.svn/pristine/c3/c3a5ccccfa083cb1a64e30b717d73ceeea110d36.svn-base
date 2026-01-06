@@ -3042,7 +3042,7 @@ namespace Cargo.Report
                 new DataColumn("花纹", typeof(string)),
                 new DataColumn("载速", typeof(string)),
                 new DataColumn("批次", typeof(string)),
-                new DataColumn("货品代码", typeof(string)),
+                new DataColumn("商品码", typeof(string)),
                 new DataColumn("供应商", typeof(string)),
                 new DataColumn("来源", typeof(string)),
                 new DataColumn("库区", typeof(string)),
@@ -3070,7 +3070,7 @@ namespace Cargo.Report
                 newRow["花纹"] = item.Figure;
                 newRow["载速"] = item.LoadSpeed;
                 newRow["批次"] = item.Batch;
-                newRow["货品代码"] = item.GoodsCode;
+                newRow["商品码"] = item.GoodsCode;
                 newRow["供应商"] = item.Supplier;
                 newRow["来源"] = item.SourceName;
                 newRow["库区"] = item.AreaName;

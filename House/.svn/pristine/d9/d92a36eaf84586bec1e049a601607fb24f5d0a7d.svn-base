@@ -53,7 +53,7 @@ namespace House.Manager.Cargo
     INNER JOIN ChildAreaCTE c ON a.ParentID = c.AreaID
 )");
 
-            // 2. SELECT和FROM子句 (条件：已出库 & 非移库单（有订单号））
+            // 2. SELECT和FROM子句
             sql.Append(@"
 SELECT a.ProductID, a.TagCode, a.OutCargoStatus, a.OutCargoOperID, a.OutCargoTime, a.OrderNo,
        b.ProductName, b.GoodsCode, b.Model, b.Specs, b.Figure, b.LoadIndex, b.SpeedLevel, b.Batch,
@@ -72,7 +72,7 @@ LEFT JOIN Tbl_Cargo_ProductType pct ON pct.TypeID = pt.ParentID AND pct.ParentID
 INNER JOIN Tbl_Cargo_Container c ON c.ContainerID = a.ContainerID
 INNER JOIN ChildAreaCTE ha ON ha.AreaID = c.AreaID
 LEFT JOIN Tbl_Cargo_ProductSource ps ON b.Source = ps.Source
-WHERE a.OutCargoStatus = 1 AND ISNULL(a.OrderNo, '') <> ''");
+WHERE a.OutCargoStatus = 1 ");
 
             // 3. 动态WHERE条件
             BuildWhereClause(sql, entity);

@@ -164,7 +164,7 @@
                       }
                   },
                   {
-                      title: '货品代码', field: 'GoodsCode', width: '100px', formatter: function (value) {
+                      title: '商品码', field: 'GoodsCode', width: '100px', formatter: function (value) {
                           if (value != null && value != "") {
                               return "<span title='" + value + "'>" + value + "</span>";
                           }
