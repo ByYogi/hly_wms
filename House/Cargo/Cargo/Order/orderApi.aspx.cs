@@ -360,6 +360,7 @@ namespace Cargo.Order
                 queryEntity.LineID = Convert.ToInt32(Request["LineID"]);
             }
             queryEntity.ShopCode = Convert.ToString(Request["ShopCode"]);
+            queryEntity.WXOrderNo = Convert.ToString(Request["WXOrderNo"]);
             if (!string.IsNullOrEmpty(Request["SuppClientNum"]))//一级分类
             {
                 queryEntity.SuppClientNum = Convert.ToInt32(Request["SuppClientNum"]);//所属仓库ID
@@ -10769,6 +10770,9 @@ namespace Cargo.Order
             msg.Result = true;
             string json = Request["data"];
             string ContainerID = Convert.ToString(Request["LOTContainer"]);
+            string LOTPID = Convert.ToString(Request["LOTPID"]);
+            string LOTSID = Convert.ToString(Request["LOTSID"]);
+            string houseID = Convert.ToString(Request["LOTHID"]);
             ArrayList GridRows = (ArrayList)JSON.Decode(json);
             if (GridRows.Count <= 0)
             {
@@ -10791,7 +10795,7 @@ namespace Cargo.Order
             log.Operate = "U";
             log.Status = "0";
             log.UserID = UserInfor.LoginName.Trim();
-
+            var houseData = bus.QueryCargoHouseByID(Convert.ToInt32(houseID));
             try
             {
                 foreach (Hashtable row in GridRows)
@@ -10852,38 +10856,7 @@ namespace Cargo.Order
                     }
                     ent.ProductCode = Convert.ToString(row["ProductCode"]);
                     ent.BelongMonth = Convert.ToString(row["BelongMonth"]);
-                    #region 获取基础价格
-                    DateTime now = DateTime.Now;
-                    //查询基础信息
-                    string proYearStr, proMonthStr;
-                    if (string.IsNullOrEmpty(ent.BelongMonth))
-                    {
-                        proYearStr = DateTime.Now.ToString("yyyy");
-                        proMonthStr = DateTime.Now.ToString("MM");
-                        if (proMonthStr.Substring(0, 1) == "0")
-                        {
-                            proMonthStr = DateTime.Now.ToString("MM").Substring(1, 1);
-                        }
-                    }
-                    else
-                    {
-                        proYearStr = ent.BelongMonth.Substring(0, 4);
-                        proMonthStr = ent.BelongMonth.Substring(4, 2);
-                    }
-
-                    //proMonth = "5";
-                    CargoProductBasicPriceEntity basicPrice = houseMan.QueryProductBasicPrice(new CargoProductBasicPriceEntity
-                    {
-                        HouseID = UserInfor.HouseID,
-                        TypeID = ent.TypeID,
-                        GoodsCode = ent.GoodsCode,
-                        ProductCode = ent.ProductCode,
-                        Born = -1,
-                        ProYear = proYearStr,
-                        ProMonth = proMonthStr,
-                    });
-                    #endregion
-
+                   
 
                     //查询基础规格获取产品名称
                     ent.GoodsName = pbus.GetProductSpecEntity(new CargoProductSpecEntity { ProductCode = ent.ProductCode }).ProductName;
@@ -10897,13 +10870,52 @@ namespace Cargo.Order
                     ent.UnitPrice = string.IsNullOrEmpty(Convert.ToString(row["UnitPrice"])) ? 0 : Convert.ToDecimal(row["UnitPrice"]);
                     ent.CostPrice = string.IsNullOrEmpty(Convert.ToString(row["CostPrice"])) ? 0 : Convert.ToDecimal(row["CostPrice"]);
 
-                    ent.SalePrice = basicPrice != null ? Convert.ToDecimal(basicPrice.SalePrice) : 0M;
-                    ent.TradePrice = basicPrice != null ? Convert.ToDecimal(basicPrice.TradePrice) : 0M;
-                    ent.NextDayPrice = basicPrice != null ? Convert.ToDecimal(basicPrice.NextDayPrice) : 0M;
-                    ent.WholesalePrice = basicPrice != null ? Convert.ToDecimal(basicPrice.WholesalePrice) : 0M;
+                    if (houseData.BelongHouse!="7")
+                    {
+                        #region 获取基础价格
+                        DateTime now = DateTime.Now;
+                        //查询基础信息
+                        string proYearStr, proMonthStr;
+                        if (string.IsNullOrEmpty(ent.BelongMonth))
+                        {
+                            proYearStr = DateTime.Now.ToString("yyyy");
+                            proMonthStr = DateTime.Now.ToString("MM");
+                            if (proMonthStr.Substring(0, 1) == "0")
+                            {
+                                proMonthStr = DateTime.Now.ToString("MM").Substring(1, 1);
+                            }
+                        }
+                        else
+                        {
+                            proYearStr = ent.BelongMonth.Substring(0, 4);
+                            proMonthStr = ent.BelongMonth.Substring(4, 2);
+                        }
 
-                    //ent.TradePrice = string.IsNullOrEmpty(Convert.ToString(row["TradePrice"])) ? 0 : Convert.ToDecimal(row["TradePrice"]);
-                    //ent.SalePrice = string.IsNullOrEmpty(Convert.ToString(row["SalePrice"])) ? 0 : Convert.ToDecimal(row["SalePrice"]);
+                        //proMonth = "5";
+                        CargoProductBasicPriceEntity basicPrice = houseMan.QueryProductBasicPrice(new CargoProductBasicPriceEntity
+                        {
+                            HouseID = UserInfor.HouseID,
+                            TypeID = ent.TypeID,
+                            GoodsCode = ent.GoodsCode,
+                            ProductCode = ent.ProductCode,
+                            Born = -1,
+                            ProYear = proYearStr,
+                            ProMonth = proMonthStr,
+                        });
+                        #endregion
+
+
+                        ent.SalePrice = basicPrice != null ? Convert.ToDecimal(basicPrice.SalePrice) : 0M;
+                        ent.TradePrice = basicPrice != null ? Convert.ToDecimal(basicPrice.TradePrice) : 0M;
+                        ent.NextDayPrice = basicPrice != null ? Convert.ToDecimal(basicPrice.NextDayPrice) : 0M;
+                        ent.WholesalePrice = basicPrice != null ? Convert.ToDecimal(basicPrice.WholesalePrice) : 0M;
+                    }
+                    else
+                    {
+                        ent.TradePrice = string.IsNullOrEmpty(Convert.ToString(row["TradePrice"])) ? 0 : Convert.ToDecimal(row["TradePrice"]);
+                        ent.SalePrice = string.IsNullOrEmpty(Convert.ToString(row["SalePrice"])) ? 0 : Convert.ToDecimal(row["SalePrice"]);
+                    }
+
                     ent.Source = Convert.ToString(row["Source"]);
                     ent.Born = Convert.ToString(row["Born"]);
                     ent.Assort = Convert.ToString(row["Assort"]);

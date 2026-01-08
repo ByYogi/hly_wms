@@ -99,6 +99,7 @@
                             else if (value == "4") { return "<span title='一二三轮胎'>一二三轮胎</span>"; }
                             else if (value == "5") { return "<span title='采购商'>采购商</span>"; }
                             else if (value == "6") { return "<span title='云仓'>云仓</span>"; }
+                            else if (value == "7") { return "<span title='虚拟仓'>虚拟仓</span>"; }
                         }
                     },
                     {
@@ -284,6 +285,7 @@
                         <option value="4">一二三轮胎</option>
                         <option value="5">采购商</option>
                         <option value="6">云仓</option>
+                        <option value="7">虚拟仓</option>
                     </select>
                 </td>
             </tr>
@@ -359,6 +361,7 @@
                                 <option value="4">一二三轮胎</option>
                                 <option value="5">采购商</option>
                                 <option value="6">云仓</option>
+                                <option value="7">虚拟仓</option>
                             </select>
                         </td>
                     </tr>

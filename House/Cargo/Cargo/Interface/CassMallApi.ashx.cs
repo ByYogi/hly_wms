@@ -8,6 +8,7 @@ using House.Entity.Cargo;
 using House.Entity.Cargo.Order;
 using House.Entity.Dto;
 using House.Manager;
+using House.Manager.Cargo;
 using iText.Layout.Element;
 using Newtonsoft.Json;
 using NPOI.HSSF.Record.Formula.Functions;
@@ -187,7 +188,7 @@ namespace Cargo.Interface
                         AutomaticCreateCassMallOrder(datas);
                     }
                     //开思订单审核
-                    SendOrderAudit(new CassMallPushParam { orderId= notice.data.orderId }, notice);
+                    SendOrderAudit(new CassMallPushParam { orderId = notice.data.orderId }, notice);
                 }
 
             }
@@ -399,7 +400,7 @@ namespace Cargo.Interface
                         //}
                         BatchWeek = ExtractWeek(YearArr[YearArr.Length - 1]);
                     }
-                    
+
                     CargoInterfaceEntity queryEntity = new CargoInterfaceEntity
                     {
                         //ProductCode = item.ProductCode,
@@ -726,8 +727,8 @@ namespace Cargo.Interface
 
                     string fkfs = ent.CheckOutType.Equals("3") ? "货到付款" : ent.CheckOutType.Equals("10") ? "预付款" : "现付";
                     string shf = ent.LogisID.Equals(46) ? "自提" : ent.DeliveryType.Equals("0") ? "急送" : "次日达";
-                    string tit = ent.ThrowGood.Equals("23") ?  "次日达" : (ent.DeliveryType.Equals("2") ? "次日达" : "急速达" );
-                    string go = ent.ThrowGood.Equals("23") ? "-不出库" : (ent.DeliveryType.Equals("2") ? "" : "") ;
+                    string tit = ent.ThrowGood.Equals("23") ? "次日达" : (ent.DeliveryType.Equals("2") ? "次日达" : "急速达");
+                    string go = ent.ThrowGood.Equals("23") ? "-不出库" : (ent.DeliveryType.Equals("2") ? "" : "");
                     CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
                     cargoNewOrder.HouseName = houseEnt.Name;
                     cargoNewOrder.OrderNo = ent.WXOrderNo;
@@ -771,7 +772,7 @@ namespace Cargo.Interface
                     catch (ApplicationException ex)
                     {
                         log.Status = "1";
-                        log.Memo = $@"[{datas.OrderHeader.OrderId}]" + ex.ToString() ;
+                        log.Memo = $@"[{datas.OrderHeader.OrderId}]" + ex.ToString();
                         lw.WriteLog(log);
                     }
                     //msg.Message = "提交成功，请收到货后在我的订单里支付货款";
@@ -823,7 +824,7 @@ namespace Cargo.Interface
                 {
                     return 1;
                 }
-                else if(str.Contains("下"))
+                else if (str.Contains("下"))
                 {
                     return 2;
                 }
@@ -873,8 +874,288 @@ namespace Cargo.Interface
 
             //订单取消
             //1.更新开思表状态
-            nwBus.MassCallOrderCancelled(notice, log);
+            var state = nwBus.MassCallOrderCancelled(notice, log);
+            if (state == 1)
+            {
+                TuiHuoOrderData(notice, log);
+            }
+        }
 
+        public void TuiHuoOrderData(CassMallDTO notice, LogEntity log)
+        {
+            CargoOrderBus bus = new CargoOrderBus();
+            LogBus logBus = new LogBus();
+            CargoFinanceBus bus2 = new CargoFinanceBus();
+            CargoHouseBus cargoHouse = new CargoHouseBus();
+            CargoOrderManager orderManager = new CargoOrderManager();
+            CargoFactoryOrderManager cargoFactoryOrderManager = new CargoFactoryOrderManager();
+            //获取数据
+            var orderData = bus.QueryOrderDataInfo(new CargoOrderEntity { OpenOrderNo = notice.data.orderId });
+            List<CargoOrderGoodsEntity> goods = new List<CargoOrderGoodsEntity>();
+            try
+            {
+                foreach (var item in orderData)
+                {
+                    List<CargoOrderGoodsEntity> goodsList = bus.QueryOrderGoodsInfo(new CargoOrderGoodsEntity { OrderNo = item.OrderNo });
+                    var AreaData = bus2.GetAreaData(item.HouseID);
+                    CargoHouseEntity house = cargoHouse.QueryCargoHouseByID(item.HouseID);//查询仓库代码
+                    int OrderNum = 0;
+                    var order = new CargoOrderEntity();
+                    order.OrderNo = Common.GetMaxOrderNumByCurrentDate(item.HouseID, house.HouseCode, out OrderNum);//生成退货单号
+                    order.HouseID = item.HouseID;
+                    order.WXOrderNo = "";
+                    order.FacOrderNo = order.OrderNo;
+                    order.ThrowGood = "5";//是否抛货（5:退货订单）
+                    order.OrderNum = OrderNum;//订单顺序号
+                    order.OutHouseName = item.OutHouseName;
+                    order.IsTransitFee= 0;
+                    order.HAwbNo = item.HAwbNo;
+                    order.LogisAwbNo = item.LogisAwbNo;
+                    order.LogisID = item.LogisID;
+                    order.DeliverySettlement = item.DeliverySettlement;
+                    order.Dep = "1";
+
+                    //order.Transit = item.Transit;                 // 中转站（途径）
+                    order.Dest = item.Dest;                       // 到达站
+                    
+                    order.Weight = item.Weight;                   // 总重量
+                    order.Volume = item.Volume;                   // 总体积
+      
+                    order.CheckOutType = item.CheckOutType;        // 结算方式
+                    order.TrafficType = item.TrafficType;          // 订单类型
+                    order.DeliveryType = item.DeliveryType;        // 送货方式
+                    order.ClientNum = item.ClientNum;              // 客户编码
+                    order.AcceptUnit = item.AcceptUnit;            // 客户名称
+                    order.AcceptAddress = item.AcceptAddress;      // 客户详细地址
+                    order.AcceptPeople = item.AcceptPeople;        // 客户联系人
+                    order.AcceptTelephone = item.AcceptTelephone;  // 客户联系电话
+                    order.AcceptCellphone = item.AcceptCellphone;  // 客户手机
+                    order.CreateAwbID = "2029";          // 开单员ID
+                    order.CreateAwb = "机器人";               // 开单员
+                    order.CreateDate = DateTime.Now;             // 开单时间
+                    order.CheckStatus = "1";           // 结算状态
+                    order.CheckDate = DateTime.Now;               // 结算时间
+                    order.Signer = item.Signer;                     // 签收人
+                    order.SignTime = item.SignTime;                 // 签收时间
+                    order.SaleManID = item.SaleManID;               // 销售员账号ID
+                    order.SaleManName = item.SaleManName;           // 销售员名字
+                    order.SaleCellPhone = item.SaleCellPhone;       // 销售员手机号码
+                    order.HouseID = item.HouseID;                   // 所在仓库
+                    order.OP_ID = "2029";               // 操作员(接单员)
+                    order.OP_DATE = DateTime.Now;                   // 操作时间
+                    order.AwbStatus = "0";
+                    order.OrderType = "0";
+                    order.FinanceSecondCheck = "1"; // 财务二审
+                    order.FinanceSecondCheckName = "2029"; // 财务二审名字
+                    order.FinanceSecondCheckDate = DateTime.Now;
+                    order.OrderModel = "1";             // 订单类型
+                    order.WXOrderNo = item.WXOrderNo;               // 微信商城订单号
+                    order.TranHouse = item.TranHouse;               // 调货(代发)仓库
+                    order.ModifyPriceStatus = item.ModifyPriceStatus; // 改价申请状态
+                    order.BelongHouse = item.BelongHouse;           // 公司类型
+                    order.IsPrintPrice = item.IsPrintPrice;         // 是否打印价格
+                    order.AccountNo = item.AccountNo;               // 账单号
+                    order.PayClientNum = item.PayClientNum;         // 付款人编号
+                    order.PayClientName = item.PayClientName;       // 付款人姓名
+                    order.PostponeShip = item.PostponeShip;         // 延迟推送
+                    order.OutCargoTime = item.OutCargoTime;         // 出库完成时间
+                    order.OrderAging = item.OrderAging;             // 订单时效
+                    order.PrintNum = item.PrintNum;                 // 发货单打印次数
+                    order.PollStatus = item.PollStatus;             // 快递100订阅状态
+                    order.PickStatus = item.PickStatus;             // 拣货计划状态
+                    order.LineID = item.LineID;                     // 主键ID号
+                    order.LineName = item.LineName;                 // 线路名称
+                    order.ShopCode = item.ShopCode;                 // 4S店代码
+                    order.SuppClientNum = item.SuppClientNum;       // 供应商客户编码
+                    order.CollectMoney = item.CollectMoney;         // 代收款
+                    order.TakeOrderName = item.TakeOrderName;       // 接单人姓名
+                    order.TakeOrderTime = item.TakeOrderTime;       // 接单时间
+                    order.SendCarName = item.SendCarName;           // 发车配送人姓名
+                    order.SendCarTime = item.SendCarTime;           // 发车时间
+                    //order.OpenOrderNo = item.OpenOrderNo;           // 第三方订单号
+                    //order.OpenOrderSource = item.OpenOrderSource;   // 第三方订单来源
+                    order.BusinessID = item.BusinessID;             // 业务名称ID
+                  
+                    order.OpenExpressName = item.OpenExpressName;   // 快递公司名称
+                    order.OpenExpressNum = item.OpenExpressNum;     // 快递公司单号
+                    order.CouponType = item.CouponType;             // 券类型
+                    order.DeliveryDriverName = item.DeliveryDriverName; // 提货司机姓名
+                    order.DriverIDNum = item.DriverIDNum;           // 司机身份证号
+                    order.DriverCellphone = item.DriverCellphone;   // 司机手机号码
+                    order.DriverCarNum = item.DriverCarNum;         // 司机车牌号
+                    order.IsSupplierType = item.IsSupplierType;     // 供应商分账是否已结算
+                    order.IsHouseType = item.IsHouseType;           // 仓库分账是否已结算
+                    order.ShareHouseID = item.ShareHouseID;         // 共享来源仓库ID
+                    order.ShareHouseName = item.ShareHouseName;     // 共享来源仓库
+                    order.OrignHouseID = item.OrignHouseID;         // 原仓库ID
+                    order.OrignHouseName = item.OrignHouseName;     // 原仓库名称
+                    order.MarketType = item.MarketType;             // 销售类型
+
+                   
+
+                    var PieceSum = 0; //退货数
+                    var TransportFeeSum = 0M; // 行总计
+                    var OverDueFeeSum = 0M; //超期费
+                    var TransitFeeSum = 0M; //配送费
+
+                    string outID = DateTime.Now.ToString("yyMMdd") + Common.GetRandomFourNumString();//出库单号
+                    var proStr = string.Empty;
+                    foreach (var item2 in goodsList)
+                    {
+                        var total = Math.Round(item2.ActSalePrice * Convert.ToDecimal(item2.Piece), 2);//行明细总计
+                        var OverDueFee = 0M;//超期费
+                        if (item2.OverDueFee > 0) OverDueFee = Math.Round(item2.OverDueFee / Convert.ToDecimal(item2.Piece) * Convert.ToDecimal(item2.Piece), 2);
+
+                        PieceSum += item2.Piece;
+                        TransportFeeSum += total;
+                        OverDueFeeSum += OverDueFee;
+
+                        //TransitFeeSum += Math.Round(order.TransitFee / Convert.ToDecimal(item2.Piece) * Convert.ToDecimal(item2.ReturnPiece), 2);//配送费
+                        proStr += $@"{item2.TypeName} {item2.Specs} {item2.Figure} {item2.LoadIndex+item2.SpeedLevel}" + Environment.NewLine ;
+                        goods.Add(new CargoOrderGoodsEntity
+                        {
+                            OrderNo = order.OrderNo,//退货单号
+                            Piece = item2.Piece,//退货数量
+                            RelateOrderNo = item.OrderNo,//关联订单-原订单号
+                            ProductID = item2.ProductID,
+                            HouseID = item2.HouseID,
+                            AreaID =item2.AreaID,
+                            ContainerCode = item2.ContainerCode,
+                            ActSalePrice = item2.ActSalePrice,
+                            RuleType = item2.RuleType,
+                            RuleID = item2.RuleID,
+                            RuleTitle = item2.RuleTitle,
+                            SuitClientNum = item2.SuppClientNum.ToString(),
+                            SupplySalePrice = item2.SupplySalePrice,//进仓价
+                            OP_ID = log.UserID,
+                            OutCargoID = outID,
+                            OverDueFee = OverDueFee,
+                        });
+                    }
+                    order.Piece = item.Piece;                     // 总件数
+                    order.InsuranceFee = item.InsuranceFee;       // 优惠券费用
+                    order.BateAmount = item.BateAmount;           // 返利金额
+                    order.OnlinePaidAmount = item.OnlinePaidAmount; // 在线支付金额
+                    order.TransitFee = item.TransitFee;           // 配送费
+                    order.TransportFee = item.TransportFee;       // 销售收入
+                    order.DeliveryFee = item.DeliveryFee;         // 物流运输费用
+                    order.OtherFee = item.OtherFee;               // 其它费用
+                    order.TotalCharge = item.TotalCharge;         // 合计总收入
+                    order.Rebate = item.Rebate;                   // 回扣
+                    order.OverDueFee = item.OverDueFee;             // 超期费
+
+                    order.Remark = (string.IsNullOrEmpty(order.Remark) ? "" : order.Remark) + $@"开思自动退货"; ;
+
+                    order.goodsList = goods;
+
+                    bus2.AddReturnCargoOrderV3(order);
+                    orderManager.AddOrderGoodsInfo(goods);//新增仓储订单退货明细
+
+                    foreach (var item2 in goodsList)
+                    {
+                        CargoFactoryOrderEntity cargoFactoryOrder = new CargoFactoryOrderEntity();
+                        cargoFactoryOrder.FacOrderNo = order.FacOrderNo;
+                        cargoFactoryOrder.OrderType = 2;
+                        cargoFactoryOrder.HouseID = order.HouseID;
+                        //cargoFactoryOrder.ProductID = Convert.ToString(data.ProductID);
+                        cargoFactoryOrder.ProductID =  Convert.ToString(item2.ProductID);
+                        cargoFactoryOrder.Source = 24;//string.IsNullOrEmpty(data.Source)?0 : Convert.ToInt32(data.Source);
+                        cargoFactoryOrder.SourceName = "退货入库";
+                        cargoFactoryOrder.OP_Name = "机器人";
+                        cargoFactoryOrder.ProductName = house.CargoDepart;//item.ProductName;//"迪乐泰揭阳仓业务部";
+                        cargoFactoryOrder.BelongMonth = item2.BelongMonth;//当前年月;
+                        cargoFactoryOrder.Born = item2.Born;
+                        cargoFactoryOrder.Assort = item2.Assort;
+                        cargoFactoryOrder.TypeID = item2.TypeID;
+                        cargoFactoryOrder.Model = item2.Model;
+                        cargoFactoryOrder.Specs = item2.Specs;
+                        cargoFactoryOrder.LoadIndex = item2.LoadIndex;
+                        cargoFactoryOrder.SpeedLevel = item2.SpeedLevel;
+                        cargoFactoryOrder.Figure = item2.Figure;
+                        cargoFactoryOrder.GoodsCode = item2.GoodsCode;
+                        cargoFactoryOrder.Batch = item2.Batch;
+                        cargoFactoryOrder.OrderNum = PieceSum;
+                        cargoFactoryOrder.ReplyNumber = PieceSum;
+                        cargoFactoryOrder.InCargoStatus = 0;
+                        cargoFactoryOrder.UnitPrice = (double)item2.UnitPrice;
+                        cargoFactoryOrder.TradePrice = (double)item2.TradePrice;
+                        cargoFactoryOrder.SalePrice = (double)item2.SalePrice;
+                        cargoFactoryOrder.InHousePrice = (double)item2.InHousePrice;
+                        cargoFactoryOrder.WhetherTax = 0;
+                        cargoFactoryOrder.CostPrice = (double)item2.CostPrice;
+                        cargoFactoryOrder.TaxCostPrice = (double)item2.TaxCostPrice;
+                        cargoFactoryOrder.NoTaxCostPrice = (double)item2.NoTaxCostPrice;
+                        cargoFactoryOrder.SaleMoney = (double)(order.TotalCharge - order.TransitFee);
+                        cargoFactoryOrder.ReceiveName = "";
+                        cargoFactoryOrder.ReceiveCity = "";
+                        cargoFactoryOrder.ReceiveMobile = "";
+                        cargoFactoryOrder.OP_DATE = DateTime.Now;
+                        cargoFactoryOrder.Supplier = item2.Supplier;//供应商
+                        cargoFactoryOrder.SuppClientNum = item2.SuppClientNum.ToString();//供应商编号
+                        cargoFactoryOrder.BelongDepart = item2.BelongDepart;//供应商编号
+                        cargoFactoryOrder.SupplierAddress = item2.SupplierAddress;//供应商地址
+                        cargoFactoryOrder.SpecsType = order.ThrowGood == "22" ? "4" : order.ThrowGood == "23" ? "5" : "4";
+                        //cargoFactoryOrder.SpecsType = data.SpecsType;
+                        cargoFactoryOrder.ProductCode = item2.ProductCode;
+                        cargoFactoryOrder.TypeName = item2.TypeName;//【产品类型名称】推送至好来运的pName、brand
+                        //1.新增工厂来货订单退货单
+                        cargoFactoryOrderManager.InsertData(cargoFactoryOrder);
+                    }
+
+
+                    string fkfs = item.CheckOutType.Equals("3") ? "货到付款" : item.CheckOutType.Equals("10") ? "预付款" : "现付";
+                    string shf = item.LogisID.Equals(46) ? "自提" : item.DeliveryType.Equals("0") ? "急送" : "次日达";
+                    string tit = item.ThrowGood.Equals("23") ? "次日达" : (item.DeliveryType.Equals("2") ? "次日达" : "急速达");
+                    string go = item.ThrowGood.Equals("23") ? "-不出库" : (item.DeliveryType.Equals("2") ? "" : "");
+                    CargoNewOrderNoticeEntity cargoNewOrder = new CargoNewOrderNoticeEntity();
+                    cargoNewOrder.HouseName = house.Name;
+                    cargoNewOrder.OrderNo = order.OrderNo;
+                    cargoNewOrder.OrderNum = order.Piece.ToString();
+                    cargoNewOrder.ClientInfo = order.AcceptPeople + " " + order.AcceptCellphone + " " + order.AcceptAddress;// "泰乐 华笙 广东省广州市白云区东平加油站左侧";
+                    cargoNewOrder.ProductInfo = proStr;// "马牌 215/55R16 CC6 98V";
+                    cargoNewOrder.DeliveryName = shf;// "自提";
+                    cargoNewOrder.ReceivePeople = "";
+                    string hcno = JSON.Encode(cargoNewOrder);
+                    //Common.WriteTextLog(hcno);
+                    List<CargoVoiceBroadEntity> voiceBroadList = cargoHouse.GetVoiceBroadList(new CargoVoiceBroadEntity { HouseID = house.HouseID });
+                    foreach (var voice in voiceBroadList)
+                    {
+                        RedisHelper.SetString("NewOrderNotice_" + voice.LoginName, hcno);
+                        //mc.Add("NewOrderNotice_" + voice.LoginName, hcno);
+                    }
+
+                    try
+                    {
+                        QySendInfoEntity send = new QySendInfoEntity();
+                        send.title = $@"[{order.OrderNo}]开思有退货订单";
+                        //推送给提交人
+                        send.msgType = msgType.textcard;
+                        send.agentID = "1000003";//消息通知的应用
+                        send.AgentSecret = "VkkRCESh5hxT8FStrYa0jWjIg0ux--M670SoFFyuimM";
+                        //send.toUser = qup.ApplyID;<div>订单金额：" + ord.TotalCharge.ToString("F2") + "</div>
+                        //send.toTag = "19";
+                        send.toTag = house.HCYCOrderPushTagID.ToString();
+                        send.content = "<div></div><div>出库仓库：" + house.Name + go + "</div>><div>出库订单号：" + order.OrderNo + "</div><div>订单数量：" + order.Piece.ToString() + "</div><div>订单金额：" + order.TotalCharge.ToString("F2") + "</div><div>货物信息：" + proStr + "</div><div>付款方式：" + fkfs + "</div><div>送货方式：" + shf + "</div><div>收货信息：" + order.AcceptPeople + " " + order.AcceptCellphone + "</div><div>收货地址：" + order.AcceptAddress + "</div><div>请留意！</div>";
+                        send.url = "http://dlt.neway5.com/QY/qyScanOrderSign.aspx?OrderNo=" + order.OrderNo;
+                        WxQYSendHelper.DLTQYPushInfo(send);
+
+
+                    }
+                    catch (ApplicationException ex)
+                    {
+
+                    }
+
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                log.Status = "1";
+                log.Memo = ex.ToString();
+                logBus.InsertLog(log);
+            }
         }
         public string PostHttpRequest(string url, string Data, string apiName, string APISession, string appKey)
         {
@@ -970,7 +1251,7 @@ namespace Cargo.Interface
 
         private void SendOrderAudit(CassMallPushParam order, CassMallDTO callbackData)
         {
-            LogEntity log=new LogEntity();
+            LogEntity log = new LogEntity();
             LogBus logbus = new LogBus();
             try
             {

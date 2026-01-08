@@ -569,7 +569,7 @@
                             }
                         });
                         columns.push({
-                            title: '微信商城单号', field: 'WXOrderNo', width: '110px', formatter: function (value) {
+                            title: '微信订单号', field: 'WXOrderNo', width: '110px', formatter: function (value) {
                                 return "<span title='" + value + "'>" + value + "</span>";
                             }
                         });
@@ -1061,6 +1061,7 @@
                 OutCargoType: $("#AOutCargoType").combobox('getValue'),
                 PostponeShip: $("#PostponeShip").combobox('getValue'),
                 ShopCode: $("#shopCode").val(),
+                WXOrderNo: $("#AWXOrderNo").val(),
                 BelongHouse: $('#BelongHouse').combobox('getValue'),//公司类型
                 BusinessID: $('#BusinessID').combobox('getValue')
             });
@@ -1289,6 +1290,11 @@
                 </td>
                 <td>
                     <input id="shopCode" class="easyui-textbox" data-options="prompt:'请输入店代码'" style="width: 100px" />
+                </td>
+                <td style="text-align: right;">微信订单号:
+                </td>
+                <td>
+                    <input id="AWXOrderNo" class="easyui-textbox" data-options="prompt:'请输入微信商城单号'" style="width: 100px" />
                 </td>
                 <td class="ACreateAwb" style="text-align: right;">开单员:
                 </td>

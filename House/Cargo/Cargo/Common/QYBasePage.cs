@@ -42,7 +42,7 @@ namespace Cargo
         {
             #if DEBUG
             QiyeBus bus = new QiyeBus();
-            QyUserEntity qyuser = bus.QueryUser(new QyUserEntity { UserID = "3054" });
+            QyUserEntity qyuser = bus.QueryUser(new QyUserEntity { UserID = "0006" });
             string cqd = string.Format("cmd={0}&LoginName={1}", "queryUserInfoByUserID", qyuser.UserID);
             string result = wxHttpUtility.SendHttpRequest(Common.GethouseAPI(), cqd);
             userAPIMessage rows = Newtonsoft.Json.JsonConvert.DeserializeObject<userAPIMessage>(result);

@@ -647,8 +647,6 @@
             console.log(TypeID,"11111111111111111");
             $.ajax({
                 url: 'houseApi.aspx?method=QueryOtherFeeRatio',
-                // 注释或删除 JSON contentType，使用默认表单格式
-                // contentType: "application/json;charset=utf-8", 
                 type: 'post',
                 dataType: 'json',
                 data: { typeID: TypeID }, // 保持普通对象，jQuery 自动转为 key=value 格式

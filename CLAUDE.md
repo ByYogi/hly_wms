@@ -25,6 +25,8 @@ nuget restore House/House.sln
 
 For development, open `House/House.sln` in Visual Studio and press F5 to run with IIS Express.
 
+**Note**: This project has no formal unit tests.
+
 ## Architecture
 
 The system uses a classic layered architecture:

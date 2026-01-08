@@ -1254,12 +1254,15 @@
             $.ajax({
                 url: "productApi.aspx?method=QueryALLProductPageDataExport",
                 data: {
+                    PID: $("#APID").combobox('getValue'),//一级产品
                     SID: $('#ASID').combobox('getValue'),
                     Specs: $('#ASpecs').val(),
                     Figure: $('#AFigure').val(),
                     GoodsCode: $('#AGoodsCode').val(),
                     ProductCode: $('#AProductCode').val(),
                     UpClientID: $('#AUpClientID').combobox('getValue'),
+                    DelFlag: $("#dFlag").combobox('getValue'),
+
                 },
                 success: function (text) {
                     $.messager.progress("close");

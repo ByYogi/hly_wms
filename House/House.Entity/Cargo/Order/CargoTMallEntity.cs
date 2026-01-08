@@ -290,6 +290,7 @@ namespace House.Entity.Cargo.Order
         public string logisticsCode { get; set; }
         public string outboundContactPhone { get; set; }
         public int syncType { get; set; }
+        public int IsPush { get; set; }
         public string remark { get; set; }
         public string DeliveryDriverName { get; set; }
         public string DriverCellphone { get; set; }

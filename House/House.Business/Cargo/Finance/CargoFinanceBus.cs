@@ -1917,6 +1917,14 @@ namespace House.Business.Cargo
         {
             man.AddReturnCargoOrderV2(entity);
         }
+        /// <summary>
+        /// 新增仓储订单退货单 3
+        /// </summary>
+        /// <param name="entity"></param>
+        public void AddReturnCargoOrderV3(CargoOrderEntity entity)
+        {
+            man.AddReturnCargoOrderV3(entity);
+        }
         #endregion
         #region 余额分账 BILL
         /// <summary>

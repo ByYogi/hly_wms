@@ -8,6 +8,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Data.SqlTypes;
 using System.Linq;
 using System.Runtime.Remoting.Metadata.W3cXsd2001;
 using System.Security.Cryptography;
@@ -5928,7 +5929,7 @@ where a.OpenOrderNo is not null and a.OpenOrderNo <> '' ";
         public void AddReturnCargoOrder(CargoOrderEntity entity)
         {//, FinanceSecondCheck, FinanceSecondCheckName, FinanceSecondCheckDate
             string strSQL = "Insert into Tbl_Cargo_Order(OrderNo, OrderNum, HAwbNo, LogisAwbNo, LogisID, Dep, Dest, Piece, Weight, Volume, InsuranceFee,TransitFee, TransportFee, DeliveryFee, OtherFee, TotalCharge, Rebate, CheckOutType, TrafficType, DeliveryType, AcceptUnit, AcceptPeople, AcceptTelephone, AcceptCellphone, AcceptAddress, CreateAwb, CreateDate,Signer, SignTime, OP_ID, OP_DATE, AwbStatus, Remark, SaleManID, SaleManName, SaleCellphone, HouseID,CreateAwbID, OrderType, OrderModel,ClientNum, WXOrderNo, ThrowGood, TranHouse, OutHouseName, ModifyPriceStatus, PayClientNum, PayClientName,BelongHouse, IsPrintPrice, AccountNo, PostponeShip, OutCargoTime, DeliverySettlement, OrderAging, PrintNum,PollStatus, PickStatus, LineID, LineName, ShopCode, SuppClientNum,BusinessID";
-            if (entity.CheckStatus=="1")
+            if (entity.CheckStatus == "1")
             {
                 strSQL += $@", CheckStatus, CheckDate";
             }
@@ -5945,7 +5946,7 @@ where a.OpenOrderNo is not null and a.OpenOrderNo <> '' ";
             {
                 strSQL += $@",@FinanceSecondCheck,@FinanceSecondCheckName,@FinanceSecondCheckDate";
             }
-            strSQL +=$@"FROM Tbl_WX_Order AS A INNER JOIN  Tbl_Cargo_Order AS B ON A.OrderNo = B.WXOrderNo INNER JOIN Tbl_Cargo_House AS C ON B.HouseID = C.HouseID WHERE   (B.HouseID =@HouseID) AND (A.WXPayOrderNo =@WXPayOrderNo) )";
+            strSQL += $@"FROM Tbl_WX_Order AS A INNER JOIN  Tbl_Cargo_Order AS B ON A.OrderNo = B.WXOrderNo INNER JOIN Tbl_Cargo_House AS C ON B.HouseID = C.HouseID WHERE   (B.HouseID =@HouseID) AND (A.WXPayOrderNo =@WXPayOrderNo) )";
             using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
             {
                 conn.AddInParameter(cmd, "@TransportFee", DbType.Decimal, entity.TransportFee);
@@ -6015,6 +6016,117 @@ where a.OpenOrderNo is not null and a.OpenOrderNo <> '' ";
                     conn.AddInParameter(cmd, "@FinanceSecondCheck", DbType.Int32, entity.FinanceSecondCheck);
                     conn.AddInParameter(cmd, "@FinanceSecondCheckName", DbType.String, entity.FinanceSecondCheckName);
                     conn.AddInParameter(cmd, "@FinanceSecondCheckDate", DbType.DateTime, entity.FinanceSecondCheckDate);
+                }
+                var rsult = conn.ExecuteNonQuery(cmd);
+            }
+        }
+        public void AddReturnCargoOrderV3(CargoOrderEntity entity)
+        {
+            string strSQL = "Insert into Tbl_Cargo_Order(OrderNo, OrderNum, HAwbNo, LogisAwbNo, LogisID, Dep, Dest, Piece, Weight, Volume, InsuranceFee,TransitFee, TransportFee, DeliveryFee, OtherFee, TotalCharge, Rebate, CheckOutType, TrafficType, DeliveryType, AcceptUnit, AcceptPeople, AcceptTelephone, AcceptCellphone, AcceptAddress, CreateAwb, CreateDate,Signer, SignTime, OP_ID, OP_DATE, AwbStatus, Remark, SaleManID, SaleManName, SaleCellphone, HouseID,CreateAwbID, OrderType, OrderModel,ClientNum, WXOrderNo, ThrowGood, TranHouse, OutHouseName, ModifyPriceStatus, PayClientNum, PayClientName,BelongHouse, IsPrintPrice, AccountNo, PostponeShip, OutCargoTime, DeliverySettlement, OrderAging, PrintNum,PollStatus, PickStatus, LineID, LineName, ShopCode, SuppClientNum,BusinessID,IsTransitFee";
+            if (entity.CheckStatus == "1")
+            {
+                strSQL += $@", CheckStatus, CheckDate";
+            }
+            if (entity.FinanceSecondCheck == "1")
+            {
+                strSQL += $@",FinanceSecondCheck,FinanceSecondCheckName,FinanceSecondCheckDate";
+            }
+            strSQL += $@" ) values(@OrderNo, @OrderNum, @HAwbNo, @LogisAwbNo, @LogisID, @Dep, @Dest, @Piece, @Weight, @Volume,
+@InsuranceFee, @TransitFee, @TransportFee, @DeliveryFee, @OtherFee, @TotalCharge, @Rebate,
+@CheckOutType, @TrafficType, @DeliveryType, @AcceptUnit, @AcceptPeople, @AcceptTelephone,
+@AcceptCellphone, @AcceptAddress, @CreateAwb, @CreateDate, @Signer, @SignTime,
+@OP_ID, @OP_DATE, @AwbStatus, @Remark, @SaleManID, @SaleManName, @SaleCellphone,
+@HouseID, @CreateAwbID, @OrderType, @OrderModel, @ClientNum, @WXOrderNo, @ThrowGood,
+@TranHouse, @OutHouseName, @ModifyPriceStatus, @PayClientNum, @PayClientName, @BelongHouse,
+@IsPrintPrice, @AccountNo, @PostponeShip, @OutCargoTime, @DeliverySettlement, @OrderAging,
+@PrintNum, @PollStatus, @PickStatus, @LineID, @LineName, @ShopCode, @SuppClientNum,
+@BusinessID, @IsTransitFee";
+            if (entity.CheckStatus == "1")
+            {
+                strSQL += $@", @CheckStatus, @CheckDate";
+            }
+            if (entity.FinanceSecondCheck == "1")
+            {
+                strSQL += $@",@FinanceSecondCheck,@FinanceSecondCheckName,@FinanceSecondCheckDate ";
+            }
+            strSQL += $@")";
+            using (DbCommand cmd = conn.GetSqlStringCommond(strSQL))
+            {
+                conn.AddInParameter(cmd, "@OrderNo", DbType.String, entity.OrderNo);
+                conn.AddInParameter(cmd, "@OrderNum", DbType.String, entity.OrderNum);
+                conn.AddInParameter(cmd, "@HAwbNo", DbType.String, entity.HAwbNo);
+                conn.AddInParameter(cmd, "@LogisAwbNo", DbType.String, entity.LogisAwbNo);
+                conn.AddInParameter(cmd, "@LogisID", DbType.Int32, entity.LogisID);
+                conn.AddInParameter(cmd, "@Dep", DbType.String, entity.Dep);
+                conn.AddInParameter(cmd, "@Dest", DbType.String, entity.Dest);
+                conn.AddInParameter(cmd, "@Piece", DbType.Int32, entity.Piece);
+                conn.AddInParameter(cmd, "@Weight", DbType.Decimal, entity.Weight);
+                conn.AddInParameter(cmd, "@Volume", DbType.Decimal, entity.Volume);
+                conn.AddInParameter(cmd, "@InsuranceFee", DbType.Decimal, entity.InsuranceFee);
+                conn.AddInParameter(cmd, "@TransitFee", DbType.Decimal, entity.TransitFee);
+                conn.AddInParameter(cmd, "@TransportFee", DbType.Decimal, entity.TransportFee);
+                conn.AddInParameter(cmd, "@DeliveryFee", DbType.Decimal, entity.DeliveryFee);
+                conn.AddInParameter(cmd, "@OtherFee", DbType.Decimal, entity.OtherFee);
+                conn.AddInParameter(cmd, "@TotalCharge", DbType.Decimal, entity.TotalCharge);
+                conn.AddInParameter(cmd, "@Rebate", DbType.Decimal, entity.Rebate);
+                conn.AddInParameter(cmd, "@CheckOutType", DbType.Int32, entity.CheckOutType);
+                conn.AddInParameter(cmd, "@TrafficType", DbType.Int32, entity.TrafficType);
+                conn.AddInParameter(cmd, "@DeliveryType", DbType.Int32, entity.DeliveryType);
+                conn.AddInParameter(cmd, "@AcceptUnit", DbType.String, entity.AcceptUnit);
+                conn.AddInParameter(cmd, "@AcceptPeople", DbType.String, entity.AcceptPeople);
+                conn.AddInParameter(cmd, "@AcceptTelephone", DbType.String, entity.AcceptTelephone);
+                conn.AddInParameter(cmd, "@AcceptCellphone", DbType.String, entity.AcceptCellphone);
+                conn.AddInParameter(cmd, "@AcceptAddress", DbType.String, entity.AcceptAddress);
+                conn.AddInParameter(cmd, "@CreateAwb", DbType.String, entity.CreateAwb);
+                conn.AddInParameter(cmd, "@CreateDate", DbType.DateTime, entity.CreateDate);
+                conn.AddInParameter(cmd, "@Signer", DbType.String, entity.Signer);
+                conn.AddInParameter(cmd, "@OP_ID", DbType.String, entity.OP_ID);
+                conn.AddInParameter(cmd, "@OP_DATE", DbType.DateTime, entity.OP_DATE);
+                conn.AddInParameter(cmd, "@AwbStatus", DbType.Int32, entity.AwbStatus);
+                conn.AddInParameter(cmd, "@Remark", DbType.String, entity.Remark);
+                conn.AddInParameter(cmd, "@SaleManID", DbType.String, entity.SaleManID);
+                conn.AddInParameter(cmd, "@SaleManName", DbType.String, entity.SaleManName);
+                conn.AddInParameter(cmd, "@SaleCellphone", DbType.String, entity.SaleCellPhone);
+                conn.AddInParameter(cmd, "@HouseID", DbType.Int32, entity.HouseID);
+                conn.AddInParameter(cmd, "@CreateAwbID", DbType.String, entity.CreateAwbID);
+                conn.AddInParameter(cmd, "@OrderType", DbType.Int32, entity.OrderType);
+                conn.AddInParameter(cmd, "@OrderModel", DbType.Int32, entity.OrderModel);
+                conn.AddInParameter(cmd, "@ClientNum", DbType.String, entity.ClientNum);
+                conn.AddInParameter(cmd, "@WXOrderNo", DbType.String, entity.WXOrderNo);
+                conn.AddInParameter(cmd, "@ThrowGood", DbType.Int32, entity.ThrowGood);
+                conn.AddInParameter(cmd, "@TranHouse", DbType.String, entity.TranHouse);
+                conn.AddInParameter(cmd, "@OutHouseName", DbType.String, entity.OutHouseName);
+                conn.AddInParameter(cmd, "@ModifyPriceStatus", DbType.Int32, entity.ModifyPriceStatus);
+                conn.AddInParameter(cmd, "@PayClientNum", DbType.String, entity.PayClientNum);
+                conn.AddInParameter(cmd, "@PayClientName", DbType.String, entity.PayClientName);
+                conn.AddInParameter(cmd, "@BelongHouse", DbType.String, entity.BelongHouse);
+                conn.AddInParameter(cmd, "@IsPrintPrice", DbType.Int32, entity.IsPrintPrice);
+                conn.AddInParameter(cmd, "@AccountNo", DbType.String, entity.AccountNo);
+                conn.AddInParameter(cmd, "@PostponeShip", DbType.Int32, entity.PostponeShip);
+                conn.AddInParameter(cmd, "@DeliverySettlement", DbType.String, entity.DeliverySettlement);
+                conn.AddInParameter(cmd, "@OrderAging", DbType.Int32, entity.OrderAging);
+                conn.AddInParameter(cmd, "@PrintNum", DbType.Int32, entity.PrintNum);
+                conn.AddInParameter(cmd, "@PollStatus", DbType.Int32, entity.PollStatus);
+                conn.AddInParameter(cmd, "@PickStatus", DbType.Int32, entity.PickStatus);
+                conn.AddInParameter(cmd, "@LineID", DbType.Int32, entity.LineID);
+                conn.AddInParameter(cmd, "@LineName", DbType.String, entity.LineName);
+                conn.AddInParameter(cmd, "@ShopCode", DbType.String, entity.ShopCode);
+                conn.AddInParameter(cmd, "@SuppClientNum", DbType.String, entity.SuppClientNum);
+                conn.AddInParameter(cmd, "@BusinessID", DbType.String, entity.BusinessID);
+                conn.AddInParameter(cmd, "@IsTransitFee", DbType.Int32, entity.IsTransitFee);
+                conn.AddInParameter(cmd, "@SignTime",DbType.DateTime,entity.SignTime <= SqlDateTime.MinValue.Value? (object)DBNull.Value : entity.SignTime);
+                conn.AddInParameter(cmd, "@OutCargoTime", DbType.DateTime,entity.OutCargoTime <= SqlDateTime.MinValue.Value? (object)DBNull.Value : entity.OutCargoTime);
+
+                if (entity.CheckStatus == "1")
+                {
+                    conn.AddInParameter(cmd, "@CheckStatus", DbType.Int32, entity.CheckStatus);
+                    conn.AddInParameter(cmd, "@CheckDate", DbType.DateTime, entity.CheckDate <= SqlDateTime.MinValue.Value ? (object)DBNull.Value : entity.CheckDate);
+                }
+                if (entity.FinanceSecondCheck == "1")
+                {
+                    conn.AddInParameter(cmd, "@FinanceSecondCheck", DbType.Int32, entity.FinanceSecondCheck);
+                    conn.AddInParameter(cmd, "@FinanceSecondCheckName", DbType.String, entity.FinanceSecondCheckName);
+                    conn.AddInParameter(cmd, "@FinanceSecondCheckDate", DbType.DateTime, entity.FinanceSecondCheckDate <= SqlDateTime.MinValue.Value ? (object)DBNull.Value : entity.FinanceSecondCheckDate);
                 }
                 var rsult = conn.ExecuteNonQuery(cmd);
             }
@@ -6195,7 +6307,7 @@ where a.OpenOrderNo is not null and a.OpenOrderNo <> '' ";
                                 OutHouseName = Convert.ToString(idr["OutHouseName"]),
                                 //SuppClientNum = Convert.ToInt32(idr["SuppClientNum"]),
                                 RelateOrderNo = Convert.ToString(idr["RelateOrderNo"]),
-                                OverDueFee = string.IsNullOrEmpty(idr["OverDueFee"].ToString())? 0: Convert.ToDecimal(idr["OverDueFee"]),
+                                OverDueFee = string.IsNullOrEmpty(idr["OverDueFee"].ToString()) ? 0 : Convert.ToDecimal(idr["OverDueFee"]),
                                 IsTransitFee = Convert.ToInt32(idr["IsTransitFee"]),
                                 OpenOrderNo = Convert.ToString(idr["OpenOrderNo"]),
                                 ShareHouseID = Convert.ToInt32(idr["ShareHouseID"]),
@@ -6215,14 +6327,16 @@ where a.OpenOrderNo is not null and a.OpenOrderNo <> '' ";
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
-        public List<CargoOrderGoodsEntity> cargoSupplySalePrice(CargoOrderGoodsEntity entity) {
+        public List<CargoOrderGoodsEntity> cargoSupplySalePrice(CargoOrderGoodsEntity entity)
+        {
 
             List<CargoOrderGoodsEntity> result = new List<CargoOrderGoodsEntity>();
             try
             {
                 #region 组装查询SQL语句
                 string strSQL = @"select  b.TypeID,a.* from Tbl_Cargo_OrderGoods AS a LEFT JOIN  Tbl_Cargo_Product AS b  ON a.ProductID=b.ProductID where (1=1) ";
-                if (!string.IsNullOrEmpty(entity.OrderNoStr)) {
+                if (!string.IsNullOrEmpty(entity.OrderNoStr))
+                {
                     strSQL += @" and OrderNo in ('" + entity.OrderNoStr + "')";
                 }
                 #endregion
@@ -6587,6 +6701,7 @@ where a.OpenOrderNo is not null and a.OpenOrderNo <> '' ";
                                 AddReservePaymentRecord(new CargoReserveOrderPaymentRecordEntity { OrderNo = awb.CargoOrderNo, WXPayOrderNo = awb.WXPayOrderNo, WxOrderNo = awb.WxOrderNo, PaymentType = Convert.ToInt32(awb.PaymentType), Trxid = awb.Trxid, OP_ID = awb.OP_ID, PaymentAmount = awb.AffectWX });
                                 // 回写预订单金额
                                 UpdateReserveTotal(new CargoReserveOrderPaymentRecordEntity { OrderNo = awb.CargoOrderNo,WxOrderNo = awb.WxOrderNo });
+                                UpdateReserveTotal(new CargoReserveOrderPaymentRecordEntity { OrderNo = awb.CargoOrderNo, WxOrderNo = awb.WxOrderNo });
                             }
                         }
                         break;

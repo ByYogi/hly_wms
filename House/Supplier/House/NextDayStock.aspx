@@ -34,9 +34,14 @@
 
         $(document).ready(function () {
             var columns = [];
-            columns.push({ title: '', field: 'ProductID', checkbox: true, width: '5%' });
+            columns.push({ title: '', field: '', checkbox: true, width: '5%' });
             columns.push({
                 title: '所在仓库', field: 'HouseName', width: '5%', formatter: function (value) {
+                    return "<span title='" + value + "'>" + value + "</span>";
+                }
+            });
+            columns.push({
+                title: '产品ID', field: 'ProductID', width: '10%', formatter: function (value) {
                     return "<span title='" + value + "'>" + value + "</span>";
                 }
             });

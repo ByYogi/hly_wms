@@ -8879,8 +8879,8 @@ namespace HouseServices
                             logbus.InsertLog(log);
 
                             //回写订单推送状态
-                            Bus.UpdateTMallDeliveryPushStatus(item.originBillNo, "1");
-
+                            if(item.IsPush==1)
+                                Bus.UpdateTMallDeliveryPushStatus(item.originBillNo, "1");
                         }
                         else
                         {

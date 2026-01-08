@@ -2707,6 +2707,10 @@ namespace Cargo.Product
             queryEntity.Model = Convert.ToString(Request["Model"]);
             queryEntity.GoodsCode = Convert.ToString(Request["GoodsCode"]);
             queryEntity.ProductCode = Convert.ToString(Request["ProductCode"]);
+            if (!string.IsNullOrEmpty(Request["PID"]))//一级分类
+            {
+                queryEntity.ParentID = Convert.ToInt32(Request["PID"]);
+            }
             if (!string.IsNullOrEmpty(Request["SID"]))//二级分类
             {
                 queryEntity.TypeID = Convert.ToInt32(Request["SID"]);
@@ -2718,6 +2722,10 @@ namespace Cargo.Product
             if (Request["Born"] != "-1")
             {
                 queryEntity.Born = Convert.ToString(Request["Born"]);
+            }
+            if (Request["DelFlag"] != "-1")
+            {
+                queryEntity.DelFlag = Convert.ToString(Request["DelFlag"]);
             }
             //分页
             int pageIndex = 1;

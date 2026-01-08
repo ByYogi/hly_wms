@@ -2724,6 +2724,9 @@
         }
         //保存批量入库
         function saveLotInCargo() {
+            var LOTHID = $('#LOTHID').combobox('getValue');
+            var LOTPID = $('#LOTPID').combobox('getValue');
+            var LOTSID = $('#LOTSID').combobox('getValue');
             var LOTContainer = $('#LOTContainer').combobox('getValue');
             if (LOTContainer == undefined || LOTContainer == '' || LOTContainer == '0') {
                 $.messager.alert('<%= Cargo.Common.GetSystemNameAndVersion()%>', '请选择批量入库的货位！', 'warning'); return;
@@ -2735,7 +2738,12 @@
                     var json = JSON.stringify(rows)
                     $.ajax({
                         url: 'orderApi.aspx?method=saveLotInCargo',
-                        type: 'post', dataType: 'json', data: { data: json, LOTContainer: LOTContainer },
+                        type: 'post', dataType: 'json', data: {
+                            data: json, LOTContainer: LOTContainer
+                            , LOTPID: LOTPID
+                            , LOTSID: LOTSID
+                            , LOTHID: LOTHID
+                        },
                         success: function (text) {
                             $.messager.progress("close");
                             if (text.Result == true) {

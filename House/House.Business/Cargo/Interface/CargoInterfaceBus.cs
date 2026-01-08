@@ -1605,7 +1605,7 @@ namespace House.Business.Cargo
         /// <summary>
         /// 订单取消 //OrderPostalAddress
         /// </summary>
-        public void MassCallOrderCancelled(CassMallDTO notice, LogEntity log)
+        public int MassCallOrderCancelled(CassMallDTO notice, LogEntity log)
         {
             //使用事务
             using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required))
@@ -1624,15 +1624,25 @@ namespace House.Business.Cargo
                         var orderList = QueryCallOrderList(notice);
                         bus.DeleteOrderInfo(orderList, log);
                     }
+                    else
+                    {
+                        var orderData2 = bus.QueryOrderReturnData(new CargoOrderEntity { OpenOrderNo = notice.data.orderId });
+                        //返回到API层进行操作
+                        if (orderData2.Count==0)
+                            return 1;
+                        
+                    }
                     scope.Complete();
+                    
                 }
                 catch (ApplicationException ex)
                 {
                     Common.WriteTextLog("CassMall AddCassMallDto " + ex.ToString());
                 }
             }
-
+            return 0;
         }
+
 
         public List<CargoOrderEntity> QueryCallOrderList(CassMallDTO notice)
         {

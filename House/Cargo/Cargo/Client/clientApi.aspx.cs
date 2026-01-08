@@ -4578,20 +4578,14 @@ namespace Cargo.Client
                     //OtherFee = Math.Ceiling(fee * Convert.ToDecimal(0.009));
                     //decimal fee = TotalCharge / Piece;
                     //OtherFee = Math.Ceiling(fee - fee / Convert.ToDecimal(1.009)) * Piece;
-                    //OtherFeeRatio.Ratio()
-                    DateTime a = Convert.ToDateTime(grid["CreateDate"]);
-                    if (Convert.ToDateTime(grid["CreateDate"]) > Convert.ToDateTime("2026-01-05"))
+                    if (Convert.ToDateTime(grid["CreateDate"]) > Convert.ToDateTime("2026-01-06"))
                     {
                         OtherFee = InOrderGoods.Sum(w => Math.Ceiling(w.SupplySalePrice * 0.009m) * w.Piece);
                     }
                     else {
-
                         OtherFee = InOrderGoods.Sum(w => Math.Ceiling(w.SupplySalePrice * OtherFeeRatio.Ratio(w.TypeID)) * w.Piece);
                     }
                         
-                    
-
-
                     //计算明细金额
                     //是  
                     if (entire)

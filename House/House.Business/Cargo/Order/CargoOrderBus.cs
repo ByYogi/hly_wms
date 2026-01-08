@@ -455,6 +455,10 @@ namespace House.Business.Cargo
         {
             return man.QueryOrderDataInfo(entity);
         }
+        public List<CargoOrderEntity> QueryOrderReturnData(CargoOrderEntity entity)
+        {
+            return man.QueryOrderReturnData(entity);
+        }
         public Hashtable QueryOrderPickPlan(CargoOrderPickPlanEntity entity, int pageIndex, int pageSize)
         {
             return man.QueryOrderPickPlan(entity, pageIndex, pageSize);

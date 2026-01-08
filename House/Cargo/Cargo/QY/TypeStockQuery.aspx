@@ -163,6 +163,9 @@
             //周期
             var batchPicker = new $.PopPicker();
             batchPicker.setData([{
+                value: '26',
+                text: '2026年'
+            }, {
                 value: '25',
                 text: '2025年'
             }, {

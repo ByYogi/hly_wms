@@ -1769,6 +1769,7 @@ namespace Supplier.House
         public void QueryOtherFeeRatio() {
             //int a = Convert.ToInt32(Request["typeID"]);
             String json = JSON.Encode(OtherFeeRatio.Ratio(Convert.ToInt32(Request["typeID"])));
+            //String json = "0.009";
             Response.Clear();
             Response.Write(json);
         }

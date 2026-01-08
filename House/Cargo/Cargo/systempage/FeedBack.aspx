@@ -222,6 +222,7 @@
                                 <option value="4">一二三轮胎</option>
                                 <option value="5">采购商</option>
                                 <option value="6">云仓</option>
+                                <option value="7">虚拟仓</option>
                             </select>
                         </td>
                     </tr>

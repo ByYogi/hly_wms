@@ -4310,15 +4310,15 @@ left join Tbl_Cargo_Area as b on a.AreaID=b.AreaID where a.ContainerType=@Contai
                 string res = entity.Specs.ToUpper().Replace("/", "").Replace("R", "").Replace("C", "").Replace("F", "").Replace("Z", "").Replace("L", "").Replace("T", "");
                 if (res.Length <= 3 || res.ToUpper().Contains("X"))
                 {
-                    if (!string.IsNullOrEmpty(res)) { strSQL += " and b.Specs like '%" + res + "%'"; }
+                    if (!string.IsNullOrEmpty(res)) { strSQL += " and (b.Specs like '%" + res + "%' or d.ProductName like '%" + res + "%')"; }
                 }
                 if (res.Length > 3 && res.Length <= 5)
                 {
-                    strSQL += " and (b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or b.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%')";
+                    strSQL += " and (b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, res.Length - 3) + "%' or b.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%' or d.ProductName like '%" + res + "%')";
                 }
                 if (res.Length > 5)
                 {
-                    strSQL += " and (b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%' or b.Specs like '" + entity.Specs + "')";
+                    strSQL += " and (b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "R" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "RF" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZR" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "/" + res.Substring(3, 2) + "ZRF" + res.Substring(5, res.Length - 5) + "%' or b.Specs like '%" + res.Substring(0, 3) + "R" + res.Substring(3, res.Length - 3) + "%' or b.Specs like '" + entity.Specs + "' or d.ProductName like '%" + res + "%')";
                 }
             }
 
@@ -10127,7 +10127,7 @@ and Figure='{entity.Figure}' and a.TypeID='{entity.TypeID}'
                 //    strSQL += " left join Tbl_Cargo_Area as g on d.ParentID=g.AreaID";
                 //}
                 strSQL += " inner join Tbl_Cargo_Area as g on d.ParentID=g.AreaID inner join Tbl_Cargo_Area as h on g.ParentID=h.AreaID ";
-                strSQL += " inner join Tbl_Cargo_House as e on d.HouseID=e.HouseID inner join Tbl_Cargo_ProductType as f on a.TypeID=f.TypeID  left join Tbl_Cargo_Client AS r on a.SuppClientNum=r.ClientNum inner join Tbl_Cargo_ProductMapping as n on a.GoodsCode=n.ProductCode and n.CorpClass=6  where (1=1) and b.Piece>0  and TyreModel=0 and IsLockStock=0  and BatchYear>=RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR(4)), 2) ";
+                strSQL += " inner join Tbl_Cargo_House as e on d.HouseID=e.HouseID inner join Tbl_Cargo_ProductType as f on a.TypeID=f.TypeID  left join Tbl_Cargo_Client AS r on a.SuppClientNum=r.ClientNum inner join Tbl_Cargo_ProductMapping as n on a.GoodsCode=n.ProductCode and n.CorpClass=6  where (1=1) and b.Piece>0  and TyreModel=0 and IsLockStock=0  and BatchYear>=RIGHT(CAST(YEAR(GETDATE()) - 1 AS VARCHAR(4)), 2) ";
                 //strSQL += " inner join Tbl_Cargo_House as e on d.HouseID=e.HouseID inner join Tbl_Cargo_ProductType as f on a.TypeID=f.TypeID left join Tbl_Cargo_ProductType as k on f.ParentID=k.TypeID where (1=1) and b.Piece<>0 ";
                 //if (!entity.FirstAreaID.Equals(0))
                 //{

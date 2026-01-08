@@ -311,7 +311,7 @@ namespace Supplier.Basic
                         Specs = Convert.ToString(row["Specs"]).Trim(),
                         Figure = Convert.ToString(row["Figure"]).Trim(),
                         UnitPrice = Convert.ToDouble(row["UnitPrice"]),
-                        //SalePrice = Math.Ceiling(Convert.ToDouble(row["UnitPrice"]) * 0.009) + Convert.ToDouble(row["UnitPrice"])),
+                        //SalePrice = Math.Ceiling(Convert.ToDouble(row["UnitPrice"]) * 0.009) + Convert.ToDouble(row["UnitPrice"]),
                         SalePrice = Math.Ceiling(Convert.ToDouble(row["UnitPrice"]) * OtherFeeRatio.RatioName(Convert.ToString(row["TypeName"]).Trim()) + Convert.ToDouble(row["UnitPrice"])),
                         SupplierNum = Convert.ToInt32(UserInfor.LoginName),
                         HouseID = Convert.ToInt32(UserInfor.SettleHouseID),
@@ -554,7 +554,7 @@ namespace Supplier.Basic
                 entity.HouseName = Convert.ToString(UserInfor.SettleHouseName);
                 entity.ProductCode = Convert.ToString(Request["ProductCode"]).Trim();//产品编码
                 entity.UnitPrice = string.IsNullOrEmpty(Request["UnitPrice"]) ? 0 : Convert.ToDouble(Request["UnitPrice"]);//单价 
-                int TypeID = Convert.ToInt32(Request["HouseID"]);
+                int TypeID = Convert.ToInt32(Request["ATypeID"]);
                 //entity.SalePrice = Math.Ceiling(entity.UnitPrice * 0.009 + entity.UnitPrice);
                 entity.SalePrice = Math.Ceiling(entity.UnitPrice *  OtherFeeRatio.Ratio(TypeID) + entity.UnitPrice);
                 entities.Add(entity);

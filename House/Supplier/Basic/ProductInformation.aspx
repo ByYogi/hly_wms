@@ -232,6 +232,7 @@
             <input type="hidden" name="SID" id="SID" />
             <input type="hidden" name="HouseID" id="HouseID" />
             <input type="hidden" name="ProductCode" id="ProductCode" />
+            <input type="hidden" name="ATypeID" id="ATypeID" />
             <div id="editPanel">
                 <table style="width: 100%">
                     <tr>
@@ -470,6 +471,7 @@
                 $('#HouseID').val(row.HouseID);
                 $('#SID').val(row.SID);
                 $('#ProductCode').val(row.ProductCode);
+                $('#ATypeID').val(row.TypeID);
             }
         }
         //修改单价
@@ -485,6 +487,7 @@
                 $('#HouseID').val(row.HouseID);
                 $('#SID').val(row.SID);
                 $('#ProductCode').val(row.ProductCode);
+                $('#ATypeID').val(row.TypeID);
             }
         }
 

@@ -186,6 +186,7 @@
     <Compile Include="Cargo\Report\CargoDLTDataStatisEntity.cs" />
     <Compile Include="Cargo\Report\CargoMonthStatisEntity.cs" />
     <Compile Include="Cargo\Report\CargoOrderOutTimeEntity.cs" />
+    <Compile Include="Cargo\Report\CargoOutboundLabelReportEntity.cs" />
     <Compile Include="Cargo\Report\CargoReportMoveContainerEntity.cs" />
     <Compile Include="Cargo\Report\CargoOutboundLabelReportEntity.cs" />
     <Compile Include="Cargo\Report\CargoSaleStockStatisEntity.cs" />

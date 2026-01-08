@@ -1043,6 +1043,8 @@ namespace House.Manager.Cargo
                 if (!string.IsNullOrEmpty(entity.AcceptUnit)) { strSQL += " and a.PayClientName like '%" + entity.AcceptUnit + "%'"; }
                 //店代码
                 if (!string.IsNullOrEmpty(entity.ShopCode)) { strSQL += " and a.ShopCode ='" + entity.ShopCode + "'"; }
+                //微信商城单号
+                if (!string.IsNullOrEmpty(entity.WXOrderNo)) { strSQL += " and a.WXOrderNo like '%" + entity.WXOrderNo + "%'"; }
                 //出库类型
                 if (entity.OutCargoType == "1")
                 {
@@ -1965,6 +1967,9 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
                             Dest = Convert.ToString(idr["Dest"]),
                             Piece = Convert.ToInt32(idr["Piece"]),
                             InsuranceFee = Convert.ToDecimal(idr["InsuranceFee"]),
+                            BateAmount = Convert.ToDecimal(idr["BateAmount"]),
+                            OnlinePaidAmount = Convert.ToDecimal(idr["OnlinePaidAmount"]),
+                            OverDueFee = Convert.ToDecimal(idr["OverDueFee"]),
                             TransitFee = Convert.ToDecimal(idr["TransitFee"]),
                             TransportFee = Convert.ToDecimal(idr["TransportFee"]),
                             DeliveryFee = Convert.ToDecimal(idr["DeliveryFee"]),
@@ -2002,8 +2007,71 @@ select top 1 b.* from Tbl_Cargo_OrderGoods as a
                             //WXPayOrderNo = Convert.ToString(idr["WXPayOrderNo"]),
                             ThrowGood = Convert.ToString(idr["ThrowGood"]),
                             TranHouse = Convert.ToString(idr["TranHouse"]),
+                            HAwbNo = Convert.ToString(idr["HAwbNo"]),
                             OutHouseName = Convert.ToString(idr["OutHouseName"]),
-                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"])
+                            DeliverySettlement = Convert.ToString(idr["DeliverySettlement"]),
+                            Weight = Convert.ToDecimal(idr["Weight"]),
+                            Volume = Convert.ToDecimal(idr["Volume"]),
+                            //Transit = Convert.ToString(idr["Transit"]),
+                            SaleCellPhone = Convert.ToString(idr["SaleCellPhone"]),
+                            Signer = Convert.ToString(idr["Signer"]),
+                            OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
+                            SignTime = idr["SignTime"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(idr["SignTime"]),
+
+
+                            WXOrderNo = Convert.ToString(idr["WXOrderNo"]),
+                            ModifyPriceStatus = Convert.ToString(idr["ModifyPriceStatus"]),
+                            BelongHouse = Convert.ToString(idr["BelongHouse"]),
+                            IsPrintPrice = idr["IsPrintPrice"] == DBNull.Value ? 0: Convert.ToInt32(idr["IsPrintPrice"]),
+                            AccountNo = Convert.ToString(idr["AccountNo"]),
+                            PostponeShip = Convert.ToString(idr["PostponeShip"]),
+                            OutCargoTime = idr["OutCargoTime"] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(idr["OutCargoTime"]),
+                            OrderAging = Convert.ToString(idr["OrderAging"]),
+                            PrintNum = idr["PrintNum"] == DBNull.Value ? 0 : Convert.ToInt32(idr["PrintNum"]),
+                            PollStatus = Convert.ToString(idr["PollStatus"]),
+                            PickStatus = idr["PickStatus"] == DBNull.Value ? 0 : Convert.ToInt32(idr["PickStatus"]),
+                            LineID = idr["LineID"] == DBNull.Value ? 0: Convert.ToInt32(idr["LineID"]),
+                            LineName = Convert.ToString(idr["LineName"]),
+                            ShopCode = Convert.ToString(idr["ShopCode"]),
+                            SuppClientNum = idr["SuppClientNum"] == DBNull.Value? 0: Convert.ToInt32(idr["SuppClientNum"]),
+                            CollectMoney = idr["CollectMoney"] == DBNull.Value? 0m: Convert.ToDecimal(idr["CollectMoney"]),
+                            TakeOrderName = Convert.ToString(idr["TakeOrderName"]),
+                            TakeOrderTime = idr["TakeOrderTime"] == DBNull.Value ? DateTime.MinValue: Convert.ToDateTime(idr["TakeOrderTime"]),
+                            SendCarName = Convert.ToString(idr["SendCarName"]),
+                            SendCarTime = idr["SendCarTime"] == DBNull.Value? DateTime.MinValue: Convert.ToDateTime(idr["SendCarTime"]),
+                            OpenOrderNo = Convert.ToString(idr["OpenOrderNo"]),
+                            OpenOrderSource = Convert.ToString(idr["OpenOrderSource"]),
+                            BusinessID = Convert.ToString(idr["BusinessID"]),
+                            MarketType = Convert.ToString(idr["MarketType"]),
+
+
+                        });
+                        #endregion
+                    }
+                }
+            }
+            return result;
+        }
+        public List<CargoOrderEntity> QueryOrderReturnData(CargoOrderEntity entity)
+        {
+            List<CargoOrderEntity> result = new List<CargoOrderEntity>();
+            string strSQL = $@"
+select b.* from Tbl_Cargo_OrderGoods as a
+         inner join Tbl_Cargo_Order as b on a.OrderNo=b.OrderNo
+         where b.OrderModel=1 and RelateOrderNo in(select OrderNo from Tbl_Cargo_Order as aa where OpenOrderNo='{entity.OpenOrderNo}')
+";
+
+            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
+            {
+                using (DataTable dt = conn.ExecuteDataTable(command))
+                {
+                    foreach (DataRow idr in dt.Rows)
+                    {
+                        #region 获取运单数据
+
+                        result.Add(new CargoOrderEntity
+                        {
+                            OrderNo = Convert.ToString(idr["OrderNo"]),
                         });
                         #endregion
                     }
@@ -3934,7 +4002,7 @@ VALUES (
             List<CargoOrderGoodsEntity> result = new List<CargoOrderGoodsEntity>();
             try
             {
-                string strSQL = @"select a.*,b.Specs,b.Figure,b.Model,b.GoodsCode,b.Born,b.Batch,b.TypeID,b.SpeedLevel,b.LoadIndex,c.ContainerID,b.ProductName,b.ProductCode,d.TypeName,ar.Name as AreaName from Tbl_Cargo_OrderGoods a inner join Tbl_Cargo_Product b on a.ProductID=b.ProductID inner join Tbl_Cargo_Container c on a.ContainerCode=c.ContainerCode inner join tbl_cargo_Area ar on c.AreaID=ar.AreaID and a.HouseID=ar.HouseID inner join Tbl_Cargo_ProductType as d on b.TypeID=d.TypeID where OrderNo=@OrderNo";
+                string strSQL = @"select a.*,b.SupplierAddress,b.BelongDepart,b.Supplier,b.SuppClientNum,b.UnitPrice,b.TradePrice,b.InHousePrice,b.TaxCostPrice,b.NoTaxCostPrice,b.CostPrice,b.SalePrice,b.Specs,b.Figure,b.Assort,b.Model,b.GoodsCode,b.Born,b.Batch,b.TypeID,b.SpeedLevel,b.LoadIndex,c.ContainerID,b.ProductName,b.ProductCode,d.TypeName,ar.Name as AreaName from Tbl_Cargo_OrderGoods a inner join Tbl_Cargo_Product b on a.ProductID=b.ProductID inner join Tbl_Cargo_Container c on a.ContainerCode=c.ContainerCode inner join tbl_cargo_Area ar on c.AreaID=ar.AreaID and a.HouseID=ar.HouseID inner join Tbl_Cargo_ProductType as d on b.TypeID=d.TypeID where OrderNo=@OrderNo";
                 if (!entity.ProductID.Equals(0)) { strSQL += " and a.ProductID=" + entity.ProductID; }
                 if (!string.IsNullOrEmpty(entity.ContainerCode)) { strSQL += " and a.ContainerCode='" + entity.ContainerCode + "'"; }
                 using (DbCommand command = conn.GetSqlStringCommond(strSQL))
@@ -3945,6 +4013,7 @@ VALUES (
                     {
                         foreach (DataRow idr in dt.Rows)
                         {
+                            //
                             result.Add(new CargoOrderGoodsEntity
                             {
                                 OrderNo = Convert.ToString(idr["OrderNo"]),
@@ -3967,15 +4036,27 @@ VALUES (
                                 TypeID = Convert.ToInt32(idr["TypeID"]),
                                 TypeName = Convert.ToString(idr["TypeName"]),
                                 Born = Convert.ToString(idr["Born"]),
+                                Assort = Convert.ToString(idr["Assort"]),
                                 SpeedLevel = Convert.ToString(idr["SpeedLevel"]),
                                 LoadIndex = Convert.ToString(idr["LoadIndex"]),
                                 OP_ID = Convert.ToString(idr["OP_ID"]),
                                 OutCargoID = Convert.ToString(idr["OutCargoID"]),
                                 RuleType = Convert.ToString(idr["RuleType"]),
                                 SuitClientNum = Convert.ToString(idr["SuitClientNum"]),
+                                Supplier = Convert.ToString(idr["Supplier"]),
+                                SuppClientNum = Convert.ToInt32(idr["SuppClientNum"]),
+                                SupplierAddress = Convert.ToString(idr["SupplierAddress"]),
+                                BelongDepart = Convert.ToString(idr["BelongDepart"]),
                                 OP_DATE = Convert.ToDateTime(idr["OP_DATE"]),
                                 ShowGoodsCode = Convert.ToString(idr["ShowGoodsCode"]),
                                 ShowProductCode = Convert.ToString(idr["ShowProductCode"]),
+                                UnitPrice = Convert.ToDecimal(idr["UnitPrice"]),
+                                TradePrice = Convert.ToDecimal(idr["TradePrice"]),
+                                InHousePrice = Convert.ToDecimal(idr["InHousePrice"]),
+                                TaxCostPrice = Convert.ToDecimal(idr["TaxCostPrice"]),
+                                NoTaxCostPrice = Convert.ToDecimal(idr["NoTaxCostPrice"]),
+                                CostPrice = Convert.ToDecimal(idr["CostPrice"]),
+                                SalePrice = Convert.ToDecimal(idr["SalePrice"]),
                                 LoadSpeed = Convert.ToString(idr["LoadIndex"]) + Convert.ToString(idr["SpeedLevel"]),
                             });
                         }
@@ -18175,12 +18256,19 @@ select * from Tbl_Cargo_CassMallOrderGoods where orderId='{entity.OrderNo}'
             List<OutboundDto> result = new List<OutboundDto>();
             string strSQL = $@"
 --已出库未推送的订单
-select a.Id, a.originBillNo, b.OrderNo,OpenExpressName,OpenExpressNum,AwbStatus,LogisAwbNo,c.LogisticName,OutCargoTime
+select a.Id, a.originBillNo, b.OrderNo,b.OpenExpressName,b.OpenExpressNum,b.AwbStatus,LogisAwbNo,OutCargoTime
+     ,(case when d.AwbStatus>1 and d.OpenExpressNum<>'' and d.OpenExpressNum<>'' and d.CheckStatus=1 and d.FinanceSecondCheck=1 then 1 else 0 end) IsPush
 ,ISNULL(DeliveryDriverName,'') AS DeliveryDriverName,ISNULL(DriverCellphone,'') AS DriverCellphone
 from Tbl_Cargo_TMallOrder as a
 inner join Tbl_Cargo_Order as b on a.originBillNo=b.OpenOrderNo
 left join Tbl_Cargo_Logistic as c on b.LogisID=c.ID
-where a.IsDeliveryPush=0 and AwbStatus>1 and isnull(OutCargoTime,'')<>'' and CheckStatus=1 and FinanceSecondCheck=1 and isnull(OpenExpressName,'')<>''
+left join (
+    select OpenOrderNo,min(isnull(AwbStatus,0)) as AwbStatus,min(isnull(OpenExpressNum,'')) as OpenExpressNum
+    ,min(isnull(OpenExpressName,'')) as OpenExpressName,min(isnull(CheckStatus,0)) as CheckStatus,min(isnull(FinanceSecondCheck,0)) as FinanceSecondCheck
+    from Tbl_Cargo_Order as aa where OpenOrderSource=5
+group by OpenOrderNo
+) as d on a.OriginBillNo=d.OpenOrderNo
+where a.IsDeliveryPush=0 and b.AwbStatus>1 and isnull(OutCargoTime,'')<>'' and b.CheckStatus=1 and b.FinanceSecondCheck=1 and isnull(b.OpenExpressName,'')<>''
 ";
 
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
@@ -18198,6 +18286,7 @@ where a.IsDeliveryPush=0 and AwbStatus>1 and isnull(OutCargoTime,'')<>'' and Che
                             logisticsName = Convert.ToString(idr["OpenExpressName"]),
                             DeliveryDriverName = Convert.ToString(idr["DeliveryDriverName"]),
                             DriverCellphone = Convert.ToString(idr["DriverCellphone"]),
+                            IsPush = Convert.ToInt32(idr["IsPush"]),
                             outboundTime = Convert.ToDateTime(idr["OutCargoTime"]),
                             outboundDetailList = QueryNoDeliveryPushDataGoods_Tmall(new CargoOrderEntity {OrderNo = Convert.ToString(idr["OrderNo"]) }), // 子项列表初始化，添加子数据
                             outboundContactPhone = "13873312771",//陈鑫宇

@@ -147,7 +147,7 @@ namespace House.Manager.Cargo
                 #region 组装查询SQL语句
                 string strSQL = @" SELECT TOP " + pNum + " *   FROM ";
                 //strSQL += "(SELECT DISTINCT ROW_NUMBER()  OVER (order by p.Specs asc ) AS RowNumber, h.Name as HouseName,t.TypeName,t.TypeParentName,t.TypeID as TID ,g.Piece,g.ID as ContainerGoodsID, p.*  FROM Tbl_Cargo_Product AS p INNER JOIN  Tbl_Cargo_House as h ON p.HouseID = h.HouseID INNER JOIN Tbl_Cargo_ProductType AS t   ON p.TypeID =t.TypeID  INNER JOIN Tbl_Cargo_ContainerGoods AS g ON p.TypeID = g.TypeID AND p.ProductID = g.ProductID WHERE (1=1) and g.Piece>0";
-                strSQL += "(SELECT DISTINCT ROW_NUMBER() OVER (order by p.Specs asc ) AS RowNumber,h.Name as HouseName, t.TypeName, t.TypeParentName, t.TypeID as TID,p.TypeID, p.GoodsCode, p.Specs, p.Figure, p.LoadIndex, p.SpeedLevel, p.SalePrice, p.InHousePrice as InHousePrice, convert(varchar(10),p.InHouseTime,23) as InHouseTime, p.Batch, p.BatchYear, p.BatchWeek, p.HouseID, p.SourceOrderNo, p.SpecsType, p.ProductCode, sum(Piece) as Piece FROM Tbl_Cargo_Product AS p INNER JOIN Tbl_Cargo_House as h ON p.HouseID = h.HouseID INNER JOIN Tbl_Cargo_ProductType AS t ON p.TypeID = t.TypeID INNER JOIN Tbl_Cargo_ContainerGoods AS g ON p.TypeID = g.TypeID AND p.ProductID = g.ProductID WHERE (1 = 1) and g.Piece > 0";
+                strSQL += "(SELECT DISTINCT ROW_NUMBER() OVER (order by p.Specs asc ) AS RowNumber,h.Name as HouseName,p.ProductID,g.ID as ContainerGoodsID, t.TypeName, t.TypeParentName, t.TypeID as TID,p.TypeID, p.GoodsCode, p.Specs, p.Figure, p.LoadIndex, p.SpeedLevel, p.SalePrice, p.InHousePrice as InHousePrice, convert(varchar(10),p.InHouseTime,23) as InHouseTime, p.Batch, p.BatchYear, p.BatchWeek, p.HouseID, p.SourceOrderNo, p.SpecsType, p.ProductCode, sum(Piece) as Piece FROM Tbl_Cargo_Product AS p INNER JOIN Tbl_Cargo_House as h ON p.HouseID = h.HouseID INNER JOIN Tbl_Cargo_ProductType AS t ON p.TypeID = t.TypeID INNER JOIN Tbl_Cargo_ContainerGoods AS g ON p.TypeID = g.TypeID AND p.ProductID = g.ProductID WHERE (1 = 1) and g.Piece > 0";
 
                 if (isNextDay)
                 {
@@ -201,7 +201,7 @@ namespace House.Manager.Cargo
 
                 //所属仓库ID
                 if (!string.IsNullOrEmpty(entity.CargoPermisID)) { strSQL += " and p.HouseID in (" + entity.CargoPermisID + ")"; }
-                strSQL += $@" group by h.Name, t.TypeName, t.TypeParentName, t.TypeID, p.ProductCode, Specs, Figure, GoodsCode, LoadIndex, SpeedLevel, Batch, BatchYear, BatchWeek, SourceOrderNo, p.SpecsType, p.HouseID, convert(varchar(10), p.InHouseTime, 23), p.SalePrice, p.InHousePrice, p.TypeID) A ";
+                strSQL += $@" group by h.Name, t.TypeName, t.TypeParentName, t.TypeID,p.ProductID,g.ID, p.ProductCode, Specs, Figure, GoodsCode, LoadIndex, SpeedLevel, Batch, BatchYear, BatchWeek, SourceOrderNo, p.SpecsType, p.HouseID, convert(varchar(10), p.InHouseTime, 23), p.SalePrice, p.InHousePrice, p.TypeID) A ";
                 strSQL += " WHERE RowNumber > (" + pNum + "* (" + pIndex + "-1))";
                 #endregion
                 using (DbCommand command = conn.GetSqlStringCommond(strSQL))
@@ -214,8 +214,8 @@ namespace House.Manager.Cargo
                             var HouseTime = DateTime.Now - Convert.ToDateTime(idr["InHouseTime"]);
                             result.Add(new CargoProductEntity
                             {
-                                //ContainerGoodsID = Convert.ToInt64(idr["ContainerGoodsID"]),
-                                //ProductID = Convert.ToInt64(idr["ProductID"]),
+                                ContainerGoodsID = Convert.ToInt64(idr["ContainerGoodsID"]),
+                                ProductID = Convert.ToInt64(idr["ProductID"]),
                                 HouseName = Convert.ToString(idr["HouseName"]),
                                 ProductCode = Convert.ToString(idr["ProductCode"]),
                                 InHousePrice = Convert.ToDecimal(idr["InHousePrice"]),
