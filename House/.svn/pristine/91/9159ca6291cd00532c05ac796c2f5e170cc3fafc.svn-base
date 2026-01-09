@@ -18252,7 +18252,7 @@ select * from Tbl_Cargo_CassMallOrderGoods where orderId='{entity.OrderNo}'
             }
         }
 
-        public List<OutboundDto> QueryNoDeliveryPushData_Tmall(OutboundDto dto=null)
+        public List<OutboundDto> QueryNoDeliveryPushData_Tmall()
         {
             List<OutboundDto> result = new List<OutboundDto>();
             string strSQL = $@"
@@ -18271,10 +18271,7 @@ group by OpenOrderNo
 ) as d on a.OriginBillNo=d.OpenOrderNo
 where a.IsDeliveryPush=0 and b.AwbStatus>1 and isnull(OutCargoTime,'')<>'' and b.CheckStatus=1 and b.FinanceSecondCheck=1 and isnull(b.OpenExpressName,'')<>''
 ";
-            if (dto!=null && !string.IsNullOrEmpty(dto.originBillNo))
-            {
-                strSQL += $@" and a.OriginBillNo='{dto.originBillNo}' ";
-            }
+
             using (DbCommand command = conn.GetSqlStringCommond(strSQL))
             {
                 using (DataTable dt = conn.ExecuteDataTable(command))
@@ -18292,7 +18289,7 @@ where a.IsDeliveryPush=0 and b.AwbStatus>1 and isnull(OutCargoTime,'')<>'' and b
                             DriverCellphone = Convert.ToString(idr["DriverCellphone"]),
                             IsPush = Convert.ToInt32(idr["IsPush"]),
                             outboundTime = Convert.ToDateTime(idr["OutCargoTime"]),
-                            outboundDetailList = QueryNoDeliveryPushDataGoods_Tmall(new CargoOrderEntity {OrderNo = Convert.ToString(idr["OrderNo"]), IsManualDelivery = (dto != null && !string.IsNullOrEmpty(dto.originBillNo)) ?1:0 }), // 子项列表初始化，添加子数据
+                            outboundDetailList = QueryNoDeliveryPushDataGoods_Tmall(new CargoOrderEntity {OrderNo = Convert.ToString(idr["OrderNo"]) }), // 子项列表初始化，添加子数据
                             outboundContactPhone = "13873312771",//陈鑫宇
                             syncType = 1,
                             remark = "",
@@ -18304,11 +18301,13 @@ where a.IsDeliveryPush=0 and b.AwbStatus>1 and isnull(OutCargoTime,'')<>'' and b
 
             return result;
         }
+
+
         public List<OutboundDetail> QueryNoDeliveryPushDataGoods_Tmall(CargoOrderEntity entity)
         {
             List<OutboundDetail> result = new List<OutboundDetail>();
             string strSQL = $@"
-select b.Piece,d.NeedOutboundNum,d.SkuId,(case when TypeID=34 then GoodsCode else ProductCode end) as ProductCode from Tbl_Cargo_Order as a
+select b.Piece,d.SkuId,(case when TypeID=34 then GoodsCode else ProductCode end) as ProductCode from Tbl_Cargo_Order as a
 inner join Tbl_Cargo_OrderGoods as b on a.OrderNo=b.OrderNo
 inner join Tbl_Cargo_Product as e on b.ProductID=e.ProductID
 inner join Tbl_Cargo_TMallOrder as c on a.OpenOrderNo=c.originBillNo
@@ -18326,7 +18325,7 @@ where a.OrderNo='{entity.OrderNo}'
                         result.Add(new OutboundDetail
                         {
                             skuId = long.Parse(idr["SkuId"].ToString()),
-                            outboundNum = entity.IsManualDelivery == 1 ? Convert.ToInt32(idr["NeedOutboundNum"]) : Convert.ToInt32(idr["Piece"]),
+                            outboundNum = Convert.ToInt32(idr["Piece"]),
                             skuOrderCode = Convert.ToString(idr["ProductCode"])
                         });
                         #endregion
@@ -18336,78 +18335,7 @@ where a.OrderNo='{entity.OrderNo}'
 
             return result;
         }
-        public List<OutboundDto> QueryNoDeliveryPushData_TmallV2(OutboundDto dto=null)
-        {
-            List<OutboundDto> result = new List<OutboundDto>();
-            string strSQL = $@"
-            --已出库未推送的订单
-            select * from Tbl_Cargo_TMallOrder as a
-            where 1=1";
-            if (dto!=null && !string.IsNullOrEmpty(dto.originBillNo))
-            {
-                strSQL += $@" and a.OriginBillNo='{dto.originBillNo}' ";
-            }
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                using (DataTable dt = conn.ExecuteDataTable(command))
-                {
-                    foreach (DataRow idr in dt.Rows)
-                    {
-                        result.Add(new OutboundDto
-                        {
-                            outboundContact = "",
-                            originBillNo = Convert.ToString(idr["originBillNo"]),
-                            idempotentNo = $"GZ123_{Guid.NewGuid():N}",
-                            //logisticsNo = Convert.ToString(idr["OpenExpressNum"]),
-                            //logisticsName = Convert.ToString(idr["OpenExpressName"]),
-                            //DeliveryDriverName = Convert.ToString(idr["DeliveryDriverName"]),
-                            //DriverCellphone = Convert.ToString(idr["DriverCellphone"]),
-                            //outboundTime = Convert.ToDateTime(idr["OutCargoTime"]),
-                            outboundDetailList = QueryNoDeliveryPushDataGoods_TmallV2(new CargoOrderEntity {OrderNo = dto.originBillNo }), // 子项列表初始化，添加子数据
-                            outboundContactPhone = "13873312771",//陈鑫宇
-                            syncType = 1,
-                            remark = "",
-                            //logisticsCode = Convert.ToString(idr["LogisAwbNo"]),
-                        });
-                    }
-                }
-            }
 
-            return result;
-        }
-
-
-       
-
-        public List<OutboundDetail> QueryNoDeliveryPushDataGoods_TmallV2(CargoOrderEntity entity)
-        {
-            List<OutboundDetail> result = new List<OutboundDetail>();
-            string strSQL = $@"
-            select a.* from Tbl_Cargo_TMallOrderGoods as a
-            inner join Tbl_Cargo_TMallOrder as b on a.PID=b.Id
-            where b.OriginBillNo='{entity.OrderNo}'
-            ";
-
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                using (DataTable dt = conn.ExecuteDataTable(command))
-                {
-                    foreach (DataRow idr in dt.Rows)
-                    {
-                        #region 
-                        result.Add(new OutboundDetail
-                        {
-                            skuId = long.Parse(idr["SkuId"].ToString()),
-                            outboundNum =Convert.ToInt32(idr["NeedOutboundNum"]),
-                            skuOrderCode = Convert.ToString(idr["SkuOrderCode"])
-                        });
-                        #endregion
-                    }
-                }
-            }
-
-            return result;
-        }
 
         public Hashtable QueryOrderPickPlanListV2(CargoCreateOrderPickPlanEntity entity, int pageIndex, int pagsSize)
         {

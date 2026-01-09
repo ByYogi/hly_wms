@@ -155,7 +155,7 @@ namespace House.Entity.Cargo
         /// <summary>
         /// 退货方式 0上门取货/1用户自送
         /// </summary>
-        public int? ReturnType { get; set; }
+        public int ReturnType { get; set; }
         /// <summary>
         /// 所在仓库
         /// </summary>

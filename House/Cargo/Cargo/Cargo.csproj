@@ -441,6 +441,8 @@
     <Content Include="Client\clientManagerApi.aspx" />
     <Content Include="Client\CouponManager.aspx" />
     <Content Include="Client\CustomerProfileManager.aspx" />
+    <Content Include="HuiCai\dataPanelApi.aspx" />
+    <Content Include="HuiCai\REDataPanel.aspx" />
     <Content Include="JS\CustomerProfileManager\app.js" />
     <Content Include="JS\CustomerProfileManager\components\ChartPanel.js" />
     <Content Include="JS\CustomerProfileManager\components\CustomerFilterBar.js" />
@@ -665,6 +667,7 @@
     <Content Include="JS\NewVue\element-ui.js" />
     <Content Include="JS\NewVue\element-ui\css\index.css" />
     <Content Include="JS\NewVue\vue.js" />
+    <Content Include="JS\REDataPanel\REDataPanel.css" />
     <Content Include="JS\Rotate\jQueryRotate.2.2.js" />
     <Content Include="JS\vue.js" />
     <Content Include="LogisTrack.aspx" />
@@ -2860,6 +2863,13 @@
     <Compile Include="House\StockTakeManager.aspx.designer.cs">
       <DependentUpon>StockTakeManager.aspx</DependentUpon>
     </Compile>
+    <Compile Include="HuiCai\dataPanelApi.aspx.cs">
+      <DependentUpon>dataPanelApi.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="HuiCai\dataPanelApi.aspx.designer.cs">
+      <DependentUpon>dataPanelApi.aspx</DependentUpon>
+    </Compile>
     <Compile Include="HuiCai\huiCaiApi.aspx.cs">
       <DependentUpon>huiCaiApi.aspx</DependentUpon>
       <SubType>ASPXCodeBehind</SubType>
@@ -2873,6 +2883,13 @@
     </Compile>
     <Compile Include="HuiCai\huiCaiWarehouseStatistics.aspx.designer.cs">
       <DependentUpon>huiCaiWarehouseStatistics.aspx</DependentUpon>
+    </Compile>
+    <Compile Include="HuiCai\REDataPanel.aspx.cs">
+      <DependentUpon>REDataPanel.aspx</DependentUpon>
+      <SubType>ASPXCodeBehind</SubType>
+    </Compile>
+    <Compile Include="HuiCai\REDataPanel.aspx.designer.cs">
+      <DependentUpon>REDataPanel.aspx</DependentUpon>
     </Compile>
     <Compile Include="HuiCai\ReplenishmentStatistics.aspx.cs">
       <DependentUpon>ReplenishmentStatistics.aspx</DependentUpon>

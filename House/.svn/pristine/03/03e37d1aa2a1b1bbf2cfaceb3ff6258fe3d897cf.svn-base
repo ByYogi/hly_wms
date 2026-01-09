@@ -8867,15 +8867,15 @@ namespace HouseServices
                         // 发送请求 {"code":-7001,"msg":"物流单号和发货联系人不能全空","info":null}
                         string jsonResponse = apiService.SendRequest(requestData);
 
-                        //log.Memo = $@"[{item.originBillNo}]天猫维度出库详情 3：天猫返回的数据:{JsonConvert.SerializeObject(requestData)}";
-                        //logbus.InsertLog(log);
+                        log.Memo = $@"[{item.originBillNo}]天猫维度出库详情 3：天猫返回的数据:{JsonConvert.SerializeObject(requestData)}";
+                        logbus.InsertLog(log);
 
                         // 判断结果(根据实际API返回调整)
                         bool isSuccess = !string.IsNullOrEmpty(jsonResponse) && !jsonResponse.Contains("error");
 
                         if (isSuccess)
                         {
-                            log.Memo = $@"[{item.originBillNo}]天猫维度出库详情 3：返回参数:{jsonResponse}";
+                            log.Memo = $@"[{item.originBillNo}]天猫维度出库详情：返回参数:{jsonResponse}";
                             logbus.InsertLog(log);
 
                             //回写订单推送状态
@@ -8885,7 +8885,7 @@ namespace HouseServices
                         else
                         {
                             log.Status = "1";
-                            log.Memo = $@"[{item.originBillNo}]天猫维度出库失败详情 3:" + jsonResponse;
+                            log.Memo = $@"[{item.originBillNo}]天猫维度出库失败详情:" + jsonResponse;
                             logbus.InsertLog(log);
                         }
 

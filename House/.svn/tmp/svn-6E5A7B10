@@ -338,7 +338,6 @@ namespace House.Entity.Cargo
         [Description("账单号")]
         public string AccountNo { get; set; }
         public int IsMakeSure { get; set; }
-        public int IsManualDelivery { get; set; }
         /// <summary>
         /// 推迟发货
         /// </summary>
