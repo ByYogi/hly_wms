@@ -941,46 +941,6 @@ namespace House.Manager.Cargo
             }
             return true;
         }
-        /// <summary>
-        /// 判断 是否存在订单，如果存在则不允许删除
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <returns></returns>
-        public bool IsExistOrderNOInfo(CargoOrderEntity entity)
-        {
-            string strSQL = "Select * from Tbl_Cargo_Order where (1=1)";
-            if (!string.IsNullOrEmpty(entity.OrderNo))
-            {
-                strSQL += " and OrderNo=@OrderNo";
-            }
-            if (!string.IsNullOrEmpty(entity.WXOrderNo))
-            {
-                strSQL += " and WXOrderNo=@WXOrderNo";
-            }
-            using (DbCommand cmdQ = conn.GetSqlStringCommond(strSQL))
-            {
-                if (!string.IsNullOrEmpty(entity.OrderNo))
-                {
-                    conn.AddInParameter(cmdQ, "@OrderNo", DbType.String, entity.OrderNo);
-                }
-                if (!string.IsNullOrEmpty(entity.WXOrderNo))
-                {
-                    conn.AddInParameter(cmdQ, "@WXOrderNo", DbType.String, entity.WXOrderNo);
-                }
-                using (DataTable idr = conn.ExecuteDataTable(cmdQ))
-                {
-                    if (idr == null)
-                    {
-                        return false;
-                    }
-                    if (idr.Rows.Count <= 0)
-                    {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
 
 
         /// <summary>
@@ -18651,75 +18611,6 @@ where AwbStatus=0
             }
             catch (ApplicationException ex) { throw new ApplicationException(ex.Message); }
             return resHT;
-        }
-    
-        public List<CargoOrderEntity> GetDayOrderData(CargoOrderEntity entity)
-        {
-            List<CargoOrderEntity> result = new List<CargoOrderEntity>();
-            string strSQL = $@"
-            select a.OrderNo,sum(isnull(b.Piece,0)) as Piece,convert(varchar(10),max(a.CreateDate),23) as CreateDate
-                 ,sum(isnull(b.Piece,0) * isnull(b.ActSalePrice,0)) as TotalCharge,sum(isnull(b.Piece,0) * isnull(bb.CostPrice,0)) as costPrice
-                 ,a.ThrowGood,OrderModel,d.AimQuantity,bbb.TypeID,bbb.TypeName,a.HouseID,c.Name HouseName,bb.SuppClientNum
-                 ,iif(isnull((wx.OrderNo),'')='' and (a.OrderType)=4,1,iif(isnull((wx.OrderNo),'')<>'' and (a.OrderType)=4,2,0)) as IsSouceNo
-            from Tbl_Cargo_Order as a
-            inner join Tbl_Cargo_OrderGoods as b on a.OrderNo=b.OrderNo
-            inner join Tbl_Cargo_Product as bb on b.ProductID=bb.ProductID
-            inner join Tbl_Cargo_ProductType as bbb on bb.TypeID=bbb.TypeID
-            inner join Tbl_Cargo_House as c on a.HouseID=c.HouseID
-            inner join (
-              SELECT HouseID, AimQuantity, AimYear, AimMonth FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY HouseID ORDER BY AimYear DESC, AimMonth DESC) AS rn FROM Tbl_Cargo_HouseAim) t WHERE rn = 1
-            ) as d on c.HouseID=d.HouseID
-            left join Tbl_WX_Order as wx on a.WXOrderNo=wx.OrderNo
-            where c.BelongHouse in(0,6)  
-           
-            ";
-            if (entity.TypeID!=0)
-            {
-                strSQL += $@" and bb.TypeID='{entity.TypeID}'";
-            }
-            strSQL += $@" group by a.OrderNo,a.ThrowGood,OrderModel,d.AimQuantity,bbb.TypeID,bbb.TypeName,a.HouseID,c.Name,bb.SuppClientNum,wx.OrderNo,a.OrderType";
-            using (DbCommand command = conn.GetSqlStringCommond(strSQL))
-            {
-                using (DataTable dt = conn.ExecuteDataTable(command))
-                {
-                    foreach (DataRow idr in dt.Rows)
-                    {
-                        #region 
-                        result.Add(new CargoOrderEntity
-                        {
-                            OrderNo = Convert.ToString(idr["OrderNo"]),
-                            CreateDate = idr["CreateDate"] == DBNull.Value ? DateTime.MinValue: Convert.ToDateTime(idr["CreateDate"]),
-                            HouseID = Convert.ToInt32(idr["HouseID"]),
-                            HouseName = Convert.ToString(idr["HouseName"]),
-                            IsSouceNo = Convert.ToInt32(idr["IsSouceNo"]),
-                            TypeID = Convert.ToInt32(idr["TypeID"]),
-                            TypeName = Convert.ToString(idr["TypeName"]),
-                            SuppClientNum = Convert.ToInt32(idr["SuppClientNum"]),
-                            ThrowGood = Convert.ToString(idr["ThrowGood"]),
-                            OrderModel = Convert.ToString(idr["OrderModel"]),
-                            Piece = Convert.ToInt32(idr["Piece"]),
-                            AimQuantity = Convert.ToInt32(idr["AimQuantity"]),
-                            TotalCharge = idr["TotalCharge"] == DBNull.Value ? 0m : Convert.ToDecimal(idr["TotalCharge"]),
-                            costPrice = idr["costPrice"] == DBNull.Value ? 0m : Convert.ToDecimal(idr["costPrice"]),
-
-                        });
-                        #endregion
-                    }
-                }
-            }
-
-            return result;
-        }
-    }
-    public static class DataReaderExtensions
-    {
-        public static T Get<T>(this IDataReader dr, string field)
-        {
-            var value = dr[field];
-            if (value == DBNull.Value || value == null)
-                return default;
-
-            return (T)Convert.ChangeType(value, Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T));
         }
     }
 }

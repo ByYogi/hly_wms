@@ -5885,9 +5885,5 @@ namespace House.Business.Cargo
         }
         #endregion
 
-        public List<CargoOrderEntity> GetDayOrderData(CargoOrderEntity entity)
-        {
-            return man.GetDayOrderData(entity);
-        }
     }
 }
